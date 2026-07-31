@@ -6,7 +6,12 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
-type Profile = { full_name: string | null; role: string | null };
+type Profile = {
+  full_name: string | null;
+  role: string | null;
+  telegram_chat_id: number | null;
+  telegram_link_code: string | null;
+};
 type DashboardContextValue = { user: User; profile: Profile | null };
 
 const DashboardContext = createContext<DashboardContextValue | null>(null);
@@ -26,6 +31,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     profile: Profile | null;
   }>({ loading: true, user: null, profile: null });
   const [warehouseMapsUrl, setWarehouseMapsUrl] = useState<string | null>(null);
+  const [showTelegramCode, setShowTelegramCode] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -43,7 +49,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       const { data: profile, error } = await supabase
         .from("users")
-        .select("full_name, role")
+        .select("full_name, role, telegram_chat_id, telegram_link_code")
         .eq("id", user.id)
         .single();
 
@@ -91,7 +97,36 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {state.profile?.full_name ?? state.user.email} · {roleLabel(state.profile?.role)}
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="relative flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowTelegramCode((v) => !v)}
+                className={`rounded-md border px-2 py-1.5 text-sm ${
+                  state.profile?.telegram_chat_id
+                    ? "border-green-300 text-green-700 hover:bg-green-50"
+                    : "border-zinc-300 text-zinc-700 hover:bg-zinc-100"
+                }`}
+              >
+                {state.profile?.telegram_chat_id ? "✓ Telegram" : "Подключить Telegram"}
+              </button>
+              {showTelegramCode && (
+                <div className="absolute right-0 top-full z-10 mt-2 w-72 rounded-lg border border-zinc-200 bg-white p-3 text-sm shadow-lg">
+                  {state.profile?.telegram_chat_id ? (
+                    <p className="text-zinc-600">
+                      Telegram уже подключён — уведомления приходят туда. Чтобы переподключить к другому чату,
+                      напишите новый код боту.
+                    </p>
+                  ) : (
+                    <p className="text-zinc-600">Уведомления в Telegram ещё не подключены.</p>
+                  )}
+                  <p className="mt-2 text-zinc-600">
+                    Откройте бота NARIN WORK в Telegram и отправьте:
+                  </p>
+                  <p className="mt-1 rounded-md bg-zinc-100 px-2 py-1.5 font-mono text-xs">
+                    /start {state.profile?.telegram_link_code}
+                  </p>
+                </div>
+              )}
               {warehouseMapsUrl && (
                 <a
                   href={warehouseMapsUrl}
