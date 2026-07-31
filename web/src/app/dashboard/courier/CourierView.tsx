@@ -1,0 +1,131 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { useDashboard } from "../layout";
+import { CourierOrderCard } from "./CourierOrderCard";
+import { MineOrdersGroup } from "./MineOrdersGroup";
+import { CourierEarnings } from "./CourierEarnings";
+import { COURIER_ORDER_COLUMNS } from "./types";
+import type { CourierOrder } from "./types";
+
+const MINE_STATUSES = ["courier_assigned", "assembling", "assembled", "in_transit", "arriving"];
+
+function groupKey(o: CourierOrder) {
+  return `${o.delivery_date ?? "—"}|${o.delivery_slot ?? "—"}`;
+}
+
+export function CourierView() {
+  const { user } = useDashboard();
+  const [tab, setTab] = useState<"mine" | "pool" | "earnings">("mine");
+  const [pool, setPool] = useState<CourierOrder[]>([]);
+  const [mine, setMine] = useState<CourierOrder[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const supabase = createClient();
+
+    const [poolRes, mineRes] = await Promise.all([
+      supabase
+        .from("tilda_orders")
+        .select(COURIER_ORDER_COLUMNS)
+        .eq("status", "confirmed")
+        .is("assigned_courier_id", null)
+        .order("delivery_date", { ascending: true }),
+      supabase
+        .from("tilda_orders")
+        .select(COURIER_ORDER_COLUMNS)
+        .eq("assigned_courier_id", user.id)
+        .in("status", MINE_STATUSES)
+        .order("delivery_date", { ascending: true }),
+    ]);
+
+    if (poolRes.error || mineRes.error) {
+      setError(poolRes.error?.message ?? mineRes.error?.message ?? "Ошибка загрузки");
+    } else {
+      setError(null);
+      setPool(poolRes.data ?? []);
+      setMine(mineRes.data ?? []);
+    }
+    setLoading(false);
+  }, [user.id]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  if (loading) {
+    return <p className="text-sm text-zinc-500">Загрузка…</p>;
+  }
+
+  const groups = new Map<string, CourierOrder[]>();
+  for (const o of mine) {
+    const key = groupKey(o);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(o);
+  }
+
+  return (
+    <div className="space-y-3">
+      {error && <p className="text-sm text-red-600">Ошибка: {error}</p>}
+
+      <div className="flex rounded-lg border border-zinc-200 bg-white p-1 text-sm">
+        <button
+          onClick={() => setTab("mine")}
+          className={`flex-1 rounded-md py-1.5 font-medium ${
+            tab === "mine" ? "bg-accent text-white" : "text-zinc-600"
+          }`}
+        >
+          Мои ({mine.length})
+        </button>
+        <button
+          onClick={() => setTab("pool")}
+          className={`flex-1 rounded-md py-1.5 font-medium ${
+            tab === "pool" ? "bg-accent text-white" : "text-zinc-600"
+          }`}
+        >
+          Доступные ({pool.length})
+        </button>
+        <button
+          onClick={() => setTab("earnings")}
+          className={`flex-1 rounded-md py-1.5 font-medium ${
+            tab === "earnings" ? "bg-accent text-white" : "text-zinc-600"
+          }`}
+        >
+          Заработок
+        </button>
+      </div>
+
+      {tab === "mine" && (
+        <section className="space-y-4">
+          {mine.length === 0 && <p className="text-sm text-zinc-500">Нет активных заказов.</p>}
+          {[...groups.entries()].map(([key, orders]) => (
+            <MineOrdersGroup
+              key={key}
+              date={orders[0].delivery_date}
+              slot={orders[0].delivery_slot}
+              orders={orders}
+              userId={user.id}
+              onDone={load}
+            />
+          ))}
+        </section>
+      )}
+
+      {tab === "pool" && (
+        <section className="space-y-2">
+          {pool.length === 0 && <p className="text-sm text-zinc-500">Пул пуст.</p>}
+          <div className="space-y-2">
+            {pool.map((o) => (
+              <CourierOrderCard key={o.id} order={o} mode="pool" userId={user.id} onDone={load} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {tab === "earnings" && <CourierEarnings />}
+    </div>
+  );
+}
