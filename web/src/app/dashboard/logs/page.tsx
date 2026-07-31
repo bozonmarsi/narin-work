@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useDashboard } from "../layout";
 import { statusLabel } from "@/lib/order-status";
 import { formatDateTime } from "@/lib/format";
+import { useRealtimeRefresh } from "@/lib/useRealtimeRefresh";
 
 type LogRow = {
   id: string;
@@ -28,7 +29,7 @@ export default function LogsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setLoading(true);
+    // No setLoading(true) — see the same note in CourierView.tsx.
     const supabase = createClient();
 
     let query = supabase
@@ -58,6 +59,10 @@ export default function LogsPage() {
     const timer = setTimeout(load, 250);
     return () => clearTimeout(timer);
   }, [load, profile?.role]);
+
+  useRealtimeRefresh("order_status_history", () => {
+    if (profile?.role === "manager") load();
+  });
 
   if (profile?.role !== "manager") {
     return null;

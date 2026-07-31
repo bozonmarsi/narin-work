@@ -6,6 +6,7 @@ import { useDashboard } from "../layout";
 import { CourierOrderCard } from "./CourierOrderCard";
 import { MineOrdersGroup } from "./MineOrdersGroup";
 import { CourierEarnings } from "./CourierEarnings";
+import { useRealtimeRefresh } from "@/lib/useRealtimeRefresh";
 import { COURIER_ORDER_COLUMNS } from "./types";
 import type { CourierOrder } from "./types";
 
@@ -24,7 +25,12 @@ export function CourierView() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setLoading(true);
+    // No setLoading(true) here on purpose — this also runs on every
+    // background Realtime refresh, and flipping back to the full-screen
+    // "Загрузка…" state on every such update would make the list flash
+    // blank each time something changes anywhere in the app. The initial
+    // `true` from useState covers the first paint; after that we just swap
+    // data in quietly.
     const supabase = createClient();
 
     const [poolRes, mineRes] = await Promise.all([
@@ -55,6 +61,8 @@ export function CourierView() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useRealtimeRefresh("tilda_orders", load);
 
   if (loading) {
     return <p className="text-sm text-zinc-500">Загрузка…</p>;

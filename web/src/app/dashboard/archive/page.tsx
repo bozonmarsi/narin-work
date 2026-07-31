@@ -8,6 +8,7 @@ import { ORDER_COLUMNS } from "../queries";
 import { statusLabel, statusColor } from "@/lib/order-status";
 import { formatDate, decodeHtmlEntities } from "@/lib/format";
 import { toDateKey, startOfMonth, todayUTC } from "@/lib/schedule";
+import { useRealtimeRefresh } from "@/lib/useRealtimeRefresh";
 import type { OrderRow, CourierOption, ProductOption } from "../types";
 
 type StatusFilter = "delivered" | "cancelled" | "all";
@@ -28,7 +29,7 @@ export default function ArchivePage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("delivered");
 
   const load = useCallback(async () => {
-    setLoading(true);
+    // No setLoading(true) — see the same note in CourierView.tsx.
     const supabase = createClient();
 
     let query = supabase
@@ -66,6 +67,10 @@ export default function ArchivePage() {
       load();
     }
   }, [profile?.role, load]);
+
+  useRealtimeRefresh("tilda_orders", () => {
+    if (profile?.role === "manager") load();
+  });
 
   useEffect(() => {
     if (profile?.role !== "manager") return;

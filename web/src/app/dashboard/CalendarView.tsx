@@ -16,6 +16,7 @@ import {
   MONTH_LABELS,
   WEEKDAY_LABELS,
 } from "@/lib/schedule";
+import { useRealtimeRefresh } from "@/lib/useRealtimeRefresh";
 import type { OrderRow } from "./types";
 
 type ViewMode = "day" | "week" | "month";
@@ -39,7 +40,7 @@ export function CalendarView({
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setLoading(true);
+    // No setLoading(true) — see the same note in CourierView.tsx.
     const supabase = createClient();
 
     let rangeStart: Date;
@@ -75,6 +76,8 @@ export function CalendarView({
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load, refreshSignal]);
+
+  useRealtimeRefresh("tilda_orders", load);
 
   function step(direction: 1 | -1) {
     if (viewMode === "day") setCurrentDate((d) => addDays(d, direction));

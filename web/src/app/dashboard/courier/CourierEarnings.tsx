@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useDashboard } from "../layout";
 import { formatDate } from "@/lib/format";
 import { todayUTC, startOfWeek, toDateKey } from "@/lib/schedule";
+import { useRealtimeRefresh } from "@/lib/useRealtimeRefresh";
 
 type DeliveredOrder = {
   id: string;
@@ -21,27 +22,31 @@ export function CourierEarnings() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("tilda_orders")
-        .select("id, order_id, recipient_name, delivery_date, distance_km, delivery_price")
-        .eq("assigned_courier_id", user.id)
-        .eq("status", "delivered")
-        .order("delivery_date", { ascending: false })
-        .limit(200);
+  const load = useCallback(async () => {
+    // No setLoading(true) — see the same note in CourierView.tsx.
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("tilda_orders")
+      .select("id, order_id, recipient_name, delivery_date, distance_km, delivery_price")
+      .eq("assigned_courier_id", user.id)
+      .eq("status", "delivered")
+      .order("delivery_date", { ascending: false })
+      .limit(200);
 
-      if (error) {
-        setError(error.message);
-      } else {
-        setError(null);
-        setOrders(data ?? []);
-      }
-      setLoading(false);
-    })();
+    if (error) {
+      setError(error.message);
+    } else {
+      setError(null);
+      setOrders(data ?? []);
+    }
+    setLoading(false);
   }, [user.id]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useRealtimeRefresh("tilda_orders", load);
 
   if (loading) return <p className="text-sm text-zinc-500">Загрузка…</p>;
   if (error) return <p className="text-sm text-red-600">Ошибка: {error}</p>;

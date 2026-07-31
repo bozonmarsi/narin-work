@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useDashboard } from "../layout";
 import { todayUTC, startOfWeek, toDateKey } from "@/lib/schedule";
+import { useRealtimeRefresh } from "@/lib/useRealtimeRefresh";
 
 type CourierRow = { id: string; full_name: string | null; base_rate: number; rate_per_km: number };
 type DeliveredOrder = { assigned_courier_id: string | null; delivery_date: string | null; delivery_price: number | null };
@@ -19,7 +20,7 @@ export default function CouriersPage() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setLoading(true);
+    // No setLoading(true) — see the same note in CourierView.tsx.
     const supabase = createClient();
 
     const [couriersRes, deliveredRes] = await Promise.all([
@@ -37,11 +38,18 @@ export default function CouriersPage() {
       setError(null);
       const list = couriersRes.data ?? [];
       setCouriers(list);
-      setRateEdits(
-        Object.fromEntries(
-          list.map((c) => [c.id, { base_rate: String(c.base_rate), rate_per_km: String(c.rate_per_km) }]),
-        ),
-      );
+      // Only seed rateEdits for couriers we haven't seen yet — a background
+      // refresh (Realtime) must never clobber whatever the manager is
+      // mid-typing in these fields before they hit Save.
+      setRateEdits((prev) => {
+        const next = { ...prev };
+        for (const c of list) {
+          if (!(c.id in next)) {
+            next[c.id] = { base_rate: String(c.base_rate), rate_per_km: String(c.rate_per_km) };
+          }
+        }
+        return next;
+      });
       setDelivered(deliveredRes.data ?? []);
     }
     setLoading(false);
@@ -50,6 +58,10 @@ export default function CouriersPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useRealtimeRefresh("tilda_orders", () => {
+    if (profile?.role === "manager") load();
+  });
 
   async function saveRate(courierId: string) {
     setSavingId(courierId);

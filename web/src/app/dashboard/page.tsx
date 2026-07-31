@@ -10,6 +10,7 @@ import { ORDER_COLUMNS } from "./queries";
 import { statusLabel } from "@/lib/order-status";
 import { decodeHtmlEntities } from "@/lib/format";
 import { CourierView } from "./courier/CourierView";
+import { useRealtimeRefresh } from "@/lib/useRealtimeRefresh";
 import type { OrderRow, CourierOption, ProductOption } from "./types";
 
 export default function DashboardPage() {
@@ -60,7 +61,8 @@ export default function DashboardPage() {
   }, [profile?.role]);
 
   const loadKanban = useCallback(async () => {
-    setLoading(true);
+    // No setLoading(true) — this also fires on background Realtime updates;
+    // see the same note in CourierView.tsx.
     setRefreshSignal((n) => n + 1);
     const supabase = createClient();
 
@@ -95,6 +97,10 @@ export default function DashboardPage() {
       loadKanban();
     }
   }, [profile?.role, loadKanban]);
+
+  useRealtimeRefresh("tilda_orders", () => {
+    if (profile?.role === "manager") loadKanban();
+  });
 
   if (profile?.role === "courier") {
     return <CourierView />;
