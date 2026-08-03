@@ -38,6 +38,14 @@ export function statusColor(status: string | null) {
   return STATUS_COLORS[status] ?? "bg-zinc-100 text-zinc-700";
 }
 
+// Courier-delivery orders always mention "kurýrem" in this field (Tilda's
+// "Doručení kurýrem + servisní poplatek = 239"); self-pickup only has
+// "Servisní poplatek = 80" — no courier involved at all, so the whole
+// courier_assigned/in_transit/arriving part of the workflow doesn't apply.
+export function isPickupOrder(deliveryType: string | null) {
+  return !(deliveryType ?? "").toLowerCase().includes("kurýrem");
+}
+
 export const IN_PROGRESS_STATUSES = [
   "confirmed",
   "courier_assigned",

@@ -1,16 +1,20 @@
 "use client";
 
-import { KANBAN_STATUSES, statusLabel } from "@/lib/order-status";
+import { KANBAN_STATUSES, statusLabel, isPickupOrder } from "@/lib/order-status";
 import { formatDate } from "@/lib/format";
 import { OrderActions } from "./order-actions";
-import type { OrderRow } from "./types";
+import { AssignCourier } from "./AssignCourier";
+import { PickupActions } from "./PickupActions";
+import type { OrderRow, CourierOption } from "./types";
 
 export function KanbanBoard({
   orders,
+  couriers,
   onSelect,
   onDone,
 }: {
   orders: OrderRow[];
+  couriers: CourierOption[];
   onSelect: (order: OrderRow) => void;
   onDone: () => void;
 }) {
@@ -33,6 +37,11 @@ export function KanbanBoard({
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-medium">#{order.order_id}</p>
+                    {isPickupOrder(order.delivery_type) && (
+                      <span className="rounded-full bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700">
+                        🏪 Самовывоз
+                      </span>
+                    )}
                     {order.problem_reported && (
                       <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700">
                         Проблема
@@ -65,6 +74,20 @@ export function KanbanBoard({
                   {order.status === "new" && (
                     <div className="mt-2" onClick={(e) => e.stopPropagation()}>
                       <OrderActions orderId={order.id} onDone={onDone} />
+                    </div>
+                  )}
+                  {order.status === "confirmed" && !order.assigned_courier_id && (
+                    <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+                      {isPickupOrder(order.delivery_type) ? (
+                        <PickupActions orderId={order.id} status={order.status} onDone={onDone} />
+                      ) : (
+                        <AssignCourier orderId={order.id} couriers={couriers} onDone={onDone} />
+                      )}
+                    </div>
+                  )}
+                  {order.status === "assembled" && isPickupOrder(order.delivery_type) && (
+                    <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+                      <PickupActions orderId={order.id} status={order.status} onDone={onDone} />
                     </div>
                   )}
                 </div>

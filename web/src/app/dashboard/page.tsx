@@ -183,7 +183,7 @@ export default function DashboardPage() {
         {loading ? (
           <p className="text-zinc-500">Загрузка…</p>
         ) : (
-          <KanbanBoard orders={orders} onSelect={setSelectedOrder} onDone={loadKanban} />
+          <KanbanBoard orders={orders} couriers={couriers} onSelect={setSelectedOrder} onDone={loadKanban} />
         )}
       </section>
 
