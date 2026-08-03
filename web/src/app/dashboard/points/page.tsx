@@ -27,8 +27,10 @@ export default function PointsPage() {
   const [search, setSearch] = useState("");
   const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
   const [results, setResults] = useState<Customer[]>([]);
+  const [lifetimeEarned, setLifetimeEarned] = useState<Record<string, number>>({});
   const [searching, setSearching] = useState(false);
   const [selected, setSelected] = useState<Customer | null>(null);
+  const [selectedLifetimeEarned, setSelectedLifetimeEarned] = useState<number | null>(null);
   const [history, setHistory] = useState<Transaction[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
@@ -52,10 +54,29 @@ export default function PointsPage() {
         query = query.ilike("email", `%${search.trim()}%`);
       }
       const { data, error } = await query;
-      if (active) {
-        if (!error) setResults(data ?? []);
-        setSearching(false);
+      if (active && !error) {
+        setResults(data ?? []);
+
+        const emails = (data ?? []).map((c) => c.email).filter(Boolean);
+        if (emails.length > 0) {
+          const { data: earnedRows } = await supabase
+            .from("points_transactions")
+            .select("user_email, amount")
+            .in("user_email", emails)
+            .gt("amount", 0);
+          if (active) {
+            const totals: Record<string, number> = {};
+            for (const row of earnedRows ?? []) {
+              if (!row.user_email) continue;
+              totals[row.user_email] = (totals[row.user_email] ?? 0) + row.amount;
+            }
+            setLifetimeEarned(totals);
+          }
+        } else {
+          setLifetimeEarned({});
+        }
       }
+      if (active) setSearching(false);
     }, 250);
     return () => {
       active = false;
@@ -76,6 +97,21 @@ export default function PointsPage() {
     setLoadingHistory(false);
   }
 
+  async function loadLifetimeEarned(customer: Customer) {
+    const supabase = createClient();
+    // Not limited to the last 30 like `history` — a real all-time total,
+    // otherwise a customer with more than 30 transactions would show a
+    // truncated (wrong) sum instead of what they actually earned overall.
+    const { data, error } = await supabase
+      .from("points_transactions")
+      .select("amount")
+      .eq("user_email", customer.email)
+      .gt("amount", 0);
+    if (!error) {
+      setSelectedLifetimeEarned((data ?? []).reduce((sum, r) => sum + r.amount, 0));
+    }
+  }
+
   async function refreshBalance(email: string) {
     const supabase = createClient();
     const { data } = await supabase.from("Tilda points").select("id, email, balance, ma_id").eq("email", email).single();
@@ -87,7 +123,9 @@ export default function PointsPage() {
     setAmount("");
     setDescription("");
     setError(null);
+    setSelectedLifetimeEarned(null);
     loadHistory(customer);
+    loadLifetimeEarned(customer);
   }
 
   async function handleSubmit(sign: 1 | -1) {
@@ -123,7 +161,7 @@ export default function PointsPage() {
     setAmount("");
     setDescription("");
     setSubmitting(false);
-    await Promise.all([refreshBalance(selected.email), loadHistory(selected)]);
+    await Promise.all([refreshBalance(selected.email), loadHistory(selected), loadLifetimeEarned(selected)]);
   }
 
   if (profile?.role !== "manager") {
@@ -185,7 +223,12 @@ export default function PointsPage() {
                   <span className="w-5 text-right text-xs text-zinc-400">{i + 1}</span>
                   {c.email}
                 </span>
-                <span className="font-medium">{c.balance ?? 0} баллов</span>
+                <span className="text-right">
+                  <span className="block font-medium">{c.balance ?? 0} баллов</span>
+                  <span className="block text-xs text-zinc-400">
+                    всего заработано: {lifetimeEarned[c.email] ?? 0}
+                  </span>
+                </span>
               </button>
             ))}
           </div>
@@ -198,6 +241,10 @@ export default function PointsPage() {
             <div>
               <p className="font-medium">{selected.email}</p>
               <p className="text-sm text-zinc-500">Текущий баланс: {selected.balance ?? 0} баллов</p>
+              <p className="text-sm text-zinc-500">
+                Всего заработано за всё время:{" "}
+                {selectedLifetimeEarned === null ? "…" : selectedLifetimeEarned}
+              </p>
             </div>
           </div>
 
