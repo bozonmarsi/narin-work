@@ -26,7 +26,7 @@ export default function PointsPage() {
   const { profile } = useDashboard();
   const [search, setSearch] = useState("");
   const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
-  const [results, setResults] = useState<Customer[]>([]);
+  const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
   const [lifetimeEarned, setLifetimeEarned] = useState<Record<string, number>>({});
   const [searching, setSearching] = useState(false);
   const [selected, setSelected] = useState<Customer | null>(null);
@@ -39,50 +39,60 @@ export default function PointsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Loaded once (not per search/sort) — search and sort now happen entirely
+  // client-side over the full list, because "lifetime earned" is an
+  // aggregate over points_transactions, not a column the DB can sort by
+  // directly without a dedicated view. With everyone already in memory,
+  // filtering/sorting in JS is simpler than standing one up, and search
+  // becomes instant instead of round-tripping per keystroke.
   useEffect(() => {
     if (profile?.role !== "manager") return;
     let active = true;
     setSearching(true);
     const supabase = createClient();
-    const timer = setTimeout(async () => {
-      let query = supabase
+
+    (async () => {
+      const { data: customers, error } = await supabase
         .from("Tilda points")
         .select("id, email, balance, ma_id")
-        .order("balance", { ascending: sortDir === "asc", nullsFirst: false })
-        .limit(50);
-      if (search.trim()) {
-        query = query.ilike("email", `%${search.trim()}%`);
-      }
-      const { data, error } = await query;
-      if (active && !error) {
-        setResults(data ?? []);
+        .limit(5000);
 
-        const emails = (data ?? []).map((c) => c.email).filter(Boolean);
-        if (emails.length > 0) {
-          const { data: earnedRows } = await supabase
-            .from("points_transactions")
-            .select("user_email, amount")
-            .in("user_email", emails)
-            .gt("amount", 0);
-          if (active) {
-            const totals: Record<string, number> = {};
-            for (const row of earnedRows ?? []) {
-              if (!row.user_email) continue;
-              totals[row.user_email] = (totals[row.user_email] ?? 0) + row.amount;
-            }
-            setLifetimeEarned(totals);
+      if (!active || error) {
+        if (active) setSearching(false);
+        return;
+      }
+      setAllCustomers(customers ?? []);
+
+      const emails = (customers ?? []).map((c) => c.email).filter(Boolean);
+      if (emails.length > 0) {
+        const { data: earnedRows } = await supabase
+          .from("points_transactions")
+          .select("user_email, amount")
+          .in("user_email", emails)
+          .gt("amount", 0);
+        if (active) {
+          const totals: Record<string, number> = {};
+          for (const row of earnedRows ?? []) {
+            if (!row.user_email) continue;
+            totals[row.user_email] = (totals[row.user_email] ?? 0) + row.amount;
           }
-        } else {
-          setLifetimeEarned({});
+          setLifetimeEarned(totals);
         }
       }
       if (active) setSearching(false);
-    }, 250);
+    })();
+
     return () => {
       active = false;
-      clearTimeout(timer);
     };
-  }, [search, sortDir, profile?.role]);
+  }, [profile?.role]);
+
+  const results = allCustomers
+    .filter((c) => !search.trim() || c.email?.toLowerCase().includes(search.trim().toLowerCase()))
+    .sort((a, b) => {
+      const diff = (lifetimeEarned[a.email] ?? 0) - (lifetimeEarned[b.email] ?? 0);
+      return sortDir === "asc" ? diff : -diff;
+    });
 
   async function loadHistory(customer: Customer) {
     setLoadingHistory(true);
@@ -108,14 +118,21 @@ export default function PointsPage() {
       .eq("user_email", customer.email)
       .gt("amount", 0);
     if (!error) {
-      setSelectedLifetimeEarned((data ?? []).reduce((sum, r) => sum + r.amount, 0));
+      const total = (data ?? []).reduce((sum, r) => sum + r.amount, 0);
+      setSelectedLifetimeEarned(total);
+      setLifetimeEarned((prev) => ({ ...prev, [customer.email]: total }));
     }
   }
 
   async function refreshBalance(email: string) {
     const supabase = createClient();
     const { data } = await supabase.from("Tilda points").select("id, email, balance, ma_id").eq("email", email).single();
-    if (data) setSelected(data);
+    if (data) {
+      setSelected(data);
+      // Keep the already-loaded list in sync too, instead of leaving it
+      // showing a stale balance until the next full page reload.
+      setAllCustomers((list) => list.map((c) => (c.email === email ? data : c)));
+    }
   }
 
   function selectCustomer(customer: Customer) {
@@ -190,7 +207,7 @@ export default function PointsPage() {
                 sortDir === "desc" ? "bg-accent text-white" : "text-zinc-600 hover:bg-zinc-100"
               }`}
             >
-              Больше всего баллов
+              Больше всего накоплено
             </button>
             <button
               onClick={() => setSortDir("asc")}
@@ -198,7 +215,7 @@ export default function PointsPage() {
                 sortDir === "asc" ? "bg-accent text-white" : "text-zinc-600 hover:bg-zinc-100"
               }`}
             >
-              Меньше всего баллов
+              Меньше всего накоплено
             </button>
           </div>
         </div>
@@ -224,10 +241,8 @@ export default function PointsPage() {
                   {c.email}
                 </span>
                 <span className="text-right">
-                  <span className="block font-medium">{c.balance ?? 0} баллов</span>
-                  <span className="block text-xs text-zinc-400">
-                    всего заработано: {lifetimeEarned[c.email] ?? 0}
-                  </span>
+                  <span className="block font-medium">{lifetimeEarned[c.email] ?? 0} накоплено всего</span>
+                  <span className="block text-xs text-zinc-400">баланс сейчас: {c.balance ?? 0}</span>
                 </span>
               </button>
             ))}
