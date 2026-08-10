@@ -6,10 +6,6 @@ import { createClient } from "@/lib/supabase/client";
 import { useDashboard } from "../../layout";
 import type { Category, Line, Plan, Tier } from "../types";
 
-type ClosedDate = { closed_date: string; reason: string | null };
-
-const WEEKDAY_LABELS = ["Neděle", "Pondělí", "Úterý", "Středa", "Čtvrtek", "Pátek", "Sobota"];
-
 export default function SubscriptionCatalogPage() {
   const { profile } = useDashboard();
 
@@ -17,30 +13,23 @@ export default function SubscriptionCatalogPage() {
   const [lines, setLines] = useState<Line[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [tiers, setTiers] = useState<Tier[]>([]);
-  const [weeklyClosed, setWeeklyClosed] = useState<Set<number>>(new Set());
-  const [closedDates, setClosedDates] = useState<ClosedDate[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [newLineDraft, setNewLineDraft] = useState({ category_id: "", name: "", description: "" });
-  const [newClosedDate, setNewClosedDate] = useState({ date: "", reason: "" });
   const [savedKey, setSavedKey] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const supabase = createClient();
-    const [catRes, lineRes, planRes, tierRes, weeklyRes, datesRes] = await Promise.all([
+    const [catRes, lineRes, planRes, tierRes] = await Promise.all([
       supabase.from("subscription_categories").select("*").order("sort_order"),
       supabase.from("subscription_lines").select("*").order("sort_order"),
       supabase.from("subscription_plans").select("*"),
       supabase.from("subscription_frequency_tiers").select("*").order("deliveries_per_cycle"),
-      supabase.from("shop_weekly_closed_days").select("weekday"),
-      supabase.from("shop_closed_dates").select("closed_date, reason").order("closed_date"),
     ]);
     setCategories(catRes.data ?? []);
     setLines(lineRes.data ?? []);
     setPlans(planRes.data ?? []);
     setTiers(tierRes.data ?? []);
-    setWeeklyClosed(new Set((weeklyRes.data ?? []).map((r) => r.weekday)));
-    setClosedDates(datesRes.data ?? []);
     setLoading(false);
   }, []);
 
@@ -96,30 +85,6 @@ export default function SubscriptionCatalogPage() {
     flashSaved(`tier-${tier.deliveries_per_cycle}`);
   }
 
-  async function toggleWeekday(day: number) {
-    const supabase = createClient();
-    if (weeklyClosed.has(day)) {
-      await supabase.from("shop_weekly_closed_days").delete().eq("weekday", day);
-    } else {
-      await supabase.from("shop_weekly_closed_days").insert({ weekday: day });
-    }
-    load();
-  }
-
-  async function addClosedDate() {
-    if (!newClosedDate.date) return;
-    const supabase = createClient();
-    await supabase.from("shop_closed_dates").insert({ closed_date: newClosedDate.date, reason: newClosedDate.reason.trim() || null });
-    setNewClosedDate({ date: "", reason: "" });
-    load();
-  }
-
-  async function removeClosedDate(date: string) {
-    const supabase = createClient();
-    await supabase.from("shop_closed_dates").delete().eq("closed_date", date);
-    load();
-  }
-
   if (profile?.role !== "manager") return null;
   if (loading) return <p className="text-zinc-500">Загрузка…</p>;
 
@@ -127,22 +92,26 @@ export default function SubscriptionCatalogPage() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold">Каталог подписок</h1>
-        <Link href="/dashboard/subscriptions" className="text-sm text-accent hover:underline">← Zpět na předplatné</Link>
+        <Link href="/dashboard/subscriptions" className="text-sm text-accent hover:underline">← Назад к подпискам</Link>
       </div>
+      <p className="text-xs text-zinc-400">
+        Названия линеек и категорий — то, что видит клиент на сайте (по-чешски). Всё остальное на этой странице — только
+        для тебя.
+      </p>
 
       <section className="space-y-3">
-        <p className="font-medium">Kategorie</p>
+        <p className="font-medium">Категории</p>
         <div className="space-y-2">
           {categories.map((cat, i) => (
             <div key={cat.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-200 bg-white p-3">
               <input value={cat.name} onChange={(e) => setCategories((cs) => cs.map((c, j) => (j === i ? { ...c, name: e.target.value } : c)))} className="w-40 rounded-md border border-zinc-300 px-2 py-1 text-sm" />
-              <input value={cat.description ?? ""} onChange={(e) => setCategories((cs) => cs.map((c, j) => (j === i ? { ...c, description: e.target.value } : c)))} placeholder="Popis" className="flex-1 rounded-md border border-zinc-300 px-2 py-1 text-sm" />
+              <input value={cat.description ?? ""} onChange={(e) => setCategories((cs) => cs.map((c, j) => (j === i ? { ...c, description: e.target.value } : c)))} placeholder="Описание" className="flex-1 rounded-md border border-zinc-300 px-2 py-1 text-sm" />
               <label className="flex items-center gap-1 text-xs text-zinc-500">
                 <input type="checkbox" checked={cat.active} onChange={(e) => setCategories((cs) => cs.map((c, j) => (j === i ? { ...c, active: e.target.checked } : c)))} />
-                aktivní
+                активна
               </label>
               <button onClick={() => saveCategory(cat)} className="rounded-md bg-accent px-3 py-1 text-xs text-white hover:bg-accent-hover">
-                {savedKey === `cat-${cat.id}` ? "Uloženo ✓" : "Uložit"}
+                {savedKey === `cat-${cat.id}` ? "Сохранено ✓" : "Сохранить"}
               </button>
             </div>
           ))}
@@ -150,7 +119,7 @@ export default function SubscriptionCatalogPage() {
       </section>
 
       <section className="space-y-3">
-        <p className="font-medium">Linie a ceny (Kč / doručení)</p>
+        <p className="font-medium">Линейки и цены (Kč за доставку)</p>
         <div className="space-y-2">
           {lines.map((line, i) => {
             const catForLine = categories.find((c) => c.id === line.category_id);
@@ -161,14 +130,14 @@ export default function SubscriptionCatalogPage() {
                     {categories.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
                   </select>
                   <input value={line.name} onChange={(e) => setLines((ls) => ls.map((l, j) => (j === i ? { ...l, name: e.target.value } : l)))} className="w-40 rounded-md border border-zinc-300 px-2 py-1 text-sm" />
-                  <input value={line.description ?? ""} onChange={(e) => setLines((ls) => ls.map((l, j) => (j === i ? { ...l, description: e.target.value } : l)))} placeholder="Popis" className="flex-1 rounded-md border border-zinc-300 px-2 py-1 text-sm" />
+                  <input value={line.description ?? ""} onChange={(e) => setLines((ls) => ls.map((l, j) => (j === i ? { ...l, description: e.target.value } : l)))} placeholder="Описание" className="flex-1 rounded-md border border-zinc-300 px-2 py-1 text-sm" />
                   <label className="flex items-center gap-1 text-xs text-zinc-500">
                     <input type="checkbox" checked={line.active} onChange={(e) => setLines((ls) => ls.map((l, j) => (j === i ? { ...l, active: e.target.checked } : l)))} />
-                    aktivní
+                    активна
                   </label>
-                  <span className="text-xs text-zinc-400">{catForLine?.name ?? "bez kategorie"}</span>
+                  <span className="text-xs text-zinc-400">{catForLine?.name ?? "без категории"}</span>
                   <button onClick={() => saveLine(line)} className="rounded-md bg-accent px-3 py-1 text-xs text-white hover:bg-accent-hover">
-                    {savedKey === `line-${line.id}` ? "Uloženo ✓" : "Uložit"}
+                    {savedKey === `line-${line.id}` ? "Сохранено ✓" : "Сохранить"}
                   </button>
                 </div>
                 <div className="flex items-center gap-3 border-t border-zinc-100 pt-2">
@@ -191,72 +160,43 @@ export default function SubscriptionCatalogPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-zinc-300 p-3">
           <select value={newLineDraft.category_id} onChange={(e) => setNewLineDraft((d) => ({ ...d, category_id: e.target.value }))} className="rounded-md border border-zinc-300 px-2 py-1 text-sm">
-            <option value="">Kategorie…</option>
+            <option value="">Категория…</option>
             {categories.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
           </select>
-          <input value={newLineDraft.name} onChange={(e) => setNewLineDraft((d) => ({ ...d, name: e.target.value }))} placeholder="Nová linie" className="w-40 rounded-md border border-zinc-300 px-2 py-1 text-sm" />
-          <input value={newLineDraft.description} onChange={(e) => setNewLineDraft((d) => ({ ...d, description: e.target.value }))} placeholder="Popis" className="flex-1 rounded-md border border-zinc-300 px-2 py-1 text-sm" />
-          <button onClick={addLine} className="rounded-md border border-zinc-300 px-3 py-1 text-sm text-zinc-700 hover:bg-zinc-100">+ Přidat linii</button>
+          <input value={newLineDraft.name} onChange={(e) => setNewLineDraft((d) => ({ ...d, name: e.target.value }))} placeholder="Новая линейка" className="w-40 rounded-md border border-zinc-300 px-2 py-1 text-sm" />
+          <input value={newLineDraft.description} onChange={(e) => setNewLineDraft((d) => ({ ...d, description: e.target.value }))} placeholder="Описание" className="flex-1 rounded-md border border-zinc-300 px-2 py-1 text-sm" />
+          <button onClick={addLine} className="rounded-md border border-zinc-300 px-3 py-1 text-sm text-zinc-700 hover:bg-zinc-100">+ Добавить линейку</button>
         </div>
       </section>
 
       <section className="space-y-3">
-        <p className="font-medium">Slevy za počet doručení</p>
+        <p className="font-medium">Скидки за количество доставок</p>
         <div className="space-y-2">
           {tiers.map((tier, i) => (
             <div key={tier.deliveries_per_cycle} className="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-200 bg-white p-3">
               <span className="w-10 text-sm font-medium">{tier.deliveries_per_cycle}x</span>
               <label className="flex items-center gap-1 text-xs text-zinc-500">
-                sleva
+                скидка
                 <input type="number" value={tier.discount_percent} onChange={(e) => setTiers((ts) => ts.map((t, j) => (j === i ? { ...t, discount_percent: Number(e.target.value) } : t)))} className="w-16 rounded-md border border-zinc-300 px-2 py-1 text-sm" />
                 %
               </label>
-              <input value={tier.perk_text ?? ""} onChange={(e) => setTiers((ts) => ts.map((t, j) => (j === i ? { ...t, perk_text: e.target.value } : t)))} placeholder="Bonus (nepovinné)" className="flex-1 rounded-md border border-zinc-300 px-2 py-1 text-sm" />
+              <input value={tier.perk_text ?? ""} onChange={(e) => setTiers((ts) => ts.map((t, j) => (j === i ? { ...t, perk_text: e.target.value } : t)))} placeholder="Бонус (необязательно)" className="flex-1 rounded-md border border-zinc-300 px-2 py-1 text-sm" />
               <label className="flex items-center gap-1 text-xs text-zinc-500">
                 <input type="checkbox" checked={tier.active} onChange={(e) => setTiers((ts) => ts.map((t, j) => (j === i ? { ...t, active: e.target.checked } : t)))} />
-                aktivní
+                активна
               </label>
               <button onClick={() => saveTier(tier)} className="rounded-md bg-accent px-3 py-1 text-xs text-white hover:bg-accent-hover">
-                {savedKey === `tier-${tier.deliveries_per_cycle}` ? "Uloženo ✓" : "Uložit"}
+                {savedKey === `tier-${tier.deliveries_per_cycle}` ? "Сохранено ✓" : "Сохранить"}
               </button>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="space-y-3">
-        <p className="font-medium">Kalendář obchodu</p>
-        <div className="rounded-lg border border-zinc-200 bg-white p-3">
-          <p className="mb-2 text-xs text-zinc-500">Pravidelně zavřeno</p>
-          <div className="flex flex-wrap gap-2">
-            {WEEKDAY_LABELS.map((label, day) => (
-              <button
-                key={day}
-                onClick={() => toggleWeekday(day)}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium ${weeklyClosed.has(day) ? "bg-red-50 text-red-700" : "border border-zinc-300 text-zinc-600 hover:bg-zinc-100"}`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="rounded-lg border border-zinc-200 bg-white p-3">
-          <p className="mb-2 text-xs text-zinc-500">Jednorázově zavřené dny (svátky apod.)</p>
-          <div className="mb-2 flex flex-wrap gap-2">
-            <input type="date" value={newClosedDate.date} onChange={(e) => setNewClosedDate((d) => ({ ...d, date: e.target.value }))} className="rounded-md border border-zinc-300 px-2 py-1 text-sm" />
-            <input value={newClosedDate.reason} onChange={(e) => setNewClosedDate((d) => ({ ...d, reason: e.target.value }))} placeholder="Důvod" className="flex-1 rounded-md border border-zinc-300 px-2 py-1 text-sm" />
-            <button onClick={addClosedDate} className="rounded-md border border-zinc-300 px-3 py-1 text-sm text-zinc-700 hover:bg-zinc-100">+ Přidat</button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {closedDates.map((d) => (
-              <span key={d.closed_date} className="flex items-center gap-2 rounded-md bg-zinc-100 px-2 py-1 text-xs text-zinc-700">
-                {d.closed_date}{d.reason ? ` — ${d.reason}` : ""}
-                <button onClick={() => removeClosedDate(d.closed_date)} className="text-zinc-400 hover:text-red-600">✕</button>
-              </span>
-            ))}
-          </div>
-        </div>
-      </section>
+      <p className="text-xs text-zinc-400">
+        Рабочие дни и закрытые даты магазина перенесены на отдельную страницу — раздел{" "}
+        <Link href="/dashboard/shop" className="text-accent hover:underline">Магазин</Link>.
+      </p>
     </div>
   );
 }

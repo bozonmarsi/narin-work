@@ -184,10 +184,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link
                 href="/dashboard/subscriptions"
                 className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-                  pathname === "/dashboard/subscriptions" ? "bg-accent text-white" : "text-zinc-600 hover:bg-zinc-100"
+                  pathname.startsWith("/dashboard/subscriptions") ? "bg-accent text-white" : "text-zinc-600 hover:bg-zinc-100"
                 }`}
               >
                 Подписки
+              </Link>
+              <Link
+                href="/dashboard/shop"
+                className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+                  pathname === "/dashboard/shop" ? "bg-accent text-white" : "text-zinc-600 hover:bg-zinc-100"
+                }`}
+              >
+                Магазин
               </Link>
               <Link
                 href="/dashboard/logs"

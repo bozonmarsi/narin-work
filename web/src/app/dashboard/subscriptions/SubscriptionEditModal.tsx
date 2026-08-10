@@ -8,21 +8,21 @@ import type { Category, Line, Plan, Tier, Subscription, Occurrence, SubHistoryRo
 import { SIZE_LABELS, RECIPIENT_FIELDS } from "./types";
 
 const FIELD_LABELS: Record<string, string> = {
-  recipient_name: "Jméno příjemce",
-  recipient_phone: "Telefon příjemce",
-  address: "Adresa",
-  city: "Město",
-  psk: "PSČ",
-  patro: "Patro",
-  company_name: "Firma",
-  cislo_bytu: "Číslo bytu",
-  kod_intercomu: "Kód intercomu",
-  mood_note: "Nálada",
-  exclusions_note: "Co vyloučit",
-  cycle_anchor_date: "Datum startu cyklu",
-  line_id: "Linie",
-  size: "Velikost",
-  deliveries_per_cycle: "Doručení / cyklus",
+  recipient_name: "Имя получателя",
+  recipient_phone: "Телефон получателя",
+  address: "Адрес",
+  city: "Город",
+  psk: "Индекс",
+  patro: "Этаж",
+  company_name: "Компания",
+  cislo_bytu: "Квартира",
+  kod_intercomu: "Код домофона",
+  mood_note: "Настроение",
+  exclusions_note: "Что исключить",
+  cycle_anchor_date: "Дата старта цикла",
+  line_id: "Линейка",
+  size: "Размер",
+  deliveries_per_cycle: "Доставок / цикл",
 };
 
 export function SubscriptionEditModal({
@@ -189,7 +189,7 @@ export function SubscriptionEditModal({
     await supabase.from("subscription_history").insert({
       subscription_id: subscription.id,
       changed_by: user?.id,
-      note: "Předplatné zrušeno manažerem",
+      note: "Подписка отменена менеджером",
     });
     setCancelling(false);
     onSaved();
@@ -222,7 +222,7 @@ export function SubscriptionEditModal({
       await supabase.from("subscription_history").insert({
         subscription_id: subscription.id,
         changed_by: user?.id,
-        note: `Vygenerován další cyklus (${dates.length} termínů od ${dates[0]})`,
+        note: `Сгенерирован следующий цикл (${dates.length} доставок с ${dates[0]})`,
       });
     }
   }
@@ -234,11 +234,11 @@ export function SubscriptionEditModal({
           <div>
             <p className="text-lg font-semibold">{subscription.email}</p>
             <p className="text-sm text-zinc-500">
-              vytvořeno {formatDateTime(subscription.created_at)} ·{" "}
-              {subscription.stripe_subscription_id ? "Stripe" : "vytvořeno manuálně"}
+              создана {formatDateTime(subscription.created_at)} ·{" "}
+              {subscription.stripe_subscription_id ? "Stripe" : "создана вручную"}
             </p>
           </div>
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600" aria-label="Zavřít">
+          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600" aria-label="Закрыть">
             ✕
           </button>
         </div>
@@ -246,28 +246,28 @@ export function SubscriptionEditModal({
         <div className="max-h-[75vh] space-y-6 overflow-y-auto px-6 py-5">
           <section className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-zinc-500">Stav</h3>
+              <h3 className="text-sm font-semibold text-zinc-500">Статус</h3>
               <span
                 className={`rounded-full px-2 py-1 text-xs font-medium ${
                   subscription.status === "active" ? "bg-green-50 text-green-700" : "bg-zinc-100 text-zinc-500"
                 }`}
               >
-                {subscription.status === "active" ? "Aktivní" : "Zrušeno"}
+                {subscription.status === "active" ? "Активна" : "Отменена"}
               </span>
             </div>
             {subscription.status === "active" &&
               (cancelConfirm ? (
                 <div className="flex items-center gap-2 rounded-md bg-red-50 px-3 py-2">
-                  <span className="text-sm text-red-700">Opravdu zrušit toto předplatné?</span>
+                  <span className="text-sm text-red-700">Точно отменить эту подписку?</span>
                   <button
                     onClick={handleCancel}
                     disabled={cancelling}
                     className="rounded-md bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700 disabled:opacity-50"
                   >
-                    {cancelling ? "Rušíme…" : "Potvrdit zrušení"}
+                    {cancelling ? "Отменяем…" : "Подтвердить отмену"}
                   </button>
                   <button onClick={() => setCancelConfirm(false)} className="text-sm text-zinc-500 hover:text-zinc-700">
-                    Zpět
+                    Назад
                   </button>
                 </div>
               ) : (
@@ -275,19 +275,19 @@ export function SubscriptionEditModal({
                   onClick={() => setCancelConfirm(true)}
                   className="rounded-md border border-red-200 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50"
                 >
-                  Zrušit předplatné
+                  Отменить подписку
                 </button>
               ))}
           </section>
 
           <section className="space-y-3">
-            <h3 className="text-sm font-semibold text-zinc-500">Plán</h3>
+            <h3 className="text-sm font-semibold text-zinc-500">План</h3>
             <p className="text-xs text-amber-600">
-              Úprava zde nemění účtování v aktivním Stripe předplatném — jen naši evidenci. Na skutečnou platbu je potřeba
-              zásah přímo ve Stripe.
+              Изменение здесь не влияет на списания в активной Stripe-подписке — только на нашу запись. Чтобы изменить
+              реальную оплату, нужно менять её напрямую в Stripe.
             </p>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Kategorie">
+              <Field label="Категория">
                 <select
                   value={currentCategoryId}
                   onChange={(e) => set("line_id", linesInCategory(e.target.value)[0]?.id ?? "")}
@@ -298,7 +298,7 @@ export function SubscriptionEditModal({
                   ))}
                 </select>
               </Field>
-              <Field label="Linie">
+              <Field label="Линейка">
                 <select
                   value={form.line_id}
                   onChange={(e) => set("line_id", e.target.value)}
@@ -309,7 +309,7 @@ export function SubscriptionEditModal({
                   ))}
                 </select>
               </Field>
-              <Field label="Velikost">
+              <Field label="Размер">
                 <select
                   value={form.size}
                   onChange={(e) => set("size", e.target.value as SubscriptionSize)}
@@ -320,7 +320,7 @@ export function SubscriptionEditModal({
                   <option value="large">L</option>
                 </select>
               </Field>
-              <Field label="Doručení / cyklus">
+              <Field label="Доставок / цикл">
                 <select
                   value={form.deliveries_per_cycle}
                   onChange={(e) => set("deliveries_per_cycle", Number(e.target.value))}
@@ -333,7 +333,7 @@ export function SubscriptionEditModal({
                   ))}
                 </select>
               </Field>
-              <Field label="Datum startu cyklu">
+              <Field label="Дата старта цикла">
                 <input
                   type="date"
                   value={form.cycle_anchor_date}
@@ -341,47 +341,47 @@ export function SubscriptionEditModal({
                   className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
                 />
               </Field>
-              <Field label="Cena cyklu (dle výběru výše)">
+              <Field label="Цена цикла (по выбору выше)">
                 <p className="px-2 py-1.5 text-sm font-medium">{cyclePrice != null ? `${cyclePrice.toLocaleString("cs-CZ")} Kč` : "—"}</p>
               </Field>
             </div>
           </section>
 
           <section className="space-y-3">
-            <h3 className="text-sm font-semibold text-zinc-500">Výchozí příjemce</h3>
+            <h3 className="text-sm font-semibold text-zinc-500">Получатель по умолчанию</h3>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Jméno"><input value={form.recipient_name} onChange={(e) => set("recipient_name", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
-              <Field label="Telefon"><input value={form.recipient_phone} onChange={(e) => set("recipient_phone", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
-              <Field label="Adresa"><input value={form.address} onChange={(e) => set("address", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
-              <Field label="Město"><input value={form.city} onChange={(e) => set("city", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
-              <Field label="PSČ"><input value={form.psk} onChange={(e) => set("psk", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
-              <Field label="Patro"><input value={form.patro} onChange={(e) => set("patro", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
-              <Field label="Firma"><input value={form.company_name} onChange={(e) => set("company_name", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
-              <Field label="Číslo bytu"><input value={form.cislo_bytu} onChange={(e) => set("cislo_bytu", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
-              <Field label="Kód intercomu"><input value={form.kod_intercomu} onChange={(e) => set("kod_intercomu", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
+              <Field label="Имя"><input value={form.recipient_name} onChange={(e) => set("recipient_name", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
+              <Field label="Телефон"><input value={form.recipient_phone} onChange={(e) => set("recipient_phone", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
+              <Field label="Адрес"><input value={form.address} onChange={(e) => set("address", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
+              <Field label="Город"><input value={form.city} onChange={(e) => set("city", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
+              <Field label="Индекс"><input value={form.psk} onChange={(e) => set("psk", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
+              <Field label="Этаж"><input value={form.patro} onChange={(e) => set("patro", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
+              <Field label="Компания"><input value={form.company_name} onChange={(e) => set("company_name", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
+              <Field label="Квартира"><input value={form.cislo_bytu} onChange={(e) => set("cislo_bytu", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
+              <Field label="Код домофона"><input value={form.kod_intercomu} onChange={(e) => set("kod_intercomu", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
             </div>
           </section>
 
           <section className="space-y-3">
-            <h3 className="text-sm font-semibold text-zinc-500">Nálada a poznámky</h3>
+            <h3 className="text-sm font-semibold text-zinc-500">Настроение и заметки</h3>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Nálada"><input value={form.mood_note} onChange={(e) => set("mood_note", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
-              <Field label="Co vyloučit"><input value={form.exclusions_note} onChange={(e) => set("exclusions_note", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
+              <Field label="Настроение"><input value={form.mood_note} onChange={(e) => set("mood_note", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
+              <Field label="Что исключить"><input value={form.exclusions_note} onChange={(e) => set("exclusions_note", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
             </div>
           </section>
 
           <section className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-zinc-500">Termíny cyklu ({occurrences.length})</h3>
+              <h3 className="text-sm font-semibold text-zinc-500">Даты цикла ({occurrences.length})</h3>
               <button
                 onClick={handleGenerateNextCycle}
                 className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-700 hover:bg-zinc-100"
               >
-                + Vygenerovat další cyklus
+                + Сгенерировать следующий цикл
               </button>
             </div>
             {loadingSub ? (
-              <p className="text-sm text-zinc-400">Načítání…</p>
+              <p className="text-sm text-zinc-400">Загрузка…</p>
             ) : (
               <div className="space-y-2">
                 {occurrences.map((occ) => (
@@ -395,11 +395,11 @@ export function SubscriptionEditModal({
 
           {history.length > 0 && (
             <section className="space-y-2">
-              <h3 className="text-sm font-semibold text-zinc-500">Historie</h3>
+              <h3 className="text-sm font-semibold text-zinc-500">История</h3>
               <div className="space-y-1 text-xs text-zinc-500">
                 {history.map((h) => (
                   <p key={h.id}>
-                    {formatDateTime(h.changed_at)} — {h.note} · {h.changed_by_user?.full_name ?? "systém"}
+                    {formatDateTime(h.changed_at)} — {h.note} · {h.changed_by_user?.full_name ?? "система"}
                   </p>
                 ))}
               </div>
@@ -411,14 +411,14 @@ export function SubscriptionEditModal({
 
         <div className="flex justify-end gap-2 border-t border-zinc-200 px-6 py-4">
           <button onClick={onClose} className="rounded-md border border-zinc-300 px-4 py-2 text-sm hover:bg-zinc-50">
-            Zavřít
+            Закрыть
           </button>
           <button
             onClick={handleSave}
             disabled={saving}
             className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
           >
-            {saving ? "Ukládáme…" : "Uložit"}
+            {saving ? "Сохраняем…" : "Сохранить"}
           </button>
         </div>
       </div>
@@ -435,7 +435,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-const OCC_STATUS_LABEL: Record<string, string> = { planned: "Naplánováno", generated: "Objednávka vytvořena", skipped: "Přeskočeno" };
+const OCC_STATUS_LABEL: Record<string, string> = { planned: "Запланировано", generated: "Заказ создан", skipped: "Пропущено" };
 const OCC_STATUS_COLOR: Record<string, string> = {
   planned: "bg-zinc-100 text-zinc-600",
   generated: "bg-green-50 text-green-700",
@@ -551,7 +551,7 @@ function OccurrenceRow({
         delivery_date: occurrence.occurrence_date,
         delivery_type: "Doručení kurýrem (předplatné)",
         products_text: `${subscription.line_name_snapshot} · ${SIZE_LABELS[subscription.size]} (předplatné)`,
-        manager_comment: "Vygenerováno z předplatného, již uhrazeno v rámci cyklu.",
+        manager_comment: "Сгенерировано из подписки, уже оплачено в рамках цикла.",
         subscription_id: subscription.id,
         status: "new",
       })
@@ -574,7 +574,7 @@ function OccurrenceRow({
     await supabase.from("subscription_history").insert({
       subscription_id: subscription.id,
       changed_by: user?.id,
-      note: `Vytvořena objednávka pro termín ${occurrence.occurrence_date}`,
+      note: `Создан заказ для доставки ${occurrence.occurrence_date}`,
     });
 
     setPending(false);
@@ -623,7 +623,7 @@ function OccurrenceRow({
               onBlur={saveDate}
               className="rounded-md border border-zinc-300 px-2 py-1 text-sm"
             />
-            {hasOverride && <span className="ml-2 text-xs text-accent">upraven příjemce</span>}
+            {hasOverride && <span className="ml-2 text-xs text-accent">получатель изменён</span>}
           </div>
           <span className={`rounded-full px-2 py-1 text-xs font-medium ${OCC_STATUS_COLOR[occurrence.status]}`}>
             {OCC_STATUS_LABEL[occurrence.status]}
@@ -631,7 +631,7 @@ function OccurrenceRow({
         </div>
         <div className="flex items-center gap-2">
           <label className="cursor-pointer rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-700 hover:bg-zinc-100">
-            Nahrát náhled
+            Загрузить превью
             <input
               type="file"
               accept="image/*"
@@ -640,11 +640,11 @@ function OccurrenceRow({
             />
           </label>
           <button onClick={() => setExpanded((v) => !v)} className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-700 hover:bg-zinc-100">
-            {expanded ? "Skrýt" : "Příjemce"}
+            {expanded ? "Скрыть" : "Получатель"}
           </button>
           {occurrence.status === "planned" && (
             <button onClick={skip} disabled={pending} className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-700 hover:bg-zinc-100 disabled:opacity-50">
-              Přeskočit
+              Пропустить
             </button>
           )}
           {!occurrence.order_id &&
@@ -652,13 +652,13 @@ function OccurrenceRow({
             (confirmGenerate ? (
               <>
                 <button onClick={generateOrder} disabled={pending} className="rounded-md bg-accent px-2 py-1 text-xs text-white hover:bg-accent-hover disabled:opacity-50">
-                  Potvrdit
+                  Подтвердить
                 </button>
-                <button onClick={() => setConfirmGenerate(false)} className="text-xs text-zinc-500">Zpět</button>
+                <button onClick={() => setConfirmGenerate(false)} className="text-xs text-zinc-500">Назад</button>
               </>
             ) : (
               <button onClick={() => setConfirmGenerate(true)} className="rounded-md bg-accent px-2 py-1 text-xs text-white hover:bg-accent-hover">
-                Vytvořit objednávku
+                Создать заказ
               </button>
             ))}
         </div>
@@ -668,21 +668,21 @@ function OccurrenceRow({
 
       {expanded && (
         <div className="mt-3 space-y-2 border-t border-zinc-100 pt-3">
-          <p className="text-xs text-zinc-400">Prázdné pole = použije se výchozí příjemce z předplatného.</p>
+          <p className="text-xs text-zinc-400">Пустое поле = будет использован получатель по умолчанию из подписки.</p>
           <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
-            <input placeholder="Jméno" value={override.recipient_name} onChange={(e) => setOverride((o) => ({ ...o, recipient_name: e.target.value }))} className="rounded-md border border-zinc-300 px-2 py-1 text-sm" />
-            <input placeholder="Telefon" value={override.recipient_phone} onChange={(e) => setOverride((o) => ({ ...o, recipient_phone: e.target.value }))} className="rounded-md border border-zinc-300 px-2 py-1 text-sm" />
-            <input placeholder="Adresa" value={override.address} onChange={(e) => setOverride((o) => ({ ...o, address: e.target.value }))} className="rounded-md border border-zinc-300 px-2 py-1 text-sm" />
-            <input placeholder="Město" value={override.city} onChange={(e) => setOverride((o) => ({ ...o, city: e.target.value }))} className="rounded-md border border-zinc-300 px-2 py-1 text-sm" />
-            <input placeholder="PSČ" value={override.psk} onChange={(e) => setOverride((o) => ({ ...o, psk: e.target.value }))} className="rounded-md border border-zinc-300 px-2 py-1 text-sm" />
+            <input placeholder="Имя" value={override.recipient_name} onChange={(e) => setOverride((o) => ({ ...o, recipient_name: e.target.value }))} className="rounded-md border border-zinc-300 px-2 py-1 text-sm" />
+            <input placeholder="Телефон" value={override.recipient_phone} onChange={(e) => setOverride((o) => ({ ...o, recipient_phone: e.target.value }))} className="rounded-md border border-zinc-300 px-2 py-1 text-sm" />
+            <input placeholder="Адрес" value={override.address} onChange={(e) => setOverride((o) => ({ ...o, address: e.target.value }))} className="rounded-md border border-zinc-300 px-2 py-1 text-sm" />
+            <input placeholder="Город" value={override.city} onChange={(e) => setOverride((o) => ({ ...o, city: e.target.value }))} className="rounded-md border border-zinc-300 px-2 py-1 text-sm" />
+            <input placeholder="Индекс" value={override.psk} onChange={(e) => setOverride((o) => ({ ...o, psk: e.target.value }))} className="rounded-md border border-zinc-300 px-2 py-1 text-sm" />
           </div>
           <div className="flex gap-2">
             <button onClick={saveOverride} disabled={pending} className="rounded-md bg-accent px-3 py-1 text-xs text-white hover:bg-accent-hover disabled:opacity-50">
-              Uložit příjemce
+              Сохранить получателя
             </button>
             {hasOverride && (
               <button onClick={clearOverride} disabled={pending} className="rounded-md border border-zinc-300 px-3 py-1 text-xs text-zinc-700 hover:bg-zinc-100 disabled:opacity-50">
-                Zrušit úpravu
+                Убрать переопределение
               </button>
             )}
           </div>
