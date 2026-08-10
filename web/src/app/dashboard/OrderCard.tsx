@@ -49,6 +49,11 @@ export function OrderCard({
             <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColor(order.status)}`}>
               {statusLabel(order.status)}
             </span>
+            {order.subscription_id && (
+              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                🔁 Předplatné
+              </span>
+            )}
             {order.problem_reported && (
               <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
                 Проблема

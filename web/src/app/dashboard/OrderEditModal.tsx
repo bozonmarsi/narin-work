@@ -372,7 +372,14 @@ export function OrderEditModal({
             >
               Заказ #{order.order_id} {copied ? "✓" : "📋"}
             </button>
-            <p className="text-sm text-zinc-500">создан {formatDateTime(order.created_at)}</p>
+            <p className="text-sm text-zinc-500">
+              создан {formatDateTime(order.created_at)}
+              {order.subscription_id && (
+                <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                  🔁 Из подписки
+                </span>
+              )}
+            </p>
           </div>
           <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600" aria-label="Закрыть">
             ✕

@@ -120,7 +120,7 @@ export function CalendarView({
                 onClick={() => onSelect(o)}
                 className={`rounded-md border px-2 py-1 text-left text-xs hover:border-accent ${statusColor(o.status)} border-transparent`}
               >
-                #{o.order_id} · {o.customer_name}
+                {o.subscription_id && "🔁 "}#{o.order_id} · {o.customer_name}
               </button>
             ))}
             {todayOrders.length > 8 && (
@@ -221,7 +221,8 @@ function OrderChip({ order, onSelect, compact }: { order: OrderRow; onSelect: (o
       onClick={() => onSelect(order)}
       className={`w-full rounded-md border px-2 py-1 text-left text-xs hover:border-accent ${statusColor(order.status)} border-transparent`}
     >
-      <span className="font-medium">#{order.order_id}</span> {order.customer_name} → {order.recipient_name}
+      <span className="font-medium">#{order.order_id}</span> {order.subscription_id && "🔁 "}
+      {order.customer_name} → {order.recipient_name}
       {order.products_text && <span className="block text-zinc-500">{order.products_text}</span>}
       {!compact && order.assigned_courier?.full_name && <span> · {order.assigned_courier.full_name}</span>}
     </button>

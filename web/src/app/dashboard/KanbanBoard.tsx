@@ -37,6 +37,11 @@ export function KanbanBoard({
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-medium">#{order.order_id}</p>
+                    {order.subscription_id && (
+                      <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
+                        🔁 Předplatné
+                      </span>
+                    )}
                     {isPickupOrder(order.delivery_type) && (
                       <span className="rounded-full bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700">
                         🏪 Самовывоз

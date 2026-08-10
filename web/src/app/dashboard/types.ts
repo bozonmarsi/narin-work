@@ -70,6 +70,7 @@ export type OrderRow = {
   recipients_name_postcard: string | null;
   postcard_comment: string | null;
   created_at: string | null;
+  subscription_id: string | null;
   assigned_courier: { full_name: string | null } | null;
 };
 
