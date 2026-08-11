@@ -171,11 +171,19 @@ export default function SubscriptionsPage() {
         cislo_bytu: null,
         kod_intercomu: null,
       };
+      let failedOrders = 0;
       for (const occ of insertedOccs) {
-        await generateOrderForOccurrence(supabase, subForOrders, occ);
+        const orderId = await generateOrderForOccurrence(supabase, subForOrders, occ);
+        if (!orderId) failedOrders++;
       }
-      setForm(emptyForm);
-      setShowCreate(false);
+      if (failedOrders > 0) {
+        setFormError(
+          `Подписка и даты созданы, но не удалось создать ${failedOrders} из ${insertedOccs.length} заказов — откройте подписку и нажмите "Создать заказ" вручную на датах со статусом "Запланировано".`,
+        );
+      } else {
+        setForm(emptyForm);
+        setShowCreate(false);
+      }
     }
     setSaving(false);
     load();
