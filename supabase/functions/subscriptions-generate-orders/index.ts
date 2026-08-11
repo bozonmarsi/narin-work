@@ -55,7 +55,7 @@ Deno.serve(async () => {
         products_text: `${sub.line_name_snapshot} · ${SIZE_LABELS[sub.size] ?? sub.size} (předplatné)`,
         goods_total: sub.price_per_delivery_snapshot,
         order_total: sub.price_per_delivery_snapshot,
-        payment_status: "Zaplaceno",
+        payment_status: "🟢 Оплачено",
         raw_payload: {
           payment: {
             products: [

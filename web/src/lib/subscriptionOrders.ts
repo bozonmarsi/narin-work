@@ -63,7 +63,7 @@ export async function generateOrderForOccurrence(
       products_text: label,
       goods_total: sub.price_per_delivery_snapshot,
       order_total: sub.price_per_delivery_snapshot,
-      payment_status: "Zaplaceno",
+      payment_status: "🟢 Оплачено",
       raw_payload: {
         payment: {
           products: [{ name: label, price: String(sub.price_per_delivery_snapshot), quantity: 1 }],
