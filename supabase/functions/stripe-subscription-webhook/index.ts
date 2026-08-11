@@ -33,6 +33,7 @@ const cryptoProvider = Stripe.createSubtleCryptoProvider();
 const webhookSecret = Deno.env.get("STRIPE_SUBSCRIPTION_WEBHOOK_SECRET_TEST")!;
 
 const CYCLE_DAYS = 28;
+const SIZE_LABELS: Record<string, string> = { small: "S", medium: "M", large: "L" };
 
 function addDays(date: Date, days: number) {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + days));
@@ -154,8 +155,100 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     occurrence_date: d,
     status: "planned",
   }));
-  const { error: occErr } = await supabase.from("subscription_occurrences").insert(occurrences);
-  if (occErr) console.error("failed to insert occurrences", occErr);
+  const { data: insertedOccs, error: occErr } = await supabase
+    .from("subscription_occurrences")
+    .insert(occurrences)
+    .select("*");
+  if (occErr || !insertedOccs) {
+    console.error("failed to insert occurrences", occErr);
+    return;
+  }
+
+  // Generate the real orders for the whole cycle immediately — not just the
+  // next few days — so purchasing/warehouse can see total upcoming flower
+  // demand right away, not only 3 days before each delivery.
+  const subForOrders = {
+    id: inserted.id,
+    email: m.email,
+    line_name_snapshot: m.line_name,
+    size: m.size,
+    price_per_delivery_snapshot: Number(m.price_per_delivery),
+    recipient_name: m.recipient_name,
+    recipient_phone: m.recipient_phone,
+    address: m.address,
+    city: m.city || null,
+    psk: m.psk || null,
+    patro: m.patro || null,
+    company_name: m.company_name || null,
+    cislo_bytu: m.cislo_bytu || null,
+    kod_intercomu: m.kod_intercomu || null,
+  };
+  for (const occ of insertedOccs) {
+    await generateOrderForOccurrence(subForOrders, occ);
+  }
+}
+
+async function generateOrderForOccurrence(
+  sub: {
+    id: string;
+    email: string;
+    line_name_snapshot: string;
+    size: string;
+    price_per_delivery_snapshot: number;
+    recipient_name: string;
+    recipient_phone: string;
+    address: string;
+    city: string | null;
+    psk: string | null;
+    patro: string | null;
+    company_name: string | null;
+    cislo_bytu: string | null;
+    kod_intercomu: string | null;
+  },
+  occ: { id: string; occurrence_date: string; recipient_name?: string | null; recipient_phone?: string | null; address?: string | null; city?: string | null; psk?: string | null; patro?: string | null; company_name?: string | null; cislo_bytu?: string | null; kod_intercomu?: string | null },
+) {
+  const label = `${sub.line_name_snapshot} · ${SIZE_LABELS[sub.size] ?? sub.size} (předplatné)`;
+
+  const { data: newOrder, error: orderErr } = await supabase
+    .from("tilda_orders")
+    .insert({
+      order_id: `PREDPL-${sub.id.slice(0, 8)}-${occ.occurrence_date}`,
+      customer_email: sub.email,
+      recipient_name: occ.recipient_name ?? sub.recipient_name,
+      recipient_phone: occ.recipient_phone ?? sub.recipient_phone,
+      address: occ.address ?? sub.address,
+      city: occ.city ?? sub.city,
+      psk: occ.psk ?? sub.psk,
+      patro: occ.patro ?? sub.patro,
+      company_name: occ.company_name ?? sub.company_name,
+      cislo_bytu: occ.cislo_bytu ?? sub.cislo_bytu,
+      kod_intercomu: occ.kod_intercomu ?? sub.kod_intercomu,
+      delivery_date: occ.occurrence_date,
+      delivery_type: "Doručení kurýrem (předplatné)",
+      products_text: label,
+      goods_total: sub.price_per_delivery_snapshot,
+      order_total: sub.price_per_delivery_snapshot,
+      payment_status: "Zaplaceno",
+      raw_payload: {
+        payment: {
+          products: [{ name: label, price: String(sub.price_per_delivery_snapshot), quantity: 1 }],
+          subtotal: String(sub.price_per_delivery_snapshot),
+          amount: String(sub.price_per_delivery_snapshot),
+        },
+      },
+      manager_comment: "Vygenerováno automaticky z předplatného, již uhrazeno v rámci cyklu.",
+      subscription_id: sub.id,
+      status: "new",
+    })
+    .select("id")
+    .single();
+
+  if (orderErr || !newOrder) {
+    console.error("failed to create order for occurrence", occ.id, orderErr);
+    return;
+  }
+
+  await supabase.from("subscription_occurrences").update({ order_id: newOrder.id, status: "generated" }).eq("id", occ.id);
 }
 
 Deno.serve(async (req) => {

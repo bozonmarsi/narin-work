@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { formatDateTime } from "@/lib/format";
 import { generateOccurrenceDates } from "@/lib/subscriptionDates";
+import { generateOrderForOccurrence } from "@/lib/subscriptionOrders";
 import type { Category, Line, Plan, Tier, Subscription, Occurrence, SubHistoryRow, SubscriptionSize } from "./types";
-import { SIZE_LABELS, RECIPIENT_FIELDS } from "./types";
+import { RECIPIENT_FIELDS } from "./types";
 
 const FIELD_LABELS: Record<string, string> = {
   recipient_name: "Имя получателя",
@@ -215,6 +216,16 @@ export function SubscriptionEditModal({
       .insert(dates.map((d) => ({ subscription_id: subscription.id, occurrence_date: d, status: "planned" })))
       .select("*");
     if (!insErr && inserted) {
+      // Generate the real orders for the whole new cycle right away — not
+      // just the next few days — so purchasing sees total demand up front.
+      for (const occ of inserted as Occurrence[]) {
+        const orderId = await generateOrderForOccurrence(supabase, subscription, occ);
+        if (orderId) {
+          occ.order_id = orderId;
+          occ.status = "generated";
+        }
+      }
+
       setOccurrences((prev) => [...prev, ...(inserted as Occurrence[])].sort((a, b) => a.occurrence_date.localeCompare(b.occurrence_date)));
       const {
         data: { user },
@@ -476,6 +487,17 @@ function OccurrenceRow({
       .eq("id", occurrence.id)
       .select("*")
       .single();
+
+    // Keep the already-generated order (visible to warehouse/courier) in
+    // sync — route_sequence is nulled the same way OrderEditModal does for
+    // any date/address change, so the courier app knows to recompute it.
+    if (!error && occurrence.order_id) {
+      await supabase
+        .from("tilda_orders")
+        .update({ delivery_date: dateValue, route_sequence: null })
+        .eq("id", occurrence.order_id);
+    }
+
     setPending(false);
     if (!error && data) onChange(data as Occurrence);
   }
@@ -496,6 +518,21 @@ function OccurrenceRow({
       .eq("id", occurrence.id)
       .select("*")
       .single();
+
+    if (!error && occurrence.order_id) {
+      await supabase
+        .from("tilda_orders")
+        .update({
+          recipient_name: payload.recipient_name ?? subscription.recipient_name,
+          recipient_phone: payload.recipient_phone ?? subscription.recipient_phone,
+          address: payload.address ?? subscription.address,
+          city: payload.city ?? subscription.city,
+          psk: payload.psk ?? subscription.psk,
+          route_sequence: null,
+        })
+        .eq("id", occurrence.order_id);
+    }
+
     setPending(false);
     if (!error && data) onChange(data as Occurrence);
   }
@@ -534,31 +571,8 @@ function OccurrenceRow({
       data: { user },
     } = await supabase.auth.getUser();
 
-    const { data: newOrder, error: orderErr } = await supabase
-      .from("tilda_orders")
-      .insert({
-        order_id: `PREDPL-${subscription.id.slice(0, 8)}-${occurrence.occurrence_date}`,
-        customer_email: subscription.email,
-        recipient_name: occurrence.recipient_name ?? subscription.recipient_name,
-        recipient_phone: occurrence.recipient_phone ?? subscription.recipient_phone,
-        address: occurrence.address ?? subscription.address,
-        city: occurrence.city ?? subscription.city,
-        psk: occurrence.psk ?? subscription.psk,
-        patro: occurrence.patro ?? subscription.patro,
-        company_name: occurrence.company_name ?? subscription.company_name,
-        cislo_bytu: occurrence.cislo_bytu ?? subscription.cislo_bytu,
-        kod_intercomu: occurrence.kod_intercomu ?? subscription.kod_intercomu,
-        delivery_date: occurrence.occurrence_date,
-        delivery_type: "Doručení kurýrem (předplatné)",
-        products_text: `${subscription.line_name_snapshot} · ${SIZE_LABELS[subscription.size]} (předplatné)`,
-        manager_comment: "Сгенерировано из подписки, уже оплачено в рамках цикла.",
-        subscription_id: subscription.id,
-        status: "new",
-      })
-      .select("id")
-      .single();
-
-    if (orderErr || !newOrder) {
+    const orderId = await generateOrderForOccurrence(supabase, subscription, occurrence);
+    if (!orderId) {
       setPending(false);
       setConfirmGenerate(false);
       return;
@@ -566,9 +580,8 @@ function OccurrenceRow({
 
     const { data: updatedOcc, error: occErr } = await supabase
       .from("subscription_occurrences")
-      .update({ order_id: newOrder.id, status: "generated" })
-      .eq("id", occurrence.id)
       .select("*")
+      .eq("id", occurrence.id)
       .single();
 
     await supabase.from("subscription_history").insert({

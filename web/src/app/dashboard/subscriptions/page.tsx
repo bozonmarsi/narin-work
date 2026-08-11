@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useDashboard } from "../layout";
 import { generateOccurrenceDates } from "@/lib/subscriptionDates";
+import { generateOrderForOccurrence } from "@/lib/subscriptionOrders";
 import { SubscriptionEditModal } from "./SubscriptionEditModal";
 import type { Category, Line, Plan, Tier, Subscription, SubscriptionSize } from "./types";
 import { SIZE_LABELS } from "./types";
@@ -147,12 +148,32 @@ export default function SubscriptionsPage() {
     }
 
     const dates = generateOccurrenceDates(form.startDate, form.count, closedWeekdays, closedDates);
-    const { error: occErr } = await supabase
+    const { data: insertedOccs, error: occErr } = await supabase
       .from("subscription_occurrences")
-      .insert(dates.map((d) => ({ subscription_id: inserted.id, occurrence_date: d, status: "planned" })));
-    if (occErr) {
-      setFormError("Подписка создана, но не удалось сгенерировать даты: " + occErr.message);
+      .insert(dates.map((d) => ({ subscription_id: inserted.id, occurrence_date: d, status: "planned" })))
+      .select("*");
+    if (occErr || !insertedOccs) {
+      setFormError("Подписка создана, но не удалось сгенерировать даты: " + occErr?.message);
     } else {
+      const subForOrders = {
+        id: inserted.id,
+        email: form.email.trim().toLowerCase(),
+        line_name_snapshot: line.name,
+        size: form.size,
+        price_per_delivery_snapshot: selectedPlan.price_per_delivery,
+        recipient_name: form.recipientName.trim(),
+        recipient_phone: form.recipientPhone.trim(),
+        address: form.address.trim(),
+        city: form.city.trim() || null,
+        psk: form.psk.trim() || null,
+        patro: null,
+        company_name: null,
+        cislo_bytu: null,
+        kod_intercomu: null,
+      };
+      for (const occ of insertedOccs) {
+        await generateOrderForOccurrence(supabase, subForOrders, occ);
+      }
       setForm(emptyForm);
       setShowCreate(false);
     }

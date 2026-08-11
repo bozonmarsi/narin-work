@@ -43,6 +43,18 @@ Deno.serve(async (req) => {
     if (action === "create-checkout") {
       return await createCheckout(body);
     }
+    if (action === "list") {
+      return await listSubscriptions(body);
+    }
+    if (action === "billing-info") {
+      return await billingInfo(body);
+    }
+    if (action === "update-occurrence") {
+      return await updateOccurrence(body);
+    }
+    if (action === "cancel") {
+      return await cancelSubscription(body);
+    }
 
     return json({ error: "unknown action" }, 400);
   } catch (err) {
@@ -145,4 +157,134 @@ async function createCheckout(body: Record<string, unknown>) {
   });
 
   return json({ url: session.url, cycle_price: cyclePrice, discount_percent: discountPercent, perk_text: tier.perk_text });
+}
+
+async function listSubscriptions(body: Record<string, unknown>) {
+  const email = String(body.email ?? "").trim().toLowerCase();
+  if (!email) return json({ error: "missing email" }, 400);
+
+  const { data: subs, error: subErr } = await supabase
+    .from("subscriptions")
+    .select("*")
+    .eq("email", email)
+    .order("created_at", { ascending: false });
+  if (subErr) return json({ error: subErr.message }, 500);
+
+  const ids = (subs ?? []).map((s) => s.id);
+  let occurrences: Record<string, unknown>[] = [];
+  if (ids.length > 0) {
+    const { data: occs, error: occErr } = await supabase
+      .from("subscription_occurrences")
+      .select("id, subscription_id, occurrence_date, status, preview_photo_url")
+      .in("subscription_id", ids)
+      .order("occurrence_date");
+    if (occErr) return json({ error: occErr.message }, 500);
+    occurrences = occs ?? [];
+  }
+
+  const result = (subs ?? []).map((s) => ({
+    ...s,
+    occurrences: occurrences.filter((o) => o.subscription_id === s.id),
+  }));
+
+  return json({ subscriptions: result });
+}
+
+async function loadOwnedSubscription(email: string, subscriptionId: string) {
+  const { data: sub } = await supabase.from("subscriptions").select("*").eq("id", subscriptionId).maybeSingle();
+  if (!sub || sub.email !== email) return null;
+  return sub;
+}
+
+async function billingInfo(body: Record<string, unknown>) {
+  const email = String(body.email ?? "").trim().toLowerCase();
+  const subscriptionId = String(body.subscription_id ?? "");
+  const sub = await loadOwnedSubscription(email, subscriptionId);
+  if (!sub) return json({ error: "not found" }, 404);
+
+  if (!sub.stripe_subscription_id) {
+    return json({ next_payment_date: null, next_payment_amount: null, portal_url: null });
+  }
+
+  const stripeSub = await stripe.subscriptions.retrieve(sub.stripe_subscription_id);
+  const portalSession = await stripe.billingPortal.sessions.create({
+    customer: sub.stripe_customer_id,
+    return_url: String(body.return_url ?? ""),
+  });
+
+  return json({
+    next_payment_date: new Date(stripeSub.current_period_end * 1000).toISOString().slice(0, 10),
+    next_payment_amount: sub.cycle_price_snapshot,
+    portal_url: portalSession.url,
+  });
+}
+
+const RESCHEDULE_CUTOFF_HOURS = 48;
+
+async function updateOccurrence(body: Record<string, unknown>) {
+  const email = String(body.email ?? "").trim().toLowerCase();
+  const occurrenceId = String(body.occurrence_id ?? "");
+
+  const { data: occ } = await supabase.from("subscription_occurrences").select("*").eq("id", occurrenceId).maybeSingle();
+  if (!occ) return json({ error: "not found" }, 404);
+  const sub = await loadOwnedSubscription(email, occ.subscription_id);
+  if (!sub) return json({ error: "not found" }, 404);
+
+  const payload: Record<string, unknown> = {};
+  for (const f of ["recipient_name", "recipient_phone", "address", "city", "psk"]) {
+    if (f in body) payload[f] = String(body[f] ?? "").trim() || null;
+  }
+
+  const cutoffMs = RESCHEDULE_CUTOFF_HOURS * 60 * 60 * 1000;
+  const now = Date.now();
+
+  if ("occurrence_date" in body) {
+    const newDate = String(body.occurrence_date ?? "");
+    const currentDateMs = new Date(occ.occurrence_date + "T00:00:00Z").getTime();
+    if (currentDateMs - now < cutoffMs) {
+      return json({ error: "too_late", message: `Tuto dodávku už nelze přesunout — do doručení zbývá méně než ${RESCHEDULE_CUTOFF_HOURS} hodin.` }, 400);
+    }
+    const targetDateMs = new Date(newDate + "T00:00:00Z").getTime();
+    if (!newDate || Number.isNaN(targetDateMs) || targetDateMs - now < cutoffMs) {
+      return json({ error: "invalid_date", message: `Nové datum musí být alespoň ${RESCHEDULE_CUTOFF_HOURS} hodin dopředu.` }, 400);
+    }
+    payload.occurrence_date = newDate;
+  }
+
+  const { data, error } = await supabase.from("subscription_occurrences").update(payload).eq("id", occurrenceId).select("*").single();
+  if (error) return json({ error: error.message }, 500);
+
+  // Keep an already-generated order (visible to warehouse/courier) in sync.
+  if (occ.order_id) {
+    const orderPayload: Record<string, unknown> = { route_sequence: null };
+    if ("occurrence_date" in payload) orderPayload.delivery_date = payload.occurrence_date;
+    if ("recipient_name" in payload) orderPayload.recipient_name = payload.recipient_name ?? sub.recipient_name;
+    if ("recipient_phone" in payload) orderPayload.recipient_phone = payload.recipient_phone ?? sub.recipient_phone;
+    if ("address" in payload) orderPayload.address = payload.address ?? sub.address;
+    if ("city" in payload) orderPayload.city = payload.city ?? sub.city;
+    if ("psk" in payload) orderPayload.psk = payload.psk ?? sub.psk;
+    await supabase.from("tilda_orders").update(orderPayload).eq("id", occ.order_id);
+  }
+
+  return json({ occurrence: data });
+}
+
+async function cancelSubscription(body: Record<string, unknown>) {
+  const email = String(body.email ?? "").trim().toLowerCase();
+  const subscriptionId = String(body.subscription_id ?? "");
+  const sub = await loadOwnedSubscription(email, subscriptionId);
+  if (!sub) return json({ error: "not found" }, 404);
+  if (sub.status !== "active") return json({ error: "already cancelled" }, 400);
+
+  if (sub.stripe_subscription_id) {
+    await stripe.subscriptions.cancel(sub.stripe_subscription_id);
+  }
+
+  const { error } = await supabase
+    .from("subscriptions")
+    .update({ status: "cancelled", cancelled_at: new Date().toISOString() })
+    .eq("id", subscriptionId);
+  if (error) return json({ error: error.message }, 500);
+
+  return json({ ok: true });
 }
