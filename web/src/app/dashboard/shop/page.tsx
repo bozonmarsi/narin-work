@@ -14,6 +14,7 @@ type Product = {
   image_url: string | null;
   category: string | null;
   archived: boolean;
+  special_order: boolean;
 };
 
 const WEEKDAY_LABELS = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
@@ -69,7 +70,7 @@ export default function ShopPage() {
     const [productsRes, availabilityRes] = await Promise.all([
       supabase
         .from("product_stickers")
-        .select("id, product_name, image_url, category, archived")
+        .select("id, product_name, image_url, category, archived, special_order")
         .order("product_name", { ascending: true }),
       supabase.from("product_availability").select("product_name"),
     ]);
@@ -83,6 +84,7 @@ export default function ShopPage() {
           image_url: p.image_url ?? null,
           category: p.category ?? null,
           archived: p.archived ?? false,
+          special_order: p.special_order ?? false,
         })),
     );
     setAvailableToday(new Set((availabilityRes.data ?? []).map((r) => r.product_name)));
@@ -190,6 +192,12 @@ export default function ShopPage() {
   async function toggleArchived(productId: string, archived: boolean) {
     const supabase = createClient();
     await supabase.from("product_stickers").update({ archived: !archived }).eq("id", productId);
+    loadAvailability();
+  }
+
+  async function toggleSpecialOrder(productId: string, specialOrder: boolean) {
+    const supabase = createClient();
+    await supabase.from("product_stickers").update({ special_order: !specialOrder }).eq("id", productId);
     loadAvailability();
   }
 
@@ -445,22 +453,36 @@ export default function ShopPage() {
                         </option>
                       ))}
                     </select>
-                    <button
-                      onClick={() => toggleAvailable(p.name)}
-                      className={`rounded-md px-2 py-1 text-xs font-medium ${
-                        isAvailable
-                          ? "bg-green-50 text-green-700 ring-1 ring-inset ring-green-200"
-                          : "border border-zinc-300 text-zinc-500 hover:bg-zinc-100"
-                      }`}
-                    >
-                      {isAvailable ? "✓ В наличии" : "Нет сегодня"}
-                    </button>
-                    <button
-                      onClick={() => toggleArchived(p.id, p.archived)}
-                      className="mt-auto text-[11px] text-zinc-400 hover:text-red-600"
-                    >
-                      {p.archived ? "↩ Вернуть из архива" : "🗄 В архив"}
-                    </button>
+                    {p.special_order ? (
+                      <p className="rounded-md bg-orange-50 px-2 py-1 text-[11px] font-medium text-orange-600 ring-1 ring-inset ring-orange-200">
+                        🚚 Всегда под заказ (+2 дня)
+                      </p>
+                    ) : (
+                      <button
+                        onClick={() => toggleAvailable(p.name)}
+                        className={`rounded-md px-2 py-1 text-xs font-medium ${
+                          isAvailable
+                            ? "bg-green-50 text-green-700 ring-1 ring-inset ring-green-200"
+                            : "border border-zinc-300 text-zinc-500 hover:bg-zinc-100"
+                        }`}
+                      >
+                        {isAvailable ? "✓ В наличии" : "Нет сегодня"}
+                      </button>
+                    )}
+                    <div className="mt-auto flex flex-col gap-0.5">
+                      <button
+                        onClick={() => toggleSpecialOrder(p.id, p.special_order)}
+                        className="text-left text-[11px] text-zinc-400 hover:text-orange-600"
+                      >
+                        {p.special_order ? "Убрать «под заказ»" : "🚚 Отметить «под заказ»"}
+                      </button>
+                      <button
+                        onClick={() => toggleArchived(p.id, p.archived)}
+                        className="text-left text-[11px] text-zinc-400 hover:text-red-600"
+                      >
+                        {p.archived ? "↩ Вернуть из архива" : "🗄 В архив"}
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
