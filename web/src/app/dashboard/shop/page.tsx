@@ -123,7 +123,9 @@ export default function ShopPage() {
     const supabase = createClient();
     const id = crypto.randomUUID();
 
-    let imageUrl: string | null = null;
+    // image_url is NOT NULL in product_stickers — existing photo-less rows
+    // use "" rather than null, so match that instead of sending null.
+    let imageUrl = "";
     if (newProductFile) {
       const ext = newProductFile.name.split(".").pop() ?? "jpg";
       const path = `${id}.${ext}`;
