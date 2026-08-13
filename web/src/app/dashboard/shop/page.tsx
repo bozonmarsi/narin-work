@@ -7,7 +7,7 @@ import { decodeHtmlEntities } from "@/lib/format";
 import { useRealtimeRefresh } from "@/lib/useRealtimeRefresh";
 
 type ClosedDate = { closed_date: string; reason: string | null };
-type Product = { name: string; rawName: string; image_url: string | null };
+type Product = { id: string; name: string; rawName: string; image_url: string | null };
 
 const WEEKDAY_LABELS = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
 
@@ -22,6 +22,12 @@ export default function ShopPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [availableToday, setAvailableToday] = useState<Set<string>>(new Set());
   const [availabilitySearch, setAvailabilitySearch] = useState("");
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [newProductName, setNewProductName] = useState("");
+  const [newProductFile, setNewProductFile] = useState<File | null>(null);
+  const [addingProduct, setAddingProduct] = useState(false);
+  const [addProductError, setAddProductError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -39,14 +45,19 @@ export default function ShopPage() {
     const [productsRes, availabilityRes] = await Promise.all([
       supabase
         .from("product_stickers")
-        .select("product_name")
+        .select("id, product_name, image_url")
         .order("product_name", { ascending: true }),
       supabase.from("product_availability").select("product_name"),
     ]);
     setProducts(
       (productsRes.data ?? [])
         .filter((p) => p.product_name && p.product_name !== "__default__")
-        .map((p) => ({ name: decodeHtmlEntities(p.product_name), rawName: p.product_name, image_url: null })),
+        .map((p) => ({
+          id: p.id,
+          name: decodeHtmlEntities(p.product_name),
+          rawName: p.product_name,
+          image_url: p.image_url ?? null,
+        })),
     );
     setAvailableToday(new Set((availabilityRes.data ?? []).map((r) => r.product_name)));
   }, []);
@@ -83,11 +94,72 @@ export default function ShopPage() {
     loadAvailability();
   }
 
+  async function uploadStickerImage(productId: string, file: File) {
+    setUploadError(null);
+    setUploadingId(productId);
+    const supabase = createClient();
+    const ext = file.name.split(".").pop() ?? "jpg";
+    const path = `${productId}.${ext}`;
+    const { error: uploadErr } = await supabase.storage.from("product-stickers").upload(path, file, { upsert: true });
+    if (uploadErr) {
+      setUploadError(uploadErr.message);
+      setUploadingId(null);
+      return;
+    }
+    const { data: urlData } = supabase.storage.from("product-stickers").getPublicUrl(path);
+    await supabase
+      .from("product_stickers")
+      .update({ image_url: `${urlData.publicUrl}?t=${Date.now()}` })
+      .eq("id", productId);
+    setUploadingId(null);
+    loadAvailability();
+  }
+
+  async function addProduct() {
+    const name = newProductName.trim();
+    if (!name) return;
+    setAddProductError(null);
+    setAddingProduct(true);
+    const supabase = createClient();
+    const id = crypto.randomUUID();
+
+    let imageUrl: string | null = null;
+    if (newProductFile) {
+      const ext = newProductFile.name.split(".").pop() ?? "jpg";
+      const path = `${id}.${ext}`;
+      const { error: uploadErr } = await supabase.storage.from("product-stickers").upload(path, newProductFile);
+      if (uploadErr) {
+        setAddProductError(uploadErr.message);
+        setAddingProduct(false);
+        return;
+      }
+      const { data: urlData } = supabase.storage.from("product-stickers").getPublicUrl(path);
+      imageUrl = urlData.publicUrl;
+    }
+
+    const { error } = await supabase.from("product_stickers").insert({ id, product_name: name, image_url: imageUrl });
+    if (error) {
+      setAddProductError(error.message);
+      setAddingProduct(false);
+      return;
+    }
+
+    setNewProductName("");
+    setNewProductFile(null);
+    setAddingProduct(false);
+    loadAvailability();
+  }
+
   const filteredProducts = useMemo(() => {
     const q = availabilitySearch.trim().toLowerCase();
     if (!q) return products;
     return products.filter((p) => p.name.toLowerCase().includes(q));
   }, [products, availabilitySearch]);
+
+  const availableCount = useMemo(
+    () => products.filter((p) => availableToday.has(p.name)).length,
+    [products, availableToday],
+  );
 
   async function toggleWeekday(day: number) {
     const supabase = createClient();
@@ -178,18 +250,23 @@ export default function ShopPage() {
 
       <section className="space-y-3">
         <div className="rounded-lg border border-zinc-200 bg-white p-4">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <p className="font-medium">Наличие цветов сегодня</p>
+          <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="font-medium">Товары и наличие</p>
+              <p className="text-xs text-zinc-400">
+                {availableCount} из {products.length} в наличии сегодня
+              </p>
+            </div>
             <button
               onClick={resetAvailability}
               className="rounded-md border border-zinc-300 px-3 py-1.5 text-xs text-zinc-600 hover:bg-zinc-100"
             >
-              Сбросить всё
+              Сбросить всё на сегодня
             </button>
           </div>
           <p className="mb-3 text-xs text-zinc-400">
-            Отметьте, что приехало сегодня утром — эти позиции получат плашку «Доручíme dnes» на сайте,
-            остальные — «Доручíme zítra». В начале дня нажмите «Сбросить всё» и отметьте заново.
+            Зелёная рамка = приехало сегодня, на сайте покажется «Doručíme dnes». Остальные позиции —
+            «Doručíme zítra». Фото под товаром — это стикер, который клиент собирает после покупки.
           </p>
           <input
             value={availabilitySearch}
@@ -197,28 +274,89 @@ export default function ShopPage() {
             placeholder="Поиск по названию…"
             className="mb-3 w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
           />
-          {filteredProducts.length === 0 ? (
-            <p className="text-sm text-zinc-400">Ничего не найдено.</p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {filteredProducts.map((p) => {
-                const isAvailable = availableToday.has(p.name);
-                return (
-                  <button
-                    key={p.rawName}
-                    onClick={() => toggleAvailable(p.name)}
-                    className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-                      isAvailable
-                        ? "bg-green-50 text-green-700 ring-1 ring-inset ring-green-200"
-                        : "border border-zinc-300 text-zinc-600 hover:bg-zinc-100"
-                    }`}
-                  >
-                    {isAvailable ? "✓ " : ""}
-                    {p.name}
-                  </button>
-                );
-              })}
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            <div className="flex flex-col gap-2 rounded-lg border border-dashed border-zinc-300 p-2.5">
+              <p className="text-xs font-medium text-zinc-500">Новый товар</p>
+              <input
+                value={newProductName}
+                onChange={(e) => setNewProductName(e.target.value)}
+                placeholder="Название"
+                className="rounded-md border border-zinc-300 px-2 py-1 text-xs"
+              />
+              <label className="cursor-pointer truncate rounded-md border border-zinc-300 px-2 py-1 text-center text-xs text-zinc-600 hover:bg-zinc-100">
+                {newProductFile ? newProductFile.name : "Фото (необязательно)"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => setNewProductFile(e.target.files?.[0] ?? null)}
+                />
+              </label>
+              <button
+                onClick={addProduct}
+                disabled={!newProductName.trim() || addingProduct}
+                className="rounded-md bg-accent px-2 py-1.5 text-xs font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+              >
+                {addingProduct ? "Добавляю…" : "+ Добавить"}
+              </button>
+              {addProductError && <p className="text-[11px] text-red-600">{addProductError}</p>}
             </div>
+
+            {filteredProducts.map((p) => {
+              const isAvailable = availableToday.has(p.name);
+              return (
+                <div
+                  key={p.id}
+                  className={`flex flex-col overflow-hidden rounded-lg border bg-white ${
+                    isAvailable ? "border-green-300 ring-1 ring-green-200" : "border-zinc-200"
+                  }`}
+                >
+                  <div className="relative h-24 w-full bg-zinc-100">
+                    {p.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.image_url} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-xs text-zinc-300">Нет фото</div>
+                    )}
+                    <label
+                      title="Заменить фото"
+                      className="absolute right-1 top-1 cursor-pointer rounded-full bg-white/90 px-1.5 py-1 text-xs shadow hover:bg-white"
+                    >
+                      ✎
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => e.target.files?.[0] && uploadStickerImage(p.id, e.target.files[0])}
+                      />
+                    </label>
+                    {uploadingId === p.id && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-white/70 text-xs text-zinc-500">
+                        Загрузка…
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-1 flex-col gap-1.5 p-2">
+                    <p className="line-clamp-2 text-xs font-medium text-zinc-800">{p.name}</p>
+                    <button
+                      onClick={() => toggleAvailable(p.name)}
+                      className={`mt-auto rounded-md px-2 py-1 text-xs font-medium ${
+                        isAvailable
+                          ? "bg-green-50 text-green-700 ring-1 ring-inset ring-green-200"
+                          : "border border-zinc-300 text-zinc-500 hover:bg-zinc-100"
+                      }`}
+                    >
+                      {isAvailable ? "✓ В наличии" : "Нет сегодня"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {uploadError && <p className="mt-2 text-xs text-red-600">{uploadError}</p>}
+          {filteredProducts.length === 0 && (
+            <p className="mt-2 text-sm text-zinc-400">Ничего не найдено по этому поиску.</p>
           )}
         </div>
       </section>
