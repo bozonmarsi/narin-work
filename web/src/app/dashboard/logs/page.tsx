@@ -72,24 +72,24 @@ export default function LogsPage() {
     <div className="space-y-4">
       <h1 className="text-lg font-semibold">Логи изменений заказов</h1>
 
-      <div className="rounded-lg border border-zinc-200 bg-white p-4">
+      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
         <label className="block space-y-1 text-sm">
-          <span className="text-xs font-medium text-zinc-500">Номер заказа</span>
+          <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Номер заказа</span>
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="оставьте пустым, чтобы увидеть всё"
-            className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-3 py-2 text-sm"
           />
         </label>
       </div>
 
-      {error && <p className="text-red-600">Ошибка загрузки: {error}</p>}
+      {error && <p className="text-red-600 dark:text-red-400">Ошибка загрузки: {error}</p>}
 
-      <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white">
+      <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-zinc-200 text-left text-xs text-zinc-500">
+            <tr className="border-b border-zinc-200 dark:border-zinc-700 text-left text-xs text-zinc-500 dark:text-zinc-400">
               <th className="px-3 py-2">Когда</th>
               <th className="px-3 py-2">Заказ</th>
               <th className="px-3 py-2">Статус</th>
@@ -100,30 +100,30 @@ export default function LogsPage() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={5} className="px-3 py-6 text-center text-zinc-500">
+                <td colSpan={5} className="px-3 py-6 text-center text-zinc-500 dark:text-zinc-400">
                   Загрузка…
                 </td>
               </tr>
             ) : logs.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-3 py-6 text-center text-zinc-500">
+                <td colSpan={5} className="px-3 py-6 text-center text-zinc-500 dark:text-zinc-400">
                   Ничего не найдено
                 </td>
               </tr>
             ) : (
               logs.map((log) => (
-                <tr key={log.id} className="border-b border-zinc-100 last:border-0">
-                  <td className="whitespace-nowrap px-3 py-2 text-zinc-500">
+                <tr key={log.id} className="border-b border-zinc-100 dark:border-zinc-800 last:border-0">
+                  <td className="whitespace-nowrap px-3 py-2 text-zinc-500 dark:text-zinc-400">
                     {formatDateTime(log.changed_at)}
                   </td>
                   <td className="whitespace-nowrap px-3 py-2">
                     #{log.order?.order_id} · {log.order?.customer_name} → {log.order?.recipient_name}
                   </td>
                   <td className="whitespace-nowrap px-3 py-2">{statusLabel(log.status)}</td>
-                  <td className="whitespace-nowrap px-3 py-2 text-zinc-500">
+                  <td className="whitespace-nowrap px-3 py-2 text-zinc-500 dark:text-zinc-400">
                     {log.changed_by_user?.full_name ?? "—"}
                   </td>
-                  <td className="px-3 py-2 text-zinc-500">{log.note ?? ""}</td>
+                  <td className="px-3 py-2 text-zinc-500 dark:text-zinc-400">{log.note ?? ""}</td>
                 </tr>
               ))
             )}

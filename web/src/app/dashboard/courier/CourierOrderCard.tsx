@@ -183,7 +183,7 @@ export function CourierOrderCard({
     : null;
 
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-2 text-xs">
+    <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-2 text-xs">
       <div className="flex flex-wrap items-center gap-1.5">
         {sequence != null && (
           <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-accent text-[10px] font-semibold text-white">
@@ -191,27 +191,27 @@ export function CourierOrderCard({
           </span>
         )}
         <span className="font-medium">#{order.order_id}</span>
-        <span className="text-zinc-700">{order.recipient_name}</span>
+        <span className="text-zinc-700 dark:text-zinc-200">{order.recipient_name}</span>
         <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${statusColor(order.status)}`}>
           {statusLabel(order.status)}
         </span>
       </div>
 
-      <p className="mt-0.5 truncate text-zinc-500">
+      <p className="mt-0.5 truncate text-zinc-500 dark:text-zinc-400">
         {order.address}, {order.city} · {formatDate(order.delivery_date)}
         {order.delivery_slot ? ` · ${order.delivery_slot}` : ""}
         {order.delivery_time_raw ? ` · ${order.delivery_time_raw}` : ""}
       </p>
 
       {routeStop && (
-        <p className={routeStop.missedDeadline ? "font-medium text-red-600" : "text-accent"}>
+        <p className={routeStop.missedDeadline ? "font-medium text-red-600 dark:text-red-400" : "text-accent"}>
           →{" "}{Math.round(routeStop.legDurationSeconds / 60)} мин · прибытие ~{routeStop.etaMinutesFromStart}{" "}
           мин от начала слота
           {routeStop.missedDeadline && " · ⚠️ не успеваем к пожеланию по времени"}
         </p>
       )}
       {(order.delivery_window_start || order.delivery_window_end) && (
-        <p className="font-medium text-orange-700">
+        <p className="font-medium text-orange-700 dark:text-orange-400">
           ⏰{" "}
           {order.delivery_window_start && `не раньше ${order.delivery_window_start.slice(11, 16)}`}
           {order.delivery_window_start && order.delivery_window_end && " · "}
@@ -219,20 +219,20 @@ export function CourierOrderCard({
         </p>
       )}
 
-      <p className="truncate text-zinc-500">{order.products_text}</p>
+      <p className="truncate text-zinc-500 dark:text-zinc-400">{order.products_text}</p>
 
       {order.comments && (
-        <p className="truncate text-zinc-500">
-          <span className="font-medium text-zinc-600">Клиент:</span> {order.comments}
+        <p className="truncate text-zinc-500 dark:text-zinc-400">
+          <span className="font-medium text-zinc-600 dark:text-zinc-300">Клиент:</span> {order.comments}
         </p>
       )}
       {order.manager_comment && (
-        <p className="truncate text-blue-700">
+        <p className="truncate text-blue-700 dark:text-blue-400">
           <span className="font-medium">Менеджер:</span> {order.manager_comment}
         </p>
       )}
       {order.florist_comment && (
-        <p className="truncate text-purple-700">
+        <p className="truncate text-purple-700 dark:text-purple-400">
           <span className="font-medium">Флорист:</span> {order.florist_comment}
         </p>
       )}
@@ -244,7 +244,7 @@ export function CourierOrderCard({
             target="_blank"
             rel="noreferrer"
             title="Маршрут в картах"
-            className="rounded-md border border-zinc-300 px-2 py-1 text-[11px] hover:bg-zinc-50"
+            className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1 text-[11px] hover:bg-zinc-50 dark:hover:bg-zinc-800"
           >
             🗺️
           </a>
@@ -253,7 +253,7 @@ export function CourierOrderCard({
           <a
             href={`tel:${order.recipient_phone.replace(/[^\d+]/g, "")}`}
             title="Позвонить получателю"
-            className="rounded-md border border-zinc-300 px-2 py-1 text-[11px] hover:bg-zinc-50"
+            className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1 text-[11px] hover:bg-zinc-50 dark:hover:bg-zinc-800"
           >
             📞
           </a>
@@ -303,7 +303,7 @@ export function CourierOrderCard({
               onClick={() => setOpenForm(openForm === "problem" ? null : "problem")}
               disabled={pending}
               title="Сообщить о проблеме"
-              className="border border-red-300 text-red-700 hover:bg-red-50"
+              className="border border-red-300 text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10"
             >
               ⚠️ Проблема
             </ActionButton>
@@ -311,7 +311,7 @@ export function CourierOrderCard({
               onClick={() => setOpenForm(openForm === "transfer" ? null : "transfer")}
               disabled={pending}
               title="Запросить перенос доставки"
-              className="border border-orange-300 text-orange-700 hover:bg-orange-50"
+              className="border border-orange-300 text-orange-700 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-500/10"
             >
               📅 Перенос
             </ActionButton>
@@ -320,11 +320,11 @@ export function CourierOrderCard({
       </div>
 
       {openForm === "problem" && (
-        <div className="mt-1.5 space-y-1.5 rounded-md bg-red-50 p-2">
+        <div className="mt-1.5 space-y-1.5 rounded-md bg-red-50 dark:bg-red-500/10 p-2">
           <select
             value={problemType}
             onChange={(e) => setProblemType(e.target.value)}
-            className="w-full rounded-md border border-zinc-300 px-2 py-1 text-xs"
+            className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1 text-xs"
           >
             {PROBLEM_TYPES.map((p) => (
               <option key={p.value} value={p.value}>
@@ -337,7 +337,7 @@ export function CourierOrderCard({
             onChange={(e) => setProblemComment(e.target.value)}
             placeholder="Комментарий для менеджера"
             rows={2}
-            className="w-full rounded-md border border-zinc-300 px-2 py-1 text-xs"
+            className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1 text-xs"
           />
           <button
             onClick={submitProblem}
@@ -350,19 +350,19 @@ export function CourierOrderCard({
       )}
 
       {openForm === "transfer" && (
-        <div className="mt-1.5 space-y-1.5 rounded-md bg-orange-50 p-2">
+        <div className="mt-1.5 space-y-1.5 rounded-md bg-orange-50 dark:bg-orange-500/10 p-2">
           <input
             type="date"
             value={transferDate}
             onChange={(e) => setTransferDate(e.target.value)}
-            className="w-full rounded-md border border-zinc-300 px-2 py-1 text-xs"
+            className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1 text-xs"
           />
           <textarea
             value={transferReason}
             onChange={(e) => setTransferReason(e.target.value)}
             placeholder="Причина переноса"
             rows={2}
-            className="w-full rounded-md border border-zinc-300 px-2 py-1 text-xs"
+            className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1 text-xs"
           />
           <button
             onClick={submitTransfer}
@@ -374,7 +374,7 @@ export function CourierOrderCard({
         </div>
       )}
 
-      {error && <p className="mt-1 text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-red-600 dark:text-red-400">{error}</p>}
     </div>
   );
 }

@@ -20,11 +20,11 @@ type Product = {
 const WEEKDAY_LABELS = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
 
 const CATEGORY_OPTIONS = [
-  { value: "buket", label: "Букеты", color: "bg-pink-50 text-pink-700 ring-pink-200" },
-  { value: "set", label: "Сеты", color: "bg-purple-50 text-purple-700 ring-purple-200" },
-  { value: "ohapka", label: "Охапки", color: "bg-amber-50 text-amber-700 ring-amber-200" },
-  { value: "atelier", label: "Atelier", color: "bg-blue-50 text-blue-700 ring-blue-200" },
-  { value: "otkrytka", label: "Открытки", color: "bg-teal-50 text-teal-700 ring-teal-200" },
+  { value: "buket", label: "Букеты", color: "bg-pink-50 dark:bg-pink-500/10 text-pink-700 dark:text-pink-400 ring-pink-200 dark:ring-pink-500/30" },
+  { value: "set", label: "Сеты", color: "bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 ring-purple-200 dark:ring-purple-500/30" },
+  { value: "ohapka", label: "Охапки", color: "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 ring-amber-200 dark:ring-amber-500/30" },
+  { value: "atelier", label: "Atelier", color: "bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 ring-blue-200 dark:ring-blue-500/30" },
+  { value: "otkrytka", label: "Открытки", color: "bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-400 ring-teal-200 dark:ring-teal-500/30" },
 ];
 
 function categoryLabel(value: string | null) {
@@ -32,7 +32,7 @@ function categoryLabel(value: string | null) {
 }
 
 function categoryColor(value: string | null) {
-  return CATEGORY_OPTIONS.find((c) => c.value === value)?.color ?? "bg-zinc-100 text-zinc-600 ring-zinc-200";
+  return CATEGORY_OPTIONS.find((c) => c.value === value)?.color ?? "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 ring-zinc-200 dark:ring-zinc-700";
 }
 
 export default function ShopPage() {
@@ -247,17 +247,17 @@ export default function ShopPage() {
   }
 
   if (profile?.role !== "manager") return null;
-  if (loading) return <p className="text-zinc-500">Загрузка…</p>;
+  if (loading) return <p className="text-zinc-500 dark:text-zinc-400">Загрузка…</p>;
 
   return (
     <div className="space-y-6">
       <h1 className="text-lg font-semibold">Магазин</h1>
-      <p className="text-xs text-zinc-400">
+      <p className="text-xs text-zinc-400 dark:text-zinc-500">
         Эти дни используются при расчёте дат доставок для подписок (нерабочие дни автоматически пропускаются).
       </p>
 
       <section className="space-y-3">
-        <div className="rounded-lg border border-zinc-200 bg-white p-4">
+        <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
           <p className="mb-3 font-medium">Регулярно закрыто</p>
           <div className="flex flex-wrap gap-2">
             {WEEKDAY_LABELS.map((label, day) => (
@@ -265,7 +265,7 @@ export default function ShopPage() {
                 key={day}
                 onClick={() => toggleWeekday(day)}
                 className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-                  weeklyClosed.has(day) ? "bg-red-50 text-red-700" : "border border-zinc-300 text-zinc-600 hover:bg-zinc-100"
+                  weeklyClosed.has(day) ? "bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400" : "border border-zinc-300 dark:border-zinc-600 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 }`}
               >
                 {label}
@@ -274,34 +274,34 @@ export default function ShopPage() {
           </div>
         </div>
 
-        <div className="rounded-lg border border-zinc-200 bg-white p-4">
+        <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
           <p className="mb-3 font-medium">Разовые закрытые дни (праздники и т.п.)</p>
           <div className="mb-3 flex flex-wrap gap-2">
             <input
               type="date"
               value={newClosedDate.date}
               onChange={(e) => setNewClosedDate((d) => ({ ...d, date: e.target.value }))}
-              className="rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+              className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
             />
             <input
               value={newClosedDate.reason}
               onChange={(e) => setNewClosedDate((d) => ({ ...d, reason: e.target.value }))}
               placeholder="Причина"
-              className="flex-1 rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+              className="flex-1 rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
             />
-            <button onClick={addClosedDate} className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-100">
+            <button onClick={addClosedDate} className="rounded-md border border-zinc-300 dark:border-zinc-600 px-3 py-1.5 text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800">
               + Добавить
             </button>
           </div>
           {closedDates.length === 0 ? (
-            <p className="text-sm text-zinc-400">Разовых закрытых дат пока нет.</p>
+            <p className="text-sm text-zinc-400 dark:text-zinc-500">Разовых закрытых дат пока нет.</p>
           ) : (
             <div className="flex flex-wrap gap-2">
               {closedDates.map((d) => (
-                <span key={d.closed_date} className="flex items-center gap-2 rounded-md bg-zinc-100 px-2 py-1 text-xs text-zinc-700">
+                <span key={d.closed_date} className="flex items-center gap-2 rounded-md bg-zinc-100 dark:bg-zinc-800 px-2 py-1 text-xs text-zinc-700 dark:text-zinc-200">
                   {d.closed_date}
                   {d.reason ? ` — ${d.reason}` : ""}
-                  <button onClick={() => removeClosedDate(d.closed_date)} className="text-zinc-400 hover:text-red-600">✕</button>
+                  <button onClick={() => removeClosedDate(d.closed_date)} className="text-zinc-400 dark:text-zinc-500 hover:text-red-600 dark:hover:text-red-400">✕</button>
                 </span>
               ))}
             </div>
@@ -310,22 +310,22 @@ export default function ShopPage() {
       </section>
 
       <section className="space-y-3">
-        <div className="rounded-lg border border-zinc-200 bg-white p-4">
+        <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
           <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
             <div>
               <p className="font-medium">Товары и наличие</p>
-              <p className="text-xs text-zinc-400">
+              <p className="text-xs text-zinc-400 dark:text-zinc-500">
                 {availableCount} из {activeProducts.length} в наличии сегодня
               </p>
             </div>
             <button
               onClick={resetAvailability}
-              className="rounded-md border border-zinc-300 px-3 py-1.5 text-xs text-zinc-600 hover:bg-zinc-100"
+              className="rounded-md border border-zinc-300 dark:border-zinc-600 px-3 py-1.5 text-xs text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
             >
               Сбросить всё на сегодня
             </button>
           </div>
-          <p className="mb-3 text-xs text-zinc-400">
+          <p className="mb-3 text-xs text-zinc-400 dark:text-zinc-500">
             Зелёная рамка = приехало сегодня, на сайте покажется «Doručíme dnes». Остальные позиции —
             «Doručíme zítra». Фото под товаром — это стикер, который клиент собирает после покупки.
           </p>
@@ -334,7 +334,7 @@ export default function ShopPage() {
             <button
               onClick={() => setActiveTab("all")}
               className={`rounded-full px-3 py-1 text-xs font-medium ${
-                activeTab === "all" ? "bg-accent text-white" : "border border-zinc-300 text-zinc-600 hover:bg-zinc-100"
+                activeTab === "all" ? "bg-accent text-white" : "border border-zinc-300 dark:border-zinc-600 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
               }`}
             >
               Все ({activeProducts.length})
@@ -344,7 +344,7 @@ export default function ShopPage() {
                 key={c.value}
                 onClick={() => setActiveTab(c.value)}
                 className={`rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset ${
-                  activeTab === c.value ? c.color : "text-zinc-500 ring-zinc-200 hover:bg-zinc-100"
+                  activeTab === c.value ? c.color : "text-zinc-500 dark:text-zinc-400 ring-zinc-200 dark:ring-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 }`}
               >
                 {c.label} ({products.filter((p) => !p.archived && p.category === c.value).length})
@@ -353,7 +353,7 @@ export default function ShopPage() {
             <button
               onClick={() => setActiveTab("archive")}
               className={`rounded-full px-3 py-1 text-xs font-medium ${
-                activeTab === "archive" ? "bg-zinc-700 text-white" : "border border-zinc-300 text-zinc-500 hover:bg-zinc-100"
+                activeTab === "archive" ? "bg-zinc-700 text-white" : "border border-zinc-300 dark:border-zinc-600 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
               }`}
             >
               🗄 Архив ({archivedCount})
@@ -364,20 +364,20 @@ export default function ShopPage() {
             value={availabilitySearch}
             onChange={(e) => setAvailabilitySearch(e.target.value)}
             placeholder="Поиск по названию…"
-            className="mb-3 w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+            className="mb-3 w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
           />
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {activeTab !== "archive" && (
-              <div className="flex flex-col gap-2 rounded-lg border border-dashed border-zinc-300 p-2.5">
-                <p className="text-xs font-medium text-zinc-500">Новый товар</p>
+              <div className="flex flex-col gap-2 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-600 p-2.5">
+                <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Новый товар</p>
                 <input
                   value={newProductName}
                   onChange={(e) => setNewProductName(e.target.value)}
                   placeholder="Название"
-                  className="rounded-md border border-zinc-300 px-2 py-1 text-xs"
+                  className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1 text-xs"
                 />
-                <label className="cursor-pointer truncate rounded-md border border-zinc-300 px-2 py-1 text-center text-xs text-zinc-600 hover:bg-zinc-100">
+                <label className="cursor-pointer truncate rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1 text-center text-xs text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800">
                   {newProductFile ? newProductFile.name : "Фото (необязательно)"}
                   <input
                     type="file"
@@ -393,7 +393,7 @@ export default function ShopPage() {
                 >
                   {addingProduct ? "Добавляю…" : "+ Добавить"}
                 </button>
-                {addProductError && <p className="text-[11px] text-red-600">{addProductError}</p>}
+                {addProductError && <p className="text-[11px] text-red-600 dark:text-red-400">{addProductError}</p>}
               </div>
             )}
 
@@ -403,16 +403,16 @@ export default function ShopPage() {
               return (
                 <div
                   key={p.id}
-                  className={`flex flex-col overflow-hidden rounded-lg border bg-white ${
-                    p.archived ? "opacity-60" : isAvailable ? "border-green-300 ring-1 ring-green-200" : "border-zinc-200"
+                  className={`flex flex-col overflow-hidden rounded-lg border bg-white dark:bg-zinc-900 ${
+                    p.archived ? "opacity-60" : isAvailable ? "border-green-300 ring-1 ring-green-200 dark:ring-green-500/30" : "border-zinc-200 dark:border-zinc-700"
                   }`}
                 >
-                  <div className="relative h-24 w-full bg-zinc-100">
+                  <div className="relative h-24 w-full bg-zinc-100 dark:bg-zinc-800">
                     {p.image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={p.image_url} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      <div className="flex h-full items-center justify-center text-xs text-zinc-300">Нет фото</div>
+                      <div className="flex h-full items-center justify-center text-xs text-zinc-300 dark:text-zinc-600">Нет фото</div>
                     )}
                     {label && (
                       <span
@@ -423,7 +423,7 @@ export default function ShopPage() {
                     )}
                     <label
                       title="Заменить фото"
-                      className="absolute right-1 top-1 cursor-pointer rounded-full bg-white/90 px-1.5 py-1 text-xs shadow hover:bg-white"
+                      className="absolute right-1 top-1 cursor-pointer rounded-full bg-white/90 dark:bg-zinc-800/90 px-1.5 py-1 text-xs shadow hover:bg-white dark:hover:bg-zinc-700"
                     >
                       ✎
                       <input
@@ -434,17 +434,17 @@ export default function ShopPage() {
                       />
                     </label>
                     {uploadingId === p.id && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-white/70 text-xs text-zinc-500">
+                      <div className="absolute inset-0 flex items-center justify-center bg-white/70 dark:bg-zinc-900/70 text-xs text-zinc-500 dark:text-zinc-400">
                         Загрузка…
                       </div>
                     )}
                   </div>
                   <div className="flex flex-1 flex-col gap-1.5 p-2">
-                    <p className="line-clamp-2 text-xs font-medium text-zinc-800">{p.name}</p>
+                    <p className="line-clamp-2 text-xs font-medium text-zinc-800 dark:text-zinc-100">{p.name}</p>
                     <select
                       value={p.category ?? ""}
                       onChange={(e) => setCategory(p.id, e.target.value)}
-                      className="rounded-md border border-zinc-300 px-1.5 py-1 text-[11px] text-zinc-600"
+                      className="rounded-md border border-zinc-300 dark:border-zinc-600 px-1.5 py-1 text-[11px] text-zinc-600 dark:text-zinc-300"
                     >
                       <option value="">Без категории</option>
                       {CATEGORY_OPTIONS.map((c) => (
@@ -454,7 +454,7 @@ export default function ShopPage() {
                       ))}
                     </select>
                     {p.special_order ? (
-                      <p className="rounded-md bg-orange-50 px-2 py-1 text-[11px] font-medium text-orange-600 ring-1 ring-inset ring-orange-200">
+                      <p className="rounded-md bg-orange-50 dark:bg-orange-500/10 px-2 py-1 text-[11px] font-medium text-orange-600 dark:text-orange-400 ring-1 ring-inset ring-orange-200 dark:ring-orange-500/30">
                         🚚 Всегда под заказ (+2 дня)
                       </p>
                     ) : (
@@ -462,8 +462,8 @@ export default function ShopPage() {
                         onClick={() => toggleAvailable(p.name)}
                         className={`rounded-md px-2 py-1 text-xs font-medium ${
                           isAvailable
-                            ? "bg-green-50 text-green-700 ring-1 ring-inset ring-green-200"
-                            : "border border-zinc-300 text-zinc-500 hover:bg-zinc-100"
+                            ? "bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-200 dark:ring-green-500/30"
+                            : "border border-zinc-300 dark:border-zinc-600 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                         }`}
                       >
                         {isAvailable ? "✓ В наличии" : "Нет сегодня"}
@@ -472,13 +472,13 @@ export default function ShopPage() {
                     <div className="mt-auto flex flex-col gap-0.5">
                       <button
                         onClick={() => toggleSpecialOrder(p.id, p.special_order)}
-                        className="text-left text-[11px] text-zinc-400 hover:text-orange-600"
+                        className="text-left text-[11px] text-zinc-400 dark:text-zinc-500 hover:text-orange-600 dark:hover:text-orange-400"
                       >
                         {p.special_order ? "Убрать «под заказ»" : "🚚 Отметить «под заказ»"}
                       </button>
                       <button
                         onClick={() => toggleArchived(p.id, p.archived)}
-                        className="text-left text-[11px] text-zinc-400 hover:text-red-600"
+                        className="text-left text-[11px] text-zinc-400 dark:text-zinc-500 hover:text-red-600 dark:hover:text-red-400"
                       >
                         {p.archived ? "↩ Вернуть из архива" : "🗄 В архив"}
                       </button>
@@ -488,9 +488,9 @@ export default function ShopPage() {
               );
             })}
           </div>
-          {uploadError && <p className="mt-2 text-xs text-red-600">{uploadError}</p>}
+          {uploadError && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{uploadError}</p>}
           {filteredProducts.length === 0 && (
-            <p className="mt-2 text-sm text-zinc-400">Ничего не найдено.</p>
+            <p className="mt-2 text-sm text-zinc-400 dark:text-zinc-500">Ничего не найдено.</p>
           )}
         </div>
       </section>

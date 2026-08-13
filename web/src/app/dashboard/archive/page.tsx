@@ -111,31 +111,31 @@ export default function ArchivePage() {
     <div className="space-y-4">
       <h1 className="text-lg font-semibold">Архив заказов</h1>
 
-      <div className="flex flex-wrap items-end gap-3 rounded-lg border border-zinc-200 bg-white p-4">
+      <div className="flex flex-wrap items-end gap-3 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
         <label className="space-y-1 text-sm">
-          <span className="block text-xs font-medium text-zinc-500">С</span>
+          <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">С</span>
           <input
             type="date"
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
-            className="rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+            className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
           />
         </label>
         <label className="space-y-1 text-sm">
-          <span className="block text-xs font-medium text-zinc-500">По</span>
+          <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">По</span>
           <input
             type="date"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
-            className="rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+            className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
           />
         </label>
         <label className="space-y-1 text-sm">
-          <span className="block text-xs font-medium text-zinc-500">Статус</span>
+          <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">Статус</span>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-            className="rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+            className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
           >
             <option value="delivered">Доставленные</option>
             <option value="cancelled">Отменённые</option>
@@ -143,22 +143,22 @@ export default function ArchivePage() {
           </select>
         </label>
         <label className="flex-1 space-y-1 text-sm">
-          <span className="block text-xs font-medium text-zinc-500">Поиск (номер, имя)</span>
+          <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">Поиск (номер, имя)</span>
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="#1556267153 или Magomed"
-            className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+            className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
           />
         </label>
       </div>
 
-      {error && <p className="text-red-600">Ошибка загрузки: {error}</p>}
+      {error && <p className="text-red-600 dark:text-red-400">Ошибка загрузки: {error}</p>}
 
-      <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white">
+      <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-zinc-200 text-left text-xs text-zinc-500">
+            <tr className="border-b border-zinc-200 dark:border-zinc-700 text-left text-xs text-zinc-500 dark:text-zinc-400">
               <th className="px-3 py-2">Заказ</th>
               <th className="px-3 py-2">Дата</th>
               <th className="px-3 py-2">Адрес</th>
@@ -171,13 +171,13 @@ export default function ArchivePage() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} className="px-3 py-6 text-center text-zinc-500">
+                <td colSpan={7} className="px-3 py-6 text-center text-zinc-500 dark:text-zinc-400">
                   Загрузка…
                 </td>
               </tr>
             ) : orders.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-3 py-6 text-center text-zinc-500">
+                <td colSpan={7} className="px-3 py-6 text-center text-zinc-500 dark:text-zinc-400">
                   Ничего не найдено
                 </td>
               </tr>
@@ -186,11 +186,11 @@ export default function ArchivePage() {
                 <tr
                   key={order.id}
                   onClick={() => setSelectedOrder(order)}
-                  className="cursor-pointer border-b border-zinc-100 last:border-0 hover:bg-zinc-50"
+                  className="cursor-pointer border-b border-zinc-100 dark:border-zinc-800 last:border-0 hover:bg-zinc-50 dark:hover:bg-zinc-800"
                 >
                   <td className="px-3 py-2">
                     <p className="font-medium">#{order.order_id}</p>
-                    <p className="text-zinc-500">
+                    <p className="text-zinc-500 dark:text-zinc-400">
                       {order.customer_name} → {order.recipient_name}
                     </p>
                   </td>

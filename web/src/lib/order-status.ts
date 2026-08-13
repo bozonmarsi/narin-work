@@ -14,18 +14,18 @@ export const STATUS_LABELS: Record<string, string> = {
 };
 
 export const STATUS_COLORS: Record<string, string> = {
-  new: "bg-zinc-100 text-zinc-700",
-  confirmed: "bg-blue-50 text-blue-700",
-  courier_assigned: "bg-blue-50 text-blue-700",
-  assembling: "bg-amber-50 text-amber-700",
-  assembled: "bg-amber-50 text-amber-700",
-  in_transit: "bg-indigo-50 text-indigo-700",
-  arriving: "bg-indigo-50 text-indigo-700",
-  delivered: "bg-green-50 text-green-700",
-  not_home: "bg-orange-50 text-orange-700",
-  problem: "bg-red-50 text-red-700",
-  transfer_pending: "bg-orange-50 text-orange-700",
-  cancelled: "bg-zinc-100 text-zinc-500",
+  new: "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200",
+  confirmed: "bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400",
+  courier_assigned: "bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400",
+  assembling: "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400",
+  assembled: "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400",
+  in_transit: "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400",
+  arriving: "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400",
+  delivered: "bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400",
+  not_home: "bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400",
+  problem: "bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400",
+  transfer_pending: "bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400",
+  cancelled: "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400",
 };
 
 export function statusLabel(status: string | null) {

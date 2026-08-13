@@ -361,8 +361,8 @@ export function OrderEditModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:p-8">
-      <div className="w-full max-w-2xl rounded-xl bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-zinc-200 px-6 py-4">
+      <div className="w-full max-w-2xl rounded-xl bg-white dark:bg-zinc-900 shadow-xl">
+        <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-700 px-6 py-4">
           <div>
             <button
               type="button"
@@ -372,29 +372,29 @@ export function OrderEditModal({
             >
               Заказ #{order.order_id} {copied ? "✓" : "📋"}
             </button>
-            <p className="text-sm text-zinc-500">
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
               создан {formatDateTime(order.created_at)}
               {order.subscription_id && (
-                <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                <span className="ml-2 rounded-full bg-blue-100 dark:bg-blue-500/15 px-2 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-400">
                   🔁 Из подписки
                 </span>
               )}
             </p>
           </div>
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600" aria-label="Закрыть">
+          <button onClick={onClose} className="text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300" aria-label="Закрыть">
             ✕
           </button>
         </div>
 
         <div className="max-h-[70vh] space-y-6 overflow-y-auto px-6 py-5">
           <section className="space-y-3">
-            <h3 className="text-sm font-semibold text-zinc-500">Статус и курьер</h3>
+            <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">Статус и курьер</h3>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Статус">
                 <select
                   value={form.status}
                   onChange={(e) => set("status", e.target.value)}
-                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                  className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                 >
                   {ALL_STATUSES.map((s) => (
                     <option key={s} value={s}>
@@ -407,7 +407,7 @@ export function OrderEditModal({
                 <select
                   value={form.assigned_courier_id}
                   onChange={(e) => set("assigned_courier_id", e.target.value)}
-                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                  className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                 >
                   <option value="">Не назначен</option>
                   {couriers.map((c) => (
@@ -423,49 +423,49 @@ export function OrderEditModal({
                 <input
                   value={form.cancelled_reason}
                   onChange={(e) => set("cancelled_reason", e.target.value)}
-                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                  className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                 />
               </Field>
             )}
           </section>
 
           <section className="space-y-3">
-            <h3 className="text-sm font-semibold text-zinc-500">Заказчик</h3>
+            <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">Заказчик</h3>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Имя">
                 <input
                   value={form.customer_name}
                   onChange={(e) => set("customer_name", e.target.value)}
-                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                  className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                 />
               </Field>
               <Field label="Фамилия">
                 <input
                   value={form.customer_last_name}
                   onChange={(e) => set("customer_last_name", e.target.value)}
-                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                  className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                 />
               </Field>
               <Field label="Телефон">
                 <input
                   value={form.customer_phone}
                   onChange={(e) => set("customer_phone", e.target.value)}
-                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                  className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                 />
               </Field>
               <Field label="Email">
                 <input
                   value={form.customer_email}
                   onChange={(e) => set("customer_email", e.target.value)}
-                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                  className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                 />
               </Field>
             </div>
           </section>
 
           <section className="space-y-3">
-            <h3 className="text-sm font-semibold text-zinc-500">Товары и оплата</h3>
-            <p className="text-xs text-zinc-400">
+            <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">Товары и оплата</h3>
+            <p className="text-xs text-zinc-400 dark:text-zinc-500">
               Меняет и человекочитаемый список, и структуру, которую читает личный кабинет клиента —
               они больше не разъезжаются.
             </p>
@@ -476,42 +476,42 @@ export function OrderEditModal({
                   <input
                     value={item.name}
                     onChange={(e) => updateItem(index, { name: e.target.value })}
-                    className="flex-1 rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                    className="flex-1 rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                   />
                   <input
                     type="number"
                     value={item.quantity}
                     onChange={(e) => updateItem(index, { quantity: e.target.value })}
-                    className="w-16 rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                    className="w-16 rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                     title="Количество"
                   />
-                  <span className="text-xs text-zinc-400">×</span>
+                  <span className="text-xs text-zinc-400 dark:text-zinc-500">×</span>
                   <input
                     type="number"
                     value={item.price}
                     onChange={(e) => updateItem(index, { price: e.target.value })}
-                    className="w-20 rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                    className="w-20 rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                     title="Цена за штуку, Kč"
                   />
                   <button
                     type="button"
                     onClick={() => removeItem(index)}
-                    className="text-zinc-400 hover:text-red-600"
+                    className="text-zinc-400 dark:text-zinc-500 hover:text-red-600 dark:hover:text-red-400"
                     aria-label="Удалить"
                   >
                     ✕
                   </button>
                 </div>
               ))}
-              {items.length === 0 && <p className="text-sm text-zinc-400">Товары не добавлены</p>}
+              {items.length === 0 && <p className="text-sm text-zinc-400 dark:text-zinc-500">Товары не добавлены</p>}
             </div>
 
-            <div className="flex flex-wrap items-end gap-2 rounded-md bg-zinc-50 p-2">
+            <div className="flex flex-wrap items-end gap-2 rounded-md bg-zinc-50 dark:bg-zinc-800 p-2">
               <Field label="Добавить из каталога">
                 <select
                   value={newProduct}
                   onChange={(e) => setNewProduct(e.target.value)}
-                  className="w-52 rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                  className="w-52 rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                 >
                   <option value="">Выбрать цветок…</option>
                   {products.map((p) => (
@@ -527,7 +527,7 @@ export function OrderEditModal({
                   min="1"
                   value={newQty}
                   onChange={(e) => setNewQty(e.target.value)}
-                  className="w-16 rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                  className="w-16 rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                 />
               </Field>
               <Field label="Цена за шт (Kč)">
@@ -535,14 +535,14 @@ export function OrderEditModal({
                   type="number"
                   value={newPrice}
                   onChange={(e) => setNewPrice(e.target.value)}
-                  className="w-24 rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                  className="w-24 rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                 />
               </Field>
               <button
                 type="button"
                 onClick={addProduct}
                 disabled={!newProduct}
-                className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm hover:bg-white disabled:opacity-50"
+                className="rounded-md border border-zinc-300 dark:border-zinc-600 px-3 py-1.5 text-sm hover:bg-white disabled:opacity-50"
               >
                 Добавить
               </button>
@@ -553,7 +553,7 @@ export function OrderEditModal({
                 <select
                   value={form.payment_status}
                   onChange={(e) => set("payment_status", e.target.value)}
-                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                  className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                 >
                   {!paymentStatuses.includes(form.payment_status) && form.payment_status && (
                     <option value={form.payment_status}>{form.payment_status}</option>
@@ -566,33 +566,33 @@ export function OrderEditModal({
                 </select>
               </Field>
               <div className="text-sm">
-                <span className="block text-xs font-medium text-zinc-500">Товары</span>
+                <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">Товары</span>
                 <span className="block py-1.5">{subtotal} Kč</span>
               </div>
               <div className="text-sm">
-                <span className="block text-xs font-medium text-zinc-500">Итого (+ доставка {deliveryFee} Kč)</span>
+                <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">Итого (+ доставка {deliveryFee} Kč)</span>
                 <span className="block py-1.5 font-medium">{subtotal + deliveryFee} Kč</span>
               </div>
             </div>
-            <p className="text-xs text-zinc-400">Способ оплаты: {order.payment_method ?? "—"} (только просмотр)</p>
+            <p className="text-xs text-zinc-400 dark:text-zinc-500">Способ оплаты: {order.payment_method ?? "—"} (только просмотр)</p>
           </section>
 
           <section className="space-y-3">
-            <h3 className="text-sm font-semibold text-zinc-500">Доставка</h3>
+            <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">Доставка</h3>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Дата доставки">
                 <input
                   type="date"
                   value={form.delivery_date}
                   onChange={(e) => set("delivery_date", e.target.value)}
-                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                  className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                 />
               </Field>
               <Field label="Слот (например 9-12)">
                 <input
                   value={form.delivery_slot}
                   onChange={(e) => set("delivery_slot", e.target.value)}
-                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                  className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                 />
               </Field>
             </div>
@@ -602,7 +602,7 @@ export function OrderEditModal({
                   type="time"
                   value={form.delivery_window_start}
                   onChange={(e) => set("delivery_window_start", e.target.value)}
-                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                  className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                 />
               </Field>
               <Field label="Пожелание клиента: не позже">
@@ -610,12 +610,12 @@ export function OrderEditModal({
                   type="time"
                   value={form.delivery_window_end}
                   onChange={(e) => set("delivery_window_end", e.target.value)}
-                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                  className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                 />
               </Field>
             </div>
             {windowOutsideSlot && (
-              <p className="text-xs text-orange-600">
+              <p className="text-xs text-orange-600 dark:text-orange-400">
                 Пожелание по времени выходит за пределы слота &laquo;{form.delivery_slot}&raquo; — проверьте, не
                 опечатка ли это
               </p>
@@ -624,7 +624,7 @@ export function OrderEditModal({
               <input
                 value={form.address}
                 onChange={(e) => set("address", e.target.value)}
-                className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
               />
             </Field>
             <div className="grid grid-cols-2 gap-3">
@@ -632,62 +632,62 @@ export function OrderEditModal({
                 <input
                   value={form.city}
                   onChange={(e) => set("city", e.target.value)}
-                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                  className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                 />
               </Field>
               <Field label="Индекс">
                 <input
                   value={form.psk}
                   onChange={(e) => set("psk", e.target.value)}
-                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                  className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                 />
               </Field>
               <Field label="Этаж">
                 <input
                   value={form.patro}
                   onChange={(e) => set("patro", e.target.value)}
-                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                  className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                 />
               </Field>
               <Field label="Квартира">
                 <input
                   value={form.cislo_bytu}
                   onChange={(e) => set("cislo_bytu", e.target.value)}
-                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                  className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                 />
               </Field>
               <Field label="Код домофона">
                 <input
                   value={form.kod_intercomu}
                   onChange={(e) => set("kod_intercomu", e.target.value)}
-                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                  className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                 />
               </Field>
               <Field label="Компания">
                 <input
                   value={form.company_name}
                   onChange={(e) => set("company_name", e.target.value)}
-                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                  className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                 />
               </Field>
             </div>
           </section>
 
           <section className="space-y-3">
-            <h3 className="text-sm font-semibold text-zinc-500">Получатель</h3>
+            <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">Получатель</h3>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Имя получателя">
                 <input
                   value={form.recipient_name}
                   onChange={(e) => set("recipient_name", e.target.value)}
-                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                  className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                 />
               </Field>
               <Field label="Телефон получателя">
                 <input
                   value={form.recipient_phone}
                   onChange={(e) => set("recipient_phone", e.target.value)}
-                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                  className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                 />
               </Field>
             </div>
@@ -696,20 +696,20 @@ export function OrderEditModal({
                 value={form.comments}
                 onChange={(e) => set("comments", e.target.value)}
                 rows={2}
-                className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
               />
             </Field>
           </section>
 
           <section className="space-y-3">
-            <h3 className="text-sm font-semibold text-zinc-500">Для курьера (внутренние заметки)</h3>
+            <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">Для курьера (внутренние заметки)</h3>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Комментарий менеджера">
                 <textarea
                   value={form.manager_comment}
                   onChange={(e) => set("manager_comment", e.target.value)}
                   rows={2}
-                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                  className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                 />
               </Field>
               <Field label="Комментарий флориста">
@@ -717,23 +717,23 @@ export function OrderEditModal({
                   value={form.florist_comment}
                   onChange={(e) => set("florist_comment", e.target.value)}
                   rows={2}
-                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                  className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                 />
               </Field>
             </div>
           </section>
 
           {order.postcard_comment && (
-            <p className="text-sm text-zinc-500">Открытка: {order.postcard_comment}</p>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">Открытка: {order.postcard_comment}</p>
           )}
 
-          {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+          {error && <p className="rounded-md bg-red-50 dark:bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-zinc-200 px-6 py-4">
+        <div className="flex justify-end gap-2 border-t border-zinc-200 dark:border-zinc-700 px-6 py-4">
           <button
             onClick={onClose}
-            className="rounded-md border border-zinc-300 px-4 py-2 text-sm hover:bg-zinc-50"
+            className="rounded-md border border-zinc-300 dark:border-zinc-600 px-4 py-2 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
           >
             Отмена
           </button>
@@ -753,7 +753,7 @@ export function OrderEditModal({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block space-y-1">
-      <span className="text-xs font-medium text-zinc-500">{label}</span>
+      <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{label}</span>
       {children}
     </label>
   );

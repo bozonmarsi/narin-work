@@ -97,7 +97,7 @@ export function OrderActions({ orderId, onDone }: { orderId: string; onDone: () 
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder="Причина отмены"
-          className="rounded-md border border-zinc-300 px-2 py-1 text-sm"
+          className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1 text-sm"
         />
         <div className="flex gap-2">
           <button
@@ -109,12 +109,12 @@ export function OrderActions({ orderId, onDone }: { orderId: string; onDone: () 
           </button>
           <button
             onClick={() => setCancelling(false)}
-            className="rounded-md border border-zinc-300 px-3 py-1 text-sm hover:bg-zinc-100"
+            className="rounded-md border border-zinc-300 dark:border-zinc-600 px-3 py-1 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
           >
             Назад
           </button>
         </div>
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
       </div>
     );
   }
@@ -132,12 +132,12 @@ export function OrderActions({ orderId, onDone }: { orderId: string; onDone: () 
         <button
           onClick={() => setCancelling(true)}
           disabled={isPending}
-          className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm hover:bg-zinc-100 disabled:opacity-50"
+          className="rounded-md border border-zinc-300 dark:border-zinc-600 px-3 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50"
         >
           Отменить
         </button>
       </div>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
     </div>
   );
 }

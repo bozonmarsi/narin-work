@@ -65,7 +65,7 @@ export function CourierView() {
   useRealtimeRefresh("tilda_orders", load);
 
   if (loading) {
-    return <p className="text-sm text-zinc-500">Загрузка…</p>;
+    return <p className="text-sm text-zinc-500 dark:text-zinc-400">Загрузка…</p>;
   }
 
   const groups = new Map<string, CourierOrder[]>();
@@ -77,13 +77,13 @@ export function CourierView() {
 
   return (
     <div className="space-y-3">
-      {error && <p className="text-sm text-red-600">Ошибка: {error}</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400">Ошибка: {error}</p>}
 
-      <div className="flex rounded-lg border border-zinc-200 bg-white p-1 text-sm">
+      <div className="flex rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-1 text-sm">
         <button
           onClick={() => setTab("mine")}
           className={`flex-1 rounded-md py-1.5 font-medium ${
-            tab === "mine" ? "bg-accent text-white" : "text-zinc-600"
+            tab === "mine" ? "bg-accent text-white" : "text-zinc-600 dark:text-zinc-300"
           }`}
         >
           Мои ({mine.length})
@@ -91,7 +91,7 @@ export function CourierView() {
         <button
           onClick={() => setTab("pool")}
           className={`flex-1 rounded-md py-1.5 font-medium ${
-            tab === "pool" ? "bg-accent text-white" : "text-zinc-600"
+            tab === "pool" ? "bg-accent text-white" : "text-zinc-600 dark:text-zinc-300"
           }`}
         >
           Доступные ({pool.length})
@@ -99,7 +99,7 @@ export function CourierView() {
         <button
           onClick={() => setTab("earnings")}
           className={`flex-1 rounded-md py-1.5 font-medium ${
-            tab === "earnings" ? "bg-accent text-white" : "text-zinc-600"
+            tab === "earnings" ? "bg-accent text-white" : "text-zinc-600 dark:text-zinc-300"
           }`}
         >
           Заработок
@@ -108,7 +108,7 @@ export function CourierView() {
 
       {tab === "mine" && (
         <section className="space-y-4">
-          {mine.length === 0 && <p className="text-sm text-zinc-500">Нет активных заказов.</p>}
+          {mine.length === 0 && <p className="text-sm text-zinc-500 dark:text-zinc-400">Нет активных заказов.</p>}
           {[...groups.entries()].map(([key, orders]) => (
             <MineOrdersGroup
               key={key}
@@ -124,7 +124,7 @@ export function CourierView() {
 
       {tab === "pool" && (
         <section className="space-y-2">
-          {pool.length === 0 && <p className="text-sm text-zinc-500">Пул пуст.</p>}
+          {pool.length === 0 && <p className="text-sm text-zinc-500 dark:text-zinc-400">Пул пуст.</p>}
           <div className="space-y-2">
             {pool.map((o) => (
               <CourierOrderCard key={o.id} order={o} mode="pool" userId={user.id} onDone={load} />

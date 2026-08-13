@@ -48,8 +48,8 @@ export function CourierEarnings() {
 
   useRealtimeRefresh("tilda_orders", load);
 
-  if (loading) return <p className="text-sm text-zinc-500">Загрузка…</p>;
-  if (error) return <p className="text-sm text-red-600">Ошибка: {error}</p>;
+  if (loading) return <p className="text-sm text-zinc-500 dark:text-zinc-400">Загрузка…</p>;
+  if (error) return <p className="text-sm text-red-600 dark:text-red-400">Ошибка: {error}</p>;
 
   const todayKey = toDateKey(todayUTC());
   const weekStartKey = toDateKey(startOfWeek(todayUTC()));
@@ -68,24 +68,24 @@ export function CourierEarnings() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-lg border border-zinc-200 bg-white p-3">
-          <p className="text-xs text-zinc-500">Сегодня</p>
+        <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-3">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Сегодня</p>
           <p className="text-lg font-semibold">{sum(todayOrders).toFixed(0)} Kč</p>
-          <p className="text-xs text-zinc-400">{todayOrders.length} доставок</p>
+          <p className="text-xs text-zinc-400 dark:text-zinc-500">{todayOrders.length} доставок</p>
         </div>
-        <div className="rounded-lg border border-zinc-200 bg-white p-3">
-          <p className="text-xs text-zinc-500">За неделю</p>
+        <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-3">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">За неделю</p>
           <p className="text-lg font-semibold">{sum(weekOrders).toFixed(0)} Kč</p>
-          <p className="text-xs text-zinc-400">{weekOrders.length} доставок</p>
+          <p className="text-xs text-zinc-400 dark:text-zinc-500">{weekOrders.length} доставок</p>
         </div>
       </div>
 
-      {orders.length === 0 && <p className="text-sm text-zinc-500">Пока нет доставленных заказов.</p>}
+      {orders.length === 0 && <p className="text-sm text-zinc-500 dark:text-zinc-400">Пока нет доставленных заказов.</p>}
 
       <div className="space-y-3">
         {[...byDay.entries()].map(([day, list]) => (
           <div key={day} className="space-y-1">
-            <div className="flex items-center justify-between text-xs font-semibold text-zinc-500">
+            <div className="flex items-center justify-between text-xs font-semibold text-zinc-500 dark:text-zinc-400">
               <span>{formatDate(list[0].delivery_date)}</span>
               <span>{sum(list).toFixed(0)} Kč</span>
             </div>
@@ -93,11 +93,11 @@ export function CourierEarnings() {
               {list.map((o) => (
                 <div
                   key={o.id}
-                  className="flex items-center justify-between rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-xs"
+                  className="flex items-center justify-between rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1.5 text-xs"
                 >
                   <span>
                     #{o.order_id} · {o.recipient_name}
-                    {o.distance_km != null && <span className="text-zinc-400"> · {o.distance_km.toFixed(1)} км</span>}
+                    {o.distance_km != null && <span className="text-zinc-400 dark:text-zinc-500"> · {o.distance_km.toFixed(1)} км</span>}
                   </span>
                   <span className="font-medium text-accent">
                     {o.delivery_price != null ? `${o.delivery_price.toFixed(0)} Kč` : "—"}

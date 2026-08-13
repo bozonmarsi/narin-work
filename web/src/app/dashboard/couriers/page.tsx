@@ -77,7 +77,7 @@ export default function CouriersPage() {
   }
 
   if (profile?.role !== "manager") return null;
-  if (loading) return <p className="text-zinc-500">Загрузка…</p>;
+  if (loading) return <p className="text-zinc-500 dark:text-zinc-400">Загрузка…</p>;
 
   const todayKey = toDateKey(todayUTC());
   const weekStartKey = toDateKey(startOfWeek(todayUTC()));
@@ -93,25 +93,25 @@ export default function CouriersPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-lg font-semibold">Курьеры</h1>
-      <p className="text-xs text-zinc-400">
+      <p className="text-xs text-zinc-400 dark:text-zinc-500">
         Статистика считает только реально доставленные заказы (статус &laquo;Доставлено&raquo;) — заказы в пути или в сборке
         сюда не попадают.
       </p>
 
-      {error && <p className="text-red-600">Ошибка: {error}</p>}
+      {error && <p className="text-red-600 dark:text-red-400">Ошибка: {error}</p>}
 
       {couriers.length === 0 ? (
-        <p className="text-zinc-500">Курьеров пока нет.</p>
+        <p className="text-zinc-500 dark:text-zinc-400">Курьеров пока нет.</p>
       ) : (
         <div className="space-y-3">
           {couriers.map((c) => {
             const s = statsFor(c.id);
             const edit = rateEdits[c.id] ?? { base_rate: "50", rate_per_km: "9" };
             return (
-              <div key={c.id} className="space-y-3 rounded-lg border border-zinc-200 bg-white p-4">
+              <div key={c.id} className="space-y-3 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="font-medium">{c.full_name ?? c.id}</p>
-                  <div className="flex gap-4 text-sm text-zinc-600">
+                  <div className="flex gap-4 text-sm text-zinc-600 dark:text-zinc-300">
                     <span>
                       Сегодня: <span className="font-medium">{s.todayCount}</span> ·{" "}
                       <span className="font-medium">{s.todaySum.toFixed(0)} Kč</span>
@@ -124,25 +124,25 @@ export default function CouriersPage() {
                 </div>
                 <div className="flex flex-wrap items-end gap-3">
                   <label className="block space-y-1">
-                    <span className="text-xs font-medium text-zinc-500">База за доставку (Kč)</span>
+                    <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">База за доставку (Kč)</span>
                     <input
                       type="number"
                       value={edit.base_rate}
                       onChange={(e) =>
                         setRateEdits((r) => ({ ...r, [c.id]: { ...edit, base_rate: e.target.value } }))
                       }
-                      className="w-28 rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                      className="w-28 rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                     />
                   </label>
                   <label className="block space-y-1">
-                    <span className="text-xs font-medium text-zinc-500">За км (Kč)</span>
+                    <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">За км (Kč)</span>
                     <input
                       type="number"
                       value={edit.rate_per_km}
                       onChange={(e) =>
                         setRateEdits((r) => ({ ...r, [c.id]: { ...edit, rate_per_km: e.target.value } }))
                       }
-                      className="w-28 rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                      className="w-28 rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                     />
                   </label>
                   <button

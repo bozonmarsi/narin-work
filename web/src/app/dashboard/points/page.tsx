@@ -189,22 +189,22 @@ export default function PointsPage() {
     <div className="space-y-4">
       <h1 className="text-lg font-semibold">Баллы клиентов</h1>
 
-      <div className="rounded-lg border border-zinc-200 bg-white p-4">
+      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
         <div className="flex flex-wrap items-end gap-3">
           <label className="flex-1 space-y-1 text-sm">
-            <span className="text-xs font-medium text-zinc-500">Поиск по email</span>
+            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Поиск по email</span>
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="оставьте пустым, чтобы увидеть всех"
-              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+              className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-3 py-2 text-sm"
             />
           </label>
-          <div className="flex gap-1 rounded-md border border-zinc-200 p-0.5">
+          <div className="flex gap-1 rounded-md border border-zinc-200 dark:border-zinc-700 p-0.5">
             <button
               onClick={() => setSortDir("desc")}
               className={`rounded px-3 py-1.5 text-sm ${
-                sortDir === "desc" ? "bg-accent text-white" : "text-zinc-600 hover:bg-zinc-100"
+                sortDir === "desc" ? "bg-accent text-white" : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
               }`}
             >
               Больше всего накоплено
@@ -212,7 +212,7 @@ export default function PointsPage() {
             <button
               onClick={() => setSortDir("asc")}
               className={`rounded px-3 py-1.5 text-sm ${
-                sortDir === "asc" ? "bg-accent text-white" : "text-zinc-600 hover:bg-zinc-100"
+                sortDir === "asc" ? "bg-accent text-white" : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
               }`}
             >
               Меньше всего накоплено
@@ -220,29 +220,29 @@ export default function PointsPage() {
           </div>
         </div>
 
-        {searching && <p className="mt-2 text-sm text-zinc-400">Загрузка…</p>}
+        {searching && <p className="mt-2 text-sm text-zinc-400 dark:text-zinc-500">Загрузка…</p>}
 
         {!searching && results.length === 0 && (
-          <p className="mt-3 text-sm text-zinc-400">Никого не нашлось</p>
+          <p className="mt-3 text-sm text-zinc-400 dark:text-zinc-500">Никого не нашлось</p>
         )}
 
         {results.length > 0 && (
-          <div className="mt-3 max-h-80 divide-y divide-zinc-100 overflow-y-auto rounded-md border border-zinc-100">
+          <div className="mt-3 max-h-80 divide-y divide-zinc-100 dark:divide-zinc-800 overflow-y-auto rounded-md border border-zinc-100 dark:border-zinc-800">
             {results.map((c, i) => (
               <button
                 key={c.id}
                 onClick={() => selectCustomer(c)}
-                className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-zinc-50 ${
+                className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 ${
                   selected?.id === c.id ? "bg-accent/5" : ""
                 }`}
               >
                 <span className="flex items-center gap-2">
-                  <span className="w-5 text-right text-xs text-zinc-400">{i + 1}</span>
+                  <span className="w-5 text-right text-xs text-zinc-400 dark:text-zinc-500">{i + 1}</span>
                   {c.email}
                 </span>
                 <span className="text-right">
                   <span className="block font-medium">{lifetimeEarned[c.email] ?? 0} накоплено всего</span>
-                  <span className="block text-xs text-zinc-400">баланс сейчас: {c.balance ?? 0}</span>
+                  <span className="block text-xs text-zinc-400 dark:text-zinc-500">баланс сейчас: {c.balance ?? 0}</span>
                 </span>
               </button>
             ))}
@@ -251,12 +251,12 @@ export default function PointsPage() {
       </div>
 
       {selected && (
-        <div className="space-y-4 rounded-lg border border-zinc-200 bg-white p-4">
+        <div className="space-y-4 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium">{selected.email}</p>
-              <p className="text-sm text-zinc-500">Текущий баланс: {selected.balance ?? 0} баллов</p>
-              <p className="text-sm text-zinc-500">
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">Текущий баланс: {selected.balance ?? 0} баллов</p>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">
                 Всего заработано за всё время:{" "}
                 {selectedLifetimeEarned === null ? "…" : selectedLifetimeEarned}
               </p>
@@ -265,22 +265,22 @@ export default function PointsPage() {
 
           <div className="flex flex-wrap items-end gap-2">
             <label className="space-y-1 text-sm">
-              <span className="block text-xs font-medium text-zinc-500">Количество баллов</span>
+              <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">Количество баллов</span>
               <input
                 type="number"
                 min="0"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="w-32 rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                className="w-32 rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
               />
             </label>
             <label className="flex-1 space-y-1 text-sm">
-              <span className="block text-xs font-medium text-zinc-500">Комментарий (виден клиенту)</span>
+              <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">Комментарий (виден клиенту)</span>
               <input
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="например: компенсация за испорченный букет"
-                className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
               />
             </label>
             <button
@@ -299,27 +299,27 @@ export default function PointsPage() {
             </button>
           </div>
 
-          {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+          {error && <p className="rounded-md bg-red-50 dark:bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
 
           <div>
-            <p className="mb-2 text-sm font-medium text-zinc-500">История</p>
-            {loadingHistory && <p className="text-sm text-zinc-400">Загрузка…</p>}
+            <p className="mb-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">История</p>
+            {loadingHistory && <p className="text-sm text-zinc-400 dark:text-zinc-500">Загрузка…</p>}
             <div className="space-y-1">
               {history.map((t) => (
                 <div key={t.id} className="flex items-center justify-between text-sm">
-                  <span className="text-zinc-600">
+                  <span className="text-zinc-600 dark:text-zinc-300">
                     {formatDateTime(t.created_at)} · {t.type ?? "—"}
                     {t.order_id ? ` · заказ #${t.order_id}` : ""}
                     {t.description ? ` · ${t.description}` : ""}
                   </span>
-                  <span className={t.amount >= 0 ? "text-green-600" : "text-red-600"}>
+                  <span className={t.amount >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}>
                     {t.amount >= 0 ? "+" : ""}
                     {t.amount}
                   </span>
                 </div>
               ))}
               {!loadingHistory && history.length === 0 && (
-                <p className="text-sm text-zinc-400">Пока нет операций</p>
+                <p className="text-sm text-zinc-400 dark:text-zinc-500">Пока нет операций</p>
               )}
             </div>
           </div>

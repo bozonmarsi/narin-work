@@ -190,7 +190,7 @@ export default function SubscriptionsPage() {
   }
 
   if (profile?.role !== "manager") return null;
-  if (loading) return <p className="text-zinc-500">Загрузка…</p>;
+  if (loading) return <p className="text-zinc-500 dark:text-zinc-400">Загрузка…</p>;
 
   return (
     <div className="space-y-6">
@@ -201,7 +201,7 @@ export default function SubscriptionsPage() {
         </Link>
       </div>
 
-      {error && <p className="text-red-600">Ошибка: {error}</p>}
+      {error && <p className="text-red-600 dark:text-red-400">Ошибка: {error}</p>}
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex gap-1">
@@ -210,7 +210,7 @@ export default function SubscriptionsPage() {
               key={s}
               onClick={() => setStatusFilter(s)}
               className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-                statusFilter === s ? "bg-accent text-white" : "border border-zinc-300 text-zinc-600 hover:bg-zinc-100"
+                statusFilter === s ? "bg-accent text-white" : "border border-zinc-300 dark:border-zinc-600 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
               }`}
             >
               {s === "active" ? "Активные" : s === "cancelled" ? "Отменённые" : "Все"}
@@ -221,7 +221,7 @@ export default function SubscriptionsPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Поиск по email или получателю…"
-          className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm"
+          className="rounded-md border border-zinc-300 dark:border-zinc-600 px-3 py-1.5 text-sm"
         />
         <button
           onClick={() => setShowCreate((v) => !v)}
@@ -232,67 +232,67 @@ export default function SubscriptionsPage() {
       </div>
 
       {showCreate && (
-        <div className="space-y-4 rounded-lg border border-zinc-200 bg-white p-4">
-          <p className="text-xs text-zinc-400">Ручное создание — без Stripe, сразу считается оплаченной.</p>
+        <div className="space-y-4 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
+          <p className="text-xs text-zinc-400 dark:text-zinc-500">Ручное создание — без Stripe, сразу считается оплаченной.</p>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <label className="block space-y-1">
-              <span className="text-xs font-medium text-zinc-500">Email клиента</span>
-              <input value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" />
+              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Email клиента</span>
+              <input value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm" />
             </label>
             <label className="block space-y-1">
-              <span className="text-xs font-medium text-zinc-500">Категория</span>
-              <select value={form.categoryId} onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value, lineId: "" }))} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm">
+              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Категория</span>
+              <select value={form.categoryId} onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value, lineId: "" }))} className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm">
                 <option value="">—</option>
                 {categories.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
               </select>
             </label>
             <label className="block space-y-1">
-              <span className="text-xs font-medium text-zinc-500">Линейка</span>
-              <select value={form.lineId} onChange={(e) => setForm((f) => ({ ...f, lineId: e.target.value }))} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" disabled={!form.categoryId}>
+              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Линейка</span>
+              <select value={form.lineId} onChange={(e) => setForm((f) => ({ ...f, lineId: e.target.value }))} className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm" disabled={!form.categoryId}>
                 <option value="">—</option>
                 {linesInCategory.map((l) => (<option key={l.id} value={l.id}>{l.name}</option>))}
               </select>
             </label>
             <label className="block space-y-1">
-              <span className="text-xs font-medium text-zinc-500">Размер</span>
-              <select value={form.size} onChange={(e) => setForm((f) => ({ ...f, size: e.target.value as SubscriptionSize }))} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm">
+              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Размер</span>
+              <select value={form.size} onChange={(e) => setForm((f) => ({ ...f, size: e.target.value as SubscriptionSize }))} className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm">
                 <option value="small">S</option>
                 <option value="medium">M</option>
                 <option value="large">L</option>
               </select>
             </label>
             <label className="block space-y-1">
-              <span className="text-xs font-medium text-zinc-500">Доставок/месяц</span>
-              <select value={form.count} onChange={(e) => setForm((f) => ({ ...f, count: Number(e.target.value) }))} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm">
+              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Доставок/месяц</span>
+              <select value={form.count} onChange={(e) => setForm((f) => ({ ...f, count: Number(e.target.value) }))} className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm">
                 {tiers.map((t) => (<option key={t.deliveries_per_cycle} value={t.deliveries_per_cycle}>{t.deliveries_per_cycle} {t.discount_percent > 0 ? `(-${t.discount_percent}%)` : ""}</option>))}
               </select>
             </label>
             <label className="block space-y-1">
-              <span className="text-xs font-medium text-zinc-500">Дата первой доставки</span>
-              <input type="date" value={form.startDate} onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" />
+              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Дата первой доставки</span>
+              <input type="date" value={form.startDate} onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))} className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm" />
             </label>
             <label className="block space-y-1">
-              <span className="text-xs font-medium text-zinc-500">Получатель — имя</span>
-              <input value={form.recipientName} onChange={(e) => setForm((f) => ({ ...f, recipientName: e.target.value }))} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" />
+              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Получатель — имя</span>
+              <input value={form.recipientName} onChange={(e) => setForm((f) => ({ ...f, recipientName: e.target.value }))} className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm" />
             </label>
             <label className="block space-y-1">
-              <span className="text-xs font-medium text-zinc-500">Получатель — телефон</span>
-              <input value={form.recipientPhone} onChange={(e) => setForm((f) => ({ ...f, recipientPhone: e.target.value }))} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" />
+              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Получатель — телефон</span>
+              <input value={form.recipientPhone} onChange={(e) => setForm((f) => ({ ...f, recipientPhone: e.target.value }))} className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm" />
             </label>
             <label className="col-span-2 block space-y-1">
-              <span className="text-xs font-medium text-zinc-500">Адрес</span>
-              <input value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" />
+              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Адрес</span>
+              <input value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm" />
             </label>
             <label className="block space-y-1">
-              <span className="text-xs font-medium text-zinc-500">Город</span>
-              <input value={form.city} onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" />
+              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Город</span>
+              <input value={form.city} onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))} className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm" />
             </label>
             <label className="block space-y-1">
-              <span className="text-xs font-medium text-zinc-500">Индекс</span>
-              <input value={form.psk} onChange={(e) => setForm((f) => ({ ...f, psk: e.target.value }))} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" />
+              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Индекс</span>
+              <input value={form.psk} onChange={(e) => setForm((f) => ({ ...f, psk: e.target.value }))} className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm" />
             </label>
           </div>
-          <div className="flex items-center justify-between border-t border-zinc-100 pt-3">
+          <div className="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800 pt-3">
             <p className="text-sm">
               Цена цикла: <span className="font-medium">{cyclePrice != null ? `${cyclePrice.toLocaleString("cs-CZ")} Kč` : "—"}</span>
             </p>
@@ -300,32 +300,32 @@ export default function SubscriptionsPage() {
               {saving ? "Создаём…" : "Создать и отметить оплаченной"}
             </button>
           </div>
-          {formError && <p className="text-sm text-red-600">{formError}</p>}
+          {formError && <p className="text-sm text-red-600 dark:text-red-400">{formError}</p>}
         </div>
       )}
 
       <div className="space-y-2">
-        <p className="text-sm text-zinc-500">{filtered.length} подписок</p>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">{filtered.length} подписок</p>
         {filtered.length === 0 ? (
-          <p className="text-zinc-500">Ничего не найдено.</p>
+          <p className="text-zinc-500 dark:text-zinc-400">Ничего не найдено.</p>
         ) : (
           filtered.map((s) => (
             <button
               key={s.id}
               onClick={() => setSelected(s)}
-              className="block w-full rounded-lg border border-zinc-200 bg-white p-4 text-left hover:border-accent"
+              className="block w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4 text-left hover:border-accent"
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="font-medium">
                     {s.email} — {s.line_name_snapshot} · {SIZE_LABELS[s.size]} · {s.deliveries_per_cycle}x/месяц
                   </p>
-                  <p className="text-xs text-zinc-500">
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
                     {s.recipient_name} · с {s.cycle_anchor_date} · {s.cycle_price_snapshot.toLocaleString("cs-CZ")} Kč ·{" "}
                     {occurrenceCounts[s.id] ?? 0} доставок · {s.stripe_subscription_id ? "Stripe" : "вручную"}
                   </p>
                 </div>
-                <span className={`rounded-full px-2 py-1 text-xs font-medium ${s.status === "active" ? "bg-green-50 text-green-700" : "bg-zinc-100 text-zinc-500"}`}>
+                <span className={`rounded-full px-2 py-1 text-xs font-medium ${s.status === "active" ? "bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400"}`}>
                   {s.status === "active" ? "Активна" : "Отменена"}
                 </span>
               </div>

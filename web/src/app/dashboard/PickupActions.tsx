@@ -62,7 +62,7 @@ export function PickupActions({
         >
           🌸 Собран, готов к выдаче
         </button>
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
       </div>
     );
   }
@@ -77,7 +77,7 @@ export function PickupActions({
         >
           ✅ Выдано клиенту
         </button>
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
       </div>
     );
   }

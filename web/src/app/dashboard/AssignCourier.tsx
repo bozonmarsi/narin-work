@@ -61,7 +61,7 @@ export function AssignCourier({
   }
 
   if (couriers.length === 0) {
-    return <p className="text-sm text-zinc-500">Нет добавленных курьеров</p>;
+    return <p className="text-sm text-zinc-500 dark:text-zinc-400">Нет добавленных курьеров</p>;
   }
 
   return (
@@ -69,7 +69,7 @@ export function AssignCourier({
       <select
         value={courierId}
         onChange={(e) => setCourierId(e.target.value)}
-        className="rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+        className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
       >
         <option value="">Выбрать курьера…</option>
         {couriers.map((c) => (
@@ -85,7 +85,7 @@ export function AssignCourier({
       >
         Назначить
       </button>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
     </div>
   );
 }

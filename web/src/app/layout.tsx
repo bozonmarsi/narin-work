@@ -26,7 +26,17 @@ export default function RootLayout({
     <html
       lang="ru"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
+      <head>
+        <script
+          // Runs before paint so the page never flashes the wrong theme —
+          // React state in useTheme() just mirrors this afterwards.
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('narin-theme');var dark=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;if(dark)document.documentElement.classList.add('dark');}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );

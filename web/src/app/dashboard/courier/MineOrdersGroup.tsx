@@ -86,7 +86,7 @@ export function MineOrdersGroup({
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-1">
-        <p className="text-[11px] font-semibold text-zinc-500">
+        <p className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
           {formatDate(date)}
           {slot ? ` · ${slot}` : ""}
         </p>
@@ -101,22 +101,22 @@ export function MineOrdersGroup({
         )}
       </div>
 
-      {routeError && <p className="text-xs text-red-600">{routeError}</p>}
+      {routeError && <p className="text-xs text-red-600 dark:text-red-400">{routeError}</p>}
 
       {routeIncomplete && !buildingRoute && (
-        <p className="text-xs font-medium text-orange-600">
+        <p className="text-xs font-medium text-orange-600 dark:text-orange-400">
           В маршруте появились изменения (новый заказ или правки менеджера) — нажмите &laquo;Пересчитать маршрут&raquo;.
         </p>
       )}
 
       {route && (
-        <div className="rounded-md bg-zinc-50 px-2.5 py-1.5 text-xs text-zinc-600">
+        <div className="rounded-md bg-zinc-50 dark:bg-zinc-800 px-2.5 py-1.5 text-xs text-zinc-600 dark:text-zinc-300">
           ~{Math.round(route.totalDurationSeconds / 60)} мин, {(route.totalDistanceMeters / 1000).toFixed(1)} км
           {route.unplaced.length > 0 && (
-            <span className="ml-2 text-orange-600">{route.unplaced.length} без координат — не в маршруте</span>
+            <span className="ml-2 text-orange-600 dark:text-orange-400">{route.unplaced.length} без координат — не в маршруте</span>
           )}
           {route.stops.some((s) => s.missedDeadline) && (
-            <span className="ml-2 font-medium text-red-600">
+            <span className="ml-2 font-medium text-red-600 dark:text-red-400">
               ⚠️ есть конфликт пожеланий по времени — один курьер не успевает ко всем сразу
             </span>
           )}

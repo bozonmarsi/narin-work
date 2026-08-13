@@ -240,16 +240,16 @@ export function SubscriptionEditModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:p-8">
-      <div className="w-full max-w-2xl rounded-xl bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-zinc-200 px-6 py-4">
+      <div className="w-full max-w-2xl rounded-xl bg-white dark:bg-zinc-900 shadow-xl">
+        <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-700 px-6 py-4">
           <div>
             <p className="text-lg font-semibold">{subscription.email}</p>
-            <p className="text-sm text-zinc-500">
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
               создана {formatDateTime(subscription.created_at)} ·{" "}
               {subscription.stripe_subscription_id ? "Stripe" : "создана вручную"}
             </p>
           </div>
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600" aria-label="Закрыть">
+          <button onClick={onClose} className="text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300" aria-label="Закрыть">
             ✕
           </button>
         </div>
@@ -257,10 +257,10 @@ export function SubscriptionEditModal({
         <div className="max-h-[75vh] space-y-6 overflow-y-auto px-6 py-5">
           <section className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-zinc-500">Статус</h3>
+              <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">Статус</h3>
               <span
                 className={`rounded-full px-2 py-1 text-xs font-medium ${
-                  subscription.status === "active" ? "bg-green-50 text-green-700" : "bg-zinc-100 text-zinc-500"
+                  subscription.status === "active" ? "bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400"
                 }`}
               >
                 {subscription.status === "active" ? "Активна" : "Отменена"}
@@ -268,8 +268,8 @@ export function SubscriptionEditModal({
             </div>
             {subscription.status === "active" &&
               (cancelConfirm ? (
-                <div className="flex items-center gap-2 rounded-md bg-red-50 px-3 py-2">
-                  <span className="text-sm text-red-700">Точно отменить эту подписку?</span>
+                <div className="flex items-center gap-2 rounded-md bg-red-50 dark:bg-red-500/10 px-3 py-2">
+                  <span className="text-sm text-red-700 dark:text-red-400">Точно отменить эту подписку?</span>
                   <button
                     onClick={handleCancel}
                     disabled={cancelling}
@@ -277,14 +277,14 @@ export function SubscriptionEditModal({
                   >
                     {cancelling ? "Отменяем…" : "Подтвердить отмену"}
                   </button>
-                  <button onClick={() => setCancelConfirm(false)} className="text-sm text-zinc-500 hover:text-zinc-700">
+                  <button onClick={() => setCancelConfirm(false)} className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200">
                     Назад
                   </button>
                 </div>
               ) : (
                 <button
                   onClick={() => setCancelConfirm(true)}
-                  className="rounded-md border border-red-200 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50"
+                  className="rounded-md border border-red-200 px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10"
                 >
                   Отменить подписку
                 </button>
@@ -292,8 +292,8 @@ export function SubscriptionEditModal({
           </section>
 
           <section className="space-y-3">
-            <h3 className="text-sm font-semibold text-zinc-500">План</h3>
-            <p className="text-xs text-amber-600">
+            <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">План</h3>
+            <p className="text-xs text-amber-600 dark:text-amber-400">
               Изменение здесь не влияет на списания в активной Stripe-подписке — только на нашу запись. Чтобы изменить
               реальную оплату, нужно менять её напрямую в Stripe.
             </p>
@@ -302,7 +302,7 @@ export function SubscriptionEditModal({
                 <select
                   value={currentCategoryId}
                   onChange={(e) => set("line_id", linesInCategory(e.target.value)[0]?.id ?? "")}
-                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                  className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                 >
                   {categories.map((c) => (
                     <option key={c.id} value={c.id}>{c.name}</option>
@@ -313,7 +313,7 @@ export function SubscriptionEditModal({
                 <select
                   value={form.line_id}
                   onChange={(e) => set("line_id", e.target.value)}
-                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                  className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                 >
                   {linesInCategory(currentCategoryId).map((l) => (
                     <option key={l.id} value={l.id}>{l.name}</option>
@@ -324,7 +324,7 @@ export function SubscriptionEditModal({
                 <select
                   value={form.size}
                   onChange={(e) => set("size", e.target.value as SubscriptionSize)}
-                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                  className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                 >
                   <option value="small">S</option>
                   <option value="medium">M</option>
@@ -335,7 +335,7 @@ export function SubscriptionEditModal({
                 <select
                   value={form.deliveries_per_cycle}
                   onChange={(e) => set("deliveries_per_cycle", Number(e.target.value))}
-                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                  className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                 >
                   {tiers.map((t) => (
                     <option key={t.deliveries_per_cycle} value={t.deliveries_per_cycle}>
@@ -349,7 +349,7 @@ export function SubscriptionEditModal({
                   type="date"
                   value={form.cycle_anchor_date}
                   onChange={(e) => set("cycle_anchor_date", e.target.value)}
-                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                  className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                 />
               </Field>
               <Field label="Цена цикла (по выбору выше)">
@@ -359,40 +359,45 @@ export function SubscriptionEditModal({
           </section>
 
           <section className="space-y-3">
-            <h3 className="text-sm font-semibold text-zinc-500">Получатель по умолчанию</h3>
+            <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">Получатель по умолчанию</h3>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Имя"><input value={form.recipient_name} onChange={(e) => set("recipient_name", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
-              <Field label="Телефон"><input value={form.recipient_phone} onChange={(e) => set("recipient_phone", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
-              <Field label="Адрес"><input value={form.address} onChange={(e) => set("address", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
-              <Field label="Город"><input value={form.city} onChange={(e) => set("city", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
-              <Field label="Индекс"><input value={form.psk} onChange={(e) => set("psk", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
-              <Field label="Этаж"><input value={form.patro} onChange={(e) => set("patro", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
-              <Field label="Компания"><input value={form.company_name} onChange={(e) => set("company_name", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
-              <Field label="Квартира"><input value={form.cislo_bytu} onChange={(e) => set("cislo_bytu", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
-              <Field label="Код домофона"><input value={form.kod_intercomu} onChange={(e) => set("kod_intercomu", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
+              <Field label="Имя"><input value={form.recipient_name} onChange={(e) => set("recipient_name", e.target.value)} className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm" /></Field>
+              <Field label="Телефон"><input value={form.recipient_phone} onChange={(e) => set("recipient_phone", e.target.value)} className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm" /></Field>
+              <Field label="Адрес"><input value={form.address} onChange={(e) => set("address", e.target.value)} className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm" /></Field>
+              <Field label="Город"><input value={form.city} onChange={(e) => set("city", e.target.value)} className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm" /></Field>
+              <Field label="Индекс"><input value={form.psk} onChange={(e) => set("psk", e.target.value)} className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm" /></Field>
+              <Field label="Этаж"><input value={form.patro} onChange={(e) => set("patro", e.target.value)} className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm" /></Field>
+              <Field label="Компания"><input value={form.company_name} onChange={(e) => set("company_name", e.target.value)} className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm" /></Field>
+              <Field label="Квартира"><input value={form.cislo_bytu} onChange={(e) => set("cislo_bytu", e.target.value)} className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm" /></Field>
+              <Field label="Код домофона"><input value={form.kod_intercomu} onChange={(e) => set("kod_intercomu", e.target.value)} className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm" /></Field>
             </div>
           </section>
 
           <section className="space-y-3">
-            <h3 className="text-sm font-semibold text-zinc-500">Настроение и заметки</h3>
+            <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">Настроение и заметки</h3>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Настроение"><input value={form.mood_note} onChange={(e) => set("mood_note", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
-              <Field label="Что исключить"><input value={form.exclusions_note} onChange={(e) => set("exclusions_note", e.target.value)} className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" /></Field>
+              <Field label="Настроение"><input value={form.mood_note} onChange={(e) => set("mood_note", e.target.value)} className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm" /></Field>
+              <Field label="Что исключить"><input value={form.exclusions_note} onChange={(e) => set("exclusions_note", e.target.value)} className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm" /></Field>
             </div>
+            {subscription.vase_exchange && (
+              <p className="rounded-md bg-blue-50 dark:bg-blue-500/10 px-3 py-2 text-sm text-blue-700 dark:text-blue-400">
+                Клиент выбрал смену ваз — привезти вазу под длину стеблей, одну оставить клиенту.
+              </p>
+            )}
           </section>
 
           <section className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-zinc-500">Даты цикла ({occurrences.length})</h3>
+              <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">Даты цикла ({occurrences.length})</h3>
               <button
                 onClick={handleGenerateNextCycle}
-                className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-700 hover:bg-zinc-100"
+                className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1 text-xs text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800"
               >
                 + Сгенерировать следующий цикл
               </button>
             </div>
             {loadingSub ? (
-              <p className="text-sm text-zinc-400">Загрузка…</p>
+              <p className="text-sm text-zinc-400 dark:text-zinc-500">Загрузка…</p>
             ) : (
               <div className="space-y-2">
                 {occurrences.map((occ) => (
@@ -406,8 +411,8 @@ export function SubscriptionEditModal({
 
           {history.length > 0 && (
             <section className="space-y-2">
-              <h3 className="text-sm font-semibold text-zinc-500">История</h3>
-              <div className="space-y-1 text-xs text-zinc-500">
+              <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">История</h3>
+              <div className="space-y-1 text-xs text-zinc-500 dark:text-zinc-400">
                 {history.map((h) => (
                   <p key={h.id}>
                     {formatDateTime(h.changed_at)} — {h.note} · {h.changed_by_user?.full_name ?? "система"}
@@ -417,11 +422,11 @@ export function SubscriptionEditModal({
             </section>
           )}
 
-          {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+          {error && <p className="rounded-md bg-red-50 dark:bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-zinc-200 px-6 py-4">
-          <button onClick={onClose} className="rounded-md border border-zinc-300 px-4 py-2 text-sm hover:bg-zinc-50">
+        <div className="flex justify-end gap-2 border-t border-zinc-200 dark:border-zinc-700 px-6 py-4">
+          <button onClick={onClose} className="rounded-md border border-zinc-300 dark:border-zinc-600 px-4 py-2 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
             Закрыть
           </button>
           <button
@@ -440,7 +445,7 @@ export function SubscriptionEditModal({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block space-y-1">
-      <span className="text-xs font-medium text-zinc-500">{label}</span>
+      <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{label}</span>
       {children}
     </label>
   );
@@ -448,9 +453,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 const OCC_STATUS_LABEL: Record<string, string> = { planned: "Запланировано", generated: "Заказ создан", skipped: "Пропущено" };
 const OCC_STATUS_COLOR: Record<string, string> = {
-  planned: "bg-zinc-100 text-zinc-600",
-  generated: "bg-green-50 text-green-700",
-  skipped: "bg-orange-50 text-orange-700",
+  planned: "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300",
+  generated: "bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400",
+  skipped: "bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400",
 };
 
 function OccurrenceRow({
@@ -619,14 +624,14 @@ function OccurrenceRow({
   }
 
   return (
-    <div className="rounded-md border border-zinc-200 p-3">
+    <div className="rounded-md border border-zinc-200 dark:border-zinc-700 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-3">
           {occurrence.preview_photo_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={occurrence.preview_photo_url} alt="" className="h-10 w-10 rounded-md object-cover" />
           ) : (
-            <div className="h-10 w-10 rounded-md bg-zinc-100" />
+            <div className="h-10 w-10 rounded-md bg-zinc-100 dark:bg-zinc-800" />
           )}
           <div>
             <input
@@ -634,7 +639,7 @@ function OccurrenceRow({
               value={dateValue}
               onChange={(e) => setDateValue(e.target.value)}
               onBlur={saveDate}
-              className="rounded-md border border-zinc-300 px-2 py-1 text-sm"
+              className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1 text-sm"
             />
             {hasOverride && <span className="ml-2 text-xs text-accent">получатель изменён</span>}
           </div>
@@ -643,7 +648,7 @@ function OccurrenceRow({
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <label className="cursor-pointer rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-700 hover:bg-zinc-100">
+          <label className="cursor-pointer rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1 text-xs text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800">
             Загрузить превью
             <input
               type="file"
@@ -652,11 +657,11 @@ function OccurrenceRow({
               onChange={(e) => e.target.files?.[0] && uploadPreview(e.target.files[0])}
             />
           </label>
-          <button onClick={() => setExpanded((v) => !v)} className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-700 hover:bg-zinc-100">
+          <button onClick={() => setExpanded((v) => !v)} className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1 text-xs text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800">
             {expanded ? "Скрыть" : "Получатель"}
           </button>
           {occurrence.status === "planned" && (
-            <button onClick={skip} disabled={pending} className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-700 hover:bg-zinc-100 disabled:opacity-50">
+            <button onClick={skip} disabled={pending} className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1 text-xs text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50">
               Пропустить
             </button>
           )}
@@ -667,7 +672,7 @@ function OccurrenceRow({
                 <button onClick={generateOrder} disabled={pending} className="rounded-md bg-accent px-2 py-1 text-xs text-white hover:bg-accent-hover disabled:opacity-50">
                   Подтвердить
                 </button>
-                <button onClick={() => setConfirmGenerate(false)} className="text-xs text-zinc-500">Назад</button>
+                <button onClick={() => setConfirmGenerate(false)} className="text-xs text-zinc-500 dark:text-zinc-400">Назад</button>
               </>
             ) : (
               <button onClick={() => setConfirmGenerate(true)} className="rounded-md bg-accent px-2 py-1 text-xs text-white hover:bg-accent-hover">
@@ -677,24 +682,24 @@ function OccurrenceRow({
         </div>
       </div>
 
-      {uploadError && <p className="mt-2 text-xs text-red-600">{uploadError}</p>}
+      {uploadError && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{uploadError}</p>}
 
       {expanded && (
-        <div className="mt-3 space-y-2 border-t border-zinc-100 pt-3">
-          <p className="text-xs text-zinc-400">Пустое поле = будет использован получатель по умолчанию из подписки.</p>
+        <div className="mt-3 space-y-2 border-t border-zinc-100 dark:border-zinc-800 pt-3">
+          <p className="text-xs text-zinc-400 dark:text-zinc-500">Пустое поле = будет использован получатель по умолчанию из подписки.</p>
           <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
-            <input placeholder="Имя" value={override.recipient_name} onChange={(e) => setOverride((o) => ({ ...o, recipient_name: e.target.value }))} className="rounded-md border border-zinc-300 px-2 py-1 text-sm" />
-            <input placeholder="Телефон" value={override.recipient_phone} onChange={(e) => setOverride((o) => ({ ...o, recipient_phone: e.target.value }))} className="rounded-md border border-zinc-300 px-2 py-1 text-sm" />
-            <input placeholder="Адрес" value={override.address} onChange={(e) => setOverride((o) => ({ ...o, address: e.target.value }))} className="rounded-md border border-zinc-300 px-2 py-1 text-sm" />
-            <input placeholder="Город" value={override.city} onChange={(e) => setOverride((o) => ({ ...o, city: e.target.value }))} className="rounded-md border border-zinc-300 px-2 py-1 text-sm" />
-            <input placeholder="Индекс" value={override.psk} onChange={(e) => setOverride((o) => ({ ...o, psk: e.target.value }))} className="rounded-md border border-zinc-300 px-2 py-1 text-sm" />
+            <input placeholder="Имя" value={override.recipient_name} onChange={(e) => setOverride((o) => ({ ...o, recipient_name: e.target.value }))} className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1 text-sm" />
+            <input placeholder="Телефон" value={override.recipient_phone} onChange={(e) => setOverride((o) => ({ ...o, recipient_phone: e.target.value }))} className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1 text-sm" />
+            <input placeholder="Адрес" value={override.address} onChange={(e) => setOverride((o) => ({ ...o, address: e.target.value }))} className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1 text-sm" />
+            <input placeholder="Город" value={override.city} onChange={(e) => setOverride((o) => ({ ...o, city: e.target.value }))} className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1 text-sm" />
+            <input placeholder="Индекс" value={override.psk} onChange={(e) => setOverride((o) => ({ ...o, psk: e.target.value }))} className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1 text-sm" />
           </div>
           <div className="flex gap-2">
             <button onClick={saveOverride} disabled={pending} className="rounded-md bg-accent px-3 py-1 text-xs text-white hover:bg-accent-hover disabled:opacity-50">
               Сохранить получателя
             </button>
             {hasOverride && (
-              <button onClick={clearOverride} disabled={pending} className="rounded-md border border-zinc-300 px-3 py-1 text-xs text-zinc-700 hover:bg-zinc-100 disabled:opacity-50">
+              <button onClick={clearOverride} disabled={pending} className="rounded-md border border-zinc-300 dark:border-zinc-600 px-3 py-1 text-xs text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50">
                 Убрать переопределение
               </button>
             )}

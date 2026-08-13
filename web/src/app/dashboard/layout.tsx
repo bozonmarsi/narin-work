@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { ThemeToggle } from "../ThemeToggle";
 import type { User } from "@supabase/supabase-js";
 
 type Profile = {
@@ -82,18 +83,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (state.loading || !state.user) {
     return (
-      <div className="flex flex-1 items-center justify-center text-zinc-500">Загрузка…</div>
+      <div className="flex flex-1 items-center justify-center text-zinc-500 dark:text-zinc-400">Загрузка…</div>
     );
   }
 
   return (
     <DashboardContext.Provider value={{ user: state.user, profile: state.profile }}>
       <div className="flex flex-1 flex-col">
-        <header className="border-b border-zinc-200 bg-white px-6 py-4">
+        <header className="border-b border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="font-semibold">NARIN WORK</p>
-              <p className="text-sm text-zinc-500">
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">
                 {state.profile?.full_name ?? state.user.email} · {roleLabel(state.profile?.role)}
               </p>
             </div>
@@ -103,26 +104,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 onClick={() => setShowTelegramCode((v) => !v)}
                 className={`rounded-md border px-2 py-1.5 text-sm ${
                   state.profile?.telegram_chat_id
-                    ? "border-green-300 text-green-700 hover:bg-green-50"
-                    : "border-zinc-300 text-zinc-700 hover:bg-zinc-100"
+                    ? "border-green-300 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-500/10"
+                    : "border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 }`}
               >
                 {state.profile?.telegram_chat_id ? "✓ Telegram" : "Подключить Telegram"}
               </button>
               {showTelegramCode && (
-                <div className="absolute right-0 top-full z-10 mt-2 w-72 rounded-lg border border-zinc-200 bg-white p-3 text-sm shadow-lg">
+                <div className="absolute right-0 top-full z-10 mt-2 w-72 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-3 text-sm shadow-lg">
                   {state.profile?.telegram_chat_id ? (
-                    <p className="text-zinc-600">
+                    <p className="text-zinc-600 dark:text-zinc-300">
                       Telegram уже подключён — уведомления приходят туда. Чтобы переподключить к другому чату,
                       напишите новый код боту.
                     </p>
                   ) : (
-                    <p className="text-zinc-600">Уведомления в Telegram ещё не подключены.</p>
+                    <p className="text-zinc-600 dark:text-zinc-300">Уведомления в Telegram ещё не подключены.</p>
                   )}
-                  <p className="mt-2 text-zinc-600">
+                  <p className="mt-2 text-zinc-600 dark:text-zinc-300">
                     Откройте бота NARIN WORK в Telegram и отправьте:
                   </p>
-                  <p className="mt-1 rounded-md bg-zinc-100 px-2 py-1.5 font-mono text-xs">
+                  <p className="mt-1 rounded-md bg-zinc-100 dark:bg-zinc-800 px-2 py-1.5 font-mono text-xs">
                     /start {state.profile?.telegram_link_code}
                   </p>
                 </div>
@@ -133,15 +134,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   target="_blank"
                   rel="noreferrer"
                   title="Маршрут до склада"
-                  className="rounded-md border border-zinc-300 px-2 py-1.5 text-sm text-zinc-700 hover:bg-zinc-100"
+                  className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 >
                   🏭 До склада
                 </a>
               )}
+              <ThemeToggle />
               <button
                 type="button"
                 onClick={handleLogout}
-                className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-100"
+                className="rounded-md border border-zinc-300 dark:border-zinc-600 px-3 py-1.5 text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800"
               >
                 Выйти
               </button>
@@ -152,7 +154,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link
                 href="/dashboard"
                 className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-                  pathname === "/dashboard" ? "bg-accent text-white" : "text-zinc-600 hover:bg-zinc-100"
+                  pathname === "/dashboard" ? "bg-accent text-white" : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 }`}
               >
                 Заказы
@@ -160,7 +162,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link
                 href="/dashboard/archive"
                 className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-                  pathname === "/dashboard/archive" ? "bg-accent text-white" : "text-zinc-600 hover:bg-zinc-100"
+                  pathname === "/dashboard/archive" ? "bg-accent text-white" : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 }`}
               >
                 Архив
@@ -168,7 +170,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link
                 href="/dashboard/couriers"
                 className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-                  pathname === "/dashboard/couriers" ? "bg-accent text-white" : "text-zinc-600 hover:bg-zinc-100"
+                  pathname === "/dashboard/couriers" ? "bg-accent text-white" : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 }`}
               >
                 Курьеры
@@ -176,7 +178,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link
                 href="/dashboard/points"
                 className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-                  pathname === "/dashboard/points" ? "bg-accent text-white" : "text-zinc-600 hover:bg-zinc-100"
+                  pathname === "/dashboard/points" ? "bg-accent text-white" : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 }`}
               >
                 Баллы
@@ -184,7 +186,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link
                 href="/dashboard/subscriptions"
                 className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-                  pathname.startsWith("/dashboard/subscriptions") ? "bg-accent text-white" : "text-zinc-600 hover:bg-zinc-100"
+                  pathname.startsWith("/dashboard/subscriptions") ? "bg-accent text-white" : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 }`}
               >
                 Подписки
@@ -192,7 +194,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link
                 href="/dashboard/shop"
                 className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-                  pathname === "/dashboard/shop" ? "bg-accent text-white" : "text-zinc-600 hover:bg-zinc-100"
+                  pathname === "/dashboard/shop" ? "bg-accent text-white" : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 }`}
               >
                 Магазин
@@ -200,7 +202,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link
                 href="/dashboard/logs"
                 className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-                  pathname === "/dashboard/logs" ? "bg-accent text-white" : "text-zinc-600 hover:bg-zinc-100"
+                  pathname === "/dashboard/logs" ? "bg-accent text-white" : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 }`}
               >
                 Логи
@@ -208,7 +210,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </nav>
           )}
         </header>
-        <main className="flex-1 bg-zinc-50 px-6 py-6">{children}</main>
+        <main className="flex-1 bg-zinc-50 dark:bg-zinc-950 px-6 py-6">{children}</main>
       </div>
     </DashboardContext.Provider>
   );

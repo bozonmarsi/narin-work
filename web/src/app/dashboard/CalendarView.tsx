@@ -97,17 +97,17 @@ export function CalendarView({
   if (!expanded) {
     const todayOrders = byDate.get(toDateKey(todayUTC())) ?? [];
     return (
-      <div className="rounded-lg border border-zinc-200 bg-white p-4">
+      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-base font-semibold">Сегодня, {formatTitle("day", todayUTC())}</h2>
-            <p className="text-sm text-zinc-500">
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
               {loading ? "Загрузка…" : `${todayOrders.length} заказ(ов)`}
             </p>
           </div>
           <button
             onClick={() => setExpanded(true)}
-            className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm hover:bg-zinc-50"
+            className="rounded-md border border-zinc-300 dark:border-zinc-600 px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
           >
             Развернуть календарь ↓
           </button>
@@ -124,7 +124,7 @@ export function CalendarView({
               </button>
             ))}
             {todayOrders.length > 8 && (
-              <span className="self-center text-xs text-zinc-400">+{todayOrders.length - 8} ещё</span>
+              <span className="self-center text-xs text-zinc-400 dark:text-zinc-500">+{todayOrders.length - 8} ещё</span>
             )}
           </div>
         )}
@@ -133,31 +133,31 @@ export function CalendarView({
   }
 
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-4">
+    <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <button onClick={() => step(-1)} className="rounded-md border border-zinc-300 px-2 py-1 text-sm hover:bg-zinc-50">
+          <button onClick={() => step(-1)} className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
             ←
           </button>
           <button
             onClick={() => setCurrentDate(todayUTC())}
-            className="rounded-md border border-zinc-300 px-3 py-1 text-sm hover:bg-zinc-50"
+            className="rounded-md border border-zinc-300 dark:border-zinc-600 px-3 py-1 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
           >
             Сегодня
           </button>
-          <button onClick={() => step(1)} className="rounded-md border border-zinc-300 px-2 py-1 text-sm hover:bg-zinc-50">
+          <button onClick={() => step(1)} className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
             →
           </button>
           <h2 className="ml-2 text-base font-semibold">{formatTitle(viewMode, currentDate)}</h2>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex gap-1 rounded-md border border-zinc-200 p-0.5">
+          <div className="flex gap-1 rounded-md border border-zinc-200 dark:border-zinc-700 p-0.5">
             {(["day", "week", "month"] as ViewMode[]).map((mode) => (
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
                 className={`rounded px-3 py-1 text-sm ${
-                  viewMode === mode ? "bg-accent text-white" : "text-zinc-600 hover:bg-zinc-100"
+                  viewMode === mode ? "bg-accent text-white" : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 }`}
               >
                 {mode === "day" ? "День" : mode === "week" ? "Неделя" : "Месяц"}
@@ -170,16 +170,16 @@ export function CalendarView({
               setViewMode("day");
               setCurrentDate(todayUTC());
             }}
-            className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm hover:bg-zinc-50"
+            className="rounded-md border border-zinc-300 dark:border-zinc-600 px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
           >
             Свернуть ↑
           </button>
         </div>
       </div>
 
-      {error && <p className="text-red-600">Ошибка загрузки: {error}</p>}
+      {error && <p className="text-red-600 dark:text-red-400">Ошибка загрузки: {error}</p>}
       {loading ? (
-        <p className="text-zinc-500">Загрузка…</p>
+        <p className="text-zinc-500 dark:text-zinc-400">Загрузка…</p>
       ) : viewMode === "day" ? (
         <DayView date={currentDate} orders={byDate.get(toDateKey(currentDate)) ?? []} onSelect={onSelect} />
       ) : viewMode === "week" ? (
@@ -223,7 +223,7 @@ function OrderChip({ order, onSelect, compact }: { order: OrderRow; onSelect: (o
     >
       <span className="font-medium">#{order.order_id}</span> {order.subscription_id && "🔁 "}
       {order.customer_name} → {order.recipient_name}
-      {order.products_text && <span className="block text-zinc-500">{order.products_text}</span>}
+      {order.products_text && <span className="block text-zinc-500 dark:text-zinc-400">{order.products_text}</span>}
       {!compact && order.assigned_courier?.full_name && <span> · {order.assigned_courier.full_name}</span>}
     </button>
   );
@@ -256,19 +256,19 @@ function DayView({
   return (
     <div>
       {untimed.length > 0 && (
-        <div className="mb-3 space-y-1 rounded-md bg-zinc-50 p-2">
-          <p className="text-xs font-medium text-zinc-500">Без указанного времени</p>
+        <div className="mb-3 space-y-1 rounded-md bg-zinc-50 dark:bg-zinc-800 p-2">
+          <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Без указанного времени</p>
           {untimed.map((o) => (
             <OrderChip key={o.id} order={o} onSelect={onSelect} />
           ))}
         </div>
       )}
-      <div className="divide-y divide-zinc-100">
+      <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
         {HOURS.map((hour) => {
           const hourOrders = byHour.get(hour) ?? [];
           return (
             <div key={hour} className="flex gap-3 py-2">
-              <div className="w-14 shrink-0 pt-1 text-sm text-zinc-400">{hour}:00</div>
+              <div className="w-14 shrink-0 pt-1 text-sm text-zinc-400 dark:text-zinc-500">{hour}:00</div>
               <div className="flex-1 space-y-1">
                 {hourOrders.length === 0 ? (
                   <div className="h-6" />
@@ -280,7 +280,7 @@ function DayView({
           );
         })}
       </div>
-      {orders.length === 0 && <p className="mt-4 text-zinc-500">На этот день заказов нет.</p>}
+      {orders.length === 0 && <p className="mt-4 text-zinc-500 dark:text-zinc-400">На этот день заказов нет.</p>}
     </div>
   );
 }
@@ -306,15 +306,15 @@ function WeekView({
           return ra - rb;
         });
         return (
-          <div key={key} className="min-h-[100px] rounded-md border border-zinc-100 p-2">
-            <p className="mb-1 text-xs font-medium text-zinc-500">
+          <div key={key} className="min-h-[100px] rounded-md border border-zinc-100 dark:border-zinc-800 p-2">
+            <p className="mb-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">
               {WEEKDAY_LABELS[(day.getUTCDay() + 6) % 7]} {day.getUTCDate()}
             </p>
             <div className="space-y-1">
               {dayOrders.map((o) => (
                 <OrderChip key={o.id} order={o} onSelect={onSelect} compact />
               ))}
-              {dayOrders.length === 0 && <p className="text-xs text-zinc-300">—</p>}
+              {dayOrders.length === 0 && <p className="text-xs text-zinc-300 dark:text-zinc-600">—</p>}
             </div>
           </div>
         );
@@ -343,7 +343,7 @@ function MonthView({
 
   return (
     <div>
-      <div className="grid grid-cols-7 gap-2 text-center text-xs font-medium text-zinc-500">
+      <div className="grid grid-cols-7 gap-2 text-center text-xs font-medium text-zinc-500 dark:text-zinc-400">
         {WEEKDAY_LABELS.map((label) => (
           <div key={label}>{label}</div>
         ))}
@@ -358,18 +358,18 @@ function MonthView({
             <div
               key={key}
               className={`min-h-[80px] rounded-md border p-1.5 text-left ${
-                inMonth ? "border-zinc-100" : "border-transparent opacity-40"
+                inMonth ? "border-zinc-100 dark:border-zinc-800" : "border-transparent opacity-40"
               }`}
             >
               <button
                 onClick={() => onSelectDay(day)}
-                className="mb-1 flex w-full items-center justify-between text-xs font-medium text-zinc-500 hover:text-accent"
+                className="mb-1 flex w-full items-center justify-between text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-accent"
               >
                 <span>{day.getUTCDate()}</span>
                 {dayOrders.length > 0 && (
                   <span
                     className={`rounded-full px-1.5 text-[10px] ${
-                      hasAttention ? "bg-red-100 text-red-700" : "bg-accent/10 text-accent"
+                      hasAttention ? "bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400" : "bg-accent/10 text-accent"
                     }`}
                   >
                     {dayOrders.length}
@@ -381,13 +381,13 @@ function MonthView({
                   <button
                     key={o.id}
                     onClick={() => onSelectOrder(o)}
-                    className="block w-full truncate rounded bg-zinc-50 px-1 py-0.5 text-left text-[10px] text-zinc-600 hover:bg-zinc-100"
+                    className="block w-full truncate rounded bg-zinc-50 dark:bg-zinc-800 px-1 py-0.5 text-left text-[10px] text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                   >
                     #{o.order_id}
                   </button>
                 ))}
                 {dayOrders.length > 2 && (
-                  <p className="px-1 text-[10px] text-zinc-400">+{dayOrders.length - 2} ещё</p>
+                  <p className="px-1 text-[10px] text-zinc-400 dark:text-zinc-500">+{dayOrders.length - 2} ещё</p>
                 )}
               </div>
             </div>
