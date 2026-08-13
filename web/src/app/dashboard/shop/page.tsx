@@ -7,9 +7,32 @@ import { decodeHtmlEntities } from "@/lib/format";
 import { useRealtimeRefresh } from "@/lib/useRealtimeRefresh";
 
 type ClosedDate = { closed_date: string; reason: string | null };
-type Product = { id: string; name: string; rawName: string; image_url: string | null };
+type Product = {
+  id: string;
+  name: string;
+  rawName: string;
+  image_url: string | null;
+  category: string | null;
+  archived: boolean;
+};
 
 const WEEKDAY_LABELS = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
+
+const CATEGORY_OPTIONS = [
+  { value: "buket", label: "Букеты", color: "bg-pink-50 text-pink-700 ring-pink-200" },
+  { value: "set", label: "Сеты", color: "bg-purple-50 text-purple-700 ring-purple-200" },
+  { value: "ohapka", label: "Охапки", color: "bg-amber-50 text-amber-700 ring-amber-200" },
+  { value: "atelier", label: "Atelier", color: "bg-blue-50 text-blue-700 ring-blue-200" },
+  { value: "otkrytka", label: "Открытки", color: "bg-teal-50 text-teal-700 ring-teal-200" },
+];
+
+function categoryLabel(value: string | null) {
+  return CATEGORY_OPTIONS.find((c) => c.value === value)?.label ?? null;
+}
+
+function categoryColor(value: string | null) {
+  return CATEGORY_OPTIONS.find((c) => c.value === value)?.color ?? "bg-zinc-100 text-zinc-600 ring-zinc-200";
+}
 
 export default function ShopPage() {
   const { profile } = useDashboard();
@@ -28,6 +51,7 @@ export default function ShopPage() {
   const [newProductFile, setNewProductFile] = useState<File | null>(null);
   const [addingProduct, setAddingProduct] = useState(false);
   const [addProductError, setAddProductError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>("all");
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -45,7 +69,7 @@ export default function ShopPage() {
     const [productsRes, availabilityRes] = await Promise.all([
       supabase
         .from("product_stickers")
-        .select("id, product_name, image_url")
+        .select("id, product_name, image_url, category, archived")
         .order("product_name", { ascending: true }),
       supabase.from("product_availability").select("product_name"),
     ]);
@@ -57,6 +81,8 @@ export default function ShopPage() {
           name: decodeHtmlEntities(p.product_name),
           rawName: p.product_name,
           image_url: p.image_url ?? null,
+          category: p.category ?? null,
+          archived: p.archived ?? false,
         })),
     );
     setAvailableToday(new Set((availabilityRes.data ?? []).map((r) => r.product_name)));
@@ -152,16 +178,41 @@ export default function ShopPage() {
     loadAvailability();
   }
 
+  async function setCategory(productId: string, category: string) {
+    const supabase = createClient();
+    await supabase
+      .from("product_stickers")
+      .update({ category: category || null })
+      .eq("id", productId);
+    loadAvailability();
+  }
+
+  async function toggleArchived(productId: string, archived: boolean) {
+    const supabase = createClient();
+    await supabase.from("product_stickers").update({ archived: !archived }).eq("id", productId);
+    loadAvailability();
+  }
+
+  const activeProducts = useMemo(() => products.filter((p) => !p.archived), [products]);
+
   const filteredProducts = useMemo(() => {
     const q = availabilitySearch.trim().toLowerCase();
-    if (!q) return products;
-    return products.filter((p) => p.name.toLowerCase().includes(q));
-  }, [products, availabilitySearch]);
+    const base =
+      activeTab === "archive"
+        ? products.filter((p) => p.archived)
+        : activeTab === "all"
+          ? activeProducts
+          : activeProducts.filter((p) => p.category === activeTab);
+    if (!q) return base;
+    return base.filter((p) => p.name.toLowerCase().includes(q));
+  }, [products, activeProducts, availabilitySearch, activeTab]);
 
   const availableCount = useMemo(
-    () => products.filter((p) => availableToday.has(p.name)).length,
-    [products, availableToday],
+    () => activeProducts.filter((p) => availableToday.has(p.name)).length,
+    [activeProducts, availableToday],
   );
+
+  const archivedCount = useMemo(() => products.filter((p) => p.archived).length, [products]);
 
   async function toggleWeekday(day: number) {
     const supabase = createClient();
@@ -256,7 +307,7 @@ export default function ShopPage() {
             <div>
               <p className="font-medium">Товары и наличие</p>
               <p className="text-xs text-zinc-400">
-                {availableCount} из {products.length} в наличии сегодня
+                {availableCount} из {activeProducts.length} в наличии сегодня
               </p>
             </div>
             <button
@@ -270,6 +321,37 @@ export default function ShopPage() {
             Зелёная рамка = приехало сегодня, на сайте покажется «Doručíme dnes». Остальные позиции —
             «Doručíme zítra». Фото под товаром — это стикер, который клиент собирает после покупки.
           </p>
+
+          <div className="mb-3 flex flex-wrap gap-1.5">
+            <button
+              onClick={() => setActiveTab("all")}
+              className={`rounded-full px-3 py-1 text-xs font-medium ${
+                activeTab === "all" ? "bg-accent text-white" : "border border-zinc-300 text-zinc-600 hover:bg-zinc-100"
+              }`}
+            >
+              Все ({activeProducts.length})
+            </button>
+            {CATEGORY_OPTIONS.map((c) => (
+              <button
+                key={c.value}
+                onClick={() => setActiveTab(c.value)}
+                className={`rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset ${
+                  activeTab === c.value ? c.color : "text-zinc-500 ring-zinc-200 hover:bg-zinc-100"
+                }`}
+              >
+                {c.label} ({products.filter((p) => !p.archived && p.category === c.value).length})
+              </button>
+            ))}
+            <button
+              onClick={() => setActiveTab("archive")}
+              className={`rounded-full px-3 py-1 text-xs font-medium ${
+                activeTab === "archive" ? "bg-zinc-700 text-white" : "border border-zinc-300 text-zinc-500 hover:bg-zinc-100"
+              }`}
+            >
+              🗄 Архив ({archivedCount})
+            </button>
+          </div>
+
           <input
             value={availabilitySearch}
             onChange={(e) => setAvailabilitySearch(e.target.value)}
@@ -278,40 +360,43 @@ export default function ShopPage() {
           />
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-            <div className="flex flex-col gap-2 rounded-lg border border-dashed border-zinc-300 p-2.5">
-              <p className="text-xs font-medium text-zinc-500">Новый товар</p>
-              <input
-                value={newProductName}
-                onChange={(e) => setNewProductName(e.target.value)}
-                placeholder="Название"
-                className="rounded-md border border-zinc-300 px-2 py-1 text-xs"
-              />
-              <label className="cursor-pointer truncate rounded-md border border-zinc-300 px-2 py-1 text-center text-xs text-zinc-600 hover:bg-zinc-100">
-                {newProductFile ? newProductFile.name : "Фото (необязательно)"}
+            {activeTab !== "archive" && (
+              <div className="flex flex-col gap-2 rounded-lg border border-dashed border-zinc-300 p-2.5">
+                <p className="text-xs font-medium text-zinc-500">Новый товар</p>
                 <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => setNewProductFile(e.target.files?.[0] ?? null)}
+                  value={newProductName}
+                  onChange={(e) => setNewProductName(e.target.value)}
+                  placeholder="Название"
+                  className="rounded-md border border-zinc-300 px-2 py-1 text-xs"
                 />
-              </label>
-              <button
-                onClick={addProduct}
-                disabled={!newProductName.trim() || addingProduct}
-                className="rounded-md bg-accent px-2 py-1.5 text-xs font-medium text-white hover:bg-accent-hover disabled:opacity-50"
-              >
-                {addingProduct ? "Добавляю…" : "+ Добавить"}
-              </button>
-              {addProductError && <p className="text-[11px] text-red-600">{addProductError}</p>}
-            </div>
+                <label className="cursor-pointer truncate rounded-md border border-zinc-300 px-2 py-1 text-center text-xs text-zinc-600 hover:bg-zinc-100">
+                  {newProductFile ? newProductFile.name : "Фото (необязательно)"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => setNewProductFile(e.target.files?.[0] ?? null)}
+                  />
+                </label>
+                <button
+                  onClick={addProduct}
+                  disabled={!newProductName.trim() || addingProduct}
+                  className="rounded-md bg-accent px-2 py-1.5 text-xs font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+                >
+                  {addingProduct ? "Добавляю…" : "+ Добавить"}
+                </button>
+                {addProductError && <p className="text-[11px] text-red-600">{addProductError}</p>}
+              </div>
+            )}
 
             {filteredProducts.map((p) => {
               const isAvailable = availableToday.has(p.name);
+              const label = categoryLabel(p.category);
               return (
                 <div
                   key={p.id}
                   className={`flex flex-col overflow-hidden rounded-lg border bg-white ${
-                    isAvailable ? "border-green-300 ring-1 ring-green-200" : "border-zinc-200"
+                    p.archived ? "opacity-60" : isAvailable ? "border-green-300 ring-1 ring-green-200" : "border-zinc-200"
                   }`}
                 >
                   <div className="relative h-24 w-full bg-zinc-100">
@@ -320,6 +405,13 @@ export default function ShopPage() {
                       <img src={p.image_url} alt="" className="h-full w-full object-cover" />
                     ) : (
                       <div className="flex h-full items-center justify-center text-xs text-zinc-300">Нет фото</div>
+                    )}
+                    {label && (
+                      <span
+                        className={`absolute left-1 top-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${categoryColor(p.category)}`}
+                      >
+                        {label}
+                      </span>
                     )}
                     <label
                       title="Заменить фото"
@@ -341,15 +433,33 @@ export default function ShopPage() {
                   </div>
                   <div className="flex flex-1 flex-col gap-1.5 p-2">
                     <p className="line-clamp-2 text-xs font-medium text-zinc-800">{p.name}</p>
+                    <select
+                      value={p.category ?? ""}
+                      onChange={(e) => setCategory(p.id, e.target.value)}
+                      className="rounded-md border border-zinc-300 px-1.5 py-1 text-[11px] text-zinc-600"
+                    >
+                      <option value="">Без категории</option>
+                      {CATEGORY_OPTIONS.map((c) => (
+                        <option key={c.value} value={c.value}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
                     <button
                       onClick={() => toggleAvailable(p.name)}
-                      className={`mt-auto rounded-md px-2 py-1 text-xs font-medium ${
+                      className={`rounded-md px-2 py-1 text-xs font-medium ${
                         isAvailable
                           ? "bg-green-50 text-green-700 ring-1 ring-inset ring-green-200"
                           : "border border-zinc-300 text-zinc-500 hover:bg-zinc-100"
                       }`}
                     >
                       {isAvailable ? "✓ В наличии" : "Нет сегодня"}
+                    </button>
+                    <button
+                      onClick={() => toggleArchived(p.id, p.archived)}
+                      className="mt-auto text-[11px] text-zinc-400 hover:text-red-600"
+                    >
+                      {p.archived ? "↩ Вернуть из архива" : "🗄 В архив"}
                     </button>
                   </div>
                 </div>
@@ -358,7 +468,7 @@ export default function ShopPage() {
           </div>
           {uploadError && <p className="mt-2 text-xs text-red-600">{uploadError}</p>}
           {filteredProducts.length === 0 && (
-            <p className="mt-2 text-sm text-zinc-400">Ничего не найдено по этому поиску.</p>
+            <p className="mt-2 text-sm text-zinc-400">Ничего не найдено.</p>
           )}
         </div>
       </section>
