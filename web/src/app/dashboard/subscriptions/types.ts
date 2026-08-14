@@ -50,6 +50,7 @@ export type Subscription = {
   cycle_price_snapshot: number;
   mood_note: string | null;
   exclusions_note: string | null;
+  vase_exchange: boolean;
   recipient_name: string;
   recipient_phone: string;
   address: string;
