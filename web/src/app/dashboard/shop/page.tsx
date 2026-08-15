@@ -18,6 +18,7 @@ type Product = {
   flower_type: string[];
   color: string[];
   height: string | null;
+  fragrant: boolean;
 };
 
 const WEEKDAY_LABELS = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
@@ -104,6 +105,7 @@ function ProductCard({
   onToggleFlowerType,
   onToggleColor,
   onSetHeight,
+  onToggleFragrant,
   onUploadImage,
   onToggleSpecialOrder,
   onToggleArchived,
@@ -116,13 +118,16 @@ function ProductCard({
   onToggleFlowerType: (id: string, type: string) => void;
   onToggleColor: (id: string, color: string) => void;
   onSetHeight: (id: string, height: string) => void;
+  onToggleFragrant: (id: string, current: boolean) => void;
   onUploadImage: (id: string, file: File) => void;
   onToggleSpecialOrder: (id: string, current: boolean) => void;
   onToggleArchived: (id: string, current: boolean) => void;
 }) {
   const [tagsOpen, setTagsOpen] = useState(false);
   const label = categoryLabel(p.category);
-  const tagSummary = [...p.flower_type, ...p.color, p.height].filter(Boolean).join(", ");
+  const tagSummary = [...p.flower_type, ...p.color, p.height, p.fragrant ? "Voňavé" : null]
+    .filter(Boolean)
+    .join(", ");
 
   return (
     <div
@@ -246,6 +251,17 @@ function ProductCard({
                     </button>
                   );
                 })}
+                <button
+                  type="button"
+                  onClick={() => onToggleFragrant(p.id, p.fragrant)}
+                  className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                    p.fragrant
+                      ? "bg-rose-100 dark:bg-rose-500/20 text-rose-800 dark:text-rose-300"
+                      : "border border-zinc-300 dark:border-zinc-600 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                  }`}
+                >
+                  🌸 Voňavé
+                </button>
               </div>
             </div>
           )}
@@ -325,7 +341,7 @@ export default function ShopPage() {
     const [productsRes, availabilityRes] = await Promise.all([
       supabase
         .from("product_stickers")
-        .select("id, product_name, image_url, category, archived, special_order, flower_type, color, height")
+        .select("id, product_name, image_url, category, archived, special_order, flower_type, color, height, fragrant")
         .order("product_name", { ascending: true }),
       supabase.from("product_availability").select("product_name"),
     ]);
@@ -343,6 +359,7 @@ export default function ShopPage() {
           flower_type: p.flower_type ?? [],
           color: p.color ?? [],
           height: p.height ?? null,
+          fragrant: p.fragrant ?? false,
         })),
     );
     setAvailableToday(new Set((availabilityRes.data ?? []).map((r) => r.product_name)));
@@ -470,6 +487,12 @@ export default function ShopPage() {
       .from("product_stickers")
       .update({ color: next.length > 0 ? next : null })
       .eq("id", productId);
+    loadAvailability();
+  }
+
+  async function toggleFragrant(productId: string, current: boolean) {
+    const supabase = createClient();
+    await supabase.from("product_stickers").update({ fragrant: !current }).eq("id", productId);
     loadAvailability();
   }
 
@@ -746,6 +769,7 @@ export default function ShopPage() {
                 onToggleFlowerType={toggleFlowerType}
                 onToggleColor={toggleColor}
                 onSetHeight={setHeight}
+                onToggleFragrant={toggleFragrant}
                 onUploadImage={uploadStickerImage}
                 onToggleSpecialOrder={toggleSpecialOrder}
                 onToggleArchived={toggleArchived}
