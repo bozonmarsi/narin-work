@@ -16,6 +16,8 @@ type Product = {
   archived: boolean;
   special_order: boolean;
   flower_type: string | null;
+  color: string | null;
+  height: string | null;
 };
 
 const WEEKDAY_LABELS = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
@@ -61,6 +63,52 @@ const FLOWER_TYPE_OPTIONS = [
   "Chryzantéma",
 ];
 
+function normalizeForMatch(s: string) {
+  return s
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
+}
+
+// Чешские названия почти всегда содержат тип цветка прямо в тексте
+// ("Pivoňka bílá", "Tulipán žlutý") — сравниваем без учёта диакритики.
+function guessFlowerType(name: string): string | null {
+  const normalized = normalizeForMatch(name);
+  return FLOWER_TYPE_OPTIONS.find((t) => normalized.includes(normalizeForMatch(t))) ?? null;
+}
+
+// Основа слова без окончания — чешские прилагательные цвета склоняются по
+// роду (bílá/bílý/bílé), но основа одна и та же, так что сравниваем по ней.
+const COLOR_OPTIONS: { label: string; stem: string }[] = [
+  { label: "Bílá", stem: "bil" },
+  { label: "Růžová", stem: "ruzov" },
+  { label: "Červená", stem: "cerven" },
+  { label: "Žlutá", stem: "zlut" },
+  { label: "Fialová", stem: "fialov" },
+  { label: "Modrá", stem: "modr" },
+  { label: "Oranžová", stem: "oranzov" },
+  { label: "Zelená", stem: "zelen" },
+  { label: "Koralová", stem: "koralov" },
+  { label: "Bordó", stem: "bordo" },
+];
+
+function guessColor(name: string): string | null {
+  const normalized = normalizeForMatch(name);
+  return COLOR_OPTIONS.find((c) => normalized.includes(c.stem))?.label ?? null;
+}
+
+const HEIGHT_OPTIONS = ["Nízké", "Vysoké"];
+const HEIGHT_THRESHOLD_CM = 45;
+
+// Угадывается только если в названии реально есть см ("Vrba 60cm") — для
+// остальных товаров без числа в названии останется пустым, руками.
+function guessHeight(name: string): string | null {
+  const match = name.match(/(\d+)\s*cm/i);
+  if (!match) return null;
+  const cm = parseInt(match[1], 10);
+  return cm >= HEIGHT_THRESHOLD_CM ? "Vysoké" : "Nízké";
+}
+
 export default function ShopPage() {
   const { profile } = useDashboard();
 
@@ -79,6 +127,8 @@ export default function ShopPage() {
   const [addingProduct, setAddingProduct] = useState(false);
   const [addProductError, setAddProductError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("all");
+  const [autoFilling, setAutoFilling] = useState(false);
+  const [autoFillResult, setAutoFillResult] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -96,7 +146,7 @@ export default function ShopPage() {
     const [productsRes, availabilityRes] = await Promise.all([
       supabase
         .from("product_stickers")
-        .select("id, product_name, image_url, category, archived, special_order, flower_type")
+        .select("id, product_name, image_url, category, archived, special_order, flower_type, color, height")
         .order("product_name", { ascending: true }),
       supabase.from("product_availability").select("product_name"),
     ]);
@@ -112,6 +162,8 @@ export default function ShopPage() {
           archived: p.archived ?? false,
           special_order: p.special_order ?? false,
           flower_type: p.flower_type ?? null,
+          color: p.color ?? null,
+          height: p.height ?? null,
         })),
     );
     setAvailableToday(new Set((availabilityRes.data ?? []).map((r) => r.product_name)));
@@ -222,6 +274,53 @@ export default function ShopPage() {
       .from("product_stickers")
       .update({ flower_type: flowerType || null })
       .eq("id", productId);
+    loadAvailability();
+  }
+
+  async function setColor(productId: string, color: string) {
+    const supabase = createClient();
+    await supabase
+      .from("product_stickers")
+      .update({ color: color || null })
+      .eq("id", productId);
+    loadAvailability();
+  }
+
+  async function setHeight(productId: string, height: string) {
+    const supabase = createClient();
+    await supabase
+      .from("product_stickers")
+      .update({ height: height || null })
+      .eq("id", productId);
+    loadAvailability();
+  }
+
+  async function autoFillTags() {
+    setAutoFilling(true);
+    const supabase = createClient();
+    const candidates = products.filter((p) => !p.archived && p.category === "ohapka");
+    let filled = 0;
+    for (const p of candidates) {
+      const update: Record<string, string> = {};
+      if (!p.flower_type) {
+        const guessed = guessFlowerType(p.name);
+        if (guessed) update.flower_type = guessed;
+      }
+      if (!p.color) {
+        const guessed = guessColor(p.name);
+        if (guessed) update.color = guessed;
+      }
+      if (!p.height) {
+        const guessed = guessHeight(p.name);
+        if (guessed) update.height = guessed;
+      }
+      if (Object.keys(update).length > 0) {
+        await supabase.from("product_stickers").update(update).eq("id", p.id);
+        filled++;
+      }
+    }
+    setAutoFillResult(`Заполнено полей у ${filled} товаров — проверьте и поправьте, что угадалось неверно.`);
+    setAutoFilling(false);
     loadAvailability();
   }
 
@@ -354,17 +453,33 @@ export default function ShopPage() {
                 {availableCount} из {activeProducts.length} в наличии сегодня
               </p>
             </div>
-            <button
-              onClick={resetAvailability}
-              className="rounded-md border border-zinc-300 dark:border-zinc-600 px-3 py-1.5 text-xs text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-            >
-              Сбросить всё на сегодня
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={autoFillTags}
+                disabled={autoFilling}
+                className="rounded-md border border-zinc-300 dark:border-zinc-600 px-3 py-1.5 text-xs text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50"
+              >
+                {autoFilling ? "Заполняю…" : "✨ Автозаполнить по названию"}
+              </button>
+              <button
+                onClick={resetAvailability}
+                className="rounded-md border border-zinc-300 dark:border-zinc-600 px-3 py-1.5 text-xs text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              >
+                Сбросить всё на сегодня
+              </button>
+            </div>
           </div>
           <p className="mb-3 text-xs text-zinc-400 dark:text-zinc-500">
             Зелёная рамка = приехало сегодня, на сайте покажется «Doručíme dnes». Остальные позиции —
             «Doručíme zítra». Фото под товаром — это стикер, который клиент собирает после покупки.
+            Автозаполнение угадывает тип/цвет/высоту по названию только у товаров-охапок и только там,
+            где поле ещё пустое — заполненное вручную не трогает.
           </p>
+          {autoFillResult && (
+            <p className="mb-3 rounded-md bg-blue-50 dark:bg-blue-500/10 px-3 py-2 text-xs text-blue-700 dark:text-blue-400">
+              {autoFillResult}
+            </p>
+          )}
 
           <div className="mb-3 flex flex-wrap gap-1.5">
             <button
@@ -502,6 +617,34 @@ export default function ShopPage() {
                           </option>
                         ))}
                       </select>
+                    )}
+                    {p.category === "ohapka" && (
+                      <div className="flex gap-1">
+                        <select
+                          value={p.color ?? ""}
+                          onChange={(e) => setColor(p.id, e.target.value)}
+                          className="min-w-0 flex-1 rounded-md border border-zinc-300 dark:border-zinc-600 px-1.5 py-1 text-[11px] text-zinc-600 dark:text-zinc-300"
+                        >
+                          <option value="">Цвет…</option>
+                          {COLOR_OPTIONS.map((c) => (
+                            <option key={c.label} value={c.label}>
+                              {c.label}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          value={p.height ?? ""}
+                          onChange={(e) => setHeight(p.id, e.target.value)}
+                          className="min-w-0 flex-1 rounded-md border border-zinc-300 dark:border-zinc-600 px-1.5 py-1 text-[11px] text-zinc-600 dark:text-zinc-300"
+                        >
+                          <option value="">Высота…</option>
+                          {HEIGHT_OPTIONS.map((h) => (
+                            <option key={h} value={h}>
+                              {h}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     )}
                     {p.special_order ? (
                       <p className="rounded-md bg-orange-50 dark:bg-orange-500/10 px-2 py-1 text-[11px] font-medium text-orange-600 dark:text-orange-400 ring-1 ring-inset ring-orange-200 dark:ring-orange-500/30">
