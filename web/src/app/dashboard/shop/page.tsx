@@ -15,6 +15,7 @@ type Product = {
   category: string | null;
   archived: boolean;
   special_order: boolean;
+  flower_type: string | null;
 };
 
 const WEEKDAY_LABELS = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
@@ -34,6 +35,31 @@ function categoryLabel(value: string | null) {
 function categoryColor(value: string | null) {
   return CATEGORY_OPTIONS.find((c) => c.value === value)?.color ?? "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 ring-zinc-200 dark:ring-zinc-700";
 }
+
+// Тип цветка — отдельная ось тегов, нужна для кастомного фильтра на
+// странице "Охапки" на сайте (встроенный фильтр Тильды не подошёл).
+const FLOWER_TYPE_OPTIONS = [
+  "Tulipán",
+  "Karafiát",
+  "Pivoňka",
+  "Kala",
+  "Hortenzie",
+  "Hyacint",
+  "Fialka",
+  "Freesie",
+  "Narcis",
+  "Růže",
+  "Ranunkulus",
+  "Iris",
+  "Eukalyptus",
+  "Protea",
+  "Anturium",
+  "Lilie",
+  "Mimosa",
+  "Vrba",
+  "Gerbera",
+  "Chryzantéma",
+];
 
 export default function ShopPage() {
   const { profile } = useDashboard();
@@ -70,7 +96,7 @@ export default function ShopPage() {
     const [productsRes, availabilityRes] = await Promise.all([
       supabase
         .from("product_stickers")
-        .select("id, product_name, image_url, category, archived, special_order")
+        .select("id, product_name, image_url, category, archived, special_order, flower_type")
         .order("product_name", { ascending: true }),
       supabase.from("product_availability").select("product_name"),
     ]);
@@ -85,6 +111,7 @@ export default function ShopPage() {
           category: p.category ?? null,
           archived: p.archived ?? false,
           special_order: p.special_order ?? false,
+          flower_type: p.flower_type ?? null,
         })),
     );
     setAvailableToday(new Set((availabilityRes.data ?? []).map((r) => r.product_name)));
@@ -185,6 +212,15 @@ export default function ShopPage() {
     await supabase
       .from("product_stickers")
       .update({ category: category || null })
+      .eq("id", productId);
+    loadAvailability();
+  }
+
+  async function setFlowerType(productId: string, flowerType: string) {
+    const supabase = createClient();
+    await supabase
+      .from("product_stickers")
+      .update({ flower_type: flowerType || null })
       .eq("id", productId);
     loadAvailability();
   }
@@ -453,6 +489,20 @@ export default function ShopPage() {
                         </option>
                       ))}
                     </select>
+                    {p.category === "ohapka" && (
+                      <select
+                        value={p.flower_type ?? ""}
+                        onChange={(e) => setFlowerType(p.id, e.target.value)}
+                        className="rounded-md border border-zinc-300 dark:border-zinc-600 px-1.5 py-1 text-[11px] text-zinc-600 dark:text-zinc-300"
+                      >
+                        <option value="">Тип цветка…</option>
+                        {FLOWER_TYPE_OPTIONS.map((t) => (
+                          <option key={t} value={t}>
+                            {t}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                     {p.special_order ? (
                       <p className="rounded-md bg-orange-50 dark:bg-orange-500/10 px-2 py-1 text-[11px] font-medium text-orange-600 dark:text-orange-400 ring-1 ring-inset ring-orange-200 dark:ring-orange-500/30">
                         🚚 Всегда под заказ (+2 дня)
