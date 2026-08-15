@@ -15,8 +15,8 @@ type Product = {
   category: string | null;
   archived: boolean;
   special_order: boolean;
-  flower_type: string | null;
-  color: string | null;
+  flower_type: string[];
+  color: string[];
   height: string | null;
 };
 
@@ -44,23 +44,13 @@ const FLOWER_TYPE_OPTIONS = [
   "Tulipán",
   "Karafiát",
   "Pivoňka",
+  "Ranunkulus",
   "Kala",
   "Hortenzie",
   "Hyacint",
   "Fialka",
-  "Freesie",
-  "Narcis",
-  "Růže",
-  "Ranunkulus",
-  "Iris",
-  "Eukalyptus",
-  "Protea",
-  "Anturium",
-  "Lilie",
-  "Mimosa",
-  "Vrba",
-  "Gerbera",
-  "Chryzantéma",
+  "Exotika",
+  "Vytrvalé",
 ];
 
 function normalizeForMatch(s: string) {
@@ -86,10 +76,6 @@ const COLOR_OPTIONS: { label: string; stem: string }[] = [
   { label: "Žlutá", stem: "zlut" },
   { label: "Fialová", stem: "fialov" },
   { label: "Modrá", stem: "modr" },
-  { label: "Oranžová", stem: "oranzov" },
-  { label: "Zelená", stem: "zelen" },
-  { label: "Koralová", stem: "koralov" },
-  { label: "Bordó", stem: "bordo" },
 ];
 
 function guessColor(name: string): string | null {
@@ -161,8 +147,8 @@ export default function ShopPage() {
           category: p.category ?? null,
           archived: p.archived ?? false,
           special_order: p.special_order ?? false,
-          flower_type: p.flower_type ?? null,
-          color: p.color ?? null,
+          flower_type: p.flower_type ?? [],
+          color: p.color ?? [],
           height: p.height ?? null,
         })),
     );
@@ -268,20 +254,28 @@ export default function ShopPage() {
     loadAvailability();
   }
 
-  async function setFlowerType(productId: string, flowerType: string) {
+  async function toggleFlowerType(productId: string, flowerType: string) {
+    const product = products.find((p) => p.id === productId);
+    if (!product) return;
+    const next = product.flower_type.includes(flowerType)
+      ? product.flower_type.filter((t) => t !== flowerType)
+      : [...product.flower_type, flowerType];
     const supabase = createClient();
     await supabase
       .from("product_stickers")
-      .update({ flower_type: flowerType || null })
+      .update({ flower_type: next.length > 0 ? next : null })
       .eq("id", productId);
     loadAvailability();
   }
 
-  async function setColor(productId: string, color: string) {
+  async function toggleColor(productId: string, color: string) {
+    const product = products.find((p) => p.id === productId);
+    if (!product) return;
+    const next = product.color.includes(color) ? product.color.filter((c) => c !== color) : [...product.color, color];
     const supabase = createClient();
     await supabase
       .from("product_stickers")
-      .update({ color: color || null })
+      .update({ color: next.length > 0 ? next : null })
       .eq("id", productId);
     loadAvailability();
   }
@@ -301,14 +295,14 @@ export default function ShopPage() {
     const candidates = products.filter((p) => !p.archived && p.category === "ohapka");
     let filled = 0;
     for (const p of candidates) {
-      const update: Record<string, string> = {};
-      if (!p.flower_type) {
+      const update: Record<string, string | string[]> = {};
+      if (p.flower_type.length === 0) {
         const guessed = guessFlowerType(p.name);
-        if (guessed) update.flower_type = guessed;
+        if (guessed) update.flower_type = [guessed];
       }
-      if (!p.color) {
+      if (p.color.length === 0) {
         const guessed = guessColor(p.name);
-        if (guessed) update.color = guessed;
+        if (guessed) update.color = [guessed];
       }
       if (!p.height) {
         const guessed = guessHeight(p.name);
@@ -605,46 +599,60 @@ export default function ShopPage() {
                       ))}
                     </select>
                     {p.category === "ohapka" && (
+                      <div className="flex flex-wrap gap-1">
+                        {FLOWER_TYPE_OPTIONS.map((t) => {
+                          const active = p.flower_type.includes(t);
+                          return (
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => toggleFlowerType(p.id, t)}
+                              className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                                active
+                                  ? "bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300"
+                                  : "border border-zinc-300 dark:border-zinc-600 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                              }`}
+                            >
+                              {t}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {p.category === "ohapka" && (
+                      <div className="flex flex-wrap gap-1">
+                        {COLOR_OPTIONS.map((c) => {
+                          const active = p.color.includes(c.label);
+                          return (
+                            <button
+                              key={c.label}
+                              type="button"
+                              onClick={() => toggleColor(p.id, c.label)}
+                              className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                                active
+                                  ? "bg-sky-100 dark:bg-sky-500/20 text-sky-800 dark:text-sky-300"
+                                  : "border border-zinc-300 dark:border-zinc-600 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                              }`}
+                            >
+                              {c.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {p.category === "ohapka" && (
                       <select
-                        value={p.flower_type ?? ""}
-                        onChange={(e) => setFlowerType(p.id, e.target.value)}
+                        value={p.height ?? ""}
+                        onChange={(e) => setHeight(p.id, e.target.value)}
                         className="rounded-md border border-zinc-300 dark:border-zinc-600 px-1.5 py-1 text-[11px] text-zinc-600 dark:text-zinc-300"
                       >
-                        <option value="">Тип цветка…</option>
-                        {FLOWER_TYPE_OPTIONS.map((t) => (
-                          <option key={t} value={t}>
-                            {t}
+                        <option value="">Высота…</option>
+                        {HEIGHT_OPTIONS.map((h) => (
+                          <option key={h} value={h}>
+                            {h}
                           </option>
                         ))}
                       </select>
-                    )}
-                    {p.category === "ohapka" && (
-                      <div className="flex gap-1">
-                        <select
-                          value={p.color ?? ""}
-                          onChange={(e) => setColor(p.id, e.target.value)}
-                          className="min-w-0 flex-1 rounded-md border border-zinc-300 dark:border-zinc-600 px-1.5 py-1 text-[11px] text-zinc-600 dark:text-zinc-300"
-                        >
-                          <option value="">Цвет…</option>
-                          {COLOR_OPTIONS.map((c) => (
-                            <option key={c.label} value={c.label}>
-                              {c.label}
-                            </option>
-                          ))}
-                        </select>
-                        <select
-                          value={p.height ?? ""}
-                          onChange={(e) => setHeight(p.id, e.target.value)}
-                          className="min-w-0 flex-1 rounded-md border border-zinc-300 dark:border-zinc-600 px-1.5 py-1 text-[11px] text-zinc-600 dark:text-zinc-300"
-                        >
-                          <option value="">Высота…</option>
-                          {HEIGHT_OPTIONS.map((h) => (
-                            <option key={h} value={h}>
-                              {h}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
                     )}
                     {p.special_order ? (
                       <p className="rounded-md bg-orange-50 dark:bg-orange-500/10 px-2 py-1 text-[11px] font-medium text-orange-600 dark:text-orange-400 ring-1 ring-inset ring-orange-200 dark:ring-orange-500/30">
