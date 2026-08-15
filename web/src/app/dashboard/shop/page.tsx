@@ -95,6 +95,198 @@ function guessHeight(name: string): string | null {
   return cm >= HEIGHT_THRESHOLD_CM ? "Vysoké" : "Nízké";
 }
 
+function ProductCard({
+  product: p,
+  isAvailable,
+  uploadingId,
+  onToggleAvailable,
+  onSetCategory,
+  onToggleFlowerType,
+  onToggleColor,
+  onSetHeight,
+  onUploadImage,
+  onToggleSpecialOrder,
+  onToggleArchived,
+}: {
+  product: Product;
+  isAvailable: boolean;
+  uploadingId: string | null;
+  onToggleAvailable: (name: string) => void;
+  onSetCategory: (id: string, category: string) => void;
+  onToggleFlowerType: (id: string, type: string) => void;
+  onToggleColor: (id: string, color: string) => void;
+  onSetHeight: (id: string, height: string) => void;
+  onUploadImage: (id: string, file: File) => void;
+  onToggleSpecialOrder: (id: string, current: boolean) => void;
+  onToggleArchived: (id: string, current: boolean) => void;
+}) {
+  const [tagsOpen, setTagsOpen] = useState(false);
+  const label = categoryLabel(p.category);
+  const tagSummary = [...p.flower_type, ...p.color, p.height].filter(Boolean).join(", ");
+
+  return (
+    <div
+      className={`flex gap-3 rounded-lg border bg-white dark:bg-zinc-900 p-2 ${
+        p.archived ? "opacity-60" : isAvailable ? "border-green-300 ring-1 ring-green-200 dark:ring-green-500/30" : "border-zinc-200 dark:border-zinc-700"
+      }`}
+    >
+      <div className="relative h-24 w-16 flex-shrink-0 overflow-hidden rounded-md bg-zinc-100 dark:bg-zinc-800">
+        {p.image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={p.image_url} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full items-center justify-center text-center text-[10px] text-zinc-300 dark:text-zinc-600">Нет фото</div>
+        )}
+        <label
+          title="Заменить фото"
+          className="absolute right-0.5 top-0.5 cursor-pointer rounded-full bg-white/90 dark:bg-zinc-800/90 px-1 py-0.5 text-[10px] shadow hover:bg-white dark:hover:bg-zinc-700"
+        >
+          ✎
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => e.target.files?.[0] && onUploadImage(p.id, e.target.files[0])}
+          />
+        </label>
+        {uploadingId === p.id && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/70 dark:bg-zinc-900/70 text-[9px] text-zinc-500 dark:text-zinc-400">
+            Загрузка…
+          </div>
+        )}
+      </div>
+
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+        <div className="flex items-start gap-1.5">
+          <p className="line-clamp-2 flex-1 text-xs font-medium text-zinc-800 dark:text-zinc-100">{p.name}</p>
+          {label && (
+            <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${categoryColor(p.category)}`}>
+              {label}
+            </span>
+          )}
+        </div>
+
+        <select
+          value={p.category ?? ""}
+          onChange={(e) => onSetCategory(p.id, e.target.value)}
+          className="w-fit rounded-md border border-zinc-300 dark:border-zinc-600 px-1.5 py-1 text-[11px] text-zinc-600 dark:text-zinc-300"
+        >
+          <option value="">Без категории</option>
+          {CATEGORY_OPTIONS.map((c) => (
+            <option key={c.value} value={c.value}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+
+        {p.category === "ohapka" && (
+          <div>
+            <button
+              type="button"
+              onClick={() => setTagsOpen((v) => !v)}
+              className="text-left text-[11px] text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+            >
+              {tagSummary || "Метки цветка…"} {tagsOpen ? "▴" : "▾"}
+            </button>
+            {tagsOpen && (
+              <div className="mt-1.5 space-y-1.5 rounded-md border border-zinc-200 dark:border-zinc-700 p-1.5">
+                <div className="flex flex-wrap gap-1">
+                  {FLOWER_TYPE_OPTIONS.map((t) => {
+                    const active = p.flower_type.includes(t);
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => onToggleFlowerType(p.id, t)}
+                        className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                          active
+                            ? "bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300"
+                            : "border border-zinc-300 dark:border-zinc-600 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {COLOR_OPTIONS.map((c) => {
+                    const active = p.color.includes(c.label);
+                    return (
+                      <button
+                        key={c.label}
+                        type="button"
+                        onClick={() => onToggleColor(p.id, c.label)}
+                        className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                          active
+                            ? "bg-sky-100 dark:bg-sky-500/20 text-sky-800 dark:text-sky-300"
+                            : "border border-zinc-300 dark:border-zinc-600 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                        }`}
+                      >
+                        {c.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {HEIGHT_OPTIONS.map((h) => {
+                    const active = p.height === h;
+                    return (
+                      <button
+                        key={h}
+                        type="button"
+                        onClick={() => onSetHeight(p.id, active ? "" : h)}
+                        className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                          active
+                            ? "bg-violet-100 dark:bg-violet-500/20 text-violet-800 dark:text-violet-300"
+                            : "border border-zinc-300 dark:border-zinc-600 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                        }`}
+                      >
+                        {h}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="mt-auto flex flex-wrap items-center gap-2 pt-0.5">
+          {p.special_order ? (
+            <p className="rounded-md bg-orange-50 dark:bg-orange-500/10 px-2 py-1 text-[11px] font-medium text-orange-600 dark:text-orange-400 ring-1 ring-inset ring-orange-200 dark:ring-orange-500/30">
+              🚚 Всегда под заказ (+2 дня)
+            </p>
+          ) : (
+            <button
+              onClick={() => onToggleAvailable(p.name)}
+              className={`rounded-md px-2 py-1 text-xs font-medium ${
+                isAvailable
+                  ? "bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-200 dark:ring-green-500/30"
+                  : "border border-zinc-300 dark:border-zinc-600 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              }`}
+            >
+              {isAvailable ? "✓ В наличии" : "Нет сегодня"}
+            </button>
+          )}
+          <button
+            onClick={() => onToggleSpecialOrder(p.id, p.special_order)}
+            className="text-[11px] text-zinc-400 dark:text-zinc-500 hover:text-orange-600 dark:hover:text-orange-400"
+          >
+            {p.special_order ? "Убрать «под заказ»" : "🚚 Под заказ"}
+          </button>
+          <button
+            onClick={() => onToggleArchived(p.id, p.archived)}
+            className="text-[11px] text-zinc-400 dark:text-zinc-500 hover:text-red-600 dark:hover:text-red-400"
+          >
+            {p.archived ? "↩ Вернуть" : "🗄 В архив"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ShopPage() {
   const { profile } = useDashboard();
 
@@ -512,15 +704,15 @@ export default function ShopPage() {
             className="mb-3 w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
           />
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+          <div className="flex flex-col gap-2">
             {activeTab !== "archive" && (
-              <div className="flex flex-col gap-2 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-600 p-2.5">
-                <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Новый товар</p>
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-600 p-2.5">
+                <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Новый товар:</p>
                 <input
                   value={newProductName}
                   onChange={(e) => setNewProductName(e.target.value)}
                   placeholder="Название"
-                  className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1 text-xs"
+                  className="min-w-0 flex-1 rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1 text-xs"
                 />
                 <label className="cursor-pointer truncate rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1 text-center text-xs text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800">
                   {newProductFile ? newProductFile.name : "Фото (необязательно)"}
@@ -538,156 +730,26 @@ export default function ShopPage() {
                 >
                   {addingProduct ? "Добавляю…" : "+ Добавить"}
                 </button>
-                {addProductError && <p className="text-[11px] text-red-600 dark:text-red-400">{addProductError}</p>}
+                {addProductError && <p className="w-full text-[11px] text-red-600 dark:text-red-400">{addProductError}</p>}
               </div>
             )}
 
-            {filteredProducts.map((p) => {
-              const isAvailable = availableToday.has(p.name);
-              const label = categoryLabel(p.category);
-              return (
-                <div
-                  key={p.id}
-                  className={`flex flex-col overflow-hidden rounded-lg border bg-white dark:bg-zinc-900 ${
-                    p.archived ? "opacity-60" : isAvailable ? "border-green-300 ring-1 ring-green-200 dark:ring-green-500/30" : "border-zinc-200 dark:border-zinc-700"
-                  }`}
-                >
-                  <div className="relative h-24 w-full bg-zinc-100 dark:bg-zinc-800">
-                    {p.image_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.image_url} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-xs text-zinc-300 dark:text-zinc-600">Нет фото</div>
-                    )}
-                    {label && (
-                      <span
-                        className={`absolute left-1 top-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${categoryColor(p.category)}`}
-                      >
-                        {label}
-                      </span>
-                    )}
-                    <label
-                      title="Заменить фото"
-                      className="absolute right-1 top-1 cursor-pointer rounded-full bg-white/90 dark:bg-zinc-800/90 px-1.5 py-1 text-xs shadow hover:bg-white dark:hover:bg-zinc-700"
-                    >
-                      ✎
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => e.target.files?.[0] && uploadStickerImage(p.id, e.target.files[0])}
-                      />
-                    </label>
-                    {uploadingId === p.id && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-white/70 dark:bg-zinc-900/70 text-xs text-zinc-500 dark:text-zinc-400">
-                        Загрузка…
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex flex-1 flex-col gap-1.5 p-2">
-                    <p className="line-clamp-2 text-xs font-medium text-zinc-800 dark:text-zinc-100">{p.name}</p>
-                    <select
-                      value={p.category ?? ""}
-                      onChange={(e) => setCategory(p.id, e.target.value)}
-                      className="rounded-md border border-zinc-300 dark:border-zinc-600 px-1.5 py-1 text-[11px] text-zinc-600 dark:text-zinc-300"
-                    >
-                      <option value="">Без категории</option>
-                      {CATEGORY_OPTIONS.map((c) => (
-                        <option key={c.value} value={c.value}>
-                          {c.label}
-                        </option>
-                      ))}
-                    </select>
-                    {p.category === "ohapka" && (
-                      <div className="flex flex-wrap gap-1">
-                        {FLOWER_TYPE_OPTIONS.map((t) => {
-                          const active = p.flower_type.includes(t);
-                          return (
-                            <button
-                              key={t}
-                              type="button"
-                              onClick={() => toggleFlowerType(p.id, t)}
-                              className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
-                                active
-                                  ? "bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300"
-                                  : "border border-zinc-300 dark:border-zinc-600 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                              }`}
-                            >
-                              {t}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                    {p.category === "ohapka" && (
-                      <div className="flex flex-wrap gap-1">
-                        {COLOR_OPTIONS.map((c) => {
-                          const active = p.color.includes(c.label);
-                          return (
-                            <button
-                              key={c.label}
-                              type="button"
-                              onClick={() => toggleColor(p.id, c.label)}
-                              className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
-                                active
-                                  ? "bg-sky-100 dark:bg-sky-500/20 text-sky-800 dark:text-sky-300"
-                                  : "border border-zinc-300 dark:border-zinc-600 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                              }`}
-                            >
-                              {c.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                    {p.category === "ohapka" && (
-                      <select
-                        value={p.height ?? ""}
-                        onChange={(e) => setHeight(p.id, e.target.value)}
-                        className="rounded-md border border-zinc-300 dark:border-zinc-600 px-1.5 py-1 text-[11px] text-zinc-600 dark:text-zinc-300"
-                      >
-                        <option value="">Высота…</option>
-                        {HEIGHT_OPTIONS.map((h) => (
-                          <option key={h} value={h}>
-                            {h}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                    {p.special_order ? (
-                      <p className="rounded-md bg-orange-50 dark:bg-orange-500/10 px-2 py-1 text-[11px] font-medium text-orange-600 dark:text-orange-400 ring-1 ring-inset ring-orange-200 dark:ring-orange-500/30">
-                        🚚 Всегда под заказ (+2 дня)
-                      </p>
-                    ) : (
-                      <button
-                        onClick={() => toggleAvailable(p.name)}
-                        className={`rounded-md px-2 py-1 text-xs font-medium ${
-                          isAvailable
-                            ? "bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-200 dark:ring-green-500/30"
-                            : "border border-zinc-300 dark:border-zinc-600 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                        }`}
-                      >
-                        {isAvailable ? "✓ В наличии" : "Нет сегодня"}
-                      </button>
-                    )}
-                    <div className="mt-auto flex flex-col gap-0.5">
-                      <button
-                        onClick={() => toggleSpecialOrder(p.id, p.special_order)}
-                        className="text-left text-[11px] text-zinc-400 dark:text-zinc-500 hover:text-orange-600 dark:hover:text-orange-400"
-                      >
-                        {p.special_order ? "Убрать «под заказ»" : "🚚 Отметить «под заказ»"}
-                      </button>
-                      <button
-                        onClick={() => toggleArchived(p.id, p.archived)}
-                        className="text-left text-[11px] text-zinc-400 dark:text-zinc-500 hover:text-red-600 dark:hover:text-red-400"
-                      >
-                        {p.archived ? "↩ Вернуть из архива" : "🗄 В архив"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {filteredProducts.map((p) => (
+              <ProductCard
+                key={p.id}
+                product={p}
+                isAvailable={availableToday.has(p.name)}
+                uploadingId={uploadingId}
+                onToggleAvailable={toggleAvailable}
+                onSetCategory={setCategory}
+                onToggleFlowerType={toggleFlowerType}
+                onToggleColor={toggleColor}
+                onSetHeight={setHeight}
+                onUploadImage={uploadStickerImage}
+                onToggleSpecialOrder={toggleSpecialOrder}
+                onToggleArchived={toggleArchived}
+              />
+            ))}
           </div>
           {uploadError && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{uploadError}</p>}
           {filteredProducts.length === 0 && (
