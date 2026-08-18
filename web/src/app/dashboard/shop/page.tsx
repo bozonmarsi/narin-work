@@ -26,7 +26,7 @@ const WEEKDAY_LABELS = ["Воскресенье", "Понедельник", "В�
 const CATEGORY_OPTIONS = [
   { value: "buket", label: "Букеты", color: "bg-pink-50 dark:bg-pink-500/10 text-pink-700 dark:text-pink-400 ring-pink-200 dark:ring-pink-500/30" },
   { value: "set", label: "Сеты", color: "bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 ring-purple-200 dark:ring-purple-500/30" },
-  { value: "ohapka", label: "Охапки", color: "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 ring-amber-200 dark:ring-amber-500/30" },
+  { value: "ohapka", label: "Náruče", color: "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 ring-amber-200 dark:ring-amber-500/30" },
   { value: "atelier", label: "Atelier", color: "bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 ring-blue-200 dark:ring-blue-500/30" },
   { value: "otkrytka", label: "Открытки", color: "bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-400 ring-teal-200 dark:ring-teal-500/30" },
   { value: "kolekce", label: "Kolekce", color: "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-emerald-200 dark:ring-emerald-500/30" },
