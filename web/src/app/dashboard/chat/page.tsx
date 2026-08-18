@@ -134,6 +134,20 @@ export default function ChatPage() {
     setSending(false);
   }
 
+  async function toggleStatus() {
+    if (!selected) return;
+    const nextStatus = selected.status === "open" ? "closed" : "open";
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("support_conversations")
+      .update({ status: nextStatus })
+      .eq("id", selected.id);
+    if (!error) {
+      setSelected((s) => (s ? { ...s, status: nextStatus } : s));
+      setConversations((list) => list.map((c) => (c.id === selected.id ? { ...c, status: nextStatus } : c)));
+    }
+  }
+
   if (profile?.role !== "manager") {
     return null;
   }
@@ -162,7 +176,9 @@ export default function ChatPage() {
               }`}
             >
               <div className="flex items-center justify-between gap-2">
-                <span className={`truncate ${c.unread_by_manager ? "font-semibold" : "font-medium"}`}>{c.email}</span>
+                <span className={`truncate ${c.unread_by_manager ? "font-semibold" : "font-medium"} ${c.status === "closed" ? "text-zinc-400 dark:text-zinc-500" : ""}`}>
+                  {c.email}
+                </span>
                 {c.unread_by_manager && <span className="h-2 w-2 flex-shrink-0 rounded-full bg-accent" />}
               </div>
               <p className="mt-0.5 truncate text-xs text-zinc-500 dark:text-zinc-400">{c.last_message_preview ?? "—"}</p>
@@ -182,18 +198,33 @@ export default function ChatPage() {
         {selected && (
           <>
             <div className="border-b border-zinc-200 dark:border-zinc-700 p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">{customerName ?? selected.email}</p>
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium truncate">{customerName ?? selected.email}</p>
+                    {selected.status === "closed" && (
+                      <span className="flex-shrink-0 rounded-full bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 text-[10px] font-medium text-zinc-500 dark:text-zinc-400">
+                        Закрыт
+                      </span>
+                    )}
+                  </div>
                   {customerName && <p className="text-xs text-zinc-500 dark:text-zinc-400">{selected.email}</p>}
                 </div>
-                <div className="text-right text-xs text-zinc-500 dark:text-zinc-400">
-                  {pointsBalance !== undefined && pointsBalance !== null && <p>Баланс баллов: {pointsBalance}</p>}
-                  {orders.length === 0 && pointsBalance === null ? (
-                    <p className="text-amber-600 dark:text-amber-400">Незарегистрирован</p>
-                  ) : (
-                    <p>{orders.length} заказ(ов) в истории</p>
-                  )}
+                <div className="flex flex-shrink-0 items-center gap-3">
+                  <div className="text-right text-xs text-zinc-500 dark:text-zinc-400">
+                    {pointsBalance !== undefined && pointsBalance !== null && <p>Баланс баллов: {pointsBalance}</p>}
+                    {orders.length === 0 && pointsBalance === null ? (
+                      <p className="text-amber-600 dark:text-amber-400">Незарегистрирован</p>
+                    ) : (
+                      <p>{orders.length} заказ(ов) в истории</p>
+                    )}
+                  </div>
+                  <button
+                    onClick={toggleStatus}
+                    className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2.5 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                  >
+                    {selected.status === "open" ? "Закрыть чат" : "Открыть снова"}
+                  </button>
                 </div>
               </div>
               {orders.length > 0 && (
