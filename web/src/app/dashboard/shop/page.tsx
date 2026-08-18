@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useDashboard } from "../layout";
 import { decodeHtmlEntities } from "@/lib/format";
@@ -22,7 +21,12 @@ type Product = {
   fragrant: boolean;
   badge_text: string | null;
   badge_color: string | null;
+  quantity: number | null;
 };
+
+// Ниже этого остатка на сайте сама встаёт плашка "Zbývá N ks" — если
+// менеджер не поставил свою плашку руками (та в приоритете).
+const LOW_STOCK_THRESHOLD = 3;
 
 // Готовые цвета для кастомной плашки на карточке товара на сайте —
 // заведомо читаемые с белым текстом поверх фото.
@@ -125,6 +129,7 @@ function ProductCard({
   onToggleSpecialOrder,
   onToggleArchived,
   onSetBadge,
+  onAddDelivery,
 }: {
   product: Product;
   isAvailable: boolean;
@@ -139,6 +144,7 @@ function ProductCard({
   onToggleSpecialOrder: (id: string, current: boolean) => void;
   onToggleArchived: (id: string, current: boolean) => void;
   onSetBadge: (id: string, text: string | null, color: string | null) => void;
+  onAddDelivery: (id: string, delta: number) => void;
 }) {
   const [tagsOpen, setTagsOpen] = useState(false);
   const [badgeOpen, setBadgeOpen] = useState(false);
@@ -287,46 +293,73 @@ function ProductCard({
         </div>
 
         <div>
-          {p.badge_text ? (
-            <div className="flex items-center gap-1">
-              <span
-                className="w-fit rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-white"
-                style={{ backgroundColor: p.badge_color ?? BADGE_COLOR_OPTIONS[0].value }}
-              >
-                {p.badge_text}
-              </span>
+          <div className="flex items-center justify-between gap-1">
+            {p.badge_text ? (
+              <div className="flex items-center gap-1">
+                <span
+                  className="w-fit rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-white"
+                  style={{ backgroundColor: p.badge_color ?? BADGE_COLOR_OPTIONS[0].value }}
+                >
+                  {p.badge_text}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBadgeDraftText(p.badge_text ?? "");
+                    setBadgeDraftColor(p.badge_color ?? BADGE_COLOR_OPTIONS[0].value);
+                    setBadgeOpen((v) => !v);
+                  }}
+                  className="text-[10px] text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200"
+                >
+                  {badgeOpen ? "▴" : "✎"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSetBadge(p.id, null, null)}
+                  className="text-[10px] text-zinc-400 dark:text-zinc-500 hover:text-red-600 dark:hover:text-red-400"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
               <button
                 type="button"
                 onClick={() => {
-                  setBadgeDraftText(p.badge_text ?? "");
-                  setBadgeDraftColor(p.badge_color ?? BADGE_COLOR_OPTIONS[0].value);
+                  setBadgeDraftText("");
+                  setBadgeDraftColor(BADGE_COLOR_OPTIONS[0].value);
                   setBadgeOpen((v) => !v);
                 }}
-                className="text-[10px] text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200"
+                className="text-left text-[10px] text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
               >
-                {badgeOpen ? "▴" : "✎"}
+                + Добавить плашку {badgeOpen ? "▴" : "▾"}
               </button>
+            )}
+
+            <div
+              className={`flex shrink-0 items-center gap-0.5 rounded-md ring-1 ring-inset ${
+                p.quantity !== null && p.quantity < LOW_STOCK_THRESHOLD
+                  ? "ring-orange-300 dark:ring-orange-500/40"
+                  : "ring-zinc-200 dark:ring-zinc-700"
+              }`}
+              title="Наличие (шт.)"
+            >
               <button
                 type="button"
-                onClick={() => onSetBadge(p.id, null, null)}
-                className="text-[10px] text-zinc-400 dark:text-zinc-500 hover:text-red-600 dark:hover:text-red-400"
+                onClick={() => onAddDelivery(p.id, -1)}
+                className="px-1.5 py-0.5 text-[10px] text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100"
               >
-                ✕
+                −
+              </button>
+              <span className="w-4 text-center text-[10px] font-medium text-zinc-700 dark:text-zinc-200">{p.quantity ?? "—"}</span>
+              <button
+                type="button"
+                onClick={() => onAddDelivery(p.id, 1)}
+                className="px-1.5 py-0.5 text-[10px] text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100"
+              >
+                +
               </button>
             </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                setBadgeDraftText("");
-                setBadgeDraftColor(BADGE_COLOR_OPTIONS[0].value);
-                setBadgeOpen((v) => !v);
-              }}
-              className="text-left text-[10px] text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
-            >
-              + Добавить плашку {badgeOpen ? "▴" : "▾"}
-            </button>
-          )}
+          </div>
           {badgeOpen && (
             <div className="mt-1 space-y-1 rounded-md border border-zinc-200 dark:border-zinc-700 p-1.5">
               <input
@@ -445,7 +478,7 @@ export default function ShopPage() {
     const [productsRes, availabilityRes] = await Promise.all([
       supabase
         .from("product_stickers")
-        .select("id, product_name, image_url, category, archived, special_order, flower_type, color, height, fragrant, badge_text, badge_color")
+        .select("id, product_name, image_url, category, archived, special_order, flower_type, color, height, fragrant, badge_text, badge_color, quantity")
         .order("product_name", { ascending: true }),
       supabase.from("product_availability").select("product_name"),
     ]);
@@ -466,6 +499,7 @@ export default function ShopPage() {
           fragrant: p.fragrant ?? false,
           badge_text: p.badge_text ?? null,
           badge_color: p.badge_color ?? null,
+          quantity: p.quantity ?? null,
         })),
     );
     setAvailableToday(new Set((availabilityRes.data ?? []).map((r) => r.product_name)));
@@ -576,6 +610,15 @@ export default function ShopPage() {
       .from("product_stickers")
       .update({ badge_text: text, badge_color: text ? color : null })
       .eq("id", productId);
+    loadAvailability();
+  }
+
+  async function addDelivery(productId: string, delta: number) {
+    const product = products.find((p) => p.id === productId);
+    if (!product) return;
+    const next = Math.max(0, (product.quantity ?? 0) + delta);
+    const supabase = createClient();
+    await supabase.from("product_stickers").update({ quantity: next }).eq("id", productId);
     loadAvailability();
   }
 
@@ -711,15 +754,7 @@ export default function ShopPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">Магазин</h1>
-        <Link
-          href="/dashboard/shop/inventory"
-          className="rounded-md border border-zinc-300 dark:border-zinc-600 px-3 py-1.5 text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-        >
-          📦 Наличие
-        </Link>
-      </div>
+      <h1 className="text-lg font-semibold">Магазин</h1>
       <p className="text-xs text-zinc-400 dark:text-zinc-500">
         Эти дни используются при расчёте дат доставок для подписок (нерабочие дни автоматически пропускаются).
       </p>
@@ -897,6 +932,7 @@ export default function ShopPage() {
                 onToggleSpecialOrder={toggleSpecialOrder}
                 onToggleArchived={toggleArchived}
                 onSetBadge={setBadge}
+                onAddDelivery={addDelivery}
               />
             ))}
           </div>
