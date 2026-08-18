@@ -29,6 +29,8 @@ const CATEGORY_OPTIONS = [
   { value: "ohapka", label: "Охапки", color: "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 ring-amber-200 dark:ring-amber-500/30" },
   { value: "atelier", label: "Atelier", color: "bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 ring-blue-200 dark:ring-blue-500/30" },
   { value: "otkrytka", label: "Открытки", color: "bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-400 ring-teal-200 dark:ring-teal-500/30" },
+  { value: "kolekce", label: "Kolekce", color: "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-emerald-200 dark:ring-emerald-500/30" },
+  { value: "banky", label: "Banky", color: "bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400 ring-sky-200 dark:ring-sky-500/30" },
 ];
 
 function categoryLabel(value: string | null) {
@@ -184,15 +186,14 @@ function ProductCard({
         </div>
       </div>
 
-      {p.category === "ohapka" && (
-        <div>
-          <button
-            type="button"
-            onClick={() => setTagsOpen((v) => !v)}
-            className="line-clamp-1 text-left text-[10px] text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
-          >
-            {tagSummary || "Метки цветка…"} {tagsOpen ? "▴" : "▾"}
-          </button>
+      <div>
+        <button
+          type="button"
+          onClick={() => setTagsOpen((v) => !v)}
+          className="line-clamp-1 text-left text-[10px] text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+        >
+          {tagSummary || "Метки цветка…"} {tagsOpen ? "▴" : "▾"}
+        </button>
           {tagsOpen && (
             <div className="mt-1 space-y-1 rounded-md border border-zinc-200 dark:border-zinc-700 p-1.5">
               <div className="flex flex-wrap gap-1">
@@ -266,7 +267,6 @@ function ProductCard({
             </div>
           )}
         </div>
-      )}
 
       <div className="mt-auto flex flex-col gap-1 pt-0.5">
         {p.special_order ? (
