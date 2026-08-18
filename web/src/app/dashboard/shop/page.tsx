@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useDashboard } from "../layout";
 import { decodeHtmlEntities } from "@/lib/format";
@@ -26,12 +27,11 @@ type Product = {
 // Готовые цвета для кастомной плашки на карточке товара на сайте —
 // заведомо читаемые с белым текстом поверх фото.
 const BADGE_COLOR_OPTIONS = [
-  { value: "#186ce0", label: "Синий" },
-  { value: "#00cc00", label: "Зелёный" },
-  { value: "#ff2a20", label: "Красный" },
-  { value: "#ff9500", label: "Оранжевый" },
-  { value: "#8b5cf6", label: "Фиолетовый" },
-  { value: "#16181d", label: "Чёрный" },
+  { value: "#02e590", label: "Мятный" },
+  { value: "#ff2b21", label: "Красный" },
+  { value: "#2a9a48", label: "Зелёный" },
+  { value: "#ff7c76", label: "Розовый" },
+  { value: "#196fe3", label: "Синий" },
 ];
 
 const WEEKDAY_LABELS = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
@@ -711,7 +711,15 @@ export default function ShopPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-lg font-semibold">Магазин</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-lg font-semibold">Магазин</h1>
+        <Link
+          href="/dashboard/shop/inventory"
+          className="rounded-md border border-zinc-300 dark:border-zinc-600 px-3 py-1.5 text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+        >
+          📦 Наличие
+        </Link>
+      </div>
       <p className="text-xs text-zinc-400 dark:text-zinc-500">
         Эти дни используются при расчёте дат доставок для подписок (нерабочие дни автоматически пропускаются).
       </p>
