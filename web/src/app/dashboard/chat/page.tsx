@@ -87,10 +87,10 @@ export default function ChatPage() {
       supabase
         .from("tilda_orders")
         .select("order_id, customer_name, customer_last_name, order_total, status, created_at")
-        .eq("customer_email", email)
+        .ilike("customer_email", email)
         .order("created_at", { ascending: false })
         .limit(10),
-      supabase.from("Tilda points").select("balance").eq("email", email).maybeSingle(),
+      supabase.from("Tilda points").select("balance").ilike("email", email).maybeSingle(),
     ]);
 
     setOrders(ordersRes.data ?? []);
