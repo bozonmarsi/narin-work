@@ -19,7 +19,20 @@ type Product = {
   color: string[];
   height: string | null;
   fragrant: boolean;
+  badge_text: string | null;
+  badge_color: string | null;
 };
+
+// Готовые цвета для кастомной плашки на карточке товара на сайте —
+// заведомо читаемые с белым текстом поверх фото.
+const BADGE_COLOR_OPTIONS = [
+  { value: "#186ce0", label: "Синий" },
+  { value: "#00cc00", label: "Зелёный" },
+  { value: "#ff2a20", label: "Красный" },
+  { value: "#ff9500", label: "Оранжевый" },
+  { value: "#8b5cf6", label: "Фиолетовый" },
+  { value: "#16181d", label: "Чёрный" },
+];
 
 const WEEKDAY_LABELS = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
 
@@ -111,6 +124,7 @@ function ProductCard({
   onUploadImage,
   onToggleSpecialOrder,
   onToggleArchived,
+  onSetBadge,
 }: {
   product: Product;
   isAvailable: boolean;
@@ -124,8 +138,12 @@ function ProductCard({
   onUploadImage: (id: string, file: File) => void;
   onToggleSpecialOrder: (id: string, current: boolean) => void;
   onToggleArchived: (id: string, current: boolean) => void;
+  onSetBadge: (id: string, text: string | null, color: string | null) => void;
 }) {
   const [tagsOpen, setTagsOpen] = useState(false);
+  const [badgeOpen, setBadgeOpen] = useState(false);
+  const [badgeDraftText, setBadgeDraftText] = useState(p.badge_text ?? "");
+  const [badgeDraftColor, setBadgeDraftColor] = useState(p.badge_color ?? BADGE_COLOR_OPTIONS[0].value);
   const label = categoryLabel(p.category);
   const tagSummary = [...p.flower_type, ...p.color, p.height, p.fragrant ? "Voňavé" : null]
     .filter(Boolean)
@@ -268,6 +286,92 @@ function ProductCard({
           )}
         </div>
 
+        <div>
+          {p.badge_text ? (
+            <div className="flex items-center gap-1">
+              <span
+                className="w-fit rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-white"
+                style={{ backgroundColor: p.badge_color ?? BADGE_COLOR_OPTIONS[0].value }}
+              >
+                {p.badge_text}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setBadgeDraftText(p.badge_text ?? "");
+                  setBadgeDraftColor(p.badge_color ?? BADGE_COLOR_OPTIONS[0].value);
+                  setBadgeOpen((v) => !v);
+                }}
+                className="text-[10px] text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200"
+              >
+                {badgeOpen ? "▴" : "✎"}
+              </button>
+              <button
+                type="button"
+                onClick={() => onSetBadge(p.id, null, null)}
+                className="text-[10px] text-zinc-400 dark:text-zinc-500 hover:text-red-600 dark:hover:text-red-400"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setBadgeDraftText("");
+                setBadgeDraftColor(BADGE_COLOR_OPTIONS[0].value);
+                setBadgeOpen((v) => !v);
+              }}
+              className="text-left text-[10px] text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+            >
+              + Добавить плашку {badgeOpen ? "▴" : "▾"}
+            </button>
+          )}
+          {badgeOpen && (
+            <div className="mt-1 space-y-1 rounded-md border border-zinc-200 dark:border-zinc-700 p-1.5">
+              <input
+                value={badgeDraftText}
+                onChange={(e) => setBadgeDraftText(e.target.value)}
+                placeholder="Например: Začátek sezóny"
+                maxLength={30}
+                className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-1.5 py-0.5 text-[10px] text-zinc-700 dark:text-zinc-200"
+              />
+              <div className="flex flex-wrap gap-1">
+                {BADGE_COLOR_OPTIONS.map((c) => (
+                  <button
+                    key={c.value}
+                    type="button"
+                    title={c.label}
+                    onClick={() => setBadgeDraftColor(c.value)}
+                    className={`h-5 w-5 rounded-full ${badgeDraftColor === c.value ? "ring-2 ring-offset-1 ring-zinc-500 dark:ring-zinc-300 dark:ring-offset-zinc-900" : ""}`}
+                    style={{ backgroundColor: c.value }}
+                  />
+                ))}
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  disabled={!badgeDraftText.trim()}
+                  onClick={() => {
+                    onSetBadge(p.id, badgeDraftText.trim(), badgeDraftColor);
+                    setBadgeOpen(false);
+                  }}
+                  className="rounded-md bg-accent px-2 py-0.5 text-[10px] font-medium text-white disabled:opacity-40"
+                >
+                  Uložit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBadgeOpen(false)}
+                  className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-0.5 text-[10px] text-zinc-600 dark:text-zinc-300"
+                >
+                  Zrušit
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
       <div className="mt-auto flex flex-col gap-1 pt-0.5">
         {p.special_order ? (
           <p className="rounded-md bg-orange-50 dark:bg-orange-500/10 px-2 py-1 text-[11px] font-medium text-orange-600 dark:text-orange-400 ring-1 ring-inset ring-orange-200 dark:ring-orange-500/30">
@@ -341,7 +445,7 @@ export default function ShopPage() {
     const [productsRes, availabilityRes] = await Promise.all([
       supabase
         .from("product_stickers")
-        .select("id, product_name, image_url, category, archived, special_order, flower_type, color, height, fragrant")
+        .select("id, product_name, image_url, category, archived, special_order, flower_type, color, height, fragrant, badge_text, badge_color")
         .order("product_name", { ascending: true }),
       supabase.from("product_availability").select("product_name"),
     ]);
@@ -360,6 +464,8 @@ export default function ShopPage() {
           color: p.color ?? [],
           height: p.height ?? null,
           fragrant: p.fragrant ?? false,
+          badge_text: p.badge_text ?? null,
+          badge_color: p.badge_color ?? null,
         })),
     );
     setAvailableToday(new Set((availabilityRes.data ?? []).map((r) => r.product_name)));
@@ -460,6 +566,15 @@ export default function ShopPage() {
     await supabase
       .from("product_stickers")
       .update({ category: category || null })
+      .eq("id", productId);
+    loadAvailability();
+  }
+
+  async function setBadge(productId: string, text: string | null, color: string | null) {
+    const supabase = createClient();
+    await supabase
+      .from("product_stickers")
+      .update({ badge_text: text, badge_color: text ? color : null })
       .eq("id", productId);
     loadAvailability();
   }
@@ -773,6 +888,7 @@ export default function ShopPage() {
                 onUploadImage={uploadStickerImage}
                 onToggleSpecialOrder={toggleSpecialOrder}
                 onToggleArchived={toggleArchived}
+                onSetBadge={setBadge}
               />
             ))}
           </div>
