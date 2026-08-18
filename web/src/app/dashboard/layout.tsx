@@ -184,6 +184,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 Баллы
               </Link>
               <Link
+                href="/dashboard/chat"
+                className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+                  pathname === "/dashboard/chat" ? "bg-accent text-white" : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                }`}
+              >
+                Чат
+              </Link>
+              <Link
                 href="/dashboard/subscriptions"
                 className={`rounded-md px-3 py-1.5 text-sm font-medium ${
                   pathname.startsWith("/dashboard/subscriptions") ? "bg-accent text-white" : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
