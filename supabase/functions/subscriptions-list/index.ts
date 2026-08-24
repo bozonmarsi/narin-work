@@ -45,11 +45,19 @@ Deno.serve(async (req) => {
     if (ids.length > 0) {
       const { data: occs, error: occErr } = await supabase
         .from("subscription_occurrences")
-        .select("id, subscription_id, occurrence_date, status, preview_photo_url")
+        .select("id, subscription_id, occurrence_date, status, preview_photo_url, order_id, tilda_orders(status)")
         .in("subscription_id", ids)
         .order("occurrence_date");
       if (occErr) return json({ error: occErr.message }, 500);
-      occurrences = occs ?? [];
+      // Flatten the embedded order status — "delivered" here is the only
+      // thing that should ever render as a completed (green) delivery on
+      // the client; occurrence.status just tracks whether an order exists
+      // yet, not whether it actually arrived.
+      occurrences = (occs ?? []).map((o) => {
+        const order = o.tilda_orders as { status: string | null } | null;
+        const { tilda_orders, ...rest } = o;
+        return { ...rest, order_status: order?.status ?? null };
+      });
     }
 
     const result = (subs ?? []).map((s) => ({

@@ -1,11 +1,11 @@
-// Narin flower shop — safety-net job for "Předplatné".
+// Narin flower shop \u2014 safety-net job for "P\u0159edplatn\u00e9".
 // The primary path now generates every order for a cycle immediately, right
 // when its dates are created (in the Stripe webhook and in the manager
-// cabinet) — this function no longer carries the normal-case load. It just
+// cabinet) \u2014 this function no longer carries the normal-case load. It just
 // catches anything that fell through (a transient error during the primary
 // insert, a subscription created some other way) by finding any planned
 // occurrence that still has no linked order, regardless of how far away its
-// date is, and generating it. Runs daily via pg_cron — see the migration.
+// date is, and generating it. Runs daily via pg_cron \u2014 see the migration.
 // Deploy: supabase functions deploy subscriptions-generate-orders --no-verify-jwt
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -51,16 +51,16 @@ Deno.serve(async () => {
         cislo_bytu: occ.cislo_bytu ?? sub.cislo_bytu,
         kod_intercomu: occ.kod_intercomu ?? sub.kod_intercomu,
         delivery_date: occ.occurrence_date,
-        delivery_type: "Doručení kurýrem (předplatné)",
-        products_text: `${sub.line_name_snapshot} · ${SIZE_LABELS[sub.size] ?? sub.size} (předplatné)`,
+        delivery_type: "Doru\u010den\u00ed kur\u00fdrem (p\u0159edplatn\u00e9)",
+        products_text: `${sub.line_name_snapshot} \u00b7 ${SIZE_LABELS[sub.size] ?? sub.size} (p\u0159edplatn\u00e9)`,
         goods_total: sub.price_per_delivery_snapshot,
         order_total: sub.price_per_delivery_snapshot,
-        payment_status: "🟢 Оплачено",
+        payment_status: "\ud83d\udfe2 \u041e\u043f\u043b\u0430\u0447\u0435\u043d\u043e",
         raw_payload: {
           payment: {
             products: [
               {
-                name: `${sub.line_name_snapshot} · ${SIZE_LABELS[sub.size] ?? sub.size} (předplatné)`,
+                name: `${sub.line_name_snapshot} \u00b7 ${SIZE_LABELS[sub.size] ?? sub.size} (p\u0159edplatn\u00e9)`,
                 price: String(sub.price_per_delivery_snapshot),
                 quantity: 1,
               },
@@ -69,7 +69,7 @@ Deno.serve(async () => {
             amount: String(sub.price_per_delivery_snapshot),
           },
         },
-        manager_comment: "Vygenerováno automaticky z předplatného, již uhrazeno v rámci cyklu.",
+        manager_comment: "Vygenerov\u00e1no automaticky z p\u0159edplatn\u00e9ho, ji\u017e uhrazeno v r\u00e1mci cyklu.",
         subscription_id: sub.id,
         status: "new",
       })
@@ -84,7 +84,7 @@ Deno.serve(async () => {
     await supabase.from("subscription_occurrences").update({ order_id: newOrder.id, status: "generated" }).eq("id", occ.id);
     await supabase.from("subscription_history").insert({
       subscription_id: sub.id,
-      note: `Automaticky vytvořena objednávka pro termín ${occ.occurrence_date}`,
+      note: `Automaticky vytvo\u0159ena objedn\u00e1vka pro term\u00edn ${occ.occurrence_date}`,
     });
     created++;
   }

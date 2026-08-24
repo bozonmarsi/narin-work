@@ -1,11 +1,11 @@
-// Narin flower shop — Stripe webhook for "Předplatné".
+// Narin flower shop \u2014 Stripe webhook for "P\u0159edplatn\u00e9".
 // Deploy: supabase functions deploy stripe-subscription-webhook --no-verify-jwt
 // (Stripe calls this directly, not through the Tilda page, so it can't send
-// our anon key — the endpoint must skip Supabase's own JWT check and rely on
+// our anon key \u2014 the endpoint must skip Supabase's own JWT check and rely on
 // the Stripe signature instead.)
 // Secrets needed: STRIPE_SECRET_KEY (same one already used by the existing
-// order webhook — same Stripe account, safe to reuse, do not overwrite it),
-// STRIPE_SUBSCRIPTION_WEBHOOK_SECRET — a NEW, separate secret from the
+// order webhook \u2014 same Stripe account, safe to reuse, do not overwrite it),
+// STRIPE_SUBSCRIPTION_WEBHOOK_SECRET \u2014 a NEW, separate secret from the
 // existing STRIPE_WEBHOOK_SECRET, because that name is already claimed by
 // the order-payments webhook endpoint and has its own signing secret; this
 // function needs its own endpoint in Stripe with its own signing secret.
@@ -20,7 +20,7 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
 
-// TESTING: pointed at the test-mode key for now — switch back to
+// TESTING: pointed at the test-mode key for now \u2014 switch back to
 // STRIPE_SECRET_KEY (live) before real customers use this.
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY_TEST")!, {
   apiVersion: "2024-06-20",
@@ -28,7 +28,7 @@ const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY_TEST")!, {
 });
 
 const cryptoProvider = Stripe.createSubtleCryptoProvider();
-// TESTING: pointed at the test-mode endpoint's signing secret — switch back
+// TESTING: pointed at the test-mode endpoint's signing secret \u2014 switch back
 // to STRIPE_SUBSCRIPTION_WEBHOOK_SECRET (live) before real customers use this.
 const webhookSecret = Deno.env.get("STRIPE_SUBSCRIPTION_WEBHOOK_SECRET_TEST")!;
 
@@ -70,7 +70,7 @@ function shiftBackward(date: Date, closedWeekdays: Set<number>, closedDates: Set
 }
 
 // Spreads `count` deliveries evenly across a 28-day cycle from anchorDateStr,
-// nudging any date that lands on a closed day forward to the next open day —
+// nudging any date that lands on a closed day forward to the next open day \u2014
 // or backward if that forward nudge would collide with the next delivery.
 function generateOccurrenceDates(
   anchorDateStr: string,
@@ -105,7 +105,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     .select("id")
     .eq("stripe_subscription_id", session.subscription as string)
     .maybeSingle();
-  if (existing) return; // webhook retry — already processed
+  if (existing) return; // webhook retry \u2014 already processed
 
   const { data: inserted, error } = await supabase
     .from("subscriptions")
@@ -120,6 +120,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       cycle_price_snapshot: Number(m.cycle_price),
       mood_note: m.mood_note || null,
       exclusions_note: m.exclusions_note || null,
+      vase_exchange: m.vase_exchange === "true",
       recipient_name: m.recipient_name,
       recipient_phone: m.recipient_phone,
       address: m.address,
@@ -164,8 +165,8 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     return;
   }
 
-  // Generate the real orders for the whole cycle immediately — not just the
-  // next few days — so purchasing/warehouse can see total upcoming flower
+  // Generate the real orders for the whole cycle immediately \u2014 not just the
+  // next few days \u2014 so purchasing/warehouse can see total upcoming flower
   // demand right away, not only 3 days before each delivery.
   const subForOrders = {
     id: inserted.id,
@@ -207,7 +208,7 @@ async function generateOrderForOccurrence(
   },
   occ: { id: string; occurrence_date: string; recipient_name?: string | null; recipient_phone?: string | null; address?: string | null; city?: string | null; psk?: string | null; patro?: string | null; company_name?: string | null; cislo_bytu?: string | null; kod_intercomu?: string | null },
 ) {
-  const label = `${sub.line_name_snapshot} · ${SIZE_LABELS[sub.size] ?? sub.size} (předplatné)`;
+  const label = `${sub.line_name_snapshot} \u00b7 ${SIZE_LABELS[sub.size] ?? sub.size} (p\u0159edplatn\u00e9)`;
 
   const { data: newOrder, error: orderErr } = await supabase
     .from("tilda_orders")
@@ -224,11 +225,11 @@ async function generateOrderForOccurrence(
       cislo_bytu: occ.cislo_bytu ?? sub.cislo_bytu,
       kod_intercomu: occ.kod_intercomu ?? sub.kod_intercomu,
       delivery_date: occ.occurrence_date,
-      delivery_type: "Doručení kurýrem (předplatné)",
+      delivery_type: "Doru\u010den\u00ed kur\u00fdrem (p\u0159edplatn\u00e9)",
       products_text: label,
       goods_total: sub.price_per_delivery_snapshot,
       order_total: sub.price_per_delivery_snapshot,
-      payment_status: "🟢 Оплачено",
+      payment_status: "\ud83d\udfe2 \u041e\u043f\u043b\u0430\u0447\u0435\u043d\u043e",
       raw_payload: {
         payment: {
           products: [{ name: label, price: String(sub.price_per_delivery_snapshot), quantity: 1 }],
@@ -236,7 +237,7 @@ async function generateOrderForOccurrence(
           amount: String(sub.price_per_delivery_snapshot),
         },
       },
-      manager_comment: "Vygenerováno automaticky z předplatného, již uhrazeno v rámci cyklu.",
+      manager_comment: "Vygenerov\u00e1no automaticky z p\u0159edplatn\u00e9ho, ji\u017e uhrazeno v r\u00e1mci cyklu.",
       subscription_id: sub.id,
       status: "new",
     })

@@ -1,7 +1,7 @@
-// Narin flower shop — "Předplatné" edge function.
+// Narin flower shop \u2014 "P\u0159edplatn\u00e9" edge function.
 // Single function, action-based, same pattern as personal-dates / customer-deposit.
 // Deploy: supabase functions deploy subscriptions
-// Requires the STRIPE_SECRET_KEY secret set (Supabase dashboard → Edge Functions → Secrets),
+// Requires the STRIPE_SECRET_KEY secret set (Supabase dashboard \u2192 Edge Functions \u2192 Secrets),
 // SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are injected automatically.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -17,7 +17,7 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
 
-// TESTING: pointed at the test-mode key for now — switch back to
+// TESTING: pointed at the test-mode key for now \u2014 switch back to
 // STRIPE_SECRET_KEY (live) before real customers use this.
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY_TEST")!, {
   apiVersion: "2024-06-20",
@@ -123,6 +123,7 @@ async function createCheckout(body: Record<string, unknown>) {
     cycle_anchor_date: cycleAnchorDate,
     mood_note: String(body.mood_note ?? ""),
     exclusions_note: String(body.exclusions_note ?? ""),
+    vase_exchange: body.vase_exchange ? "true" : "false",
     recipient_name: recipientName,
     recipient_phone: recipientPhone,
     address,
@@ -144,7 +145,7 @@ async function createCheckout(body: Record<string, unknown>) {
           unit_amount: Math.round(cyclePrice * 100),
           recurring: { interval: "week", interval_count: 4 },
           product_data: {
-            name: `${line.name} · ${size} · ${count}x/měsíc`,
+            name: `${line.name} \u00b7 ${size} \u00b7 ${count}x/m\u011bs\u00edc`,
           },
         },
         quantity: 1,
@@ -242,11 +243,11 @@ async function updateOccurrence(body: Record<string, unknown>) {
     const newDate = String(body.occurrence_date ?? "");
     const currentDateMs = new Date(occ.occurrence_date + "T00:00:00Z").getTime();
     if (currentDateMs - now < cutoffMs) {
-      return json({ error: "too_late", message: `Tuto dodávku už nelze přesunout — do doručení zbývá méně než ${RESCHEDULE_CUTOFF_HOURS} hodin.` }, 400);
+      return json({ error: "too_late", message: `Tuto dod\u00e1vku u\u017e nelze p\u0159esunout \u2014 do doru\u010den\u00ed zb\u00fdv\u00e1 m\u00e9n\u011b ne\u017e ${RESCHEDULE_CUTOFF_HOURS} hodin.` }, 400);
     }
     const targetDateMs = new Date(newDate + "T00:00:00Z").getTime();
     if (!newDate || Number.isNaN(targetDateMs) || targetDateMs - now < cutoffMs) {
-      return json({ error: "invalid_date", message: `Nové datum musí být alespoň ${RESCHEDULE_CUTOFF_HOURS} hodin dopředu.` }, 400);
+      return json({ error: "invalid_date", message: `Nov\u00e9 datum mus\u00ed b\u00fdt alespo\u0148 ${RESCHEDULE_CUTOFF_HOURS} hodin dop\u0159edu.` }, 400);
     }
     payload.occurrence_date = newDate;
   }
