@@ -160,12 +160,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 Заказы
               </Link>
               <Link
-                href="/dashboard/archive"
+                href="/dashboard/shop"
                 className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-                  pathname === "/dashboard/archive" ? "bg-accent text-white" : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                  pathname === "/dashboard/shop" ? "bg-accent text-white" : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 }`}
               >
-                Архив
+                Магазин
+              </Link>
+              <Link
+                href="/dashboard/users"
+                className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+                  pathname === "/dashboard/users" ? "bg-accent text-white" : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                }`}
+              >
+                Клиенты
               </Link>
               <Link
                 href="/dashboard/couriers"
@@ -176,12 +184,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 Курьеры
               </Link>
               <Link
-                href="/dashboard/points"
+                href="/dashboard/archive"
                 className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-                  pathname === "/dashboard/points" ? "bg-accent text-white" : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                  pathname === "/dashboard/archive" ? "bg-accent text-white" : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 }`}
               >
-                Баллы
+                Архив
               </Link>
               <Link
                 href="/dashboard/chat"
@@ -198,14 +206,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 }`}
               >
                 Подписки
-              </Link>
-              <Link
-                href="/dashboard/shop"
-                className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-                  pathname === "/dashboard/shop" ? "bg-accent text-white" : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                }`}
-              >
-                Магазин
               </Link>
               <Link
                 href="/dashboard/logs"
