@@ -25,6 +25,7 @@ type OrderRowLite = {
   created_at: string | null;
   order_total: number | null;
   status: string | null;
+  products_text: string | null;
 };
 
 type PointsRowLite = {
@@ -56,7 +57,7 @@ const RECURRENCE_OPTIONS = [
 ] as const;
 
 export default function UsersPage() {
-  const { profile } = useDashboard();
+  const { profile, user } = useDashboard();
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"balance" | "orders" | "recent">("recent");
   const [loading, setLoading] = useState(true);
@@ -197,7 +198,7 @@ export default function UsersPage() {
     const [ordersRes, pointsRes, datesRes, subRes] = await Promise.all([
       supabase
         .from("tilda_orders")
-        .select("order_id, created_at, order_total, status")
+        .select("order_id, created_at, order_total, status, products_text")
         .eq("customer_email", email)
         .order("created_at", { ascending: false })
         .limit(10),
@@ -249,6 +250,20 @@ export default function UsersPage() {
     setSelected((prev) => (prev && prev.email === email ? { ...prev, ...patch } : prev));
   }
 
+  // Кто из менеджеров и что именно поменял в карточке клиента — раньше
+  // это нигде не фиксировалось (points_transactions не хранит, кто именно
+  // начислил баллы). Пишем в отдельный журнал, не блокируя основное
+  // действие, если лог почему-то не записался.
+  async function logActivity(customerEmail: string, action: string, details: string) {
+    const supabase = createClient();
+    await supabase.from("customer_activity_log").insert({
+      actor_user_id: user.id,
+      customer_email: customerEmail,
+      action,
+      details,
+    });
+  }
+
   async function submitPoints(sign: 1 | -1) {
     if (!selected) return;
     const value = Math.abs(Number(pointsAmount));
@@ -287,6 +302,12 @@ export default function UsersPage() {
       lifetimeEarned: selected.lifetimeEarned + (sign > 0 ? value : 0),
     });
 
+    logActivity(
+      selected.email,
+      sign > 0 ? "points_accrual" : "points_redemption",
+      `${value} б.${pointsDescription ? ` · ${pointsDescription}` : ""}`
+    );
+
     setPointsAmount("");
     setPointsDescription("");
     setPointsSubmitting(false);
@@ -320,11 +341,12 @@ export default function UsersPage() {
     }
 
     updateSelectedInList(selected.email, { depositBalance: newBalance });
+    logActivity(selected.email, sign > 0 ? "deposit_topup" : "deposit_deduct", `${value} Kč`);
     setDepositAmount("");
     setDepositSubmitting(false);
   }
 
-  async function addDate(label: string, eventDate: string, recurrence: string) {
+  async function addDate(label: string, eventDate: string, recurrence: string, logAction = "date_added") {
     if (!selected) return null;
     if (!label.trim() || !eventDate) {
       return "Заполните название и дату";
@@ -337,6 +359,7 @@ export default function UsersPage() {
       recurrence,
     });
     if (error) return error.message;
+    logActivity(selected.email, logAction, `${label.trim()} — ${formatDate(eventDate)}`);
     await loadDetail(selected.email);
     return null;
   }
@@ -368,17 +391,18 @@ export default function UsersPage() {
       .eq("email", selected.email);
 
     if (!birthdayErr) {
-      await addDate("День рождения", birthdayValue, "yearly");
+      await addDate("День рождения", birthdayValue, "yearly", "birthday_set");
       updateSelectedInList(selected.email, { birthday: birthdayValue });
     }
 
     setBirthdaySubmitting(false);
   }
 
-  async function deleteDate(id: string) {
+  async function deleteDate(id: string, label: string) {
     if (!selected) return;
     const supabase = createClient();
     await supabase.from("personal_dates").delete().eq("id", id);
+    logActivity(selected.email, "date_deleted", label);
     await loadDetail(selected.email);
   }
 
@@ -399,6 +423,241 @@ export default function UsersPage() {
           + Зарегистрировать нового клиента
         </a>
       </div>
+
+      {selected && (
+        <div className="space-y-4 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
+          <div>
+            <p className="font-medium">{selected.name ?? selected.email}</p>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">{selected.email}</p>
+            {selected.phone && <p className="text-sm text-zinc-500 dark:text-zinc-400">{selected.phone}</p>}
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+              № карты: {selected.ma_id ?? "—"} · баланс: {selected.balance} · всего заработано:{" "}
+              {selected.lifetimeEarned}
+              {selected.depositBalance > 0 && ` · депозит: ${selected.depositBalance} Kč`}
+              {selected.birthday && ` · день рождения: ${formatDate(selected.birthday)}`}
+            </p>
+          </div>
+
+          {/* Баллы: начислить/списать прямо на месте, без перехода на отдельную страницу */}
+          <div className="rounded-md border border-zinc-100 dark:border-zinc-800 p-3">
+            <p className="mb-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">Баллы</p>
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="space-y-1 text-sm">
+                <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">Количество</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={pointsAmount}
+                  onChange={(e) => setPointsAmount(e.target.value)}
+                  className="w-28 rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
+                />
+              </label>
+              <label className="flex-1 space-y-1 text-sm">
+                <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">Комментарий (виден клиенту)</span>
+                <input
+                  value={pointsDescription}
+                  onChange={(e) => setPointsDescription(e.target.value)}
+                  placeholder="например: списание за покупку в магазине"
+                  className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
+                />
+              </label>
+              <button
+                onClick={() => submitPoints(1)}
+                disabled={pointsSubmitting}
+                className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+              >
+                Начислить
+              </button>
+              <button
+                onClick={() => submitPoints(-1)}
+                disabled={pointsSubmitting}
+                className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                Списать
+              </button>
+            </div>
+            {pointsError && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{pointsError}</p>}
+          </div>
+
+          {/* Депозит: пополнение наличными в магазине — именно так это и описано клиенту в его кабинете */}
+          <div className="rounded-md border border-zinc-100 dark:border-zinc-800 p-3">
+            <p className="mb-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">
+              Депозит (пополнение наличными в магазине)
+            </p>
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="space-y-1 text-sm">
+                <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">Сумма, Kč</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={depositAmount}
+                  onChange={(e) => setDepositAmount(e.target.value)}
+                  className="w-28 rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
+                />
+              </label>
+              <button
+                onClick={() => submitDeposit(1)}
+                disabled={depositSubmitting}
+                className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+              >
+                Пополнить
+              </button>
+              <button
+                onClick={() => submitDeposit(-1)}
+                disabled={depositSubmitting}
+                className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                Списать
+              </button>
+            </div>
+            {depositError && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{depositError}</p>}
+          </div>
+
+          {loadingDetail && <p className="text-sm text-zinc-400 dark:text-zinc-500">Загрузка…</p>}
+
+          {!loadingDetail && (
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <p className="mb-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">Последние заказы</p>
+                <div className="space-y-2">
+                  {orders.map((o, i) => (
+                    <div key={i} className="text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-zinc-600 dark:text-zinc-300">
+                          {formatDate(o.created_at)} · №{o.order_id ?? "—"} · {o.status ?? "—"}
+                        </span>
+                        <span>{o.order_total ?? 0} Kč</span>
+                      </div>
+                      {o.products_text && (
+                        <p className="mt-0.5 text-xs text-zinc-400 dark:text-zinc-500">{o.products_text}</p>
+                      )}
+                    </div>
+                  ))}
+                  {orders.length === 0 && <p className="text-sm text-zinc-400 dark:text-zinc-500">Пока нет заказов</p>}
+                </div>
+              </div>
+
+              <div>
+                <p className="mb-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">История баллов</p>
+                <div className="space-y-1">
+                  {pointsHistory.map((t) => (
+                    <div key={t.id} className="flex items-center justify-between text-sm">
+                      <span className="text-zinc-600 dark:text-zinc-300">
+                        {formatDateTime(t.created_at)} · {t.type ?? "—"}
+                        {t.description ? ` · ${t.description}` : ""}
+                      </span>
+                      <span className={t.amount >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}>
+                        {t.amount >= 0 ? "+" : ""}
+                        {t.amount}
+                      </span>
+                    </div>
+                  ))}
+                  {pointsHistory.length === 0 && <p className="text-sm text-zinc-400 dark:text-zinc-500">Пока нет операций</p>}
+                </div>
+              </div>
+
+              <div>
+                <p className="mb-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">Важные даты</p>
+                <div className="space-y-1">
+                  {dates.map((d) => (
+                    <div key={d.id} className="flex items-center justify-between text-sm">
+                      <span className="text-zinc-600 dark:text-zinc-300">{d.label}</span>
+                      <span className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400">
+                        {formatDate(d.event_date)}
+                        {d.recurrence === "yearly" && " · ежегодно"}
+                        {d.recurrence === "monthly" && " · ежемесячно"}
+                        <button
+                          onClick={() => deleteDate(d.id, d.label)}
+                          className="text-zinc-300 hover:text-red-600 dark:text-zinc-600 dark:hover:text-red-400"
+                          title="Удалить"
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    </div>
+                  ))}
+                  {dates.length === 0 && <p className="text-sm text-zinc-400 dark:text-zinc-500">Не добавлены</p>}
+                </div>
+
+                {!selected.birthday && (
+                  <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-zinc-100 dark:border-zinc-800 pt-3">
+                    <label className="space-y-1 text-sm">
+                      <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">День рождения клиента</span>
+                      <input
+                        type="date"
+                        value={birthdayValue}
+                        onChange={(e) => setBirthdayValue(e.target.value)}
+                        className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
+                      />
+                    </label>
+                    <button
+                      onClick={submitBirthday}
+                      disabled={birthdaySubmitting || !birthdayValue}
+                      className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+                    >
+                      Сохранить
+                    </button>
+                  </div>
+                )}
+
+                <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-zinc-100 dark:border-zinc-800 pt-3">
+                  <label className="space-y-1 text-sm">
+                    <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">Название</span>
+                    <input
+                      value={dateLabel}
+                      onChange={(e) => setDateLabel(e.target.value)}
+                      placeholder="например: годовщина свадьбы"
+                      className="w-40 rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
+                    />
+                  </label>
+                  <label className="space-y-1 text-sm">
+                    <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">Дата</span>
+                    <input
+                      type="date"
+                      value={dateValue}
+                      onChange={(e) => setDateValue(e.target.value)}
+                      className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
+                    />
+                  </label>
+                  <label className="space-y-1 text-sm">
+                    <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">Повтор</span>
+                    <select
+                      value={dateRecurrence}
+                      onChange={(e) => setDateRecurrence(e.target.value as "once" | "monthly" | "yearly")}
+                      className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
+                    >
+                      {RECURRENCE_OPTIONS.map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    onClick={submitDate}
+                    disabled={dateSubmitting}
+                    className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+                  >
+                    Добавить
+                  </button>
+                </div>
+                {dateError && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{dateError}</p>}
+              </div>
+
+              <div>
+                <p className="mb-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">Подписка</p>
+                {subscription ? (
+                  <p className="text-sm text-zinc-600 dark:text-zinc-300">
+                    {subscription.line_name_snapshot ?? "—"} · {subscription.status ?? "—"}
+                  </p>
+                ) : (
+                  <p className="text-sm text-zinc-400 dark:text-zinc-500">Нет подписки</p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
         <div className="flex flex-wrap items-end gap-3">
@@ -497,236 +756,6 @@ export default function UsersPage() {
           </div>
         )}
       </div>
-
-      {selected && (
-        <div className="space-y-4 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
-          <div>
-            <p className="font-medium">{selected.name ?? selected.email}</p>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">{selected.email}</p>
-            {selected.phone && <p className="text-sm text-zinc-500 dark:text-zinc-400">{selected.phone}</p>}
-            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              № карты: {selected.ma_id ?? "—"} · баланс: {selected.balance} · всего заработано:{" "}
-              {selected.lifetimeEarned}
-              {selected.depositBalance > 0 && ` · депозит: ${selected.depositBalance} Kč`}
-              {selected.birthday && ` · день рождения: ${formatDate(selected.birthday)}`}
-            </p>
-          </div>
-
-          {/* Баллы: начислить/списать прямо на месте, без перехода на отдельную страницу */}
-          <div className="rounded-md border border-zinc-100 dark:border-zinc-800 p-3">
-            <p className="mb-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">Баллы</p>
-            <div className="flex flex-wrap items-end gap-2">
-              <label className="space-y-1 text-sm">
-                <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">Количество</span>
-                <input
-                  type="number"
-                  min="0"
-                  value={pointsAmount}
-                  onChange={(e) => setPointsAmount(e.target.value)}
-                  className="w-28 rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
-                />
-              </label>
-              <label className="flex-1 space-y-1 text-sm">
-                <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">Комментарий (виден клиенту)</span>
-                <input
-                  value={pointsDescription}
-                  onChange={(e) => setPointsDescription(e.target.value)}
-                  placeholder="например: списание за покупку в магазине"
-                  className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
-                />
-              </label>
-              <button
-                onClick={() => submitPoints(1)}
-                disabled={pointsSubmitting}
-                className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
-              >
-                Начислить
-              </button>
-              <button
-                onClick={() => submitPoints(-1)}
-                disabled={pointsSubmitting}
-                className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-              >
-                Списать
-              </button>
-            </div>
-            {pointsError && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{pointsError}</p>}
-          </div>
-
-          {/* Депозит: пополнение наличными в магазине — именно так это и описано клиенту в его кабинете */}
-          <div className="rounded-md border border-zinc-100 dark:border-zinc-800 p-3">
-            <p className="mb-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">
-              Депозит (пополнение наличными в магазине)
-            </p>
-            <div className="flex flex-wrap items-end gap-2">
-              <label className="space-y-1 text-sm">
-                <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">Сумма, Kč</span>
-                <input
-                  type="number"
-                  min="0"
-                  value={depositAmount}
-                  onChange={(e) => setDepositAmount(e.target.value)}
-                  className="w-28 rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
-                />
-              </label>
-              <button
-                onClick={() => submitDeposit(1)}
-                disabled={depositSubmitting}
-                className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
-              >
-                Пополнить
-              </button>
-              <button
-                onClick={() => submitDeposit(-1)}
-                disabled={depositSubmitting}
-                className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-              >
-                Списать
-              </button>
-            </div>
-            {depositError && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{depositError}</p>}
-          </div>
-
-          {loadingDetail && <p className="text-sm text-zinc-400 dark:text-zinc-500">Загрузка…</p>}
-
-          {!loadingDetail && (
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <p className="mb-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">Последние заказы</p>
-                <div className="space-y-1">
-                  {orders.map((o, i) => (
-                    <div key={i} className="flex items-center justify-between text-sm">
-                      <span className="text-zinc-600 dark:text-zinc-300">
-                        {formatDate(o.created_at)} · №{o.order_id ?? "—"} · {o.status ?? "—"}
-                      </span>
-                      <span>{o.order_total ?? 0} Kč</span>
-                    </div>
-                  ))}
-                  {orders.length === 0 && <p className="text-sm text-zinc-400 dark:text-zinc-500">Пока нет заказов</p>}
-                </div>
-              </div>
-
-              <div>
-                <p className="mb-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">История баллов</p>
-                <div className="space-y-1">
-                  {pointsHistory.map((t) => (
-                    <div key={t.id} className="flex items-center justify-between text-sm">
-                      <span className="text-zinc-600 dark:text-zinc-300">
-                        {formatDateTime(t.created_at)} · {t.type ?? "—"}
-                        {t.description ? ` · ${t.description}` : ""}
-                      </span>
-                      <span className={t.amount >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}>
-                        {t.amount >= 0 ? "+" : ""}
-                        {t.amount}
-                      </span>
-                    </div>
-                  ))}
-                  {pointsHistory.length === 0 && <p className="text-sm text-zinc-400 dark:text-zinc-500">Пока нет операций</p>}
-                </div>
-              </div>
-
-              <div>
-                <p className="mb-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">Важные даты</p>
-                <div className="space-y-1">
-                  {dates.map((d) => (
-                    <div key={d.id} className="flex items-center justify-between text-sm">
-                      <span className="text-zinc-600 dark:text-zinc-300">{d.label}</span>
-                      <span className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400">
-                        {formatDate(d.event_date)}
-                        {d.recurrence === "yearly" && " · ежегодно"}
-                        {d.recurrence === "monthly" && " · ежемесячно"}
-                        <button
-                          onClick={() => deleteDate(d.id)}
-                          className="text-zinc-300 hover:text-red-600 dark:text-zinc-600 dark:hover:text-red-400"
-                          title="Удалить"
-                        >
-                          ✕
-                        </button>
-                      </span>
-                    </div>
-                  ))}
-                  {dates.length === 0 && <p className="text-sm text-zinc-400 dark:text-zinc-500">Не добавлены</p>}
-                </div>
-
-                {!selected.birthday && (
-                  <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-zinc-100 dark:border-zinc-800 pt-3">
-                    <label className="space-y-1 text-sm">
-                      <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">День рождения клиента</span>
-                      <input
-                        type="date"
-                        value={birthdayValue}
-                        onChange={(e) => setBirthdayValue(e.target.value)}
-                        className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
-                      />
-                    </label>
-                    <button
-                      onClick={submitBirthday}
-                      disabled={birthdaySubmitting || !birthdayValue}
-                      className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
-                    >
-                      Сохранить
-                    </button>
-                  </div>
-                )}
-
-                <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-zinc-100 dark:border-zinc-800 pt-3">
-                  <label className="space-y-1 text-sm">
-                    <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">Название</span>
-                    <input
-                      value={dateLabel}
-                      onChange={(e) => setDateLabel(e.target.value)}
-                      placeholder="например: годовщина свадьбы"
-                      className="w-40 rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
-                    />
-                  </label>
-                  <label className="space-y-1 text-sm">
-                    <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">Дата</span>
-                    <input
-                      type="date"
-                      value={dateValue}
-                      onChange={(e) => setDateValue(e.target.value)}
-                      className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
-                    />
-                  </label>
-                  <label className="space-y-1 text-sm">
-                    <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">Повтор</span>
-                    <select
-                      value={dateRecurrence}
-                      onChange={(e) => setDateRecurrence(e.target.value as "once" | "monthly" | "yearly")}
-                      className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
-                    >
-                      {RECURRENCE_OPTIONS.map(([value, label]) => (
-                        <option key={value} value={value}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button
-                    onClick={submitDate}
-                    disabled={dateSubmitting}
-                    className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
-                  >
-                    Добавить
-                  </button>
-                </div>
-                {dateError && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{dateError}</p>}
-              </div>
-
-              <div>
-                <p className="mb-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">Подписка</p>
-                {subscription ? (
-                  <p className="text-sm text-zinc-600 dark:text-zinc-300">
-                    {subscription.line_name_snapshot ?? "—"} · {subscription.status ?? "—"}
-                  </p>
-                ) : (
-                  <p className="text-sm text-zinc-400 dark:text-zinc-500">Нет подписки</p>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
