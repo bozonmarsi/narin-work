@@ -39,6 +39,9 @@ export function CourierView() {
         .select(COURIER_ORDER_COLUMNS)
         .eq("status", "confirmed")
         .is("assigned_courier_id", null)
+        // Самовывоз не должен попадать в курьерский пул — такие заказы
+        // менеджер передаёт флористу напрямую, курьеру ехать некуда.
+        .ilike("delivery_type", "%kurýrem%")
         .order("delivery_date", { ascending: true }),
       supabase
         .from("tilda_orders")

@@ -20,6 +20,7 @@ type NotifyPayload = {
 };
 
 const LOGO_URL = "https://static.tildacdn.com/tild3131-3033-4536-a130-623830646536/Photoroom_20260804_1.PNG";
+const PETAL_ICON_URL = "https://static.tildacdn.com/tild6661-3363-4132-b139-616631346264/nar_Klient.svg";
 const ORDERS_URL = "https://vezminarin.cz/members/orders";
 const COLLECTION_URL = "https://vezminarin.cz/members/collection";
 const REVIEW_URL = "https://vezminarin.cz/members/review";
@@ -132,6 +133,20 @@ function productsBlock(productsText?: string | null, orderTotal?: number | null)
   </td></tr></table>`;
 }
 
+// Klikatelné hodnocení přímo v e-mailu — každý kvítek vede rovnou na
+// stránku recenze s předvyplněným hodnocením (order + rating v URL),
+// takže odpověď zabere jeden klik místo dvou.
+function ratingRow(orderId: string) {
+  const cells = [1, 2, 3, 4, 5]
+    .map(
+      (n) =>
+        `<td style="padding:0 4px;"><a href="${REVIEW_URL}?order=${encodeURIComponent(orderId)}&rating=${n}"><img src="${PETAL_ICON_URL}" width="32" height="23" alt="${n}" style="display:block;border:0;"></a></td>`,
+    )
+    .join("");
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:6px;"><tr>${cells}</tr></table>
+    <p style="margin:0 0 18px;font-size:11.5px;color:${MUTED};">Klepněte na hodnocení — otevře se rovnou vyplněné.</p>`;
+}
+
 function deliveryWhenLine(date?: string | null, time?: string | null) {
   const parts = [date, time].filter(Boolean);
   if (!parts.length) return "";
@@ -238,7 +253,7 @@ export async function POST(request: Request) {
           <td style="padding:12px 14px;font-size:22px;width:40px;">🌼</td>
           <td style="padding:12px 14px 12px 0;font-size:12.5px;line-height:1.5;color:${INK};">Touto objednávkou jste si vysbírali novou samolepku do sbírky. <a href="${COLLECTION_URL}" style="color:${ACCENT};font-weight:600;text-decoration:none;">Podívat se do galerie →</a></td>
         </tr></table>`;
-        const askReview = `<p style="margin:0 0 14px;font-size:13.5px;line-height:1.65;color:${MUTED};">Byli bychom moc rádi za pár slov o tom, jak se vám kytice líbila — a jako poděkování za váš čas vám připíšeme <b style="color:${INK};">10 bodů</b> navíc.</p>`;
+        const askReview = `<p style="margin:0 0 6px;font-size:13.5px;line-height:1.65;color:${MUTED};">Jak se vám kytice líbila? Jako poděkování za pár slov vám připíšeme <b style="color:${INK};">10 bodů</b> navíc.</p>`;
         await sendBrevoEmail(
           email,
           `Kytice je doručena — děkujeme! 💐`,
@@ -248,11 +263,9 @@ export async function POST(request: Request) {
             badgeBg: ACCENT_BG,
             headline: "Kytice je doručena",
             bodyHtml: `Moc děkujeme, že jste si vybrali právě nás — je pro nás ctí být součástí vaší chvíle.`,
-            extraHtml: stickerBox + askReview,
-            ctaLabel: "Ohodnotit objednávku",
-            ctaUrl: `${REVIEW_URL}?order=${encodeURIComponent(order_id)}`,
-            secondaryCtaLabel: "Zobrazit objednávku",
-            secondaryCtaUrl: ORDERS_URL,
+            extraHtml: stickerBox + askReview + ratingRow(order_id),
+            ctaLabel: "Zobrazit objednávku",
+            ctaUrl: ORDERS_URL,
           }),
         );
       }

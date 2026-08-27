@@ -18,6 +18,17 @@ type CustomerRow = {
   lifetimeEarned: number;
   depositBalance: number;
   sawCabinetTour: boolean;
+  avgRating: number | null;
+  reviewCount: number;
+};
+
+type ReviewRowLite = {
+  id: string;
+  order_id: string;
+  customer_email: string;
+  rating: number;
+  comment: string | null;
+  created_at: string | null;
 };
 
 type OrderRowLite = {
@@ -62,6 +73,7 @@ export default function UsersPage() {
   const [sortBy, setSortBy] = useState<"balance" | "orders" | "recent">("recent");
   const [loading, setLoading] = useState(true);
   const [customers, setCustomers] = useState<CustomerRow[]>([]);
+  const [recentReviews, setRecentReviews] = useState<ReviewRowLite[]>([]);
 
   const [selected, setSelected] = useState<CustomerRow | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -99,7 +111,7 @@ export default function UsersPage() {
     const supabase = createClient();
 
     (async () => {
-      const [pointsRes, ordersRes, earnedRes, depositsRes, tourRes] = await Promise.all([
+      const [pointsRes, ordersRes, earnedRes, depositsRes, tourRes, reviewsRes] = await Promise.all([
         supabase.from("Tilda points").select("email, balance, ma_id, birthday").limit(5000),
         supabase
           .from("tilda_orders")
@@ -109,6 +121,11 @@ export default function UsersPage() {
         supabase.from("points_transactions").select("user_email, amount").gt("amount", 0),
         supabase.from("customer_deposits").select("email, balance"),
         supabase.from("ui_tours_seen").select("user_email").eq("tour_key", "lk_cabinet_v1"),
+        supabase
+          .from("order_reviews")
+          .select("id, order_id, customer_email, rating, comment, created_at")
+          .order("created_at", { ascending: false })
+          .limit(2000),
       ]);
 
       if (!active) return;
@@ -147,9 +164,24 @@ export default function UsersPage() {
         (tourRes.data ?? []).map((r) => (r.user_email ?? "").trim().toLowerCase()).filter(Boolean)
       );
 
+      const reviews = reviewsRes.data ?? [];
+      const ratingByEmail = new Map<string, { sum: number; count: number }>();
+      for (const r of reviews) {
+        const key = (r.customer_email ?? "").trim().toLowerCase();
+        if (!key) continue;
+        const existing = ratingByEmail.get(key);
+        if (existing) {
+          existing.sum += r.rating;
+          existing.count += 1;
+        } else {
+          ratingByEmail.set(key, { sum: r.rating, count: 1 });
+        }
+      }
+
       const rows: CustomerRow[] = (pointsRes.data ?? []).map((p) => {
         const key = p.email.trim().toLowerCase();
         const stats = orderStats.get(key);
+        const ratingStats = ratingByEmail.get(key);
         return {
           email: p.email,
           balance: p.balance ?? 0,
@@ -162,10 +194,13 @@ export default function UsersPage() {
           lifetimeEarned: earnedByEmail.get(key) ?? 0,
           depositBalance: depositByEmail.get(key) ?? 0,
           sawCabinetTour: tourSeenEmails.has(key),
+          avgRating: ratingStats ? ratingStats.sum / ratingStats.count : null,
+          reviewCount: ratingStats?.count ?? 0,
         };
       });
 
       setCustomers(rows);
+      setRecentReviews(reviews.slice(0, 20));
       setLoading(false);
     })();
 
@@ -391,7 +426,10 @@ export default function UsersPage() {
       .eq("email", selected.email);
 
     if (!birthdayErr) {
-      await addDate("День рождения", birthdayValue, "yearly", "birthday_set");
+      // Клиент видит это название в виджете важных дат на сайте — сайт
+      // чешский, поэтому пишем по-чешски, а не по-русски (в отличие от
+      // остального интерфейса этой страницы, который для менеджера).
+      await addDate("Narozeniny", birthdayValue, "yearly", "birthday_set");
       updateSelectedInList(selected.email, { birthday: birthdayValue });
     }
 
@@ -404,6 +442,10 @@ export default function UsersPage() {
     await supabase.from("personal_dates").delete().eq("id", id);
     logActivity(selected.email, "date_deleted", label);
     await loadDetail(selected.email);
+  }
+
+  function stars(rating: number) {
+    return "★".repeat(Math.round(rating)) + "☆".repeat(5 - Math.round(rating));
   }
 
   if (profile?.role !== "manager") {
@@ -424,6 +466,38 @@ export default function UsersPage() {
         </a>
       </div>
 
+      {recentReviews.length > 0 && (
+        <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
+          <p className="mb-3 text-sm font-medium text-zinc-500 dark:text-zinc-400">
+            Новые отзывы ({recentReviews.length})
+          </p>
+          <div className="space-y-2">
+            {recentReviews.map((r) => {
+              const customer = customers.find((c) => c.email.toLowerCase() === r.customer_email.toLowerCase());
+              return (
+                <button
+                  key={r.id}
+                  onClick={() => customer && selectCustomer(customer)}
+                  className="block w-full rounded-md border border-zinc-100 dark:border-zinc-800 p-2.5 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium">{customer?.name ?? r.customer_email}</span>
+                    <span className="flex items-center gap-2 text-xs text-zinc-400 dark:text-zinc-500">
+                      <span className="text-amber-500">{stars(r.rating)}</span>
+                      {formatDate(r.created_at)}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between gap-2">
+                    <span className="text-sm text-zinc-600 dark:text-zinc-300">{r.comment}</span>
+                    <span className="shrink-0 text-xs text-zinc-400 dark:text-zinc-500">№{r.order_id}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {selected && (
         <div className="space-y-4 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
           <div>
@@ -435,6 +509,7 @@ export default function UsersPage() {
               {selected.lifetimeEarned}
               {selected.depositBalance > 0 && ` · депозит: ${selected.depositBalance} Kč`}
               {selected.birthday && ` · день рождения: ${formatDate(selected.birthday)}`}
+              {selected.reviewCount > 0 && ` · отзывы: ${stars(selected.avgRating ?? 0)} (${selected.reviewCount})`}
             </p>
           </div>
 
@@ -602,11 +677,13 @@ export default function UsersPage() {
 
                 <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-zinc-100 dark:border-zinc-800 pt-3">
                   <label className="space-y-1 text-sm">
-                    <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">Название</span>
+                    <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                      Название (видит клиент, пишите по-чешски)
+                    </span>
                     <input
                       value={dateLabel}
                       onChange={(e) => setDateLabel(e.target.value)}
-                      placeholder="например: годовщина свадьбы"
+                      placeholder="например: Výročí svatby"
                       className="w-40 rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                     />
                   </label>
@@ -709,6 +786,7 @@ export default function UsersPage() {
                   <th className="px-3 py-2 font-medium">Заказов</th>
                   <th className="px-3 py-2 font-medium">Последний заказ</th>
                   <th className="px-3 py-2 font-medium">Депозит</th>
+                  <th className="px-3 py-2 font-medium">Отзывы</th>
                   <th className="px-3 py-2 font-medium">Кабинет</th>
                 </tr>
               </thead>
@@ -739,6 +817,15 @@ export default function UsersPage() {
                     </td>
                     <td className="px-3 py-2 text-zinc-500 dark:text-zinc-400">
                       {c.depositBalance > 0 ? `${c.depositBalance} Kč` : "—"}
+                    </td>
+                    <td className="px-3 py-2 text-zinc-500 dark:text-zinc-400">
+                      {c.reviewCount > 0 ? (
+                        <span>
+                          <span className="text-amber-500">{stars(c.avgRating ?? 0)}</span> ({c.reviewCount})
+                        </span>
+                      ) : (
+                        "—"
+                      )}
                     </td>
                     <td className="px-3 py-2">
                       {c.sawCabinetTour ? (
