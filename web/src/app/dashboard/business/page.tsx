@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useDashboard } from "../layout";
 import { formatDate } from "@/lib/format";
-import { generateAndDownloadInvoicePdf } from "@/lib/invoice-pdf";
+import { generateAndDownloadInvoicePdf, generateInvoicePdfAttachment } from "@/lib/invoice-pdf";
 
 type CompanyRow = {
   id: string;
@@ -80,6 +80,7 @@ export default function BusinessPage() {
   const [companies, setCompanies] = useState<CompanyRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [debtByCompany, setDebtByCompany] = useState<Map<string, { unpaid: number; overdueCount: number }>>(new Map());
 
   const [showNewForm, setShowNewForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -107,8 +108,23 @@ export default function BusinessPage() {
   async function loadCompanies() {
     setLoading(true);
     const supabase = createClient();
-    const { data } = await supabase.from("companies").select("*").order("name");
-    setCompanies(data ?? []);
+    const [companiesRes, invoicesRes] = await Promise.all([
+      supabase.from("companies").select("*").order("name"),
+      supabase.from("company_invoices").select("company_id, total_amount, status, due_date"),
+    ]);
+
+    const today = new Date().toISOString().slice(0, 10);
+    const debtMap = new Map<string, { unpaid: number; overdueCount: number }>();
+    for (const inv of invoicesRes.data ?? []) {
+      if (inv.status === "paid" || inv.status === "cancelled") continue;
+      const entry = debtMap.get(inv.company_id) ?? { unpaid: 0, overdueCount: 0 };
+      entry.unpaid += inv.total_amount;
+      if (inv.due_date && inv.due_date < today) entry.overdueCount += 1;
+      debtMap.set(inv.company_id, entry);
+    }
+
+    setCompanies(companiesRes.data ?? []);
+    setDebtByCompany(debtMap);
     setLoading(false);
   }
 
@@ -192,6 +208,8 @@ export default function BusinessPage() {
     setInvoiceFrom("");
     setInvoiceTo("");
     setInvoiceError(null);
+    setComposerOpen(false);
+    setSendInvoiceError(null);
     loadDetail(company);
   }
 
@@ -313,6 +331,97 @@ export default function BusinessPage() {
     await loadDetail(selected);
   }
 
+  function isOverdue(inv: InvoiceRow) {
+    const today = new Date().toISOString().slice(0, 10);
+    return inv.status === "sent" && !!inv.due_date && inv.due_date < today;
+  }
+
+  async function sendEmail(to: string, subject: string, html: string, attachment?: { base64: string; filename: string }) {
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) throw new Error("Нет активной сессии");
+
+    const res = await fetch("/api/business/send-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({
+        to,
+        subject,
+        html,
+        attachmentBase64: attachment?.base64,
+        attachmentName: attachment?.filename,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || "Не удалось отправить письмо");
+  }
+
+  const [sendingInvoiceId, setSendingInvoiceId] = useState<string | null>(null);
+  const [sendInvoiceError, setSendInvoiceError] = useState<string | null>(null);
+
+  async function sendInvoiceByEmail(inv: InvoiceRow) {
+    if (!selected) return;
+    setSendingInvoiceId(inv.id);
+    setSendInvoiceError(null);
+    try {
+      const periodOrders = orders.filter(
+        (o) => o.delivery_date && o.delivery_date >= inv.period_start && o.delivery_date <= inv.period_end
+      );
+      const { base64, filename, number } = await generateInvoicePdfAttachment(selected, inv, periodOrders);
+      const html = `<p>Dobrý den,</p><p>posíláme fakturu č. ${number} za období ${formatDate(inv.period_start)} – ${formatDate(inv.period_end)}, celkem ${inv.total_amount} Kč, splatnost do ${inv.due_date ? formatDate(inv.due_date) : "—"}.</p><p>Faktura je přiložena v PDF.</p><p>Děkujeme, NARIN</p>`;
+      await sendEmail(selected.contact_email, `Faktura č. ${number} — NARIN`, html, { base64, filename });
+      if (!inv.invoice_number) await loadDetail(selected); // подтянуть присвоенный номер
+      if (inv.status === "draft") await setInvoiceStatus(inv.id, "sent");
+    } catch (err) {
+      setSendInvoiceError(err instanceof Error ? err.message : "Не удалось отправить");
+    } finally {
+      setSendingInvoiceId(null);
+    }
+  }
+
+  // Свободное письмо — не привязано к конкретному счёту, для любой
+  // связи с компанией прямо из карточки.
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [composerTo, setComposerTo] = useState("");
+  const [composerSubject, setComposerSubject] = useState("");
+  const [composerBody, setComposerBody] = useState("");
+  const [composerSending, setComposerSending] = useState(false);
+  const [composerError, setComposerError] = useState<string | null>(null);
+  const [composerSent, setComposerSent] = useState(false);
+
+  function openComposer() {
+    if (!selected) return;
+    setComposerOpen(true);
+    setComposerTo(selected.contact_email);
+    setComposerSubject("");
+    setComposerBody("");
+    setComposerError(null);
+    setComposerSent(false);
+  }
+
+  async function sendComposerEmail() {
+    if (!composerTo.trim() || !composerSubject.trim() || !composerBody.trim()) {
+      setComposerError("Заполните получателя, тему и текст");
+      return;
+    }
+    setComposerSending(true);
+    setComposerError(null);
+    try {
+      const html = composerBody
+        .split("\n")
+        .map((line) => `<p>${line || "&nbsp;"}</p>`)
+        .join("");
+      await sendEmail(composerTo.trim(), composerSubject.trim(), html);
+      setComposerSent(true);
+    } catch (err) {
+      setComposerError(err instanceof Error ? err.message : "Не удалось отправить");
+    } finally {
+      setComposerSending(false);
+    }
+  }
+
   if (profile?.role !== "manager") {
     return null;
   }
@@ -328,6 +437,23 @@ export default function BusinessPage() {
           + Новая компания
         </button>
       </div>
+
+      {!loading && debtByCompany.size > 0 && (
+        <div className="flex flex-wrap gap-3 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
+          <div>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">Не оплачено всего</p>
+            <p className="text-lg font-semibold">
+              {[...debtByCompany.values()].reduce((s, d) => s + d.unpaid, 0)} Kč
+            </p>
+          </div>
+          <div className="ml-6">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">Просроченных счетов</p>
+            <p className={`text-lg font-semibold ${[...debtByCompany.values()].some((d) => d.overdueCount > 0) ? "text-red-600 dark:text-red-400" : ""}`}>
+              {[...debtByCompany.values()].reduce((s, d) => s + d.overdueCount, 0)}
+            </p>
+          </div>
+        </div>
+      )}
 
       {showNewForm && (
         <div className="space-y-3 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
@@ -434,13 +560,72 @@ export default function BusinessPage() {
                 <p className="text-sm text-zinc-500 dark:text-zinc-400">{selected.billing_address}</p>
               )}
             </div>
-            <button
-              onClick={() => setSelected(null)}
-              className="text-sm text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
-            >
-              Закрыть
-            </button>
+            <div className="flex items-center gap-3">
+              <button onClick={openComposer} className="text-sm text-accent hover:underline">
+                Написать письмо
+              </button>
+              <button
+                onClick={() => setSelected(null)}
+                className="text-sm text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+              >
+                Закрыть
+              </button>
+            </div>
           </div>
+
+          {composerOpen && (
+            <div className="rounded-md border border-zinc-100 dark:border-zinc-800 p-3">
+              {composerSent ? (
+                <p className="text-sm text-green-600 dark:text-green-400">Письмо отправлено.</p>
+              ) : (
+                <div className="space-y-2">
+                  <div className="grid gap-2 md:grid-cols-2">
+                    <label className="space-y-1 text-sm">
+                      <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">Кому</span>
+                      <input
+                        value={composerTo}
+                        onChange={(e) => setComposerTo(e.target.value)}
+                        className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
+                      />
+                    </label>
+                    <label className="space-y-1 text-sm">
+                      <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">Тема</span>
+                      <input
+                        value={composerSubject}
+                        onChange={(e) => setComposerSubject(e.target.value)}
+                        className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
+                      />
+                    </label>
+                  </div>
+                  <label className="block space-y-1 text-sm">
+                    <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">Текст</span>
+                    <textarea
+                      value={composerBody}
+                      onChange={(e) => setComposerBody(e.target.value)}
+                      rows={5}
+                      className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
+                    />
+                  </label>
+                  {composerError && <p className="text-sm text-red-600 dark:text-red-400">{composerError}</p>}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={sendComposerEmail}
+                      disabled={composerSending}
+                      className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+                    >
+                      {composerSending ? "Отправляем…" : "Отправить"}
+                    </button>
+                    <button
+                      onClick={() => setComposerOpen(false)}
+                      className="rounded-md px-3 py-1.5 text-sm text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                    >
+                      Отмена
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {loadingDetail && <p className="text-sm text-zinc-400 dark:text-zinc-500">Загрузка…</p>}
 
@@ -545,7 +730,9 @@ export default function BusinessPage() {
               <div className="rounded-md border border-zinc-100 dark:border-zinc-800 p-3 md:col-span-2">
                 <p className="mb-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">Счета</p>
                 <div className="space-y-2">
-                  {invoices.map((inv) => (
+                  {invoices.map((inv) => {
+                    const overdue = isOverdue(inv);
+                    return (
                     <div key={inv.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
                       <span className="text-zinc-600 dark:text-zinc-300">
                         {inv.invoice_number && <span className="font-mono text-xs text-zinc-400">№{inv.invoice_number} · </span>}
@@ -560,8 +747,19 @@ export default function BusinessPage() {
                         >
                           {downloadingInvoiceId === inv.id ? "Готовим…" : "Скачать PDF"}
                         </button>
-                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${INVOICE_STATUS_COLORS[inv.status]}`}>
-                          {INVOICE_STATUS_LABELS[inv.status]}
+                        <button
+                          onClick={() => sendInvoiceByEmail(inv)}
+                          disabled={sendingInvoiceId === inv.id}
+                          className="text-xs text-accent hover:underline disabled:opacity-50"
+                        >
+                          {sendingInvoiceId === inv.id ? "Отправляем…" : "Отправить на email"}
+                        </button>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                            overdue ? INVOICE_STATUS_COLORS.overdue : INVOICE_STATUS_COLORS[inv.status]
+                          }`}
+                        >
+                          {overdue ? INVOICE_STATUS_LABELS.overdue : INVOICE_STATUS_LABELS[inv.status]}
                         </span>
                         {inv.status === "draft" && (
                           <button
@@ -581,8 +779,10 @@ export default function BusinessPage() {
                         )}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                   {invoices.length === 0 && <p className="text-sm text-zinc-400 dark:text-zinc-500">Счетов ещё нет</p>}
+                  {sendInvoiceError && <p className="text-sm text-red-600 dark:text-red-400">{sendInvoiceError}</p>}
                 </div>
                 <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-zinc-100 dark:border-zinc-800 pt-3">
                   <label className="space-y-1 text-sm">
@@ -636,7 +836,9 @@ export default function BusinessPage() {
 
         {results.length > 0 && (
           <div className="mt-3 divide-y divide-zinc-100 dark:divide-zinc-800">
-            {results.map((c) => (
+            {results.map((c) => {
+              const debt = debtByCompany.get(c.id);
+              return (
               <button
                 key={c.id}
                 onClick={() => selectCompany(c)}
@@ -651,9 +853,23 @@ export default function BusinessPage() {
                     {c.ico && ` · IČO ${c.ico}`}
                   </p>
                 </div>
-                <span className="text-xs text-zinc-400 dark:text-zinc-500">{formatDate(c.created_at)}</span>
+                <div className="flex items-center gap-2">
+                  {debt && debt.unpaid > 0 && (
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                        debt.overdueCount > 0
+                          ? "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400"
+                          : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+                      }`}
+                    >
+                      {debt.unpaid} Kč{debt.overdueCount > 0 ? " · просрочено" : ""}
+                    </span>
+                  )}
+                  <span className="text-xs text-zinc-400 dark:text-zinc-500">{formatDate(c.created_at)}</span>
+                </div>
               </button>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

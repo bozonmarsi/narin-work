@@ -108,7 +108,7 @@ async function buildQrDataUrl(amount: number, variableSymbol: string) {
   return QRCode.toDataURL(spayd, { margin: 0, width: 300, color: { dark: "#16181D", light: "#FFFFFF" } });
 }
 
-export async function generateAndDownloadInvoicePdf(company: CompanyInfo, invoice: InvoiceInfo, orders: OrderLineItem[]) {
+async function buildInvoiceDoc(company: CompanyInfo, invoice: InvoiceInfo, orders: OrderLineItem[]) {
   const { number, dueDate } = await ensureInvoiceNumber(invoice);
   const variableSymbol = number.replace(/\D/g, "");
   const qrDataUrl = await buildQrDataUrl(invoice.total_amount, variableSymbol);
@@ -290,5 +290,19 @@ export async function generateAndDownloadInvoicePdf(company: CompanyInfo, invoic
     doc.text(`${p} / ${pageCount}`, marginX + contentW, 288, { align: "right" });
   }
 
-  doc.save(`faktura-${number}-${slug(company.name)}.pdf`);
+  return { doc, number, filename: `faktura-${number}-${slug(company.name)}.pdf` };
+}
+
+export async function generateAndDownloadInvoicePdf(company: CompanyInfo, invoice: InvoiceInfo, orders: OrderLineItem[]) {
+  const { doc, filename } = await buildInvoiceDoc(company, invoice, orders);
+  doc.save(filename);
+}
+
+// Для отправки по email — тот же документ, но как base64 для вложения
+// вместо скачивания на диск.
+export async function generateInvoicePdfAttachment(company: CompanyInfo, invoice: InvoiceInfo, orders: OrderLineItem[]) {
+  const { doc, number, filename } = await buildInvoiceDoc(company, invoice, orders);
+  const dataUri = doc.output("datauristring");
+  const base64 = dataUri.split(",")[1];
+  return { base64, filename, number };
 }

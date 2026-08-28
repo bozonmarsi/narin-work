@@ -1,7 +1,12 @@
 // Server-only — reads BREVO_API_KEY (no NEXT_PUBLIC_ prefix), never reaches
 // the browser bundle.
 
-export async function sendBrevoEmail(to: string, subject: string, htmlContent: string) {
+export async function sendBrevoEmail(
+  to: string,
+  subject: string,
+  htmlContent: string,
+  attachments?: { content: string; name: string }[],
+) {
   const apiKey = process.env.BREVO_API_KEY;
   if (!apiKey) throw new Error("BREVO_API_KEY is not configured");
 
@@ -16,6 +21,7 @@ export async function sendBrevoEmail(to: string, subject: string, htmlContent: s
       to: [{ email: to }],
       subject,
       htmlContent,
+      ...(attachments && attachments.length ? { attachment: attachments } : {}),
     }),
   });
 
