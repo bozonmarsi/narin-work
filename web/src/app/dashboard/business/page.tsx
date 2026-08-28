@@ -387,7 +387,7 @@ export default function BusinessPage() {
     return inv.status === "sent" && !!inv.due_date && inv.due_date < today;
   }
 
-  async function sendEmail(to: string, subject: string, html: string, attachment?: { base64: string; filename: string }) {
+  async function sendEmail(to: string, subject: string, html: string, attachments?: { base64: string; filename: string }[]) {
     const supabase = createClient();
     const {
       data: { session },
@@ -401,12 +401,22 @@ export default function BusinessPage() {
         to,
         subject,
         html,
-        attachmentBase64: attachment?.base64,
-        attachmentName: attachment?.filename,
+        attachments: attachments?.map((a) => ({ content: a.base64, name: a.filename })),
       }),
     });
     const data = await res.json();
     if (!res.ok || !data.ok) throw new Error(data.error || "Не удалось отправить письмо");
+  }
+
+  // <input type="file"> отдаёт File — Brevo хочет содержимое как base64
+  // без префикса data:...;base64,.
+  function fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(",")[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   }
 
   const [sendingInvoiceId, setSendingInvoiceId] = useState<string | null>(null);
@@ -422,8 +432,9 @@ export default function BusinessPage() {
       );
       const { generateInvoicePdfAttachment } = await loadInvoicePdf();
       const { base64, filename, number } = await generateInvoicePdfAttachment(selected, inv, periodOrders);
-      const html = `<p>Dobrý den,</p><p>posíláme fakturu č. ${number} za období ${formatDate(inv.period_start)} – ${formatDate(inv.period_end)}, celkem ${inv.total_amount} Kč, splatnost do ${inv.due_date ? formatDate(inv.due_date) : "—"}.</p><p>Faktura je přiložena v PDF.</p><p>Děkujeme, NARIN</p>`;
-      await sendEmail(selected.contact_email, `Faktura č. ${number} — NARIN`, html, { base64, filename });
+      const { wrapBusinessEmail } = await import("@/lib/business-email-template");
+      const bodyText = `Dobrý den,\n\nposíláme fakturu č. ${number} za období ${formatDate(inv.period_start)} – ${formatDate(inv.period_end)}, celkem ${inv.total_amount} Kč, splatnost do ${inv.due_date ? formatDate(inv.due_date) : "—"}.\n\nFaktura je přiložena v PDF.\n\nDěkujeme,\ntým NARIN`;
+      await sendEmail(selected.contact_email, `Faktura č. ${number} — NARIN`, wrapBusinessEmail(bodyText), [{ base64, filename }]);
       if (!inv.invoice_number) await loadDetail(selected); // подтянуть присвоенный номер
       if (inv.status === "draft") await setInvoiceStatus(inv.id, "sent");
     } catch (err) {
@@ -434,11 +445,13 @@ export default function BusinessPage() {
   }
 
   // Свободное письмо — не привязано к конкретному счёту, для любой
-  // связи с компанией прямо из карточки.
+  // связи с компанией прямо из карточки. Можно приложить свои файлы
+  // (фото, счета и т.д.) — читаются в base64 прямо в браузере.
   const [composerOpen, setComposerOpen] = useState(false);
   const [composerTo, setComposerTo] = useState("");
   const [composerSubject, setComposerSubject] = useState("");
   const [composerBody, setComposerBody] = useState("");
+  const [composerFiles, setComposerFiles] = useState<File[]>([]);
   const [composerSending, setComposerSending] = useState(false);
   const [composerError, setComposerError] = useState<string | null>(null);
   const [composerSent, setComposerSent] = useState(false);
@@ -449,6 +462,7 @@ export default function BusinessPage() {
     setComposerTo(selected.contact_email);
     setComposerSubject("");
     setComposerBody("");
+    setComposerFiles([]);
     setComposerError(null);
     setComposerSent(false);
   }
@@ -461,11 +475,11 @@ export default function BusinessPage() {
     setComposerSending(true);
     setComposerError(null);
     try {
-      const html = composerBody
-        .split("\n")
-        .map((line) => `<p>${line || "&nbsp;"}</p>`)
-        .join("");
-      await sendEmail(composerTo.trim(), composerSubject.trim(), html);
+      const { wrapBusinessEmail } = await import("@/lib/business-email-template");
+      const attachments = await Promise.all(
+        composerFiles.map(async (f) => ({ base64: await fileToBase64(f), filename: f.name }))
+      );
+      await sendEmail(composerTo.trim(), composerSubject.trim(), wrapBusinessEmail(composerBody), attachments);
       setComposerSent(true);
     } catch (err) {
       setComposerError(err instanceof Error ? err.message : "Не удалось отправить");
@@ -672,6 +686,34 @@ export default function BusinessPage() {
                       className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                     />
                   </label>
+                  <div className="space-y-1">
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-zinc-300 dark:border-zinc-600 px-2.5 py-1.5 text-xs text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                      📎 Прикрепить файлы (фото, счета…)
+                      <input
+                        type="file"
+                        multiple
+                        onChange={(e) => setComposerFiles((prev) => [...prev, ...Array.from(e.target.files ?? [])])}
+                        className="hidden"
+                      />
+                    </label>
+                    {composerFiles.length > 0 && (
+                      <ul className="space-y-0.5">
+                        {composerFiles.map((f, i) => (
+                          <li key={i} className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
+                            <span>
+                              {f.name} · {(f.size / 1024).toFixed(0)} КБ
+                            </span>
+                            <button
+                              onClick={() => setComposerFiles((prev) => prev.filter((_, j) => j !== i))}
+                              className="text-zinc-300 hover:text-red-600 dark:text-zinc-600 dark:hover:text-red-400"
+                            >
+                              ✕
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                   {composerError && <p className="text-sm text-red-600 dark:text-red-400">{composerError}</p>}
                   <div className="flex gap-2">
                     <button

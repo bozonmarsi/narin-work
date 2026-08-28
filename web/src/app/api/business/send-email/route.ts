@@ -27,24 +27,25 @@ export async function POST(request: Request) {
     return Response.json({ error: "Недостаточно прав" }, { status: 403 });
   }
 
-  const { to, subject, html, attachmentBase64, attachmentName } = (await request.json()) as {
+  const { to, subject, html, attachments } = (await request.json()) as {
     to?: string;
     subject?: string;
     html?: string;
-    attachmentBase64?: string;
-    attachmentName?: string;
+    attachments?: { content: string; name: string }[];
   };
 
   if (!to || !subject || !html) {
     return Response.json({ error: "Не хватает полей (to/subject/html)" }, { status: 400 });
   }
 
-  const ok = await sendBrevoEmail(
-    to,
-    subject,
-    html,
-    attachmentBase64 && attachmentName ? [{ content: attachmentBase64, name: attachmentName }] : undefined,
-  );
+  // Brevo сама режет письмо целиком, если вложения слишком тяжёлые —
+  // проверяем сами, чтобы дать понятную ошибку, а не молчаливый отказ.
+  const totalBytes = (attachments ?? []).reduce((sum, a) => sum + a.content.length * 0.75, 0);
+  if (totalBytes > 15 * 1024 * 1024) {
+    return Response.json({ error: "Вложения слишком большие (лимит ~15 МБ суммарно)" }, { status: 400 });
+  }
+
+  const ok = await sendBrevoEmail(to, subject, html, attachments && attachments.length ? attachments : undefined);
 
   return Response.json({ ok });
 }
