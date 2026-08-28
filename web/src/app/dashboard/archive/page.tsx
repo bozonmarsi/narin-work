@@ -151,6 +151,16 @@ export default function ArchivePage() {
             className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
           />
         </label>
+        <button
+          type="button"
+          onClick={() => {
+            setDateFrom("2020-01-01");
+            setDateTo(toDateKey(todayUTC()));
+          }}
+          className="rounded-md border border-zinc-300 dark:border-zinc-600 px-3 py-1.5 text-sm text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+        >
+          За всё время
+        </button>
       </div>
 
       {error && <p className="text-red-600 dark:text-red-400">Ошибка загрузки: {error}</p>}
