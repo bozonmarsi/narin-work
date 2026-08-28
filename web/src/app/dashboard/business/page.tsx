@@ -67,6 +67,52 @@ const INVOICE_STATUS_COLORS: Record<InvoiceRow["status"], string> = {
   cancelled: "bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500",
 };
 
+// Готовые заготовки для композера — менеджер жмёт кнопку, текст
+// подставляется с именем компании/контакта, дальше можно поправить
+// руками перед отправкой. Текст на чешском — письма уходят клиенту.
+const EMAIL_TEMPLATES: {
+  key: string;
+  label: string;
+  subject: (c: CompanyRow) => string;
+  body: (c: CompanyRow) => string;
+}[] = [
+  {
+    key: "welcome",
+    label: "Приветствие нового клиента",
+    subject: () => "Vítejte u NARIN — jak funguje naše spolupráce",
+    body: (c) =>
+      `Dobrý den${c.contact_name ? " " + c.contact_name : ""},\n\nděkujeme, že jste si pro ${c.name} vybrali právě NARIN. Rádi bychom vám krátce představili, jak spolupráce funguje:\n\n– Objednávky vyřizujeme průběžně podle vaší potřeby.\n– Na konci měsíce vystavíme jeden souhrnný přehled/fakturu za všechny objednávky.\n– Splatnost je standardně 30 dní, platba převodem.\n\nBudeme rádi za jakékoli dotazy — stačí odpovědět na tento e-mail.\n\nS pozdravem,\ntým NARIN`,
+  },
+  {
+    key: "payment_reminder",
+    label: "Напоминание об оплате",
+    subject: () => "Připomínka — nezaplacená faktura NARIN",
+    body: (c) =>
+      `Dobrý den${c.contact_name ? " " + c.contact_name : ""},\n\ndovolujeme si připomenout, že za ${c.name} evidujeme nezaplacenou fakturu po splatnosti. Platební údaje najdete přímo na faktuře (QR kód pro rychlou platbu).\n\nPokud už platba proběhla, omluvte prosím tuto zprávu a dejte nám vědět.\n\nDěkujeme,\ntým NARIN`,
+  },
+  {
+    key: "subscription_pitch",
+    label: "Предложение регулярной подписки",
+    subject: () => "Pravidelné dodávky květin pro vás — bez starostí a se slevou",
+    body: (c) =>
+      `Dobrý den${c.contact_name ? " " + c.contact_name : ""},\n\nvšimli jsme si, že ${c.name} u nás objednává pravidelně — napadlo nás, že by pro vás mohla být pohodlnější pravidelná dodávka místo jednotlivých objednávek.\n\nVýhody:\n– Nemusíte znovu objednávat, květiny dorazí samy podle domluveného rytmu.\n– Sleva za pravidelnost.\n– Jeden souhrnný účet místo více faktur.\n\nDáte nám vědět, pokud by vás to zajímalo? Rádi probereme detaily.\n\nS pozdravem,\ntým NARIN`,
+  },
+  {
+    key: "seasonal",
+    label: "Сезонное предложение / каталог",
+    subject: () => "Nová sezónní nabídka květin od NARIN",
+    body: (c) =>
+      `Dobrý den${c.contact_name ? " " + c.contact_name : ""},\n\nrádi bychom vás informovali o naší aktuální sezónní nabídce — pokud by se něco hodilo pro ${c.name}, dejte nám vědět a připravíme nabídku na míru.\n\nS pozdravem,\ntým NARIN`,
+  },
+  {
+    key: "thank_you",
+    label: "Спасибо за заказ / чек-ин",
+    subject: () => "Děkujeme za spolupráci",
+    body: (c) =>
+      `Dobrý den${c.contact_name ? " " + c.contact_name : ""},\n\nchtěli jsme jen poděkovat za dosavadní spolupráci s ${c.name} — velmi si jí vážíme. Pokud máte jakékoli přání nebo zpětnou vazbu ke kyticím či doručování, budeme rádi za pár slov.\n\nS pozdravem,\ntým NARIN`,
+  },
+];
+
 const EMPTY_FORM = {
   name: "",
   ico: "",
@@ -585,6 +631,20 @@ export default function BusinessPage() {
                 <p className="text-sm text-green-600 dark:text-green-400">Письмо отправлено.</p>
               ) : (
                 <div className="space-y-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    {EMAIL_TEMPLATES.map((t) => (
+                      <button
+                        key={t.key}
+                        onClick={() => {
+                          setComposerSubject(t.subject(selected));
+                          setComposerBody(t.body(selected));
+                        }}
+                        className="rounded-full border border-zinc-200 dark:border-zinc-700 px-2.5 py-1 text-xs text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
                   <div className="grid gap-2 md:grid-cols-2">
                     <label className="space-y-1 text-sm">
                       <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">Кому</span>
