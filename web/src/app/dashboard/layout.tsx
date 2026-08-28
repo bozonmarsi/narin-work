@@ -17,6 +17,19 @@ type DashboardContextValue = { user: User; profile: Profile | null };
 
 const DashboardContext = createContext<DashboardContextValue | null>(null);
 
+// Раньше при зависшем (не упавшем, а именно зависшем — сеть держит
+// соединение открытым, ответа нет) запросе к Supabase экран навсегда
+// оставался на "Загрузка…", try/catch тут не спасает, потому что ничего
+// не бросает исключение. Явный таймаут гарантирует, что рано или поздно
+// пользователь увидит ошибку и кнопку "Попробовать снова", а не вечный
+// спиннер.
+function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error("Превышено время ожидания ответа от сервера")), ms)),
+  ]);
+}
+
 export function useDashboard() {
   const ctx = useContext(DashboardContext);
   if (!ctx) throw new Error("useDashboard must be used inside the dashboard layout");
@@ -33,39 +46,54 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }>({ loading: true, user: null, profile: null });
   const [warehouseMapsUrl, setWarehouseMapsUrl] = useState<string | null>(null);
   const [showTelegramCode, setShowTelegramCode] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
     const supabase = createClient();
 
     (async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      try {
+        const {
+          data: { user },
+        } = await withTimeout(supabase.auth.getUser(), 10000);
 
-      if (!user) {
-        router.replace("/login");
-        return;
-      }
+        if (!user) {
+          router.replace("/login");
+          return;
+        }
 
-      const { data: profile, error } = await supabase
-        .from("users")
-        .select("full_name, role, telegram_chat_id, telegram_link_code")
-        .eq("id", user.id)
-        .single();
+        const { data: profile, error } = await withTimeout(
+          supabase
+            .from("users")
+            .select("full_name, role, telegram_chat_id, telegram_link_code")
+            .eq("id", user.id)
+            .single(),
+          10000,
+        );
 
-      if (error) {
-        console.error("profile fetch error", error);
-      }
+        if (error) {
+          console.error("profile fetch error", error);
+        }
 
-      if (active) {
-        setState({ loading: false, user, profile: profile ?? null });
-      }
+        if (active) {
+          setState({ loading: false, user, profile: profile ?? null });
+        }
 
-      if (profile?.role === "courier") {
-        const { data: warehouse } = await supabase.from("warehouse_location").select("lat, lng").eq("id", true).single();
-        if (active && warehouse?.lat != null && warehouse?.lng != null) {
-          setWarehouseMapsUrl(`https://www.google.com/maps/dir/?api=1&destination=${warehouse.lat},${warehouse.lng}`);
+        if (profile?.role === "courier") {
+          const { data: warehouse } = await supabase.from("warehouse_location").select("lat, lng").eq("id", true).single();
+          if (active && warehouse?.lat != null && warehouse?.lng != null) {
+            setWarehouseMapsUrl(`https://www.google.com/maps/dir/?api=1&destination=${warehouse.lat},${warehouse.lng}`);
+          }
+        }
+      } catch (err) {
+        // Раньше при любой ошибке (например, временный сбой связи с
+        // Supabase) экран так и оставался на "Загрузка…" навсегда, без
+        // единого сообщения — теперь хотя бы видно, что пошло не так, и
+        // можно попробовать ещё раз.
+        console.error("dashboard auth/profile load failed", err);
+        if (active) {
+          setLoadError(err instanceof Error ? err.message : "Не удалось загрузить приложение");
         }
       }
     })();
@@ -79,6 +107,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const supabase = createClient();
     await supabase.auth.signOut();
     router.replace("/login");
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 text-zinc-500 dark:text-zinc-400">
+        <p>Не удалось загрузить: {loadError}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover"
+        >
+          Попробовать снова
+        </button>
+      </div>
+    );
   }
 
   if (state.loading || !state.user) {

@@ -4,7 +4,11 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useDashboard } from "../layout";
 import { formatDate } from "@/lib/format";
-import { generateAndDownloadInvoicePdf, generateInvoicePdfAttachment } from "@/lib/invoice-pdf";
+// Динамический импорт: сам генератор тянет за собой jsPDF + qrcode +
+// вшитые шрифт/логотип (~600 КБ) — если импортировать статически, эти
+// байты грузятся на КАЖДОЕ открытие страницы "Бизнес", даже если никто
+// не жмёт "Скачать PDF". Так — только по клику.
+const loadInvoicePdf = () => import("@/lib/invoice-pdf");
 
 type CompanyRow = {
   id: string;
@@ -314,6 +318,7 @@ export default function BusinessPage() {
       const periodOrders = orders.filter(
         (o) => o.delivery_date && o.delivery_date >= inv.period_start && o.delivery_date <= inv.period_end
       );
+      const { generateAndDownloadInvoicePdf } = await loadInvoicePdf();
       await generateAndDownloadInvoicePdf(selected, inv, periodOrders);
       await loadDetail(selected); // забираем присвоенный номер счёта
     } finally {
@@ -369,6 +374,7 @@ export default function BusinessPage() {
       const periodOrders = orders.filter(
         (o) => o.delivery_date && o.delivery_date >= inv.period_start && o.delivery_date <= inv.period_end
       );
+      const { generateInvoicePdfAttachment } = await loadInvoicePdf();
       const { base64, filename, number } = await generateInvoicePdfAttachment(selected, inv, periodOrders);
       const html = `<p>Dobrý den,</p><p>posíláme fakturu č. ${number} za období ${formatDate(inv.period_start)} – ${formatDate(inv.period_end)}, celkem ${inv.total_amount} Kč, splatnost do ${inv.due_date ? formatDate(inv.due_date) : "—"}.</p><p>Faktura je přiložena v PDF.</p><p>Děkujeme, NARIN</p>`;
       await sendEmail(selected.contact_email, `Faktura č. ${number} — NARIN`, html, { base64, filename });
