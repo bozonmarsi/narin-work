@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useDashboard } from "../layout";
 import { formatDate } from "@/lib/format";
+import { generateAndDownloadInvoicePdf } from "@/lib/invoice-pdf";
 
 type CompanyRow = {
   id: string;
@@ -37,6 +38,7 @@ type OrderRowLite = {
 
 type InvoiceRow = {
   id: string;
+  invoice_number: string | null;
   period_start: string;
   period_end: string;
   total_amount: number;
@@ -95,6 +97,7 @@ export default function BusinessPage() {
   const [memberRole, setMemberRole] = useState<"admin" | "member">("member");
   const [memberBudget, setMemberBudget] = useState("");
   const [memberSubmitting, setMemberSubmitting] = useState(false);
+  const [emailOtherCompanies, setEmailOtherCompanies] = useState<string[]>([]);
 
   const [invoiceFrom, setInvoiceFrom] = useState("");
   const [invoiceTo, setInvoiceTo] = useState("");
@@ -170,7 +173,7 @@ export default function BusinessPage() {
         .limit(30),
       supabase
         .from("company_invoices")
-        .select("id, period_start, period_end, total_amount, status, due_date, paid_at")
+        .select("id, invoice_number, period_start, period_end, total_amount, status, due_date, paid_at")
         .eq("company_id", company.id)
         .order("period_start", { ascending: false }),
     ]);
@@ -190,6 +193,24 @@ export default function BusinessPage() {
     setInvoiceTo("");
     setInvoiceError(null);
     loadDetail(company);
+  }
+
+  async function checkOtherCompanies(email: string) {
+    if (!selected || !email.trim()) {
+      setEmailOtherCompanies([]);
+      return;
+    }
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("company_members")
+      .select("company_id, companies(name)")
+      .eq("email", email.trim().toLowerCase())
+      .neq("company_id", selected.id);
+    setEmailOtherCompanies(
+      ((data ?? []) as unknown as { companies: { name: string } | null }[])
+        .map((r) => r.companies?.name)
+        .filter((n): n is string => Boolean(n))
+    );
   }
 
   async function addMember() {
@@ -264,6 +285,22 @@ export default function BusinessPage() {
     setInvoiceTo("");
     setInvoiceSubmitting(false);
     await loadDetail(selected);
+  }
+
+  const [downloadingInvoiceId, setDownloadingInvoiceId] = useState<string | null>(null);
+
+  async function downloadInvoice(inv: InvoiceRow) {
+    if (!selected) return;
+    setDownloadingInvoiceId(inv.id);
+    try {
+      const periodOrders = orders.filter(
+        (o) => o.delivery_date && o.delivery_date >= inv.period_start && o.delivery_date <= inv.period_end
+      );
+      await generateAndDownloadInvoicePdf(selected, inv, periodOrders);
+      await loadDetail(selected); // забираем присвоенный номер счёта
+    } finally {
+      setDownloadingInvoiceId(null);
+    }
   }
 
   async function setInvoiceStatus(invoiceId: string, status: InvoiceRow["status"]) {
@@ -434,7 +471,11 @@ export default function BusinessPage() {
                     <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">Email</span>
                     <input
                       value={memberEmail}
-                      onChange={(e) => setMemberEmail(e.target.value)}
+                      onChange={(e) => {
+                        setMemberEmail(e.target.value);
+                        setEmailOtherCompanies([]);
+                      }}
+                      onBlur={(e) => checkOtherCompanies(e.target.value)}
                       className="w-44 rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
                     />
                   </label>
@@ -466,6 +507,11 @@ export default function BusinessPage() {
                     Добавить
                   </button>
                 </div>
+                {emailOtherCompanies.length > 0 && (
+                  <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                    Этот email уже заказывает от лица: {emailOtherCompanies.join(", ")}
+                  </p>
+                )}
               </div>
 
               <div className="rounded-md border border-zinc-100 dark:border-zinc-800 p-3">
@@ -502,10 +548,18 @@ export default function BusinessPage() {
                   {invoices.map((inv) => (
                     <div key={inv.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
                       <span className="text-zinc-600 dark:text-zinc-300">
+                        {inv.invoice_number && <span className="font-mono text-xs text-zinc-400">№{inv.invoice_number} · </span>}
                         {formatDate(inv.period_start)} — {formatDate(inv.period_end)} · {inv.total_amount} Kč
                         {inv.due_date && ` · к оплате до ${formatDate(inv.due_date)}`}
                       </span>
                       <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => downloadInvoice(inv)}
+                          disabled={downloadingInvoiceId === inv.id}
+                          className="text-xs text-accent hover:underline disabled:opacity-50"
+                        >
+                          {downloadingInvoiceId === inv.id ? "Готовим…" : "Скачать PDF"}
+                        </button>
                         <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${INVOICE_STATUS_COLORS[inv.status]}`}>
                           {INVOICE_STATUS_LABELS[inv.status]}
                         </span>
