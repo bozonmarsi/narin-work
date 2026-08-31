@@ -22,6 +22,37 @@ type CompanyRow = {
   contact_phone: string | null;
   notes: string | null;
   created_at: string;
+  balance: number;
+};
+
+type RegistrationRequestRow = {
+  id: string;
+  email: string;
+  ico: string;
+  full_name: string;
+  phone: string;
+  backup_email: string | null;
+  telegram: string | null;
+  ares_name: string;
+  ares_address: string | null;
+  ares_dic: string | null;
+  ares_is_vat_payer: boolean;
+  created_at: string;
+};
+
+type BalanceTxRow = {
+  id: string;
+  amount: number;
+  type: string;
+  description: string | null;
+  created_by: string | null;
+  created_at: string;
+};
+
+const BALANCE_TX_TYPE_LABELS: Record<string, string> = {
+  topup: "Пополнение",
+  adjustment: "Ручная корректировка",
+  invoice_payment: "Списание за счёт",
 };
 
 type MemberRow = {
@@ -126,11 +157,22 @@ const EMPTY_FORM = {
 };
 
 export default function BusinessPage() {
-  const { profile } = useDashboard();
+  const { profile, user } = useDashboard();
   const [companies, setCompanies] = useState<CompanyRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [debtByCompany, setDebtByCompany] = useState<Map<string, { unpaid: number; overdueCount: number }>>(new Map());
+
+  const [pendingRequests, setPendingRequests] = useState<RegistrationRequestRow[]>([]);
+  const [requestActionId, setRequestActionId] = useState<string | null>(null);
+  const [requestActionError, setRequestActionError] = useState<string | null>(null);
+
+  const [balanceTx, setBalanceTx] = useState<BalanceTxRow[]>([]);
+  const [balanceAmount, setBalanceAmount] = useState("");
+  const [balanceType, setBalanceType] = useState<"topup" | "adjustment">("topup");
+  const [balanceDescription, setBalanceDescription] = useState("");
+  const [balanceSubmitting, setBalanceSubmitting] = useState(false);
+  const [balanceError, setBalanceError] = useState<string | null>(null);
 
   const [showNewForm, setShowNewForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -155,6 +197,16 @@ export default function BusinessPage() {
   const [invoiceSubmitting, setInvoiceSubmitting] = useState(false);
   const [invoiceError, setInvoiceError] = useState<string | null>(null);
 
+  async function loadPendingRequests() {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("company_registration_requests")
+      .select("id, email, ico, full_name, phone, backup_email, telegram, ares_name, ares_address, ares_dic, ares_is_vat_payer, created_at")
+      .eq("status", "pending")
+      .order("created_at");
+    setPendingRequests(data ?? []);
+  }
+
   async function loadCompanies() {
     setLoading(true);
     const supabase = createClient();
@@ -162,6 +214,7 @@ export default function BusinessPage() {
       supabase.from("companies").select("*").order("name"),
       supabase.from("company_invoices").select("company_id, total_amount, status, due_date"),
     ]);
+    loadPendingRequests();
 
     const today = new Date().toISOString().slice(0, 10);
     const debtMap = new Map<string, { unpaid: number; overdueCount: number }>();
@@ -225,7 +278,7 @@ export default function BusinessPage() {
   async function loadDetail(company: CompanyRow) {
     setLoadingDetail(true);
     const supabase = createClient();
-    const [membersRes, subsRes, ordersRes, invoicesRes] = await Promise.all([
+    const [membersRes, subsRes, ordersRes, invoicesRes, balanceTxRes] = await Promise.all([
       supabase.from("company_members").select("id, email, role, monthly_budget").eq("company_id", company.id).order("created_at"),
       supabase
         .from("subscriptions")
@@ -242,12 +295,139 @@ export default function BusinessPage() {
         .select("id, invoice_number, period_start, period_end, total_amount, status, due_date, paid_at")
         .eq("company_id", company.id)
         .order("period_start", { ascending: false }),
+      supabase
+        .from("company_balance_transactions")
+        .select("id, amount, type, description, created_by, created_at")
+        .eq("company_id", company.id)
+        .order("created_at", { ascending: false })
+        .limit(50),
     ]);
     setMembers(membersRes.data ?? []);
     setSubs(subsRes.data ?? []);
     setOrders(ordersRes.data ?? []);
     setInvoices(invoicesRes.data ?? []);
+    setBalanceTx(balanceTxRes.data ?? []);
     setLoadingDetail(false);
+  }
+
+  // Найти-или-создать компанию по IČO из заявки — та же логика, что была
+  // раньше в register-company, просто теперь запускается менеджером по
+  // кнопке "Одобрить", а не автоматически сразу после ARES-проверки.
+  async function approveRequest(req: RegistrationRequestRow) {
+    setRequestActionId(req.id);
+    setRequestActionError(null);
+    const supabase = createClient();
+    try {
+      const { data: existing } = await supabase.from("companies").select("id").eq("ico", req.ico).maybeSingle();
+      let companyId = existing?.id as string | undefined;
+
+      if (!companyId) {
+        const { data: created, error: createErr } = await supabase
+          .from("companies")
+          .insert({
+            name: req.ares_name,
+            ico: req.ico,
+            dic: req.ares_dic,
+            is_vat_payer: req.ares_is_vat_payer,
+            billing_address: req.ares_address,
+            contact_name: req.full_name,
+            contact_email: req.email,
+            contact_phone: req.phone,
+          })
+          .select("id")
+          .single();
+        if (createErr || !created) throw new Error(createErr?.message || "Не удалось создать компанию");
+        companyId = created.id;
+      }
+
+      const { count: memberCount } = await supabase
+        .from("company_members")
+        .select("id", { count: "exact", head: true })
+        .eq("company_id", companyId);
+
+      const { error: memberErr } = await supabase.from("company_members").upsert(
+        {
+          company_id: companyId,
+          email: req.email,
+          full_name: req.full_name,
+          phone: req.phone,
+          backup_email: req.backup_email,
+          telegram: req.telegram,
+          role: !memberCount || memberCount === 0 ? "admin" : "member",
+        },
+        { onConflict: "company_id,email" }
+      );
+      if (memberErr) throw new Error(memberErr.message);
+
+      const { error: reqErr } = await supabase
+        .from("company_registration_requests")
+        .update({ status: "approved", reviewed_at: new Date().toISOString(), reviewed_by: user?.email ?? null, company_id: companyId })
+        .eq("id", req.id);
+      if (reqErr) throw new Error(reqErr.message);
+
+      await loadCompanies();
+
+      // Письмо — best-effort: если Brevo не ответит, заявка всё равно
+      // одобрена и компания создана, просто менеджер увидит ошибку и
+      // сможет написать вручную через "Написать письмо".
+      try {
+        const { wrapBusinessEmail } = await import("@/lib/business-email-template");
+        const bodyText = `Dobrý den ${req.full_name},\n\nváš firemní účet pro ${req.ares_name} byl schválen. V osobním kabinetu na našem webu najdete:\n\n– Zůstatek na účtu a historii pohybů. Účet si můžete kdykoli nabít převodem — příští faktury pak strhneme přímo z něj, nemusíte platit každou zvlášť.\n– Faktury ke stažení v PDF.\n– Historii všech objednávek vaší firmy.\n\nKabinet najdete zde: https://vezminarin.cz/members/business (přihlaste se stejným e-mailem, na který přišel tento dopis).\n\nPokud budete chtít účet nabít nebo budete mít jakýkoli dotaz, stačí odpovědět na tento e-mail.\n\nS pozdravem,\ntým NARIN`;
+        await sendEmail(req.email, `Váš firemní účet NARIN je aktivní — ${req.ares_name}`, wrapBusinessEmail(bodyText));
+      } catch (emailErr) {
+        setRequestActionError(
+          `Компания создана, но письмо не отправилось: ${emailErr instanceof Error ? emailErr.message : "неизвестная ошибка"}`
+        );
+      }
+    } catch (err) {
+      setRequestActionError(err instanceof Error ? err.message : "Не удалось одобрить заявку");
+    } finally {
+      setRequestActionId(null);
+    }
+  }
+
+  async function rejectRequest(req: RegistrationRequestRow) {
+    setRequestActionId(req.id);
+    setRequestActionError(null);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("company_registration_requests")
+      .update({ status: "rejected", reviewed_at: new Date().toISOString(), reviewed_by: user?.email ?? null })
+      .eq("id", req.id);
+    if (error) setRequestActionError(error.message);
+    await loadPendingRequests();
+    setRequestActionId(null);
+  }
+
+  async function addBalanceTransaction() {
+    if (!selected) return;
+    const amountNum = Number(balanceAmount);
+    if (!balanceAmount || Number.isNaN(amountNum) || amountNum === 0) {
+      setBalanceError("Укажите сумму (можно отрицательную для списания)");
+      return;
+    }
+    setBalanceSubmitting(true);
+    setBalanceError(null);
+    const supabase = createClient();
+    const { error } = await supabase.rpc("add_company_balance_transaction", {
+      p_company_id: selected.id,
+      p_amount: amountNum,
+      p_type: balanceType,
+      p_description: balanceDescription.trim() || null,
+      p_created_by: user?.email ?? null,
+    });
+    if (error) {
+      setBalanceError(error.message);
+      setBalanceSubmitting(false);
+      return;
+    }
+    setBalanceAmount("");
+    setBalanceDescription("");
+    setBalanceSubmitting(false);
+    const { data: freshCompany } = await supabase.from("companies").select("*").eq("id", selected.id).single();
+    if (freshCompany) setSelected(freshCompany);
+    await loadDetail(freshCompany ?? selected);
+    await loadCompanies();
   }
 
   function selectCompany(company: CompanyRow) {
@@ -260,6 +440,11 @@ export default function BusinessPage() {
     setInvoiceError(null);
     setComposerOpen(false);
     setSendInvoiceError(null);
+    setBalanceAmount("");
+    setBalanceDescription("");
+    setBalanceType("topup");
+    setBalanceError(null);
+    setPayInvoiceError(null);
     loadDetail(company);
   }
 
@@ -380,6 +565,41 @@ export default function BusinessPage() {
     if (status === "paid") patch.paid_at = new Date().toISOString();
     await supabase.from("company_invoices").update(patch).eq("id", invoiceId);
     await loadDetail(selected);
+  }
+
+  const [payingInvoiceId, setPayingInvoiceId] = useState<string | null>(null);
+  const [payInvoiceError, setPayInvoiceError] = useState<string | null>(null);
+
+  // Списание счёта с баланса компании — атомарно через тот же RPC, что
+  // и ручное пополнение, просто с отрицательной суммой и типом
+  // invoice_payment, плюс сама фактура помечается оплаченной.
+  async function payInvoiceFromBalance(inv: InvoiceRow) {
+    if (!selected) return;
+    if (selected.balance < inv.total_amount) {
+      setPayInvoiceError(`Недостаточно средств на балансе (доступно ${selected.balance} Kč, нужно ${inv.total_amount} Kč)`);
+      return;
+    }
+    setPayingInvoiceId(inv.id);
+    setPayInvoiceError(null);
+    const supabase = createClient();
+    const { error: balanceErr } = await supabase.rpc("add_company_balance_transaction", {
+      p_company_id: selected.id,
+      p_amount: -inv.total_amount,
+      p_type: "invoice_payment",
+      p_description: inv.invoice_number ? `Faktura č. ${inv.invoice_number}` : "Faktura",
+      p_created_by: user?.email ?? null,
+    });
+    if (balanceErr) {
+      setPayInvoiceError(balanceErr.message);
+      setPayingInvoiceId(null);
+      return;
+    }
+    await supabase.from("company_invoices").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", inv.id);
+    const { data: freshCompany } = await supabase.from("companies").select("*").eq("id", selected.id).single();
+    if (freshCompany) setSelected(freshCompany);
+    await loadDetail(freshCompany ?? selected);
+    await loadCompanies();
+    setPayingInvoiceId(null);
   }
 
   function isOverdue(inv: InvoiceRow) {
@@ -517,6 +737,52 @@ export default function BusinessPage() {
             <p className={`text-lg font-semibold ${[...debtByCompany.values()].some((d) => d.overdueCount > 0) ? "text-red-600 dark:text-red-400" : ""}`}>
               {[...debtByCompany.values()].reduce((s, d) => s + d.overdueCount, 0)}
             </p>
+          </div>
+        </div>
+      )}
+
+      {pendingRequests.length > 0 && (
+        <div className="space-y-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-500/5 p-4">
+          <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+            Заявки на регистрацию ({pendingRequests.length})
+          </p>
+          {requestActionError && <p className="text-sm text-red-600 dark:text-red-400">{requestActionError}</p>}
+          <div className="space-y-2">
+            {pendingRequests.map((req) => (
+              <div
+                key={req.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-white dark:bg-zinc-900 p-3 text-sm"
+              >
+                <div>
+                  <p className="font-medium">
+                    {req.ares_name} · IČO {req.ico}
+                    {req.ares_is_vat_payer && " · плательщик НДС"}
+                  </p>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    {req.full_name} · {req.email} · {req.phone}
+                    {req.telegram && ` · ${req.telegram}`}
+                    {req.backup_email && ` · запасной: ${req.backup_email}`}
+                  </p>
+                  {req.ares_address && <p className="text-xs text-zinc-400 dark:text-zinc-500">{req.ares_address}</p>}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => approveRequest(req)}
+                    disabled={requestActionId === req.id}
+                    className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+                  >
+                    {requestActionId === req.id ? "…" : "Одобрить"}
+                  </button>
+                  <button
+                    onClick={() => rejectRequest(req)}
+                    disabled={requestActionId === req.id}
+                    className="rounded-md px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 disabled:opacity-50"
+                  >
+                    Отклонить
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -739,6 +1005,68 @@ export default function BusinessPage() {
 
           {!loadingDetail && (
             <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-md border border-zinc-100 dark:border-zinc-800 p-3 md:col-span-2">
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Баланс компании</p>
+                  <p className="text-lg font-semibold">{selected.balance} Kč</p>
+                </div>
+                <div className="max-h-48 space-y-1 overflow-y-auto">
+                  {balanceTx.map((t) => (
+                    <div key={t.id} className="flex items-center justify-between text-sm">
+                      <span className="text-zinc-600 dark:text-zinc-300">
+                        {BALANCE_TX_TYPE_LABELS[t.type] ?? t.type}
+                        {t.description && ` — ${t.description}`} · {formatDate(t.created_at)}
+                      </span>
+                      <span className={t.amount >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}>
+                        {t.amount >= 0 ? "+" : ""}
+                        {t.amount} Kč
+                      </span>
+                    </div>
+                  ))}
+                  {balanceTx.length === 0 && <p className="text-sm text-zinc-400 dark:text-zinc-500">Пока нет операций</p>}
+                </div>
+                <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-zinc-100 dark:border-zinc-800 pt-3">
+                  <label className="space-y-1 text-sm">
+                    <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">Сумма (Kč)</span>
+                    <input
+                      type="number"
+                      value={balanceAmount}
+                      onChange={(e) => setBalanceAmount(e.target.value)}
+                      placeholder="напр. 5000 или -500"
+                      className="w-40 rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
+                    />
+                  </label>
+                  <label className="space-y-1 text-sm">
+                    <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">Тип</span>
+                    <select
+                      value={balanceType}
+                      onChange={(e) => setBalanceType(e.target.value as "topup" | "adjustment")}
+                      className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
+                    >
+                      <option value="topup">Пополнение</option>
+                      <option value="adjustment">Ручная корректировка</option>
+                    </select>
+                  </label>
+                  <label className="space-y-1 text-sm">
+                    <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">Комментарий</span>
+                    <input
+                      value={balanceDescription}
+                      onChange={(e) => setBalanceDescription(e.target.value)}
+                      placeholder="напр. перевод от 30.8"
+                      className="w-48 rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
+                    />
+                  </label>
+                  <button
+                    onClick={addBalanceTransaction}
+                    disabled={balanceSubmitting}
+                    className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+                  >
+                    Провести
+                  </button>
+                </div>
+                {balanceError && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{balanceError}</p>}
+              </div>
+
               <div className="rounded-md border border-zinc-100 dark:border-zinc-800 p-3">
                 <p className="mb-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">Кто заказывает от лица компании</p>
                 <div className="space-y-1">
@@ -879,6 +1207,16 @@ export default function BusinessPage() {
                         )}
                         {inv.status === "sent" && (
                           <button
+                            onClick={() => payInvoiceFromBalance(inv)}
+                            disabled={payingInvoiceId === inv.id}
+                            className="text-xs text-accent hover:underline disabled:opacity-50"
+                            title="Списать сумму счёта с баланса компании и пометить оплаченным"
+                          >
+                            {payingInvoiceId === inv.id ? "…" : "Списать с баланса"}
+                          </button>
+                        )}
+                        {inv.status === "sent" && (
+                          <button
                             onClick={() => setInvoiceStatus(inv.id, "paid")}
                             className="text-xs text-accent hover:underline"
                           >
@@ -891,6 +1229,7 @@ export default function BusinessPage() {
                   })}
                   {invoices.length === 0 && <p className="text-sm text-zinc-400 dark:text-zinc-500">Счетов ещё нет</p>}
                   {sendInvoiceError && <p className="text-sm text-red-600 dark:text-red-400">{sendInvoiceError}</p>}
+                  {payInvoiceError && <p className="text-sm text-red-600 dark:text-red-400">{payInvoiceError}</p>}
                 </div>
                 <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-zinc-100 dark:border-zinc-800 pt-3">
                   <label className="space-y-1 text-sm">
