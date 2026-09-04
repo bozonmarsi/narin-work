@@ -1,0 +1,363 @@
+<style>
+.lk-top-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 600px; margin: 0 auto; padding: 20px 20px 0; box-sizing: border-box; font-family: 'Rubik', sans-serif; }
+.lk-widget-tile { position: relative; height: 52px; border-radius: 16px; background: #ffffff; border: 1px solid #e8eaed; overflow: hidden; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 6px 12px; box-sizing: border-box; }
+.lk-widget-tile-badge { position: absolute; top: 6px; right: 6px; width: 9px; height: 9px; border-radius: 50%; background: #e0392c; display: none; border: 2px solid #ffffff; }
+.lk-widget-tile-badge.lk-show { display: block; }
+#lkDatesIconWrap { flex-shrink: 0; width: 26px; height: 26px; }
+.lk-widget-icon { width: 26px; height: 26px; border-radius: 50%; background: #eef4fc; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-sizing: border-box; }
+.lk-widget-icon svg { width: 14px; height: 14px; stroke: #186ce0; overflow: visible; }
+.lk-dates-cart-link { width: 26px; height: 26px; border-radius: 50%; background: #186ce0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; text-decoration: none; box-sizing: border-box; }
+.lk-dates-cart-link svg { width: 14px; height: 14px; stroke: #ffffff; overflow: visible; }
+.lk-widget-text { font-size: 11.5px; font-weight: 600; color: #16181d !important; line-height: 1.28; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.lk-widget-text b { color: #186ce0; }
+.lk-widget-who { font-size: 10.5px; color: #8a8f98; font-weight: 500; }
+
+.lk-icon-row { display: flex; gap: 8px; height: 52px; }
+.lk-icon-btn { position: relative; flex: 0 0 52px; width: 52px; height: 100%; border-radius: 16px; background: #ffffff; border: 1px solid #e8eaed; display: flex; align-items: center; justify-content: center; cursor: pointer; text-decoration: none; box-sizing: border-box; }
+.lk-icon-btn svg { width: 19px; height: 19px; stroke: #186ce0; flex-shrink: 0; }
+.lk-icon-badge { position: absolute; top: 6px; right: 6px; width: 9px; height: 9px; border-radius: 50%; background: #e0392c; display: none; border: 2px solid #ffffff; }
+
+.lk-deposit-tile { flex: 1; min-width: 0; height: 100%; border-radius: 16px; background: #ffffff; border: 1px solid #e8eaed; display: flex; align-items: center; justify-content: center; cursor: pointer; box-sizing: border-box; padding: 0 12px; }
+.lk-deposit-mini-amount { font-size: 14.5px; font-weight: 700; color: #16181d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.lk-dates-popup { position: fixed; inset: 0; background: rgba(16,24,40,0.55); display: none; align-items: center; justify-content: center; z-index: 999; padding: 20px; box-sizing: border-box; }
+.lk-dates-popup.active { display: flex; }
+.lk-dates-popup-card { position: relative; background: #ffffff; border-radius: 24px; padding: 22px 20px; max-width: 340px; width: 100%; max-height: 84vh; overflow-y: auto; box-sizing: border-box; font-family: 'Rubik', sans-serif; }
+.lk-dates-popup-close { position: absolute; top: 14px; right: 14px; width: 28px; height: 28px; border-radius: 50%; border: none; background: rgba(0,0,0,0.06); display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+.lk-popup-section { padding: 2px 0; }
+.lk-popup-title { font-size: 15px; font-weight: 700; color: #16181d; margin-bottom: 10px; padding-right: 20px; }
+.lk-popup-lead { font-size: 12.5px; color: #8a8f98; margin-bottom: 10px; line-height: 1.4; }
+.lk-popup-bullet { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: #44464b; margin-bottom: 8px; }
+.lk-popup-bullet svg { width: 16px; height: 16px; stroke: #186ce0; flex-shrink: 0; }
+
+.lk-deposit-balance-card { background: #eef4fc; border-radius: 18px; padding: 18px; text-align: center; margin-bottom: 14px; }
+.lk-deposit-balance-label { font-size: 11.5px; font-weight: 600; color: #186ce0; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+.lk-deposit-balance-amount { font-size: 30px; font-weight: 700; color: #16181d; }
+</style>
+
+<div class="lk-top-grid">
+    <div class="lk-widget-tile" id="lkWidgetTile">
+        <div id="lkDatesIconWrap"></div>
+        <div class="lk-widget-text" id="lkDatesText">Načítám…</div>
+        <span class="lk-widget-tile-badge" id="lkWidgetTileBadge"></span>
+    </div>
+
+    <div class="lk-icon-row">
+        <a class="lk-icon-btn" id="lkInboxBtn" href="https://vezminarin.cz/members/notifications" aria-label="Oznámení">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+            <span class="lk-icon-badge" id="lkInboxBadge"></span>
+        </a>
+        <div class="lk-deposit-tile" id="lkDepositTile" aria-label="Depozit">
+            <span class="lk-deposit-mini-amount" id="lkDepositAmount">0 Kč</span>
+        </div>
+        <a class="lk-icon-btn" href="/" aria-label="Domů">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11.5L12 4l8 7.5"/><path d="M6 10v9a1 1 0 001 1h10a1 1 0 001-1v-9"/><path d="M10 20v-6h4v6"/></svg>
+        </a>
+    </div>
+</div>
+
+<div class="lk-dates-popup" id="lkDepositPopup">
+    <div class="lk-dates-popup-card">
+        <button type="button" class="lk-dates-popup-close" id="lkDepositPopupClose" aria-label="Zavřít">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#8a8f98" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+
+        <div class="lk-popup-section">
+            <div class="lk-popup-title">Depozit</div>
+            <div class="lk-deposit-balance-card">
+                <div class="lk-deposit-balance-label">Váš zůstatek</div>
+                <div class="lk-deposit-balance-amount" id="lkDepositPopupAmount">0 Kč</div>
+            </div>
+            <div class="lk-popup-lead">Depozit už teď můžete dobít v hotovosti přímo v naší kamenné prodejně. Dobíjení kartou online chystáme, brzy bude k dispozici.</div>
+            <div class="lk-popup-lead">Až bude depozit plně spuštěný, budete moct:</div>
+            <div class="lk-popup-bullet">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a2 2 0 012-2h14a2 2 0 012 2v1.5a1.5 1.5 0 000 3V15a2 2 0 01-2 2H5a2 2 0 01-2-2v-1.5a1.5 1.5 0 000-3V9z"/><path d="M9 7v10" stroke-dasharray="2 2"/></svg>
+                Kupovat dárkové poukazy za svůj depozit
+            </div>
+            <div class="lk-popup-bullet">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><rect x="5" y="12" width="14" height="9" rx="1"/><path d="M12 8v13"/><path d="M12 8C10.5 4.5 6 4.5 6 7s3 1 6 1z"/><path d="M12 8c1.5-3.5 6-3.5 6-1s-3 1-6 1z"/></svg>
+                Darovat je svým blízkým
+            </div>
+            <div class="lk-popup-bullet">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9.5" r="2.3"/><path d="M3.5 20c0-3.5 2.7-5.5 5.5-5.5s5.5 2 5.5 5.5"/><path d="M15 15c2.5 0 5.5 1.5 5.5 5"/></svg>
+                Skládat se s přáteli na společné květinové dárky
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const SUPABASE_URL = "https://wqburlamuipxmenqsjnx.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_ORMmBYvVjH6i2GanWa2JyA_mWm3fTCZ";
+
+    // Те же ключи и даты, что на странице /members/occasions — иначе плитка
+    // и страница показывали бы разные "ближайшие" поводы.
+    const PERSON_HOLIDAYS = [
+        { key: 'valentyn',    name: 'Valentýn',    date: function(y) { return new Date(y, 1, 14); } },
+        { key: 'mdz',         name: 'MDŽ',         date: function(y) { return new Date(y, 2, 8); } },
+        { key: 'den_ucitelu', name: 'Den učitelů', date: function(y) { return new Date(y, 2, 28); } },
+        { key: 'den_matek',   name: 'Den matek',   date: function(y) { return nthWeekday(y, 5, 0, 2); } },
+        { key: 'vanoce',      name: 'Vánoce',      date: function(y) { return new Date(y, 11, 24); } }
+    ];
+
+    let personalDates = [];
+    let recipients = [];
+
+    // Čte, kdo je momentálně přihlášený přes Tilda Members (nezávisle na
+    // lk_auth_token, který žije samostatně 60 dní v localStorage).
+    function getTildaEmail() {
+        for (const key in localStorage) {
+            if (key.indexOf('tilda_members_profile') === 0 && key.indexOf('_timestamp') === -1) {
+                try {
+                    const profile = JSON.parse(localStorage.getItem(key));
+                    const email = profile.login || profile.email;
+                    if (email) return String(email).trim().toLowerCase();
+                } catch (e) {}
+            }
+        }
+        return null;
+    }
+
+    function decodeTokenEmail(token) {
+        try {
+            const payload = JSON.parse(atob(String(token).split('.')[0]));
+            return payload.email ? String(payload.email).trim().toLowerCase() : null;
+        } catch (e) { return null; }
+    }
+
+    function getAuthToken() {
+        try {
+            const raw = localStorage.getItem('lk_auth_token');
+            if (!raw) return null;
+            const data = JSON.parse(raw);
+            if (!data.token || !data.exp || data.exp < Date.now()) return null;
+
+            // lk_auth_token žije 60 dní nezávisle na Tilda Members session —
+            // pokud se na stejném zařízení mezitím přihlásil jiný zákazník,
+            // token pro starý email by jinak zůstal v platnosti a ukazoval
+            // by cizí termíny/příjemce. Při neshodě token okamžitě zahodíme.
+            const tildaEmail = getTildaEmail();
+            const tokenEmail = decodeTokenEmail(data.token);
+            if (tildaEmail && tokenEmail && tildaEmail !== tokenEmail) {
+                localStorage.removeItem('lk_auth_token');
+                return null;
+            }
+
+            return data.token;
+        } catch (e) { return null; }
+    }
+
+    function formatKc(amount) {
+        return Math.round(amount).toLocaleString('cs-CZ') + ' Kč';
+    }
+
+    async function loadDeposit() {
+        const token = getAuthToken();
+        if (!token) return;
+        try {
+            const res = await fetch(SUPABASE_URL + "/functions/v1/customer-deposit", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+                body: JSON.stringify({ action: 'get', token: token })
+            });
+            const data = await res.json();
+            const amount = formatKc(data.balance || 0);
+            document.getElementById('lkDepositAmount').textContent = amount;
+            document.getElementById('lkDepositPopupAmount').textContent = amount;
+        } catch (e) {}
+    }
+
+    function daysWord(n) {
+        if (n === 1) return 'den';
+        if (n >= 2 && n <= 4) return 'dny';
+        return 'dní';
+    }
+
+    function nthWeekday(year, month, weekday, n) {
+        const date = new Date(year, month - 1, 1);
+        const offset = (weekday - date.getDay() + 7) % 7;
+        return new Date(year, month - 1, 1 + offset + (n - 1) * 7);
+    }
+
+    function getEasterSunday(year) {
+        const a = year % 19;
+        const b = Math.floor(year / 100);
+        const c = year % 100;
+        const d = Math.floor(b / 4);
+        const e = b % 4;
+        const f = Math.floor((b + 8) / 25);
+        const g = Math.floor((b - f + 1) / 3);
+        const h = (19 * a + b - d - g + 15) % 30;
+        const i = Math.floor(c / 4);
+        const k = c % 4;
+        const l = (32 + 2 * e + 2 * i - h - k) % 7;
+        const m = Math.floor((a + 11 * h + 22 * l) / 451);
+        const month = Math.floor((h + l - 7 * m + 114) / 31);
+        const day = ((h + l - 7 * m + 114) % 31) + 1;
+        return new Date(year, month - 1, day);
+    }
+
+    // Общий календарь — показываем только тем, у кого ещё ничего своего нет.
+    function buildOccasions(year) {
+        const easterMonday = new Date(getEasterSunday(year).getTime() + 86400000);
+        return [
+            { name: 'Den růží', date: new Date(year, 1, 7) },
+            { name: 'Valentýn', date: new Date(year, 1, 14) },
+            { name: 'Mezinárodní den žen', date: new Date(year, 2, 8) },
+            { name: 'Den učitelů', date: new Date(year, 2, 28) },
+            { name: 'Velikonoční pondělí', date: easterMonday },
+            { name: 'Den matek', date: nthWeekday(year, 5, 0, 2) },
+            { name: 'Mezinárodní den rodiny', date: new Date(year, 4, 15) },
+            { name: 'Den otců', date: nthWeekday(year, 6, 0, 3) },
+            { name: 'Začátek školního roku', date: new Date(year, 8, 1) },
+            { name: 'Den seniorů', date: new Date(year, 9, 1) },
+            { name: 'Dušičky', date: new Date(year, 10, 2) },
+            { name: 'Vánoce', date: new Date(year, 11, 24) },
+            { name: 'Silvestr', date: new Date(year, 11, 31) }
+        ];
+    }
+
+    function today() {
+        const n = new Date();
+        n.setHours(0, 0, 0, 0);
+        return n;
+    }
+
+    function nextByMonthDay(month, day) {
+        const now = today();
+        let c = new Date(now.getFullYear(), month, day);
+        if (c < now) c = new Date(now.getFullYear() + 1, month, day);
+        return c;
+    }
+
+    function nextDateOf(pd) {
+        const raw = new Date(pd.event_date + 'T00:00:00');
+        if (pd.recurrence === 'yearly') return nextByMonthDay(raw.getMonth(), raw.getDate());
+        if (pd.recurrence === 'monthly') {
+            const now = today();
+            let c = new Date(now.getFullYear(), now.getMonth(), raw.getDate());
+            if (c < now) c = new Date(now.getFullYear(), now.getMonth() + 1, raw.getDate());
+            return c;
+        }
+        return raw;
+    }
+
+    function nextHolidayDate(h) {
+        const now = today();
+        let d = h.date(now.getFullYear());
+        if (d < now) d = h.date(now.getFullYear() + 1);
+        return d;
+    }
+
+    // Свои поводы приоритетнее общих: если человек что-то сохранил, плитка
+    // говорит о его людях, а не про Den růží.
+    function getNextOccasion() {
+        const now = today();
+        const mine = [];
+
+        personalDates.forEach(function(pd) {
+            const person = pd.recipient_id ? recipients.find(function(r) { return r.id === pd.recipient_id; }) : null;
+            mine.push({ name: pd.label, who: person ? person.name : null, date: nextDateOf(pd) });
+        });
+
+        recipients.forEach(function(r) {
+            (r.holidays || []).forEach(function(key) {
+                const h = PERSON_HOLIDAYS.find(function(x) { return x.key === key; });
+                if (h) mine.push({ name: h.name, who: r.name, date: nextHolidayDate(h) });
+            });
+        });
+
+        let pool = mine;
+        if (!pool.length) {
+            const y = now.getFullYear();
+            pool = buildOccasions(y).concat(buildOccasions(y + 1)).map(function(o) {
+                return { name: o.name, who: null, date: o.date };
+            });
+        }
+
+        pool = pool.filter(function(o) { return o.date >= now; });
+        pool.sort(function(a, b) { return a.date - b.date; });
+
+        const next = pool[0];
+        if (!next) return null;
+        return { name: next.name, who: next.who, days: Math.round((next.date - now) / 86400000) };
+    }
+
+    function dateIconHtml(daysLeft) {
+        if (daysLeft <= 5) {
+            return '<a class="lk-dates-cart-link" href="/" aria-label="Objednat">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/><path d="M3 4h2l2.6 12.4a2 2 0 002 1.6h7.7a2 2 0 002-1.6L21 8H6"/></svg>' +
+                '</a>';
+        }
+        return '<div class="lk-widget-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>';
+    }
+
+    function renderDates() {
+        const next = getNextOccasion();
+        const iconWrap = document.getElementById('lkDatesIconWrap');
+        const textEl = document.getElementById('lkDatesText');
+        if (!next) {
+            iconWrap.innerHTML = dateIconHtml(99);
+            textEl.textContent = 'Přidat termín';
+            return;
+        }
+
+        iconWrap.innerHTML = dateIconHtml(next.days);
+        const link = iconWrap.querySelector('a');
+        if (link) link.addEventListener('click', function(e) { e.stopPropagation(); });
+
+        const head = next.days === 0
+            ? 'Dnes je ' + next.name + '! 🌸'
+            : '<b>' + next.days + ' ' + daysWord(next.days) + '</b> do ' + next.name;
+        textEl.innerHTML = head + (next.who ? '<div class="lk-widget-who">' + next.who + '</div>' : '');
+    }
+
+    async function api(payload) {
+        const token = getAuthToken();
+        if (!token) return null;
+        const res = await fetch(SUPABASE_URL + "/functions/v1/personal-dates", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+            body: JSON.stringify(Object.assign({ token: token }, payload))
+        });
+        return res.json();
+    }
+
+    function updateTileBadge() {
+        const empty = personalDates.length === 0 && recipients.length === 0;
+        document.getElementById('lkWidgetTileBadge').classList.toggle('lk-show', empty);
+    }
+
+    async function loadOccasions() {
+        try {
+            const [dRes, rRes] = await Promise.all([
+                api({ action: 'list' }),
+                api({ action: 'listRecipients' })
+            ]);
+            personalDates = (dRes && dRes.dates) || [];
+            recipients = (rRes && rRes.recipients) || [];
+        } catch (e) {}
+        renderDates();
+        updateTileBadge();
+    }
+
+    document.getElementById('lkWidgetTile').addEventListener('click', function() {
+        window.location.href = 'https://vezminarin.cz/members/occasions';
+    });
+
+    document.getElementById('lkDepositTile').addEventListener('click', function() {
+        document.getElementById('lkDepositPopup').classList.add('active');
+    });
+    document.getElementById('lkDepositPopupClose').addEventListener('click', function() {
+        document.getElementById('lkDepositPopup').classList.remove('active');
+    });
+    document.getElementById('lkDepositPopup').addEventListener('click', function(e) {
+        if (e.target === this) this.classList.remove('active');
+    });
+
+    renderDates();
+    loadOccasions();
+    loadDeposit();
+})();
+</script>

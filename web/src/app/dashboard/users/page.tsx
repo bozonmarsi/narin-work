@@ -53,6 +53,16 @@ type DateRowLite = {
   label: string;
   event_date: string;
   recurrence: string | null;
+  recipient_id: string | null;
+};
+
+type RecipientRowLite = {
+  id: string;
+  name: string;
+  relation: string | null;
+  phone: string | null;
+  address: string | null;
+  holidays: string[] | null;
 };
 
 type SubscriptionRowLite = {
@@ -80,7 +90,12 @@ export default function UsersPage() {
   const [orders, setOrders] = useState<OrderRowLite[]>([]);
   const [pointsHistory, setPointsHistory] = useState<PointsRowLite[]>([]);
   const [dates, setDates] = useState<DateRowLite[]>([]);
+  const [recipients, setRecipients] = useState<RecipientRowLite[]>([]);
   const [subscription, setSubscription] = useState<SubscriptionRowLite | null>(null);
+
+  const [recipientName, setRecipientName] = useState("");
+  const [recipientSubmitting, setRecipientSubmitting] = useState(false);
+  const [recipientError, setRecipientError] = useState<string | null>(null);
 
   const [pointsAmount, setPointsAmount] = useState("");
   const [pointsDescription, setPointsDescription] = useState("");
@@ -230,7 +245,7 @@ export default function UsersPage() {
 
   async function loadDetail(email: string) {
     const supabase = createClient();
-    const [ordersRes, pointsRes, datesRes, subRes] = await Promise.all([
+    const [ordersRes, pointsRes, datesRes, recipientsRes, subRes] = await Promise.all([
       supabase
         .from("tilda_orders")
         .select("order_id, created_at, order_total, status, products_text")
@@ -245,9 +260,14 @@ export default function UsersPage() {
         .limit(15),
       supabase
         .from("personal_dates")
-        .select("id, label, event_date, recurrence")
+        .select("id, label, event_date, recurrence, recipient_id")
         .eq("email", email)
         .order("event_date", { ascending: true }),
+      supabase
+        .from("recipients")
+        .select("id, name, relation, phone, address, holidays")
+        .eq("owner_email", email)
+        .order("created_at", { ascending: true }),
       supabase
         .from("subscriptions")
         .select("status, line_name_snapshot, created_at")
@@ -260,6 +280,7 @@ export default function UsersPage() {
     setOrders(ordersRes.data ?? []);
     setPointsHistory(pointsRes.data ?? []);
     setDates(datesRes.data ?? []);
+    setRecipients(recipientsRes.data ?? []);
     setSubscription(subRes.data ?? null);
   }
 
@@ -275,6 +296,8 @@ export default function UsersPage() {
     setDateValue("");
     setDateRecurrence("yearly");
     setDateError(null);
+    setRecipientName("");
+    setRecipientError(null);
     setBirthdayValue(customer.birthday ?? "");
     await loadDetail(customer.email);
     setLoadingDetail(false);
@@ -441,6 +464,45 @@ export default function UsersPage() {
     const supabase = createClient();
     await supabase.from("personal_dates").delete().eq("id", id);
     logActivity(selected.email, "date_deleted", label);
+    await loadDetail(selected.email);
+  }
+
+  async function submitRecipient() {
+    if (!selected) return;
+    const name = recipientName.trim();
+    if (!name) {
+      setRecipientError("Введите имя");
+      return;
+    }
+    setRecipientSubmitting(true);
+    setRecipientError(null);
+    const supabase = createClient();
+
+    const { error } = await supabase.from("recipients").insert({
+      owner_email: selected.email,
+      name,
+    });
+
+    if (error) {
+      setRecipientError(error.message);
+      setRecipientSubmitting(false);
+      return;
+    }
+
+    logActivity(selected.email, "recipient_added", `${name} (добавлено менеджером)`);
+    setRecipientName("");
+    setRecipientSubmitting(false);
+    await loadDetail(selected.email);
+  }
+
+  // ON DELETE SET NULL на personal_dates.recipient_id — удаление получателя
+  // не уносит его даты, они просто становятся обычными датами без привязки,
+  // так же как в клиентском кабинете.
+  async function deleteRecipient(id: string, name: string) {
+    if (!selected) return;
+    const supabase = createClient();
+    await supabase.from("recipients").delete().eq("id", id);
+    logActivity(selected.email, "recipient_deleted", `${name} (удалено менеджером)`);
     await loadDetail(selected.email);
   }
 
@@ -634,23 +696,35 @@ export default function UsersPage() {
               <div>
                 <p className="mb-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">Важные даты</p>
                 <div className="space-y-1">
-                  {dates.map((d) => (
-                    <div key={d.id} className="flex items-center justify-between text-sm">
-                      <span className="text-zinc-600 dark:text-zinc-300">{d.label}</span>
-                      <span className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400">
-                        {formatDate(d.event_date)}
-                        {d.recurrence === "yearly" && " · ежегодно"}
-                        {d.recurrence === "monthly" && " · ежемесячно"}
-                        <button
-                          onClick={() => deleteDate(d.id, d.label)}
-                          className="text-zinc-300 hover:text-red-600 dark:text-zinc-600 dark:hover:text-red-400"
-                          title="Удалить"
-                        >
-                          ✕
-                        </button>
-                      </span>
-                    </div>
-                  ))}
+                  {dates.map((d) => {
+                    const linkedRecipient = d.recipient_id
+                      ? recipients.find((r) => r.id === d.recipient_id)
+                      : null;
+                    return (
+                      <div key={d.id} className="flex items-center justify-between text-sm">
+                        <span className="text-zinc-600 dark:text-zinc-300">
+                          {d.label}
+                          {linkedRecipient && (
+                            <span className="ml-1.5 text-xs text-zinc-400 dark:text-zinc-500">
+                              · {linkedRecipient.name}
+                            </span>
+                          )}
+                        </span>
+                        <span className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400">
+                          {formatDate(d.event_date)}
+                          {d.recurrence === "yearly" && " · ежегодно"}
+                          {d.recurrence === "monthly" && " · ежемесячно"}
+                          <button
+                            onClick={() => deleteDate(d.id, d.label)}
+                            className="text-zinc-300 hover:text-red-600 dark:text-zinc-600 dark:hover:text-red-400"
+                            title="Удалить"
+                          >
+                            ✕
+                          </button>
+                        </span>
+                      </div>
+                    );
+                  })}
                   {dates.length === 0 && <p className="text-sm text-zinc-400 dark:text-zinc-500">Не добавлены</p>}
                 </div>
 
@@ -719,6 +793,69 @@ export default function UsersPage() {
                   </button>
                 </div>
                 {dateError && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{dateError}</p>}
+              </div>
+
+              <div>
+                <p className="mb-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">Получатели</p>
+                <div className="space-y-2">
+                  {recipients.map((r) => {
+                    const ownDates = dates.filter((d) => d.recipient_id === r.id).length;
+                    const holidaysCount = r.holidays?.length ?? 0;
+                    return (
+                      <div key={r.id} className="text-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="text-zinc-600 dark:text-zinc-300">
+                            {r.name}
+                            {r.relation && (
+                              <span className="ml-1.5 text-xs text-zinc-400 dark:text-zinc-500">· {r.relation}</span>
+                            )}
+                          </span>
+                          <button
+                            onClick={() => deleteRecipient(r.id, r.name)}
+                            className="text-zinc-300 hover:text-red-600 dark:text-zinc-600 dark:hover:text-red-400"
+                            title="Удалить"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <p className="mt-0.5 text-xs text-zinc-400 dark:text-zinc-500">
+                          {r.phone && <span>{r.phone}</span>}
+                          {r.phone && r.address && " · "}
+                          {r.address && <span>{r.address}</span>}
+                          {(ownDates > 0 || holidaysCount > 0) && (r.phone || r.address) && " · "}
+                          {ownDates > 0 && <span>{ownDates} {ownDates === 1 ? "дата" : "даты"}</span>}
+                          {ownDates > 0 && holidaysCount > 0 && ", "}
+                          {holidaysCount > 0 && <span>{holidaysCount} праздник(ов)</span>}
+                        </p>
+                      </div>
+                    );
+                  })}
+                  {recipients.length === 0 && (
+                    <p className="text-sm text-zinc-400 dark:text-zinc-500">Не добавлены</p>
+                  )}
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-zinc-100 dark:border-zinc-800 pt-3">
+                  <label className="space-y-1 text-sm">
+                    <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                      Имя (видит клиент в своих Occasions)
+                    </span>
+                    <input
+                      value={recipientName}
+                      onChange={(e) => setRecipientName(e.target.value)}
+                      placeholder="например: Máma"
+                      className="w-40 rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
+                    />
+                  </label>
+                  <button
+                    onClick={submitRecipient}
+                    disabled={recipientSubmitting}
+                    className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+                  >
+                    Добавить
+                  </button>
+                </div>
+                {recipientError && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{recipientError}</p>}
               </div>
 
               <div>

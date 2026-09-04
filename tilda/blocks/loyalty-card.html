@@ -1,0 +1,327 @@
+<style>
+.lk-card-wrap { font-family: 'Rubik', sans-serif; max-width: 360px; width: 100%; margin: 0 auto; padding: 0 20px; box-sizing: border-box; }
+.lk-card-perspective { perspective: 1200px; width: 100%; height: 214px; margin-bottom: 18px; }
+.lk-card-inner { position: relative; width: 100%; height: 100%; transition: transform 0.7s cubic-bezier(0.4,0.2,0.2,1); transform-style: preserve-3d; cursor: pointer; }
+.lk-card-face { position: absolute; inset: 0; border-radius: 16px; overflow: hidden; backface-visibility: hidden; }
+.lk-card-front { background-size: cover; background-position: center; background-color: #1f5fa8; }
+.lk-card-front::before { content: ''; position: absolute; inset: 0; background: rgba(0,0,0,0.15); }
+.lk-card-sheen {
+    position: absolute;
+    top: 0;
+    left: -60%;
+    width: 40%;
+    height: 100%;
+    background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.55) 50%, transparent 100%);
+    transform: skewX(-20deg);
+    animation: sheenSweep 3.5s ease-in-out infinite;
+}
+@keyframes sheenSweep { 0% { left: -60%; } 100% { left: 160%; } }
+.lk-card-content { position: relative; height: 100%; width: 100%; padding: 18px 20px; display: flex; flex-direction: column; color: #fff; box-sizing: border-box; }
+.lk-card-top-row { flex-shrink: 0; display: flex; justify-content: space-between; align-items: flex-start; }
+.lk-card-tier-badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.35); }
+.lk-card-mid { flex: 1 1 auto; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; min-height: 0; }
+.lk-card-balance-panel { background: rgba(0,0,0,0.32); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 14px; padding: 10px 18px; display: inline-flex; flex-direction: column; }
+.lk-card-balance-label { font-size: 14px; font-weight: 700; color: #ffffff; margin-bottom: 4px; letter-spacing: 0.03em; text-shadow: 0 1px 5px rgba(0,0,0,0.7); }
+.lk-card-balance { font-size: 26px !important; font-weight: 700 !important; color: #ffffff !important; line-height: 1; text-shadow: 0 2px 10px rgba(0,0,0,0.7); }
+.lk-card-balance span { font-size: 19px !important; font-weight: 700 !important; color: #ffffff !important; }
+.lk-card-bottom-row { flex-shrink: 0; display: flex; justify-content: space-between; align-items: flex-end; }
+.lk-card-number { font-size: 15px; letter-spacing: 0.18em; text-shadow: 0 1px 4px rgba(0,0,0,0.6); }
+.lk-card-back { background: #ffffff; border: 0.5px solid #e9ebef; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; transform: rotateY(180deg); }
+.lk-card-hint { font-size: 12px; color: #8a8f98; text-align: center; margin-bottom: 22px; }
+.lk-progress-block { cursor: pointer; }
+.lk-tiers-collapse { max-height: 0; overflow: hidden; transition: max-height 0.35s cubic-bezier(0.4,0.2,0.2,1); }
+/* ---- Progress block (new) ---- */
+.lk-progress-block { margin-bottom: 18px; }
+.lk-progress-main {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1c1f24;
+    margin-bottom: 2px;
+    letter-spacing: 0.01em;
+}
+.lk-progress-main .lk-accent { color: #186ce0; }
+.lk-progress-sub {
+    font-size: 12px;
+    color: #8a8f98;
+    margin-bottom: 12px;
+}
+.lk-scale-segments { display: flex; gap: 4px; }
+.lk-scale-segment {
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: #e9ebef;
+    overflow: hidden;
+    position: relative;
+}
+.lk-scale-segment-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    border-radius: 3px;
+    width: 0%;
+    transition: width 0.7s cubic-bezier(0.4,0.2,0.2,1);
+}
+
+/* ---- Tiers row (updated) ---- */
+.lk-tiers-row { display: flex; justify-content: space-between; margin-top: 16px; padding-bottom: 20px; }
+.lk-tier-item { text-align: center; flex: 1; position: relative; padding: 0 2px; transition: opacity 0.3s ease; }
+.lk-tier-item.lk-tier-locked { opacity: 0.42; }
+.lk-tier-icon-wrap { position: relative; width: 40px; height: 40px; margin: 0 auto 4px; }
+.lk-tier-lock {
+    position: absolute;
+    bottom: -2px;
+    right: 4px;
+    width: 16px;
+    height: 16px;
+    background: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.18);
+}
+.lk-tier-name { font-size: 12px; margin-top: 2px; }
+.lk-tier-item.lk-tier-current .lk-tier-name { font-weight: 700; }
+.lk-tier-cashback { font-size: 11px; font-weight: 600; margin-top: 1px; }
+.lk-tier-points { font-size: 10px; color: #8a8f98; margin-top: 1px; }
+.lk-tier-current-badge {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 700;
+    color: #186ce0;
+    background: rgba(24,108,224,0.1);
+    padding: 2px 7px;
+    border-radius: 8px;
+    margin-top: 4px;
+    letter-spacing: 0.02em;
+}
+
+/* ---- Progress header chevron ---- */
+.lk-progress-header-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.lk-progress-text { flex: 1 1 auto; min-width: 0; }
+.lk-progress-chevron { flex-shrink: 0; margin-top: 3px; transition: transform 0.35s cubic-bezier(0.4,0.2,0.2,1); }
+.lk-progress-chevron.lk-open { transform: rotate(180deg); }
+
+/* ---- NARIN radio button ---- */
+.lk-radio-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 50%;
+    margin: 18px auto 0;
+    padding: 12px 16px;
+    background: #ffffff;
+    border: 1px solid #e9ebef;
+    border-radius: 20px;
+    box-sizing: border-box;
+    text-decoration: none;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    transition: transform 0.15s ease;
+}
+.lk-radio-btn:active { transform: scale(0.96); }
+.lk-radio-icon { width: 20px; height: 20px; flex-shrink: 0; }
+.lk-radio-btn-text { font-family: 'Rubik', sans-serif; font-size: 14px; font-weight: 700; color: #1c1f24; white-space: nowrap; }
+</style>
+
+<div class="lk-card-wrap">
+    <div class="lk-card-perspective">
+        <div class="lk-card-inner" id="lkCardInner">
+            <div class="lk-card-face lk-card-front" id="lkCardFront">
+                <div class="lk-card-sheen"></div>
+                <div class="lk-card-content">
+                    <div class="lk-card-top-row">
+                        <span></span>
+                        <span class="lk-card-tier-badge" id="lkCardTier">Klient</span>
+                    </div>
+                    <div class="lk-card-mid">
+                         <div class="lk-card-balance-label">Zůstatek</div>
+                         <div class="lk-card-balance"><span id="lkCardBalanceNum">0</span> <span>b.</span></div>
+                    </div>
+                    <div class="lk-card-bottom-row">
+                        <span class="lk-card-number" id="lkCardNumber">●● ●● ●● ••••</span>
+                        <i class="ti ti-rotate-clockwise-2" style="font-size:16px;opacity:0.85;color:#fff;" aria-hidden="true"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="lk-card-face lk-card-back">
+                <svg id="lkBarcodeSvg"></svg>
+                <span style="font-size:13px;letter-spacing:0.14em;color:#8a8f98;" id="lkCardNumberFull"></span>
+            </div>
+        </div>
+    </div>
+    <div class="lk-card-hint">Klikněte na kartu pro zobrazení čárového kódu</div>
+
+    <div class="lk-progress-block" id="lkProgressHeader">
+        <div class="lk-progress-header-row">
+            <div class="lk-progress-text">
+                <div class="lk-progress-main" id="lkProgressMain"></div>
+                <div class="lk-progress-sub" id="lkProgressSub"></div>
+            </div>
+            <svg class="lk-progress-chevron" id="lkProgressChevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8a8f98" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 9l6 6 6-6"></path>
+            </svg>
+        </div>
+        <div class="lk-scale-segments" id="lkScaleSegments"></div>
+    </div>
+
+    <div class="lk-tiers-collapse" id="lkTiersCollapse">
+        <div class="lk-tiers-row" id="lkTiersRow"></div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+
+<script>
+(function() {
+    const TIER_IMAGES = {
+        'Klient':   'https://static.tildacdn.com/tild6237-3062-4338-b234-373762313165/E3941E6E-7AD6-4B84-B.webp',
+        'Silver':   'https://static.tildacdn.com/tild3339-3738-4961-b133-666235386264/E5D597BE-7B84-4E59-A.webp',
+        'Gold':     'https://static.tildacdn.com/tild3663-3137-4866-b164-396435303064/95B11AD8-8D5F-4112-B.webp',
+        'Platinum': 'https://static.tildacdn.com/tild3164-3637-4465-a366-326439393231/IMG_8838.PNG'
+    };
+
+    const TIERS = [
+        { name: 'Klient',   displayName: 'Sapphire', threshold: 0,   color: '#186ce0', cashback: 0.5 },
+        { name: 'Silver',   displayName: 'Silver',   threshold: 300, color: '#a7b0ba', cashback: 1 },
+        { name: 'Gold',     displayName: 'Gold',     threshold: 600, color: '#d4a017', cashback: 1.5 },
+        { name: 'Platinum', displayName: 'Platinum', threshold: 900, color: '#8b5fbf', cashback: 2 }
+    ];
+
+    const SEGMENTS = [
+        { from: 0,   to: 300, tier: TIERS[1] },
+        { from: 300, to: 600, tier: TIERS[2] },
+        { from: 600, to: 900, tier: TIERS[3] }
+    ];
+
+    function fmt(n) { return new Intl.NumberFormat('cs-CZ').format(n); }
+
+    function daisySvg(color, filled) {
+        const attrs = filled ? 'fill="' + color + '"' : 'fill="none" stroke="' + color + '" stroke-width="14"';
+        return '<svg width="40" height="40" viewBox="0 0 419.25 297.749991" style="display:block;">' +
+            '<g transform="matrix(1, 0, 0, 1, 68, 8)" ' + attrs + '>' +
+            '<path d="M 159.691406 91.921875 L 178.789062 42.375 C 185.230469 27.75 184.792969 17.382812 177.480469 6.578125 C 173.335938 0.359375 166.894531 1.230469 155.871094 3.195312 C 151.070312 4.066406 146.050781 4.941406 140.921875 4.941406 C 135.574219 4.941406 130.335938 3.851562 125.316406 2.757812 C 114.292969 0.359375 107.855469 -0.625 103.707031 5.921875 C 96.722656 16.945312 96.503906 27.859375 102.941406 42.375 L 103.050781 42.59375 L 122.042969 91.921875 L 131.972656 109.492188 C 134.808594 108.617188 137.757812 108.179688 140.8125 108.179688 C 143.976562 108.179688 146.921875 108.617188 149.871094 109.492188 Z M 159.691406 91.921875" />' +
+            '<path d="M 41.828125 109.601562 L 42.046875 109.601562 L 91.703125 125.207031 L 111.347656 128.261719 C 113.636719 122.476562 117.566406 117.566406 122.476562 114.074219 L 115.164062 95.195312 L 89.082031 49.140625 C 81.878906 34.953125 73.695312 28.839844 60.816406 27.859375 C 60.488281 27.859375 60.164062 27.859375 59.945312 27.859375 C 53.179688 27.859375 49.902344 33.425781 44.773438 43.027344 C 42.484375 47.394531 39.972656 51.867188 36.808594 56.015625 C 33.425781 60.273438 29.386719 63.765625 25.347656 67.148438 C 16.617188 74.460938 11.816406 79.042969 14.328125 86.355469 C 18.472656 98.578125 26.660156 105.5625 41.828125 109.601562 Z M 41.828125 109.601562" />' +
+            '<path d="M 55.359375 200.070312 L 98.25 170.277344 L 112.875 156.527344 C 110.363281 151.835938 108.835938 146.488281 108.835938 140.8125 C 108.835938 140.15625 108.835938 139.503906 108.945312 138.847656 L 89.957031 132.738281 L 38.335938 124.769531 C 34.296875 124.003906 30.695312 123.570312 27.3125 123.570312 C 17.929688 123.570312 10.835938 126.953125 4.394531 134.15625 C -0.625 139.722656 1.667969 145.941406 5.921875 156.417969 C 7.777344 161.003906 9.742188 165.804688 10.945312 170.933594 C 12.144531 176.28125 12.253906 181.738281 12.363281 186.976562 C 12.582031 198.542969 13.015625 205.09375 20.21875 207.710938 C 32.226562 212.078125 42.703125 209.785156 55.25 200.179688 Z M 55.359375 200.070312" />' +
+            '<path d="M 119.3125 164.820312 L 102.941406 176.28125 L 64.636719 212.511719 C 52.742188 222.769531 48.703125 232.265625 50.667969 245.363281 C 51.757812 252.78125 57.980469 254.855469 68.675781 258.023438 C 73.367188 259.332031 78.277344 260.75 82.863281 263.042969 C 87.664062 265.441406 91.921875 268.714844 96.066406 271.992188 C 105.015625 278.976562 110.363281 282.792969 116.910156 278.648438 C 127.714844 271.773438 132.519531 262.058594 132.953125 246.125 L 132.953125 245.90625 L 136.882812 192.976562 L 135.355469 172.789062 C 129.242188 171.695312 123.789062 168.859375 119.3125 164.820312 Z M 119.3125 164.820312" />' +
+            '<path d="M 216.660156 212.511719 L 216.550781 212.402344 L 178.464844 176.390625 L 161.984375 164.929688 C 157.507812 168.96875 152.054688 171.804688 145.941406 172.789062 L 144.414062 192.976562 L 148.34375 246.125 C 148.777344 262.058594 153.582031 271.226562 164.820312 277.773438 C 171.261719 281.484375 176.71875 277.882812 185.773438 271.226562 C 189.703125 268.28125 193.851562 265.332031 198.542969 263.042969 C 203.34375 260.640625 208.585938 259.332031 213.605469 258.128906 C 224.625 255.402344 230.847656 253.4375 231.71875 245.6875 C 233.03125 232.703125 228.554688 222.878906 216.660156 212.511719 Z M 216.660156 212.511719" />' +
+            '<path d="M 277.882812 133.71875 C 268.933594 124.441406 258.457031 121.824219 243.179688 124.988281 L 242.960938 124.988281 L 191.558594 132.84375 L 172.570312 138.847656 C 172.570312 139.503906 172.570312 140.046875 172.570312 140.703125 C 172.570312 146.488281 171.042969 151.945312 168.53125 156.636719 L 183.046875 170.386719 L 226.15625 200.398438 C 238.703125 210.003906 248.636719 211.96875 260.640625 207.054688 C 267.515625 204.21875 268.171875 197.671875 268.714844 186.320312 C 268.933594 181.300781 269.261719 176.171875 270.355469 171.042969 C 271.554688 165.695312 273.738281 160.785156 275.917969 155.980469 C 280.832031 145.503906 283.230469 139.285156 277.882812 133.71875 Z M 277.882812 133.71875" />' +
+            '<path d="M 159.253906 114.183594 C 164.167969 117.785156 167.988281 122.695312 170.386719 128.480469 L 190.03125 125.425781 L 239.90625 109.710938 C 255.074219 105.78125 262.824219 98.90625 266.535156 86.246094 C 268.605469 79.042969 264.023438 74.460938 255.621094 66.929688 C 251.910156 63.65625 248.199219 60.164062 244.925781 56.125 C 241.542969 51.867188 239.140625 46.957031 236.847656 42.265625 C 231.71875 32.007812 228.554688 26.222656 220.917969 26.984375 C 208.257812 28.40625 199.746094 35.0625 192.542969 49.25 L 192.433594 49.359375 L 166.457031 95.195312 Z M 159.253906 114.183594" />' +
+            '<path d="M 141.25 180.972656 C 118.984375 180.972656 100.871094 162.855469 100.871094 140.59375 C 100.871094 118.332031 118.984375 100.214844 141.25 100.214844 C 163.511719 100.214844 181.628906 118.332031 181.628906 140.59375 C 181.628906 162.855469 163.511719 180.972656 141.25 180.972656 Z M 141.25 180.972656" />' +
+            '<path d="M 141.25 103.488281 C 161.765625 103.488281 178.355469 120.078125 178.355469 140.59375 C 178.355469 161.109375 161.765625 177.699219 141.25 177.699219 C 120.730469 177.699219 104.144531 161.109375 104.144531 140.59375 C 104.144531 120.078125 120.730469 103.488281 141.25 103.488281 M 141.25 96.941406 C 117.128906 96.941406 97.59375 116.476562 97.59375 140.59375 C 97.59375 164.710938 117.128906 184.246094 141.25 184.246094 C 165.367188 184.246094 184.902344 164.710938 184.902344 140.59375 C 184.902344 116.476562 165.367188 96.941406 141.25 96.941406 Z M 141.25 96.941406" />' +
+            '</g></svg>';
+    }
+
+    function lockSvg() {
+        return '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#8a8f98" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' +
+            '<rect x="4" y="10" width="16" height="10" rx="2"></rect>' +
+            '<path d="M8 10V7a4 4 0 0 1 8 0v3"></path>' +
+            '</svg>';
+    }
+
+    function getClientCode(data) {
+        if (data.ma_id) return String(data.ma_id);
+        if (data.id) return data.id.replace(/-/g, '').toUpperCase().slice(0, 12);
+        return '000000000000';
+    }
+
+    function getCurrentTierIndex(totalEarned) {
+        let idx = 0;
+        for (let i = 0; i < TIERS.length; i++) {
+            if (totalEarned >= TIERS[i].threshold) idx = i;
+        }
+        return idx;
+    }
+
+    function render(data) {
+        if (!data) return;
+        document.getElementById('lkCardBalanceNum').textContent = data.balance;
+
+        const bgUrl = TIER_IMAGES[data.tier] || TIER_IMAGES['Klient'];
+        document.getElementById('lkCardFront').style.backgroundImage = "url('" + bgUrl + "')";
+
+        const tierDef = TIERS.find(function(t) { return t.name === data.tier; }) || TIERS[0];
+        const tierBadgeEl = document.getElementById('lkCardTier');
+        tierBadgeEl.textContent = tierDef.displayName;
+        tierBadgeEl.style.background = tierDef.color;
+        tierBadgeEl.style.color = '#ffffff';
+
+        const code = getClientCode(data);
+        document.getElementById('lkCardNumber').textContent = '●● ●● ●● ' + code.slice(-4);
+        document.getElementById('lkCardNumberFull').textContent = code;
+        try {
+            JsBarcode("#lkBarcodeSvg", code, { format: "CODE128", width: 2, height: 54, displayValue: false, margin: 0 });
+        } catch (e) {}
+
+        const totalEarned = data.totalEarned || 0;
+        const currentIdx = getCurrentTierIndex(totalEarned);
+        const currentTier = TIERS[currentIdx];
+        const nextTier = TIERS[currentIdx + 1] || null;
+
+        const mainEl = document.getElementById('lkProgressMain');
+        const subEl = document.getElementById('lkProgressSub');
+        if (nextTier) {
+            const remaining = nextTier.threshold - totalEarned;
+            mainEl.innerHTML = '<span style="color:' + currentTier.color + ';">' + fmt(totalEarned) + ' b.</span>' +
+                ' <span style="color:#c2c6cc;">→</span> ' +
+                '<span style="color:' + nextTier.color + ';">do ' + nextTier.displayName + ': ' + fmt(remaining) + ' b.</span>';
+            subEl.textContent = '+' + nextTier.cashback + '% cashback po dosažení úrovně ' + nextTier.displayName;
+        } else {
+            mainEl.innerHTML = '<span style="color:' + currentTier.color + ';">' + fmt(totalEarned) + ' b. — nejvyšší úroveň ' + currentTier.displayName + '</span>';
+            subEl.textContent = 'Aktuální cashback: ' + currentTier.cashback + '% z každé objednávky';
+        }
+
+        const segWrap = document.getElementById('lkScaleSegments');
+        segWrap.innerHTML = SEGMENTS.map(function(seg) {
+            const pct = Math.max(0, Math.min(100, ((totalEarned - seg.from) / (seg.to - seg.from)) * 100));
+            return '<div class="lk-scale-segment">' +
+                '<div class="lk-scale-segment-fill" style="width:' + pct + '%;background:' + seg.tier.color + ';"></div>' +
+            '</div>';
+        }).join('');
+
+        const row = document.getElementById('lkTiersRow');
+        row.innerHTML = TIERS.map(function(t, i) {
+            const reached = totalEarned >= t.threshold;
+            const isCurrent = i === currentIdx;
+            const locked = !reached;
+            return '<div class="lk-tier-item ' + (locked ? 'lk-tier-locked' : '') + ' ' + (isCurrent ? 'lk-tier-current' : '') + '">' +
+                '<div class="lk-tier-icon-wrap">' +
+                    daisySvg(t.color, reached) +
+                    (locked ? '<div class="lk-tier-lock">' + lockSvg() + '</div>' : '') +
+                '</div>' +
+                '<div class="lk-tier-name" style="color:' + (reached ? t.color : '#8a8f98') + ';">' + t.displayName + '</div>' +
+                '<div class="lk-tier-cashback" style="color:' + (reached ? t.color : '#8a8f98') + ';">' + t.cashback + '%</div>' +
+                '<div class="lk-tier-points">' + fmt(t.threshold) + ' b.</div>' +
+                (isCurrent ? '<div class="lk-tier-current-badge">Váš status</div>' : '') +
+            '</div>';
+        }).join('');
+    }
+
+    if (window.__memberData) {
+        render(window.__memberData);
+    } else {
+        const wait = setInterval(function() {
+            if (window.__memberData) {
+                render(window.__memberData);
+                clearInterval(wait);
+            }
+        }, 300);
+    }
+
+    document.getElementById('lkCardInner').addEventListener('click', function() {
+        this.style.transform = this.style.transform === 'rotateY(180deg)' ? '' : 'rotateY(180deg)';
+    });
+
+    document.getElementById('lkProgressHeader').addEventListener('click', function() {
+        const collapse = document.getElementById('lkTiersCollapse');
+        const chevron = document.getElementById('lkProgressChevron');
+        const isOpen = collapse.style.maxHeight && collapse.style.maxHeight !== '0px';
+        // Measure instead of hardcoding, so the list can never get clipped
+        // if tier names wrap or another tier is added later.
+        collapse.style.maxHeight = isOpen ? '0' : collapse.scrollHeight + 'px';
+        chevron.classList.toggle('lk-open', !isOpen);
+    });
+})();
+</script>

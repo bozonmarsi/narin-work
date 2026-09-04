@@ -1,0 +1,63 @@
+<style>
+.lk-b2b-block { font-family: 'Rubik', sans-serif; max-width: 600px; margin: 0 auto; padding: 0 20px 12px; box-sizing: border-box; }
+.lk-b2b-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.lk-b2b-tile { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-radius: 16px; background: #ffffff; border: 1px solid #e8eaed; text-decoration: none !important; box-sizing: border-box; }
+.lk-b2b-tile-icon { flex-shrink: 0; }
+.lk-b2b-tile-icon svg { width: 18px; height: 18px; stroke: #186ce0; display: block; }
+.lk-b2b-tile-text { font-size: 13px; font-weight: 500; color: #16181d !important; line-height: 1.3; min-width: 0; }
+.lk-b2b-tile-sub { font-size: 11px; color: #186ce0; margin-top: 2px; }
+</style>
+
+<div class="lk-b2b-block">
+    <div class="lk-b2b-grid">
+        <a href="https://vezminarin.cz/b2b" class="lk-b2b-tile" id="lkB2bTile">
+            <div class="lk-b2b-tile-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#186ce0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M3 12h18"/></svg>
+            </div>
+            <div class="lk-b2b-tile-text" id="lkB2bTileText">NARIN Business</div>
+        </a>
+    </div>
+</div>
+
+<script>
+(function () {
+  var SUPABASE_URL = "https://wqburlamuipxmenqsjnx.supabase.co";
+  var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxYnVybGFtdWlweG1lbnFzam54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTY2MTIsImV4cCI6MjA4ODgzMjYxMn0.NYnQoorm3z5gkjr954JdYhzDNmYfCjefzK1ddq3cflw";
+
+  function getTildaEmail() {
+    for (var i = 0; i < localStorage.length; i++) {
+      var key = localStorage.key(i);
+      if (key && key.indexOf("tilda_members_profile") === 0) {
+        try {
+          var profile = JSON.parse(localStorage.getItem(key));
+          return (profile.login || profile.email || "").trim().toLowerCase();
+        } catch (e) {}
+      }
+    }
+    return null;
+  }
+
+  var email = getTildaEmail();
+  if (!email) return;
+
+  fetch(SUPABASE_URL + "/rest/v1/rpc/list_my_companies", {
+    method: "POST",
+    headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer " + SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify({ p_email: email }),
+  })
+    .then(function (r) { return r.json(); })
+    .then(function (companies) {
+      var tile = document.getElementById("lkB2bTile");
+      var textEl = document.getElementById("lkB2bTileText");
+      if (!tile || !textEl) return;
+      var hasCompany = Array.isArray(companies) && companies.length > 0;
+      tile.href = hasCompany ? "https://vezminarin.cz/members/b2b" : "https://vezminarin.cz/b2b";
+      textEl.innerHTML =
+        'NARIN Business' +
+        '<div class="lk-b2b-tile-sub">' +
+        (hasCompany ? 'Faktury, zůstatek a objednávky' : 'Nakupujte se slevou a fakturou') +
+        '</div>';
+    })
+    .catch(function () {});
+})();
+</script>

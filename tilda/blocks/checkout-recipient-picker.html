@@ -1,0 +1,179 @@
+<style>
+/* Vlastní flex sloupec, aby nás Zero Block layout okolo nezlomil do řádku. */
+.occ-cp-wrap { display: flex !important; flex-direction: column !important; align-items: stretch !important; font-family: 'Rubik', sans-serif; width: 100%; box-sizing: border-box; }
+.occ-cp-label { display: block; font-size: 10.5px; font-weight: 600; color: #8a8f98; text-transform: uppercase; letter-spacing: 0.03em; margin: 0 0 6px; }
+
+/* Jeden vodorovně scrollovatelný řádek — výška zůstává stejná ať už jsou
+   2 kontakty, nebo 20, na rozdíl od zalamování na více řádků. */
+.occ-cp-chips { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 6px; padding-bottom: 2px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.occ-cp-chips::-webkit-scrollbar { display: none; }
+.occ-cp-chip { flex: 0 0 auto; padding: 7px 14px; border-radius: 999px; border: 1px solid #e8eaed; background: #fff; font-size: 12.5px; font-family: 'Rubik', sans-serif; color: #16181d; cursor: pointer; white-space: nowrap; }
+.occ-cp-chip.on { background: #186ce0; border-color: #186ce0; color: #fff; }
+
+.occ-cp-nudge { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; color: #5f6672; line-height: 1.45; background: #f7f8fa; border-radius: 12px; padding: 10px 12px; box-sizing: border-box; }
+.occ-cp-nudge a { color: #186ce0; font-weight: 600; text-decoration: none; }
+</style>
+
+<div class="occ-cp-wrap" id="occCpWrap" style="display:none;"></div>
+
+<script>
+(function() {
+    const SUPABASE_URL = "https://wqburlamuipxmenqsjnx.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_ORMmBYvVjH6i2GanWa2JyA_mWm3fTCZ";
+
+    // Čte, kdo je momentálně přihlášený přes Tilda Members (nezávisle na
+    // lk_auth_token, který žije samostatně 60 dní v localStorage).
+    function getTildaEmail() {
+        for (const key in localStorage) {
+            if (key.indexOf('tilda_members_profile') === 0 && key.indexOf('_timestamp') === -1) {
+                try {
+                    const profile = JSON.parse(localStorage.getItem(key));
+                    const email = profile.login || profile.email;
+                    if (email) return String(email).trim().toLowerCase();
+                } catch (e) {}
+            }
+        }
+        return null;
+    }
+
+    function decodeTokenEmail(token) {
+        try {
+            const payload = JSON.parse(atob(String(token).split('.')[0]));
+            return payload.email ? String(payload.email).trim().toLowerCase() : null;
+        } catch (e) { return null; }
+    }
+
+    function getAuthToken() {
+        try {
+            const raw = localStorage.getItem('lk_auth_token');
+            if (!raw) return null;
+            const data = JSON.parse(raw);
+            if (!data.token || !data.exp || data.exp < Date.now()) return null;
+
+            // lk_auth_token žije 60 dní nezávisle na Tilda Members session —
+            // pokud se na stejném zařízení mezitím přihlásil jiný zákazník,
+            // token pro starý email by jinak zůstal v platnosti a ukazoval
+            // by cizí příjemce. Při neshodě token okamžitě zahodíme.
+            const tildaEmail = getTildaEmail();
+            const tokenEmail = decodeTokenEmail(data.token);
+            if (tildaEmail && tokenEmail && tildaEmail !== tokenEmail) {
+                localStorage.removeItem('lk_auth_token');
+                return null;
+            }
+
+            return data.token;
+        } catch (e) { return null; }
+    }
+
+    function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+
+    async function api(payload) {
+        const token = getAuthToken();
+        if (!token) return null;
+        const res = await fetch(SUPABASE_URL + '/functions/v1/personal-dates', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY },
+            body: JSON.stringify(Object.assign({ token: token }, payload))
+        });
+        return res.json();
+    }
+
+    // Реальные селекторы шага "Příjemce" — взяты из вашего же скрипта
+    // синхронизации (config.sync.recipientSection = '#rec1935176163').
+    // Пишем в те же поля, что заполняет галочка "shodný se zákazníkem" —
+    // ваш recipientMemory сам подхватит эти значения как "ручной ввод",
+    // потому что мы диспатчим input/change на тех же селекторах, что он
+    // слушает. Никакого конфликта с существующей логикой формы.
+    var RECIPIENT_SECTION_SELECTOR = '#rec1935176163';
+
+    function fillRecipientFields(name, phone) {
+        var recipientSection = document.querySelector(RECIPIENT_SECTION_SELECTOR);
+        if (!recipientSection) return;
+
+        var parts = String(name || '').trim().split(/\s+/);
+        var first = parts[0] || '';
+        var last = parts.slice(1).join(' ');
+
+        var firstInput = recipientSection.querySelector('input[name="recipients-name"]');
+        var lastInput = recipientSection.querySelector('input[name="recipients-lastname"]');
+        var phoneInput = recipientSection.querySelector('input.t-input-phonemask');
+
+        if (firstInput) {
+            firstInput.value = first;
+            firstInput.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        if (lastInput) {
+            lastInput.value = last;
+            lastInput.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        if (phoneInput && phone) {
+            phoneInput.value = phone;
+            phoneInput.dispatchEvent(new Event('input', { bubbles: true }));
+            // Стандартная последовательность вашей же формы для маски
+            // телефона (см. recipientMemory.restoreManualInput):
+            phoneInput.dispatchEvent(new Event('focus', { bubbles: true }));
+            phoneInput.dispatchEvent(new Event('blur', { bubbles: true }));
+            if (typeof tildaForm_initMasks === 'function') tildaForm_initMasks();
+        }
+
+        recipientSection.querySelectorAll('.t-input-group_error').forEach(function(g) {
+            g.classList.remove('t-input-group_error');
+        });
+        recipientSection.querySelectorAll('.custom-red-border').forEach(function(el) {
+            el.classList.remove('custom-red-border');
+        });
+    }
+
+    async function init() {
+        const wrap = document.getElementById('occCpWrap');
+        if (!getAuthToken()) return; // не залогинен — форма остаётся как есть
+
+        const res = await api({ action: 'listRecipients' });
+        const recipients = (res && res.recipients) || [];
+
+        wrap.style.display = 'block';
+
+        if (!recipients.length) {
+            wrap.innerHTML =
+                '<div class="occ-cp-nudge">' +
+                    '<span>💡</span>' +
+                    '<span>Vyplňte si příjemce v <a href="https://vezminarin.cz/members/occasions" target="_blank" rel="noopener">Occasions</a> — příště půjde objednávka rychleji, stačí vybrat jméno.</span>' +
+                '</div>';
+            return;
+        }
+
+        wrap.innerHTML =
+            '<div class="occ-cp-label">Komu posíláte?</div>' +
+            '<div class="occ-cp-chips" id="occCpChips">' +
+                recipients.map(function(r, i) {
+                    return '<button type="button" class="occ-cp-chip" data-idx="' + i + '">' + esc(r.name) + '</button>';
+                }).join('') +
+            '</div>';
+
+        const chipsWrap = document.getElementById('occCpChips');
+        chipsWrap.querySelectorAll('.occ-cp-chip').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                chipsWrap.querySelectorAll('.occ-cp-chip').forEach(function(b) { b.classList.remove('on'); });
+                this.classList.add('on');
+
+                // Иначе их же syncData() тут же перезапишет наши значения
+                // обратно на данные покупателя при следующем input-событии.
+                const sameCheckbox = document.querySelector('input[name="recipient-customer"]');
+                if (sameCheckbox && sameCheckbox.checked) {
+                    sameCheckbox.checked = false;
+                    sameCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+
+                const r = recipients[parseInt(this.getAttribute('data-idx'), 10)];
+                fillRecipientFields(r.name, r.phone);
+            });
+        });
+    }
+
+    init();
+})();
+</script>

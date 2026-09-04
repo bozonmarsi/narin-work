@@ -1,0 +1,345 @@
+<style>
+.lk-profile-wrap { font-family: 'Rubik', sans-serif; max-width: 600px; margin: 0 auto; padding: 12px 20px 24px; box-sizing: border-box; }
+.lk-profile-trigger { display: flex; align-items: center; gap: 14px; cursor: pointer; padding: 12px 14px; border-radius: 16px; background: #ffffff; border: 1px solid #e8eaed; transition: background 0.2s ease, border-color 0.2s ease; }
+.lk-profile-avatar { width: 52px; height: 52px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: #eef1f4; }
+.lk-profile-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lk-profile-text { flex: 1; min-width: 0; }
+.lk-profile-name { font-size: 16px; font-weight: 600; color: #16181d !important; }
+.lk-profile-email { font-size: 13px; color: #8a8f98 !important; margin-top: 2px; }
+.lk-profile-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.lk-radio-mini-btn { position: relative; width: 32px; height: 32px; border-radius: 50%; background: #eef4fc; display: flex; align-items: center; justify-content: center; flex-shrink: 0; text-decoration: none; }
+.lk-radio-mini-btn svg { width: 18px; height: 18px; display: block; }
+.lk-mini-badge { display: none; position: absolute; top: -1px; right: -1px; width: 11px; height: 11px; border-radius: 50%; background: #e0392c; border: 2px solid #ffffff; }
+.lk-chevron-circle { width: 32px; height: 32px; border-radius: 50%; background: #eef4fc; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.2s ease; }
+.lk-chevron-circle svg { width: 18px; height: 18px; stroke: #186ce0; transition: transform 0.3s cubic-bezier(0.4,0.2,0.2,1); }
+.lk-menu-panel { max-height: 0; opacity: 0; overflow: hidden; transition: max-height 0.35s cubic-bezier(0.4,0.2,0.2,1), opacity 0.25s ease; }
+.lk-menu-inner { background: #f7f8fa; border-radius: 16px; padding: 6px; margin-top: 8px; }
+.lk-menu-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; color: #16181d !important; text-decoration: none !important; font-size: 14px; font-weight: 500; transition: background 0.15s ease; }
+.lk-menu-item:hover { background: #ffffff; }
+.lk-menu-item svg { width: 19px; height: 19px; stroke: #186ce0; flex-shrink: 0; }
+.lk-menu-divider { height: 1px; background: #e9ebef; margin: 6px 10px; }
+.lk-menu-item.danger { color: #a32d2d !important; }
+.lk-menu-item.danger svg { stroke: #a32d2d; }
+.lk-tiles-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+.lk-tile { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-radius: 16px; background: #ffffff; border: 1px solid #e8eaed; text-decoration: none !important; }
+.lk-tile-icon-pulse { animation: lkTilePulse 1.8s ease-in-out infinite; }
+@keyframes lkTilePulse {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-2px); }
+}
+.lk-tile-active { animation: lkTileGlow 2.2s ease-in-out infinite; border-color: transparent; }
+.lk-tile-active .lk-tile-icon { background: transparent; }
+.lk-tile-active .lk-tile-icon svg { stroke: #ffffff; }
+.lk-tile-active .lk-tile-text { color: #ffffff !important; }
+@keyframes lkTileGlow {
+    0%, 100% { box-shadow: 0 0 0 0 var(--tile-glow-color); }
+    50% { box-shadow: 0 0 16px 4px var(--tile-glow-color); }
+}
+.lk-tile-icon svg { width: 18px; height: 18px; stroke: #186ce0; }
+.lk-tile-text { font-size: 13px; font-weight: 500; color: #16181d !important; line-height: 1.3; min-width: 0; }
+</style>
+
+<div class="lk-profile-wrap">
+    <div class="lk-profile-trigger" id="lkProfileTrigger">
+        <div class="lk-profile-avatar" id="lkProfileAvatar"></div>
+        <div class="lk-profile-text">
+            <div class="lk-profile-name" id="lkProfileName">—</div>
+            <div class="lk-profile-email" id="lkProfileEmail">—</div>
+        </div>
+        <div class="lk-profile-actions">
+            <a class="lk-radio-mini-btn" id="lkRadioMiniBtn" href="https://open.spotify.com/playlist/5l4XyEmCaPG9dbpPBj4nzZ?si=x6ZeXcMVRFu8iymastkwVg&utm_source=copy-link&pi=sOj7drxaQT-FA" target="_blank" rel="noopener" title="NARIN radio" aria-label="NARIN radio">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path fill="#186ce0" fill-rule="evenodd" d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                </svg>
+            </a>
+            <a class="lk-radio-mini-btn" id="lkCollectionMiniBtn" href="https://vezminarin.cz/members/collection" title="Sbírka samolepek" aria-label="Sbírka samolepek">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#186ce0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 21 L7.5 12 Q12 15 16.5 12 Z" />
+                    <circle cx="7" cy="7" r="1.7" />
+                    <circle cx="10.5" cy="4.8" r="1.9" />
+                    <circle cx="14" cy="5.2" r="1.9" />
+                    <circle cx="17" cy="7.6" r="1.7" />
+                    <circle cx="11.5" cy="8.5" r="1.6" />
+                </svg>
+                <span class="lk-mini-badge" id="lkCollectionBadge"></span>
+            </a>
+            <div class="lk-chevron-circle" id="lkChevronCircle">
+                <svg id="lkChevronIcon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+        </div>
+    </div>
+
+    <div class="lk-menu-panel" id="lkMenuPanel">
+        <div class="lk-menu-inner">
+            <a href="https://vezminarin.cz/members/profile" class="lk-menu-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 12a4 4 0 100-8 4 4 0 000 8z"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/><path d="M16.5 15.5l3 3M19.5 15.5l-3 3"/></svg>
+                Upravit údaje
+            </a>
+            <a href="https://vezminarin.cz/members/points-history" class="lk-menu-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5c0-1 1-1.5 2.5-1.5s2.5.5 2.5 1.5-1 1.3-2.5 1.5-2.5.5-2.5 1.5 1 1.5 2.5 1.5 2.5-.5 2.5-1.5"/></svg>
+    Historie bodů
+            </a>
+            <a href="/contacts" class="lk-menu-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0116 0v3"/><path d="M4 15a2 2 0 002 2h1v-5H6a2 2 0 00-2 2z"/><path d="M20 15a2 2 0 01-2 2h-1v-5h1a2 2 0 012 2z"/></svg>
+                Podpora
+            </a>
+            <div class="lk-menu-divider"></div>
+            <a href="/members/login?exit=y" class="lk-menu-item danger">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+                Odhlásit se
+            </a>
+        </div>
+    </div>
+
+    <div class="lk-tiles-row">
+     <a href="https://vezminarin.cz/members/orders" class="lk-tile" id="lkOrdersTile">
+    <div class="lk-tile-icon" id="lkOrdersTileIcon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#186ce0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"/><path d="M9 7h6M9 11h6"/></svg>
+    </div>
+    <div class="lk-tile-text" id="lkOrdersTileText">Historie objednávek</div>
+    </a>
+    <a href="https://vezminarin.cz/members/subscription" class="lk-tile" id="lkSubscriptionTile">
+    <div class="lk-tile-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7l4 4 5-6 5 6 4-4-2 11H5z"/></svg></div>
+    <div class="lk-tile-text" id="lkSubscriptionTileText">Předplatné</div>
+</a>
+    <a href="https://vezminarin.cz/b2b" class="lk-tile" id="lkB2bTile">
+        <div class="lk-tile-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#186ce0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M3 12h18"/></svg>
+        </div>
+        <div class="lk-tile-text" id="lkB2bTileText">NARIN Business</div>
+    </a>
+</div>
+</div>
+
+<script>
+(function() {
+    const defaultAvatar = "https://static.tildacdn.com/tild3539-3239-4465-b761-633661386666/IMG_8876.JPG";
+    let lastAvatarUrl = null;
+
+    function getTildaProfile() {
+        for (let key in localStorage) {
+            if (key.indexOf("tilda_members_profile") === 0 && key.indexOf("_timestamp") === -1) {
+                try { return JSON.parse(localStorage.getItem(key)); } catch (e) {}
+            }
+        }
+        return null;
+    }
+
+    function updateNameEmail() {
+        const profile = getTildaProfile();
+        if (!profile) return;
+        const nameEl = document.getElementById('lkProfileName');
+        const emailEl = document.getElementById('lkProfileEmail');
+        if (profile.name && nameEl.textContent !== profile.name) nameEl.textContent = profile.name;
+        const email = profile.login || profile.email;
+        if (email && emailEl.textContent !== email) emailEl.textContent = email;
+    }
+
+    function updateAvatar() {
+        const container = document.getElementById('lkProfileAvatar');
+        let avatarUrl = localStorage.getItem('userAvatarUrl') || defaultAvatar;
+        if (avatarUrl === lastAvatarUrl) return;
+        lastAvatarUrl = avatarUrl;
+        container.innerHTML = '';
+        const img = document.createElement('img');
+        img.src = avatarUrl;
+        container.appendChild(img);
+    }
+
+    updateNameEmail();
+    updateAvatar();
+    if (window.__lkProfileInterval) clearInterval(window.__lkProfileInterval);
+    window.__lkProfileInterval = setInterval(function() {
+        updateNameEmail();
+        updateAvatar();
+    }, 1000);
+
+    let menuOpen = false;
+    const trigger = document.getElementById('lkProfileTrigger');
+    const panel = document.getElementById('lkMenuPanel');
+    const chevronCircle = document.getElementById('lkChevronCircle');
+    const chevronIcon = document.getElementById('lkChevronIcon');
+    const radioMiniBtn = document.getElementById('lkRadioMiniBtn');
+    const collectionMiniBtn = document.getElementById('lkCollectionMiniBtn');
+
+    radioMiniBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+    });
+    collectionMiniBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+    });
+
+    function closeMenu() {
+        menuOpen = false;
+        panel.style.maxHeight = '0';
+        panel.style.opacity = '0';
+        chevronIcon.style.transform = 'rotate(0deg)';
+        chevronIcon.style.stroke = '#186ce0';
+        trigger.style.background = '#ffffff';
+        trigger.style.borderColor = '#e8eaed';
+        chevronCircle.style.background = '#eef4fc';
+    }
+
+    trigger.addEventListener('click', function() {
+        menuOpen = !menuOpen;
+        if (menuOpen) {
+            panel.style.maxHeight = '220px';
+            panel.style.opacity = '1';
+            chevronIcon.style.transform = 'rotate(180deg)';
+            chevronIcon.style.stroke = '#ffffff';
+            trigger.style.background = '#f7f8fa';
+            trigger.style.borderColor = '#186ce0';
+            chevronCircle.style.background = '#186ce0';
+        } else {
+            closeMenu();
+        }
+    });
+
+    document.addEventListener('click', function(e) {
+        if (menuOpen && !trigger.contains(e.target) && !panel.contains(e.target)) closeMenu();
+    });
+})();
+</script>
+
+<script>
+(function() {
+    function decodeEntities(str) {
+        if (!str) return str;
+        const el = document.createElement('textarea');
+        el.innerHTML = str;
+        return el.value;
+    }
+
+    function getAllStickerKeys(orders) {
+        const keys = [];
+        (orders || []).forEach(function(order) {
+            const products = order.raw_payload && order.raw_payload.payment && order.raw_payload.payment.products;
+            if (!Array.isArray(products)) return;
+            products.forEach(function(p, idx) {
+                const name = decodeEntities(p.name);
+                if (!name || !p.image_url) return;
+                const orderKey = order.order_id || order.id || order.created_at;
+                keys.push(orderKey + '::' + idx + '::' + name);
+            });
+        });
+        return keys;
+    }
+
+    function getSeenKeys() {
+        try { return JSON.parse(localStorage.getItem('lk_seen_stickers') || '[]'); } catch (e) { return []; }
+    }
+
+    function checkNewStickers() {
+        if (!window.__memberData) return;
+        const allKeys = getAllStickerKeys(window.__memberData.orders);
+        const seenSet = {};
+        getSeenKeys().forEach(function(k) { seenSet[k] = true; });
+        const hasNew = allKeys.some(function(k) { return !seenSet[k]; });
+        const badge = document.getElementById('lkCollectionBadge');
+        if (badge) badge.style.display = hasNew ? 'block' : 'none';
+    }
+
+    checkNewStickers();
+    if (window.__lkStickerBadgeInterval) clearInterval(window.__lkStickerBadgeInterval);
+    window.__lkStickerBadgeInterval = setInterval(checkNewStickers, 2000);
+})();
+</script>
+
+<script>
+(function () {
+  var SUPABASE_URL = "https://wqburlamuipxmenqsjnx.supabase.co";
+  var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxYnVybGFtdWlweG1lbnFzam54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTY2MTIsImV4cCI6MjA4ODgzMjYxMn0.NYnQoorm3z5gkjr954JdYhzDNmYfCjefzK1ddq3cflw";
+
+  function getTildaEmail() {
+    for (var i = 0; i < localStorage.length; i++) {
+      var key = localStorage.key(i);
+      if (key && key.indexOf("tilda_members_profile") === 0) {
+        try {
+          var profile = JSON.parse(localStorage.getItem(key));
+          return (profile.login || profile.email || "").trim().toLowerCase();
+        } catch (e) {}
+      }
+    }
+    return null;
+  }
+
+  var email = getTildaEmail();
+  if (!email) return;
+
+  fetch(SUPABASE_URL + "/functions/v1/subscriptions-list", {
+    method: "POST",
+    headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer " + SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify({ email: email }),
+  })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      var subs = (data && data.subscriptions) || [];
+      var active = subs.find(function (s) { return s.status === "active"; });
+      if (!active) return;
+
+      var occs = (active.occurrences || []).slice().sort(function (a, b) {
+        return a.occurrence_date < b.occurrence_date ? -1 : a.occurrence_date > b.occurrence_date ? 1 : 0;
+      });
+      var todayStr = new Date().toISOString().slice(0, 10);
+      var nextIdx = -1;
+      for (var i = 0; i < occs.length; i++) {
+        if (occs[i].occurrence_date >= todayStr) { nextIdx = i; break; }
+      }
+      if (nextIdx === -1) return;
+
+      var positionInCycle = (nextIdx % active.deliveries_per_cycle) + 1;
+      var d = new Date(occs[nextIdx].occurrence_date + "T00:00:00Z");
+      var dateLabel = d.getUTCDate() + ". " + (d.getUTCMonth() + 1) + ".";
+
+      var el = document.getElementById("lkSubscriptionTileText");
+      if (!el) return;
+      el.innerHTML =
+        '<div style="font-size:13px;font-weight:500;color:#16181d;">Předplatné</div>' +
+        '<div style="font-size:11px;color:#186ce0;margin-top:2px;">' + dateLabel + ' · ' + positionInCycle + '/' + active.deliveries_per_cycle + '</div>';
+    })
+    .catch(function () {});
+})();
+</script>
+
+<script>
+(function () {
+  var SUPABASE_URL = "https://wqburlamuipxmenqsjnx.supabase.co";
+  var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxYnVybGFtdWlweG1lbnFzam54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTY2MTIsImV4cCI6MjA4ODgzMjYxMn0.NYnQoorm3z5gkjr954JdYhzDNmYfCjefzK1ddq3cflw";
+
+  function getTildaEmail() {
+    for (var i = 0; i < localStorage.length; i++) {
+      var key = localStorage.key(i);
+      if (key && key.indexOf("tilda_members_profile") === 0) {
+        try {
+          var profile = JSON.parse(localStorage.getItem(key));
+          return (profile.login || profile.email || "").trim().toLowerCase();
+        } catch (e) {}
+      }
+    }
+    return null;
+  }
+
+  var email = getTildaEmail();
+  if (!email) return;
+
+  fetch(SUPABASE_URL + "/rest/v1/rpc/list_my_companies", {
+    method: "POST",
+    headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer " + SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify({ p_email: email }),
+  })
+    .then(function (r) { return r.json(); })
+    .then(function (companies) {
+      var tile = document.getElementById("lkB2bTile");
+      var textEl = document.getElementById("lkB2bTileText");
+      if (!tile || !textEl) return;
+      var hasCompany = Array.isArray(companies) && companies.length > 0;
+      tile.href = hasCompany ? "https://vezminarin.cz/members/b2b" : "https://vezminarin.cz/b2b";
+      textEl.innerHTML =
+        '<div style="font-size:13px;font-weight:500;color:#16181d;">NARIN Business</div>' +
+        '<div style="font-size:11px;color:#186ce0;margin-top:2px;">' +
+        (hasCompany ? 'Faktury, zůstatek a objednávky' : 'Nakupujte se slevou a fakturou') +
+        '</div>';
+    })
+    .catch(function () {});
+})();
+</script>

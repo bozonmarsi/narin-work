@@ -1,0 +1,922 @@
+<style>
+.occ-topbar { display: flex; justify-content: space-between; align-items: center; max-width: 560px; margin: 0 auto; padding: 20px; box-sizing: border-box; font-family: 'Rubik', sans-serif; }
+.occ-nav-link { display: inline-flex; align-items: center; gap: 6px; color: #186ce0; text-decoration: none; font-size: 14px; font-weight: 500; }
+.occ-nav-link svg { stroke: #186ce0; }
+
+.occ-wrap { font-family: 'Rubik', sans-serif; max-width: 560px; margin: 0 auto; padding: 0 20px 60px; box-sizing: border-box; }
+
+/* Google Places dropdown — stejný styl jako na pokladně, jen naše modrá. */
+.pac-container { border-radius: 14px; border: 1px solid #e7edf7; box-shadow: 0 12px 32px rgba(24,108,224,0.16); margin-top: 6px; padding: 6px; font-family: inherit; z-index: 99999 !important; overflow: hidden; }
+.pac-item { padding: 11px 10px; font-size: 14px; line-height: 1.3; border: none !important; border-radius: 9px; cursor: pointer; display: flex; align-items: center; }
+.pac-item:hover, .pac-item-selected { background-color: #eef4ff; }
+.pac-item-query { font-size: 14px; color: #16181d; font-weight: 500; }
+.pac-matched { color: #186ce0; font-weight: 700; }
+.pac-item > span:last-child { color: #8a8f98; font-size: 12px; margin-left: 2px; }
+.pac-icon { width: 26px; height: 26px; margin-right: 8px; background: #eef4fc; border-radius: 50%; background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23186ce0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' width='14' height='14'%3E%3Cpath d='M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z'/%3E%3Ccircle cx='12' cy='10' r='3'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: center; background-size: 14px 14px; }
+.pac-logo:after { margin: 4px 6px 2px; opacity: 0.5; }
+.occ-card { background: #ffffff; border: 1px solid #e8eaed; border-radius: 20px; padding: 20px 18px; margin-bottom: 14px; box-sizing: border-box; }
+.occ-eyebrow { font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #186ce0; margin-bottom: 12px; }
+.occ-empty { font-size: 13px; color: #8a8f98; line-height: 1.5; }
+
+/* --- suggestions --- */
+.occ-sugg-card { background: #eef4fc; border: 1px solid #d6e6fa; border-radius: 20px; padding: 16px 18px; margin-bottom: 14px; box-sizing: border-box; }
+.occ-sugg-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
+.occ-sugg-item + .occ-sugg-item { border-top: 1px solid #dbe9fa; }
+.occ-sugg-body { flex: 1; min-width: 0; }
+.occ-sugg-name { font-size: 13.5px; font-weight: 600; color: #16181d; }
+.occ-sugg-sub { font-size: 11px; color: #5f7a9c; margin-top: 1px; }
+.occ-sugg-save { flex-shrink: 0; padding: 7px 14px; border-radius: 999px; border: none; background: #186ce0; color: #fff; font-size: 12px; font-weight: 600; cursor: pointer; font-family: 'Rubik', sans-serif; }
+.occ-sugg-dismiss { flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%; border: none; background: rgba(24,108,224,0.1); display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+
+/* --- upcoming --- */
+.occ-up-item { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid #f0f1f3; }
+.occ-up-item:last-child { border-bottom: none; }
+.occ-up-when { flex-shrink: 0; width: 52px; text-align: center; }
+.occ-up-days { font-size: 17px; font-weight: 700; color: #186ce0; line-height: 1; }
+.occ-up-days-word { font-size: 10px; color: #8a8f98; margin-top: 2px; }
+.occ-up-body { flex: 1; min-width: 0; }
+.occ-up-what { font-size: 13.5px; font-weight: 600; color: #16181d; }
+.occ-up-who { font-size: 11.5px; color: #8a8f98; margin-top: 1px; }
+.occ-up-cta { flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; background: #186ce0; display: flex; align-items: center; justify-content: center; text-decoration: none; }
+.occ-up-cta svg { width: 15px; height: 15px; stroke: #fff; }
+
+/* --- people --- */
+.occ-person { border: 1px solid #e8eaed; border-radius: 14px; margin-bottom: 8px; overflow: hidden; }
+.occ-person-head { display: flex; align-items: center; gap: 11px; padding: 12px 13px; cursor: pointer; }
+.occ-avatar { flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; background: #eef4fc; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #186ce0; }
+.occ-person-info { flex: 1; min-width: 0; }
+.occ-person-name { font-size: 14px; font-weight: 600; color: #16181d; }
+.occ-person-sub { font-size: 11.5px; color: #8a8f98; margin-top: 1px; }
+.occ-person-chev { flex-shrink: 0; transition: transform 0.3s ease; }
+.occ-person.open .occ-person-chev { transform: rotate(180deg); }
+.occ-person-body { display: none; padding: 0 13px 13px; }
+.occ-person.open .occ-person-body { display: block; }
+
+.occ-field { margin-bottom: 10px; }
+.occ-label { display: block; font-size: 10.5px; font-weight: 600; color: #8a8f98; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.03em; }
+.occ-input { width: 100%; box-sizing: border-box; height: 38px; padding: 8px 11px; border: 1px solid #e8eaed; border-radius: 11px; font-size: 13.5px; font-family: 'Rubik', sans-serif; color: #16181d; -webkit-appearance: none; appearance: none; }
+textarea.occ-input { height: auto; min-height: 56px; resize: vertical; }
+
+.occ-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.occ-chip { padding: 7px 13px; border-radius: 999px; border: 1px solid #e8eaed; background: #fff; font-size: 12px; font-weight: 500; color: #44464b; cursor: pointer; font-family: 'Rubik', sans-serif; }
+.occ-chip.on { background: #186ce0; border-color: #186ce0; color: #fff; }
+
+.occ-more-toggle { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: #186ce0; font-weight: 600; cursor: pointer; margin: 4px 0 10px; background: none; border: none; padding: 0; font-family: 'Rubik', sans-serif; }
+.occ-more { display: none; }
+.occ-more.open { display: block; }
+
+.occ-dates-list { margin: 6px 0 10px; }
+.occ-date-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid #f4f5f7; }
+.occ-date-row:last-child { border-bottom: none; }
+.occ-date-label { font-size: 13px; color: #16181d; }
+.occ-date-sub { font-size: 11px; color: #8a8f98; margin-top: 1px; }
+.occ-icon-btn { flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; border: none; background: #f7f8fa; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+
+.occ-btn { width: 100%; box-sizing: border-box; padding: 10px; border-radius: 12px; border: none; background: #186ce0; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'Rubik', sans-serif; }
+.occ-btn:disabled { opacity: 0.5; }
+.occ-btn-ghost { background: #f7f8fa; color: #44464b; }
+.occ-btn-danger { background: none; color: #a32d2d; font-size: 12px; font-weight: 500; padding: 8px 0 0; }
+.occ-row-2 { display: flex; gap: 8px; }
+.occ-row-2 > * { flex: 1; }
+.occ-error { font-size: 12px; color: #a32d2d; margin-top: 8px; }
+.occ-hint { font-size: 11.5px; color: #8a8f98; line-height: 1.45; margin-top: 6px; }
+
+/* --- ics import --- */
+.occ-ics-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; box-sizing: border-box; padding: 11px; border-radius: 12px; border: 1px dashed #c7cdd6; background: #f7f8fa; color: #186ce0; font-size: 12.5px; font-weight: 600; cursor: pointer; font-family: 'Rubik', sans-serif; }
+.occ-ics-btn svg { width: 15px; height: 15px; stroke: #186ce0; }
+.occ-file { display: none; }
+.occ-help summary { font-size: 11.5px; color: #8a8f98; cursor: pointer; list-style: none; margin-top: 10px; }
+.occ-help summary::-webkit-details-marker { display: none; }
+.occ-help summary::before { content: '❓ '; }
+.occ-help-body { font-size: 11.5px; color: #6b6f78; line-height: 1.5; margin-top: 8px; padding: 10px 12px; background: #f7f8fa; border-radius: 10px; }
+.occ-help-body b { color: #16181d; }
+.occ-help-body ol { margin: 4px 0 10px; padding-left: 16px; }
+.occ-help-body ol:last-child { margin-bottom: 0; }
+.occ-ics-preview { margin-top: 12px; }
+.occ-ics-note { font-size: 11px; color: #8a8f98; margin-bottom: 8px; }
+.occ-ics-item { display: flex; align-items: flex-start; gap: 8px; padding: 7px 0; border-bottom: 1px solid #f0f1f3; }
+.occ-ics-item input { margin-top: 2px; width: 15px; height: 15px; accent-color: #186ce0; flex-shrink: 0; }
+</style>
+
+<div class="occ-topbar">
+    <a href="https://vezminarin.cz/members/" class="occ-nav-link">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        Zpět do profilu
+    </a>
+    <a href="https://vezminarin.cz/" class="occ-nav-link">
+        Do katalogu
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+    </a>
+</div>
+
+<div class="occ-wrap">
+    <div class="occ-sugg-card" id="occSuggCard" style="display:none;">
+        <div class="occ-eyebrow" style="color:#186ce0;">Uložit jako kontakt?</div>
+        <div id="occSuggList"></div>
+    </div>
+
+    <div class="occ-card">
+        <div class="occ-eyebrow">Nadchází</div>
+        <div id="occUpcoming"><div class="occ-empty">Načítáme…</div></div>
+    </div>
+
+    <div class="occ-card">
+        <div class="occ-eyebrow">Lidé</div>
+        <div id="occPeople"></div>
+        <button type="button" class="occ-btn occ-btn-ghost" id="occAddPersonBtn" style="margin-top:10px;">+ Přidat osobu</button>
+
+        <div id="occAddPersonForm" style="display:none;margin-top:12px;">
+            <div class="occ-field">
+                <label class="occ-label">Jméno</label>
+                <input type="text" class="occ-input" id="occNewPersonName" placeholder="Máma">
+            </div>
+            <div class="occ-field">
+                <label class="occ-label">Kdo to je</label>
+                <div class="occ-chips" id="occNewPersonRelation"></div>
+                <div class="occ-hint">Podle toho rovnou předvyplníme svátky — můžete je pak upravit.</div>
+            </div>
+            <div class="occ-row-2">
+                <button type="button" class="occ-btn occ-btn-ghost" id="occCancelPersonBtn">Zrušit</button>
+                <button type="button" class="occ-btn" id="occSavePersonBtn">Přidat</button>
+            </div>
+            <div class="occ-error" id="occPersonError"></div>
+        </div>
+    </div>
+
+    <div class="occ-card">
+        <div class="occ-eyebrow">Termíny bez osoby</div>
+        <div id="occLooseDates"></div>
+
+        <button type="button" class="occ-btn occ-btn-ghost" id="occShowLooseFormBtn" style="margin-top:10px;">+ Přidat termín</button>
+
+        <div id="occLooseForm" style="display:none;margin-top:12px;">
+            <div class="occ-field">
+                <label class="occ-label">Název</label>
+                <input type="text" class="occ-input" id="occLooseLabel" placeholder="Výročí svatby">
+            </div>
+            <div class="occ-field">
+                <label class="occ-label">Datum</label>
+                <input type="date" class="occ-input" id="occLooseDate">
+            </div>
+            <div class="occ-field">
+                <label class="occ-label">Opakování</label>
+                <div class="occ-chips" id="occLooseRecurrence">
+                    <button type="button" class="occ-chip" data-value="once">Jednou</button>
+                    <button type="button" class="occ-chip" data-value="monthly">Měsíčně</button>
+                    <button type="button" class="occ-chip on" data-value="yearly">Ročně</button>
+                </div>
+            </div>
+            <div class="occ-row-2">
+                <button type="button" class="occ-btn occ-btn-ghost" id="occCancelLooseBtn">Zrušit</button>
+                <button type="button" class="occ-btn" id="occAddLooseBtn">Uložit</button>
+            </div>
+        </div>
+
+        <button type="button" class="occ-ics-btn" id="occIcsBtn" style="margin-top:12px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg>
+            Naimportovat z kalendáře (.ics)
+        </button>
+        <input type="file" id="occIcsFile" class="occ-file" accept=".ics,text/calendar">
+
+        <details class="occ-help">
+            <summary>Jak soubor .ics stáhnout?</summary>
+            <div class="occ-help-body">
+                <b>Google Kalendář (počítač)</b>
+                <ol>
+                    <li>Otevřete kalendar.google.com</li>
+                    <li>Najeďte na událost → tři tečky → <b>Exportovat</b></li>
+                    <li>Nebo Nastavení → váš kalendář → <b>Exportovat kalendář</b></li>
+                </ol>
+                <b>Apple Kalendář (Mac)</b>
+                <ol>
+                    <li>Otevřete aplikaci Kalendář</li>
+                    <li>Pravým tlačítkem na událost nebo kalendář → <b>Exportovat…</b></li>
+                </ol>
+            </div>
+        </details>
+
+        <div class="occ-ics-preview" id="occIcsPreview" style="display:none;"></div>
+        <div class="occ-error" id="occIcsError"></div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const SUPABASE_URL = "https://wqburlamuipxmenqsjnx.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_ORMmBYvVjH6i2GanWa2JyA_mWm3fTCZ";
+    const ICS_IMPORT_MAX = 10;
+
+    // Только те праздники, где цветы дарят конкретному человеку. Dušičky и
+    // Začátek školního roku остаются в общем календаре виджета: их не к кому
+    // привязывать — это напоминание себе, а не адресату.
+    const HOLIDAYS = [
+        { key: 'valentyn',    name: 'Valentýn',   date: function(y) { return new Date(y, 1, 14); } },
+        { key: 'mdz',         name: 'MDŽ',        date: function(y) { return new Date(y, 2, 8); } },
+        { key: 'den_ucitelu', name: 'Den učitelů', date: function(y) { return new Date(y, 2, 28); } },
+        { key: 'den_matek',   name: 'Den matek',  date: function(y) { return nthWeekday(y, 5, 0, 2); } },
+        { key: 'vanoce',      name: 'Vánoce',     date: function(y) { return new Date(y, 11, 24); } }
+    ];
+
+    // Отношение → предустановленные праздники, чтобы галочки не пришлось
+    // расставлять руками в типовом случае.
+    const RELATIONS = [
+        { key: 'mama',      label: 'Máma',      holidays: ['den_matek', 'mdz', 'vanoce'] },
+        { key: 'partnerka', label: 'Partnerka', holidays: ['valentyn', 'mdz', 'vanoce'] },
+        { key: 'partner',   label: 'Partner',   holidays: ['valentyn', 'vanoce'] },
+        { key: 'babicka',   label: 'Babička',   holidays: ['den_matek', 'mdz', 'vanoce'] },
+        { key: 'ucitelka',  label: 'Učitel(ka)', holidays: ['den_ucitelu'] },
+        { key: 'kolegyne',  label: 'Kolega/yně', holidays: ['mdz', 'vanoce'] },
+        { key: 'kamarad',   label: 'Kamarád(ka)', holidays: ['vanoce'] },
+        { key: 'jine',      label: 'Jiné',      holidays: [] }
+    ];
+
+    let recipients = [];
+    let dates = [];
+    let newPersonRelation = null;
+    let looseRecurrence = 'yearly';
+    let icsParsed = [];
+
+    function nthWeekday(year, month, weekday, n) {
+        const d = new Date(year, month - 1, 1);
+        const offset = (weekday - d.getDay() + 7) % 7;
+        return new Date(year, month - 1, 1 + offset + (n - 1) * 7);
+    }
+
+    function today() {
+        const n = new Date();
+        n.setHours(0, 0, 0, 0);
+        return n;
+    }
+
+    function daysWord(n) {
+        if (n === 1) return 'den';
+        if (n >= 2 && n <= 4) return 'dny';
+        return 'dní';
+    }
+
+    function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+
+    // ---------- Google Places autocomplete pro adresu ----------
+    // Stejný klíč a stejná logika jako na pokladně (extrahuje formátovanou
+    // adresu + souřadnice) — adresa musí sedět kurýrům, ne jen vypadat hezky.
+
+    var mapsReady = false;
+    window.initOccMapsAutocomplete = function () {
+        mapsReady = true;
+        document.querySelectorAll('[data-role="address"]').forEach(attachAddressAutocomplete);
+    };
+
+    function attachAddressAutocomplete(input) {
+        if (!input || !mapsReady || !window.google || !google.maps || !google.maps.places) return;
+        if (input.dataset.acAttached) return;
+        input.dataset.acAttached = '1';
+
+        var autocomplete = new google.maps.places.Autocomplete(input, {
+            componentRestrictions: { country: 'cz' },
+            fields: ['formatted_address', 'geometry'],
+            types: ['address']
+        });
+
+        autocomplete.addListener('place_changed', function () {
+            var place = autocomplete.getPlace();
+            if (place.formatted_address) input.value = place.formatted_address;
+            if (place.geometry && place.geometry.location) {
+                input.dataset.lat = place.geometry.location.lat();
+                input.dataset.lng = place.geometry.location.lng();
+            }
+        });
+    }
+
+    (function loadGoogleMaps() {
+        var s = document.createElement('script');
+        s.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyDEuFdJdQRQSrxlkZO_hc2hvZAhGACJ3IU&libraries=places&language=cs&region=CZ&callback=initOccMapsAutocomplete';
+        s.async = true;
+        s.defer = true;
+        document.head.appendChild(s);
+    })();
+
+    // Čte, kdo je momentálně přihlášený přes Tilda Members (nezávisle na
+    // lk_auth_token, který žije samostatně 60 dní v localStorage).
+    function getTildaEmail() {
+        for (const key in localStorage) {
+            if (key.indexOf('tilda_members_profile') === 0 && key.indexOf('_timestamp') === -1) {
+                try {
+                    const profile = JSON.parse(localStorage.getItem(key));
+                    const email = profile.login || profile.email;
+                    if (email) return String(email).trim().toLowerCase();
+                } catch (e) {}
+            }
+        }
+        return null;
+    }
+
+    function decodeTokenEmail(token) {
+        try {
+            const payload = JSON.parse(atob(String(token).split('.')[0]));
+            return payload.email ? String(payload.email).trim().toLowerCase() : null;
+        } catch (e) { return null; }
+    }
+
+    function getAuthToken() {
+        try {
+            const raw = localStorage.getItem('lk_auth_token');
+            if (!raw) return null;
+            const d = JSON.parse(raw);
+            if (!d.token || !d.exp || d.exp < Date.now()) return null;
+
+            // lk_auth_token žije 60 dní nezávisle na Tilda Members session —
+            // pokud se na stejném zařízení mezitím přihlásil jiný zákazník,
+            // token pro starý email by jinak zůstal v platnosti a ukazoval
+            // by cizí příjemce/termíny. Při neshodě token okamžitě zahodíme.
+            const tildaEmail = getTildaEmail();
+            const tokenEmail = decodeTokenEmail(d.token);
+            if (tildaEmail && tokenEmail && tildaEmail !== tokenEmail) {
+                localStorage.removeItem('lk_auth_token');
+                return null;
+            }
+
+            return d.token;
+        } catch (e) { return null; }
+    }
+
+    async function api(payload) {
+        const token = getAuthToken();
+        if (!token) return { error: 'no_token' };
+        const res = await fetch(SUPABASE_URL + '/functions/v1/personal-dates', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY },
+            body: JSON.stringify(Object.assign({ token: token }, payload))
+        });
+        return res.json();
+    }
+
+    function nextByMonthDay(month, day) {
+        const now = today();
+        let c = new Date(now.getFullYear(), month, day);
+        if (c < now) c = new Date(now.getFullYear() + 1, month, day);
+        return c;
+    }
+
+    function nextDateOf(pd) {
+        const raw = new Date(pd.event_date + 'T00:00:00');
+        if (pd.recurrence === 'yearly') return nextByMonthDay(raw.getMonth(), raw.getDate());
+        if (pd.recurrence === 'monthly') {
+            const now = today();
+            let c = new Date(now.getFullYear(), now.getMonth(), raw.getDate());
+            if (c < now) c = new Date(now.getFullYear(), now.getMonth() + 1, raw.getDate());
+            return c;
+        }
+        return raw;
+    }
+
+    function nextHolidayDate(h) {
+        const now = today();
+        let d = h.date(now.getFullYear());
+        if (d < now) d = h.date(now.getFullYear() + 1);
+        return d;
+    }
+
+    function daysUntil(d) {
+        return Math.round((d - today()) / 86400000);
+    }
+
+    // ---------- upcoming ----------
+
+    function buildUpcoming() {
+        const items = [];
+
+        dates.forEach(function(pd) {
+            const person = pd.recipient_id ? recipients.find(function(r) { return r.id === pd.recipient_id; }) : null;
+            items.push({ what: pd.label, who: person ? person.name : null, date: nextDateOf(pd) });
+        });
+
+        recipients.forEach(function(r) {
+            (r.holidays || []).forEach(function(key) {
+                const h = HOLIDAYS.find(function(x) { return x.key === key; });
+                if (!h) return;
+                items.push({ what: h.name, who: r.name, date: nextHolidayDate(h) });
+            });
+        });
+
+        items.sort(function(a, b) { return a.date - b.date; });
+        return items.slice(0, 8);
+    }
+
+    function renderUpcoming() {
+        const el = document.getElementById('occUpcoming');
+        const items = buildUpcoming();
+
+        if (!items.length) {
+            el.innerHTML = '<div class="occ-empty">Zatím tu nic není. Přidejte osobu nebo termín — a my vám 5 dní předem připomeneme, ať na nic nezapomenete.</div>';
+            return;
+        }
+
+        el.innerHTML = items.map(function(it) {
+            const d = daysUntil(it.date);
+            const soon = d <= 5;
+            return '<div class="occ-up-item">' +
+                '<div class="occ-up-when">' +
+                    '<div class="occ-up-days">' + (d === 0 ? 'Dnes' : d) + '</div>' +
+                    (d === 0 ? '' : '<div class="occ-up-days-word">' + daysWord(d) + '</div>') +
+                '</div>' +
+                '<div class="occ-up-body">' +
+                    '<div class="occ-up-what">' + esc(it.what) + '</div>' +
+                    (it.who ? '<div class="occ-up-who">' + esc(it.who) + '</div>' : '') +
+                '</div>' +
+                (soon ? '<a class="occ-up-cta" href="https://vezminarin.cz/" aria-label="Objednat">' +
+                    '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/><path d="M3 4h2l2.6 12.4a2 2 0 002 1.6h7.7a2 2 0 002-1.6L21 8H6"/></svg></a>' : '') +
+            '</div>';
+        }).join('');
+    }
+
+    // ---------- people ----------
+
+    function initials(name) {
+        const parts = String(name || '').trim().split(/\s+/);
+        return ((parts[0] || '')[0] || '?').toUpperCase();
+    }
+
+    function personSubtitle(r) {
+        const rel = RELATIONS.find(function(x) { return x.key === r.relation; });
+        const own = dates.filter(function(d) { return d.recipient_id === r.id; });
+        const bits = [];
+        if (rel) bits.push(rel.label);
+        const count = own.length + (r.holidays || []).length;
+        if (count) bits.push(count + (count === 1 ? ' termín' : count < 5 ? ' termíny' : ' termínů'));
+        return bits.join(' · ');
+    }
+
+    function renderPeople() {
+        const el = document.getElementById('occPeople');
+        if (!recipients.length) {
+            el.innerHTML = '<div class="occ-empty">Zatím nikdo. Přidejte třeba mámu — stačí jméno.</div>';
+            return;
+        }
+
+        el.innerHTML = recipients.map(function(r) {
+            return '<div class="occ-person" data-id="' + r.id + '">' +
+                '<div class="occ-person-head">' +
+                    '<div class="occ-avatar">' + esc(initials(r.name)) + '</div>' +
+                    '<div class="occ-person-info">' +
+                        '<div class="occ-person-name">' + esc(r.name) + '</div>' +
+                        '<div class="occ-person-sub">' + esc(personSubtitle(r)) + '</div>' +
+                    '</div>' +
+                    '<svg class="occ-person-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8a8f98" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>' +
+                '</div>' +
+                '<div class="occ-person-body"></div>' +
+            '</div>';
+        }).join('');
+
+        el.querySelectorAll('.occ-person-head').forEach(function(head) {
+            head.addEventListener('click', function() {
+                const wrap = head.parentElement;
+                const isOpen = wrap.classList.contains('open');
+                el.querySelectorAll('.occ-person').forEach(function(p) { p.classList.remove('open'); });
+                if (!isOpen) {
+                    wrap.classList.add('open');
+                    renderPersonEditor(wrap, wrap.getAttribute('data-id'));
+                }
+            });
+        });
+    }
+
+    function renderPersonEditor(wrap, id) {
+        const r = recipients.find(function(x) { return x.id === id; });
+        if (!r) return;
+        const body = wrap.querySelector('.occ-person-body');
+        const own = dates.filter(function(d) { return d.recipient_id === id; });
+
+        body.innerHTML =
+            '<div class="occ-field">' +
+                '<label class="occ-label">Svátky, kdy připomenout</label>' +
+                '<div class="occ-chips" data-role="holidays">' +
+                    HOLIDAYS.map(function(h) {
+                        const on = (r.holidays || []).indexOf(h.key) !== -1;
+                        return '<button type="button" class="occ-chip' + (on ? ' on' : '') + '" data-key="' + h.key + '">' + h.name + '</button>';
+                    }).join('') +
+                '</div>' +
+            '</div>' +
+
+            '<div class="occ-dates-list">' +
+                (own.length ? own.map(function(d) {
+                    const nd = nextDateOf(d);
+                    const n = daysUntil(nd);
+                    return '<div class="occ-date-row">' +
+                        '<div><div class="occ-date-label">' + esc(d.label) + '</div>' +
+                        '<div class="occ-date-sub">' + (n === 0 ? 'dnes' : 'za ' + n + ' ' + daysWord(n)) + '</div></div>' +
+                        '<button class="occ-icon-btn" data-del-date="' + d.id + '" aria-label="Smazat">' +
+                            '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#8a8f98" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>' +
+                        '</button>' +
+                    '</div>';
+                }).join('') : '') +
+            '</div>' +
+
+            '<div class="occ-row-2">' +
+                '<input type="text" class="occ-input" data-role="date-label" placeholder="Narozeniny">' +
+                '<input type="date" class="occ-input" data-role="date-value">' +
+            '</div>' +
+            '<button type="button" class="occ-btn occ-btn-ghost" data-role="add-date" style="margin-top:8px;">+ Přidat termín</button>' +
+
+            '<button type="button" class="occ-more-toggle" data-role="more-toggle">Doplnit údaje ▾</button>' +
+            '<div class="occ-more" data-role="more">' +
+                '<div class="occ-field"><label class="occ-label">Telefon</label>' +
+                    '<input type="text" class="occ-input" data-role="phone" value="' + esc(r.phone || '') + '"></div>' +
+                '<div class="occ-field"><label class="occ-label">Adresa</label>' +
+                    '<input type="text" class="occ-input" data-role="address" value="' + esc(r.address || '') + '"></div>' +
+                '<div class="occ-field"><label class="occ-label">Poznámka</label>' +
+                    '<textarea class="occ-input" data-role="note" placeholder="Nemá ráda lilie">' + esc(r.note || '') + '</textarea></div>' +
+                '<button type="button" class="occ-btn" data-role="save-more">Uložit údaje</button>' +
+                '<button type="button" class="occ-btn occ-btn-danger" data-role="delete-person">Smazat osobu</button>' +
+            '</div>' +
+            '<div class="occ-error" data-role="error"></div>';
+
+        // праздники — сохраняем сразу по клику, без кнопки "сохранить"
+        body.querySelectorAll('[data-role=holidays] .occ-chip').forEach(function(chip) {
+            chip.addEventListener('click', async function() {
+                chip.classList.toggle('on');
+                const keys = Array.from(body.querySelectorAll('[data-role=holidays] .occ-chip.on'))
+                    .map(function(c) { return c.getAttribute('data-key'); });
+                const res = await api({ action: 'updateRecipient', id: id, holidays: keys });
+                if (res.recipient) {
+                    r.holidays = res.recipient.holidays || [];
+                    renderUpcoming();
+                    wrap.querySelector('.occ-person-sub').textContent = personSubtitle(r);
+                }
+            });
+        });
+
+        body.querySelector('[data-role=more-toggle]').addEventListener('click', function() {
+            body.querySelector('[data-role=more]').classList.toggle('open');
+        });
+
+        attachAddressAutocomplete(body.querySelector('[data-role=address]'));
+
+        body.querySelector('[data-role=add-date]').addEventListener('click', async function() {
+            const label = body.querySelector('[data-role=date-label]').value.trim();
+            const value = body.querySelector('[data-role=date-value]').value;
+            const err = body.querySelector('[data-role=error]');
+            if (!label || !value) { err.textContent = 'Vyplňte název i datum.'; return; }
+            err.textContent = '';
+            this.disabled = true;
+            await api({ action: 'add', label: label, date: value, recurrence: 'yearly', recipient_id: id });
+            await loadAll();
+            const reopened = document.querySelector('.occ-person[data-id="' + id + '"]');
+            if (reopened) { reopened.classList.add('open'); renderPersonEditor(reopened, id); }
+        });
+
+        body.querySelectorAll('[data-del-date]').forEach(function(btn) {
+            btn.addEventListener('click', async function() {
+                await api({ action: 'delete', id: btn.getAttribute('data-del-date') });
+                await loadAll();
+                const reopened = document.querySelector('.occ-person[data-id="' + id + '"]');
+                if (reopened) { reopened.classList.add('open'); renderPersonEditor(reopened, id); }
+            });
+        });
+
+        body.querySelector('[data-role=save-more]').addEventListener('click', async function() {
+            const err = body.querySelector('[data-role=error]');
+            const addressInput = body.querySelector('[data-role=address]');
+            this.disabled = true;
+            this.textContent = 'Ukládám…';
+            const payload = {
+                action: 'updateRecipient',
+                id: id,
+                phone: body.querySelector('[data-role=phone]').value,
+                address: addressInput.value,
+                note: body.querySelector('[data-role=note]').value
+            };
+            // Souřadnice se ukládají, jen když adresu vybrali z nápovědy
+            // Google — jinak by šlo o hádané "kde asi to je" pro kurýra.
+            if (addressInput.dataset.lat) payload.address_lat = parseFloat(addressInput.dataset.lat);
+            if (addressInput.dataset.lng) payload.address_lng = parseFloat(addressInput.dataset.lng);
+            const res = await api(payload);
+            this.disabled = false;
+            this.textContent = 'Uložit údaje';
+            if (res.error) { err.textContent = 'Nepodařilo se uložit.'; return; }
+            err.textContent = '';
+            Object.assign(r, res.recipient || {});
+            body.querySelector('[data-role=more]').classList.remove('open');
+        });
+
+        body.querySelector('[data-role=delete-person]').addEventListener('click', async function() {
+            if (!confirm('Smazat ' + r.name + '? Termíny zůstanou, jen bez přiřazení k osobě.')) return;
+            await api({ action: 'deleteRecipient', id: id });
+            await loadAll();
+        });
+    }
+
+    // ---------- loose dates ----------
+
+    function renderLooseDates() {
+        const el = document.getElementById('occLooseDates');
+        const loose = dates.filter(function(d) { return !d.recipient_id; });
+        if (!loose.length) {
+            el.innerHTML = '<div class="occ-empty">Termíny, které nepatří konkrétní osobě.</div>';
+            return;
+        }
+        el.innerHTML = loose.map(function(d) {
+            const n = daysUntil(nextDateOf(d));
+            return '<div class="occ-date-row">' +
+                '<div><div class="occ-date-label">' + esc(d.label) + '</div>' +
+                '<div class="occ-date-sub">' + (n === 0 ? 'dnes' : 'za ' + n + ' ' + daysWord(n)) + '</div></div>' +
+                '<button class="occ-icon-btn" data-del="' + d.id + '" aria-label="Smazat">' +
+                    '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#8a8f98" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>' +
+                '</button>' +
+            '</div>';
+        }).join('');
+
+        el.querySelectorAll('[data-del]').forEach(function(btn) {
+            btn.addEventListener('click', async function() {
+                await api({ action: 'delete', id: btn.getAttribute('data-del') });
+                await loadAll();
+            });
+        });
+    }
+
+    // ---------- add person ----------
+
+    function renderRelationChips() {
+        const el = document.getElementById('occNewPersonRelation');
+        el.innerHTML = RELATIONS.map(function(rel) {
+            return '<button type="button" class="occ-chip" data-key="' + rel.key + '">' + rel.label + '</button>';
+        }).join('');
+        el.querySelectorAll('.occ-chip').forEach(function(chip) {
+            chip.addEventListener('click', function() {
+                el.querySelectorAll('.occ-chip').forEach(function(c) { c.classList.remove('on'); });
+                chip.classList.add('on');
+                newPersonRelation = chip.getAttribute('data-key');
+            });
+        });
+    }
+
+    document.getElementById('occAddPersonBtn').addEventListener('click', function() {
+        document.getElementById('occAddPersonForm').style.display = 'block';
+        this.style.display = 'none';
+    });
+
+    document.getElementById('occCancelPersonBtn').addEventListener('click', function() {
+        document.getElementById('occAddPersonForm').style.display = 'none';
+        document.getElementById('occAddPersonBtn').style.display = 'block';
+        document.getElementById('occNewPersonName').value = '';
+        document.getElementById('occPersonError').textContent = '';
+    });
+
+    document.getElementById('occSavePersonBtn').addEventListener('click', async function() {
+        const name = document.getElementById('occNewPersonName').value.trim();
+        const err = document.getElementById('occPersonError');
+        if (!name) { err.textContent = 'Napište jméno.'; return; }
+        err.textContent = '';
+        this.disabled = true;
+        this.textContent = 'Přidávám…';
+
+        const rel = RELATIONS.find(function(x) { return x.key === newPersonRelation; });
+        const res = await api({
+            action: 'addRecipient',
+            name: name,
+            relation: newPersonRelation || null,
+            holidays: rel ? rel.holidays : []
+        });
+
+        this.disabled = false;
+        this.textContent = 'Přidat';
+
+        if (res.error) {
+            err.textContent = res.error === 'too_many_recipients'
+                ? 'Dosáhli jste maximálního počtu osob.'
+                : 'Nepodařilo se přidat.';
+            return;
+        }
+
+        document.getElementById('occNewPersonName').value = '';
+        newPersonRelation = null;
+        renderRelationChips();
+        document.getElementById('occAddPersonForm').style.display = 'none';
+        document.getElementById('occAddPersonBtn').style.display = 'block';
+        await loadAll();
+    });
+
+    // ---------- loose date add ----------
+
+    document.querySelectorAll('#occLooseRecurrence .occ-chip').forEach(function(chip) {
+        chip.addEventListener('click', function() {
+            document.querySelectorAll('#occLooseRecurrence .occ-chip').forEach(function(c) { c.classList.remove('on'); });
+            chip.classList.add('on');
+            looseRecurrence = chip.getAttribute('data-value');
+        });
+    });
+
+    function toggleLooseForm(show) {
+        document.getElementById('occLooseForm').style.display = show ? 'block' : 'none';
+        document.getElementById('occShowLooseFormBtn').style.display = show ? 'none' : 'block';
+    }
+
+    document.getElementById('occShowLooseFormBtn').addEventListener('click', function() { toggleLooseForm(true); });
+    document.getElementById('occCancelLooseBtn').addEventListener('click', function() {
+        document.getElementById('occLooseLabel').value = '';
+        document.getElementById('occLooseDate').value = '';
+        toggleLooseForm(false);
+    });
+
+    document.getElementById('occAddLooseBtn').addEventListener('click', async function() {
+        const label = document.getElementById('occLooseLabel').value.trim();
+        const value = document.getElementById('occLooseDate').value;
+        if (!label || !value) return;
+        this.disabled = true;
+        await api({ action: 'add', label: label, date: value, recurrence: looseRecurrence });
+        this.disabled = false;
+        document.getElementById('occLooseLabel').value = '';
+        document.getElementById('occLooseDate').value = '';
+        toggleLooseForm(false);
+        await loadAll();
+    });
+
+    // ---------- ics ----------
+
+    function parseIcs(text) {
+        const unfolded = text.replace(/\r\n/g, '\n').replace(/\n[ \t]/g, '');
+        const blocks = unfolded.split('BEGIN:VEVENT').slice(1);
+        const out = [];
+        blocks.forEach(function(block) {
+            const lines = block.split('END:VEVENT')[0].split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
+            let summary = null, dtstart = null, rrule = null;
+            lines.forEach(function(line) {
+                const i = line.indexOf(':');
+                if (i === -1) return;
+                const key = line.slice(0, i).split(';')[0].toUpperCase();
+                const val = line.slice(i + 1);
+                if (key === 'SUMMARY') summary = val.replace(/\\,/g, ',').replace(/\\n/gi, ' ').trim();
+                else if (key === 'DTSTART') { const m = val.match(/(\d{4})(\d{2})(\d{2})/); if (m) dtstart = m[1] + '-' + m[2] + '-' + m[3]; }
+                else if (key === 'RRULE') rrule = val;
+            });
+            if (!summary || !dtstart) return;
+            let rec = 'once';
+            if (rrule) {
+                const f = rrule.match(/FREQ=([A-Z]+)/);
+                if (f && f[1] === 'YEARLY') rec = 'yearly';
+                else if (f && f[1] === 'MONTHLY') rec = 'monthly';
+            }
+            out.push({ label: summary, event_date: dtstart, recurrence: rec });
+        });
+        return out;
+    }
+
+    document.getElementById('occIcsBtn').addEventListener('click', function() {
+        document.getElementById('occIcsFile').click();
+    });
+
+    document.getElementById('occIcsFile').addEventListener('change', function(e) {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function() {
+            const errEl = document.getElementById('occIcsError');
+            const prev = document.getElementById('occIcsPreview');
+            errEl.textContent = '';
+
+            let all;
+            try { all = parseIcs(String(reader.result)); }
+            catch (err) { errEl.textContent = 'Soubor se nepodařilo přečíst.'; return; }
+
+            // Прошедшие разовые события бесполезны как будущие напоминания.
+            const events = all.filter(function(ev) {
+                if (ev.recurrence !== 'once') return true;
+                return new Date(ev.event_date + 'T00:00:00') >= today();
+            });
+
+            if (!events.length) {
+                prev.style.display = 'none';
+                errEl.textContent = 'Nenašli jsme žádné nadcházející události.';
+                return;
+            }
+
+            events.sort(function(a, b) { return nextDateOf(a) - nextDateOf(b); });
+            const shown = events.slice(0, ICS_IMPORT_MAX);
+            icsParsed = shown;
+
+            prev.innerHTML =
+                '<div class="occ-ics-note">' +
+                    (events.length > ICS_IMPORT_MAX
+                        ? 'Nalezeno ' + events.length + ' událostí, zobrazeno ' + ICS_IMPORT_MAX + ' nejbližších.'
+                        : 'Nalezeno ' + events.length + '. Vyberte, co přidat:') +
+                '</div>' +
+                shown.map(function(ev, i) {
+                    const n = daysUntil(nextDateOf(ev));
+                    return '<label class="occ-ics-item">' +
+                        '<input type="checkbox" checked data-idx="' + i + '">' +
+                        '<span><div class="occ-date-label">' + esc(ev.label) + '</div>' +
+                        '<div class="occ-date-sub">' + ev.event_date + ' · za ' + n + ' ' + daysWord(n) + '</div></span>' +
+                    '</label>';
+                }).join('') +
+                '<button type="button" class="occ-btn" id="occIcsConfirm" style="margin-top:10px;">Importovat vybrané</button>';
+            prev.style.display = 'block';
+
+            document.getElementById('occIcsConfirm').addEventListener('click', async function() {
+                const picked = Array.from(prev.querySelectorAll('input:checked'))
+                    .map(function(cb) { return icsParsed[parseInt(cb.getAttribute('data-idx'), 10)]; })
+                    .filter(Boolean);
+                if (!picked.length) return;
+                this.disabled = true;
+                this.textContent = 'Importuji…';
+                for (const ev of picked) {
+                    await api({ action: 'add', label: ev.label, date: ev.event_date, recurrence: ev.recurrence });
+                }
+                prev.style.display = 'none';
+                prev.innerHTML = '';
+                document.getElementById('occIcsFile').value = '';
+                await loadAll();
+            });
+        };
+        reader.readAsText(file);
+    });
+
+    // ---------- návrhy z historie objednávek ----------
+
+    const SUGG_DISMISSED_KEY = 'occ_dismissed_suggestions';
+
+    function getDismissedSuggestions() {
+        try { return new Set(JSON.parse(localStorage.getItem(SUGG_DISMISSED_KEY) || '[]')); }
+        catch (e) { return new Set(); }
+    }
+
+    function dismissSuggestion(nameKey) {
+        const set = getDismissedSuggestions();
+        set.add(nameKey);
+        localStorage.setItem(SUGG_DISMISSED_KEY, JSON.stringify(Array.from(set)));
+    }
+
+    async function loadSuggestions() {
+        const res = await api({ action: 'suggestedRecipients' });
+        const all = (res && res.suggestions) || [];
+        const dismissed = getDismissedSuggestions();
+        const visible = all.filter(function(s) { return !dismissed.has(s.name.toLowerCase()); });
+
+        const card = document.getElementById('occSuggCard');
+        const list = document.getElementById('occSuggList');
+
+        if (!visible.length) { card.style.display = 'none'; list.innerHTML = ''; return; }
+
+        card.style.display = 'block';
+        list.innerHTML = visible.map(function(s, i) {
+            const firstName = s.name.split(' ')[0];
+            return '<div class="occ-sugg-item">' +
+                '<div class="occ-sugg-body">' +
+                    '<div class="occ-sugg-name">' + esc(s.name) + '</div>' +
+                    '<div class="occ-sugg-sub">Objednali jste pro ' + esc(firstName) + ' — přidat do Lidí?</div>' +
+                '</div>' +
+                '<button type="button" class="occ-sugg-save" data-idx="' + i + '">Uložit</button>' +
+                '<button type="button" class="occ-sugg-dismiss" data-idx="' + i + '" aria-label="Zrušit">' +
+                    '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#186ce0" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>' +
+                '</button>' +
+            '</div>';
+        }).join('');
+
+        list.querySelectorAll('.occ-sugg-save').forEach(function(btn) {
+            btn.addEventListener('click', async function() {
+                const s = visible[parseInt(btn.getAttribute('data-idx'), 10)];
+                this.disabled = true;
+                this.textContent = 'Ukládám…';
+                await api({ action: 'addRecipient', name: s.name, phone: s.phone, address: s.address });
+                dismissSuggestion(s.name.toLowerCase());
+                await loadAll();
+                await loadSuggestions();
+            });
+        });
+
+        list.querySelectorAll('.occ-sugg-dismiss').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const s = visible[parseInt(btn.getAttribute('data-idx'), 10)];
+                dismissSuggestion(s.name.toLowerCase());
+                loadSuggestions();
+            });
+        });
+    }
+
+    // ---------- load ----------
+
+    async function loadAll() {
+        const [dRes, rRes] = await Promise.all([
+            api({ action: 'list' }),
+            api({ action: 'listRecipients' })
+        ]);
+        dates = (dRes && dRes.dates) || [];
+        recipients = (rRes && rRes.recipients) || [];
+        renderUpcoming();
+        renderPeople();
+        renderLooseDates();
+    }
+
+    renderRelationChips();
+
+    if (!getAuthToken()) {
+        document.getElementById('occUpcoming').innerHTML =
+            '<div class="occ-empty">Pro zobrazení se prosím <a href="https://vezminarin.cz/members/login" style="color:#186ce0;font-weight:600;text-decoration:none;">přihlaste</a>.</div>';
+    } else {
+        loadAll();
+        loadSuggestions();
+    }
+})();
+</script>

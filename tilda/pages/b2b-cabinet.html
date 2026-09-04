@@ -1,0 +1,386 @@
+<style>
+.lk-biz-wrap { font-family: 'Rubik', sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 20px 60px; box-sizing: border-box; }
+.lk-biz-topbar { display: flex; justify-content: space-between; align-items: center; max-width: 560px; margin: 0 auto; padding: 20px; box-sizing: border-box; }
+.lk-back-link { display: inline-flex; align-items: center; gap: 6px; color: #186ce0; text-decoration: none; font-size: 14px; font-weight: 500; }
+
+.lk-biz-hero { background: linear-gradient(135deg, #186ce0, #0e56ba); border-radius: 22px; padding: 28px 24px; color: #fff; margin-bottom: 16px; box-shadow: 0 24px 50px -28px rgba(24,108,224,0.55); }
+.lk-biz-hero-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.75); margin-bottom: 6px; }
+.lk-biz-hero-name { font-size: 20px; font-weight: 600; margin-bottom: 10px; text-wrap: balance; }
+.lk-biz-hero-meta { font-size: 12.5px; color: rgba(255,255,255,0.8); line-height: 1.6; }
+.lk-biz-hero-balance-row { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.22); }
+.lk-biz-hero-balance-label { font-size: 12px; color: rgba(255,255,255,0.75); margin-bottom: 4px; }
+.lk-biz-hero-balance-amount { font-size: 28px; font-weight: 700; }
+.lk-biz-hero-topup-note { font-size: 11.5px; color: rgba(255,255,255,0.72); max-width: 190px; text-align: right; line-height: 1.5; }
+
+.lk-biz-card { background: #ffffff; border-radius: 20px; padding: 26px 22px; box-shadow: 0 20px 45px -30px rgba(22,24,29,0.35); margin-bottom: 16px; }
+.lk-biz-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #186ce0; margin-bottom: 10px; }
+.lk-biz-title { font-size: 21px; font-weight: 600; color: #16181d; margin-bottom: 6px; text-wrap: balance; }
+.lk-biz-sub { font-size: 13.5px; color: #8a8f98; line-height: 1.55; }
+
+.lk-biz-switcher { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+.lk-biz-switcher button { border: 1px solid #cfe0f9; background: #fff; border-radius: 999px; padding: 7px 14px; font-size: 12.5px; color: #16181d; cursor: pointer; font-family: 'Rubik', sans-serif; }
+.lk-biz-switcher button.on { background: #186ce0; border-color: #186ce0; color: #fff; }
+
+.lk-biz-invoice { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid #f0f1f3; }
+.lk-biz-invoice:last-child { border-bottom: none; }
+.lk-biz-invoice-info { font-size: 13px; color: #16181d; }
+.lk-biz-invoice-info .num { color: #8a8f98; font-size: 11.5px; }
+.lk-biz-badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+.lk-biz-dl { color: #186ce0; text-decoration: none; font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+
+.lk-biz-add-link { display: block; text-align: center; margin-top: 4px; font-size: 13px; color: #ffffff; text-decoration: none; font-weight: 500; }
+
+.lk-biz-field { margin-bottom: 12px; }
+.lk-biz-field label { display: block; font-size: 12px; color: #8a8f98; margin-bottom: 4px; }
+.lk-biz-field input { width: 100%; box-sizing: border-box; border: 1px solid #e3e7ee; border-radius: 10px; padding: 10px 12px; font-size: 14px; font-family: 'Rubik', sans-serif; color: #16181d; }
+.lk-biz-submit { width: 100%; border: none; border-radius: 999px; background: #186ce0; color: #fff; font-family: 'Rubik', sans-serif; font-size: 14px; font-weight: 600; padding: 13px; cursor: pointer; }
+.lk-biz-submit:disabled { opacity: 0.5; }
+.lk-biz-error { font-size: 12.5px; color: #a32d2d; margin-top: 10px; }
+.lk-biz-empty { font-size: 13px; color: #8a8f98; padding: 10px 0; }
+
+.lk-biz-order { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding: 12px 0; border-bottom: 1px solid #f0f1f3; }
+.lk-biz-order:last-child { border-bottom: none; }
+.lk-biz-order-info { font-size: 13px; color: #16181d; }
+.lk-biz-order-info .date { color: #8a8f98; font-size: 11.5px; }
+.lk-biz-order-info .products { color: #8a8f98; font-size: 12px; margin-top: 2px; max-width: 320px; }
+.lk-biz-order-total { font-size: 13px; font-weight: 600; color: #16181d; white-space: nowrap; }
+
+.lk-biz-tx { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f0f1f3; }
+.lk-biz-tx:last-child { border-bottom: none; }
+.lk-biz-tx-info { font-size: 13px; color: #16181d; }
+.lk-biz-tx-info .date { color: #8a8f98; font-size: 11.5px; }
+.lk-biz-tx-amount { font-size: 13px; font-weight: 600; white-space: nowrap; }
+.lk-biz-tx-amount.pos { color: #3b6d11; }
+.lk-biz-tx-amount.neg { color: #a32d2d; }
+
+.lk-biz-pending-icon { width: 44px; height: 44px; border-radius: 50%; background: #e6f1fb; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 14px; }
+
+.lk-biz-contact-title { font-size: 13.5px; color: #8a8f98; text-align: center; margin-bottom: 14px; }
+.lk-biz-contact-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.lk-biz-contact-item { display: flex; flex-direction: column; align-items: center; gap: 8px; text-decoration: none; }
+.lk-biz-contact-icon { width: 48px; height: 48px; border-radius: 50%; background: #186ce0; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
+.lk-biz-contact-item:hover .lk-biz-contact-icon { background: #0e56ba; }
+.lk-biz-contact-icon svg { width: 22px; height: 22px; }
+.lk-biz-contact-label { font-size: 11px; color: #5f6672; text-align: center; line-height: 1.3; }
+
+/* ---- Blue page theme (new) ---- */
+body { background: #0e56ba !important; min-height: 100vh; }
+.lk-biz-topbar { max-width: 560px; }
+.lk-back-link, .lk-fwd-link { color: #ffffff; }
+.lk-back-link svg, .lk-fwd-link svg { stroke: #ffffff !important; }
+.lk-fwd-link { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; font-size: 14px; font-weight: 500; }
+.lk-biz-logo-row { text-align: center; margin: 4px 0 26px; }
+.lk-biz-logo-row img { height: 30px; width: auto; }
+
+.lk-biz-hero { background: #ffffff; color: #16181d; box-shadow: 0 20px 45px -30px rgba(22,24,29,0.35); }
+.lk-biz-hero-eyebrow { color: #186ce0; }
+.lk-biz-hero-name { color: #16181d; }
+.lk-biz-hero-meta { color: #8a8f98; }
+.lk-biz-hero-balance-row { border-top: 1px solid #eceef1; }
+.lk-biz-hero-balance-label { color: #8a8f98; }
+.lk-biz-hero-balance-amount { color: #16181d; }
+.lk-biz-hero-topup-note { color: #8a8f98; }
+</style>
+
+<div class="lk-biz-topbar">
+    <a href="https://vezminarin.cz/members/" class="lk-back-link">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#186ce0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        Zpět do profilu
+    </a>
+    <a href="https://vezminarin.cz/" class="lk-fwd-link">
+        Do katalogu
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#186ce0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+    </a>
+</div>
+
+<div class="lk-biz-wrap">
+  <div class="lk-biz-logo-row">
+    <img src="https://static.tildacdn.com/tild6233-3939-4563-b837-343961633431/narin-business-logo.webp" alt="NARIN Business">
+  </div>
+
+  <div id="lkBizRoot">
+    <div class="lk-biz-card"><p class="lk-biz-sub">Načítáme…</p></div>
+  </div>
+
+  <div class="lk-biz-card">
+    <div class="lk-biz-contact-title">Potřebujete pomoct? Napište nebo zavolejte</div>
+    <div class="lk-biz-contact-grid">
+      <a class="lk-biz-contact-item" href="https://vezminarin.cz/contacts" target="_blank" rel="noopener">
+        <span class="lk-biz-contact-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+        </span>
+        <span class="lk-biz-contact-label">Chat</span>
+      </a>
+      <a class="lk-biz-contact-item" href="tel:+420776421993">
+        <span class="lk-biz-contact-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        </span>
+        <span class="lk-biz-contact-label">Zavolat</span>
+      </a>
+      <a class="lk-biz-contact-item" href="https://t.me/loraxeffect" target="_blank" rel="noopener">
+        <span class="lk-biz-contact-icon">
+          <svg viewBox="0 0 24 24" fill="#fff"><path d="M21.5 4.5 2.7 11.9c-1.2.5-1.2 1.2-.2 1.5l4.8 1.5 1.8 5.6c.2.6.4.8.9.8.4 0 .6-.2.9-.5l2.2-2.1 4.6 3.4c.8.5 1.4.2 1.6-.8l3-14c.3-1.2-.4-1.7-1.4-1.3zM8.5 14.2l9-5.7c.4-.3.8-.1.5.2l-7.4 6.7-.3 3.4-1.3-4.6z"/></svg>
+        </span>
+        <span class="lk-biz-contact-label">Telegram</span>
+      </a>
+      <a class="lk-biz-contact-item" href="mailto:vezminarin@gmail.com">
+        <span class="lk-biz-contact-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+        </span>
+        <span class="lk-biz-contact-label">E-mail</span>
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+    const SUPABASE_URL = "https://wqburlamuipxmenqsjnx.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxYnVybGFtdWlweG1lbnFzam54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTY2MTIsImV4cCI6MjA4ODgzMjYxMn0.NYnQoorm3z5gkjr954JdYhzDNmYfCjefzK1ddq3cflw";
+    const INVOICE_PDF_URL = "https://narin-work.vercel.app/api/business/customer-invoice-pdf";
+    const REGISTER_URL = SUPABASE_URL + "/functions/v1/register-company";
+
+    const STATUS_LABELS = { draft: 'Připravuje se', sent: 'Čeká na platbu', paid: 'Zaplaceno', overdue: 'Po splatnosti', cancelled: 'Zrušeno' };
+    const STATUS_COLORS = {
+        draft: 'background:#f1efe8;color:#5f5e5a;', sent: 'background:#e6f1fb;color:#0c447c;',
+        paid: 'background:#eaf3de;color:#3b6d11;', overdue: 'background:#fcebeb;color:#a32d2d;',
+        cancelled: 'background:#f1efe8;color:#8a8f98;'
+    };
+    const ORDER_STATUS_LABELS = {
+        new: 'Nová', confirmed: 'Potvrzená', courier_assigned: 'Přiřazen kurýr', assembling: 'Připravuje se',
+        assembled: 'Připravena', in_transit: 'Na cestě', delivered: 'Doručena', cancelled: 'Zrušena'
+    };
+    const TX_TYPE_LABELS = { topup: 'Nabití účtu', adjustment: 'Ruční úprava' };
+
+    function getTildaEmail() {
+        for (const key in localStorage) {
+            if (key.indexOf("tilda_members_profile") === 0 && key.indexOf("_timestamp") === -1) {
+                try {
+                    const profile = JSON.parse(localStorage.getItem(key));
+                    return profile.login || profile.email || null;
+                } catch (e) {}
+            }
+        }
+        return null;
+    }
+
+    async function rpc(name, body) {
+        const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/' + name, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY },
+            body: JSON.stringify(body)
+        });
+        return res.json();
+    }
+
+    function formatDate(d) {
+        if (!d) return '—';
+        const date = new Date(d);
+        if (isNaN(date)) return '—';
+        const pad = n => String(n).padStart(2, '0');
+        return pad(date.getDate()) + '. ' + pad(date.getMonth() + 1) + '. ' + date.getFullYear();
+    }
+
+    function root() { return document.getElementById('lkBizRoot'); }
+
+    function renderRegisterForm(email, hasOtherCompanies, noticeText) {
+        root().innerHTML =
+            '<div class="lk-biz-card">' +
+                '<div class="lk-biz-eyebrow">Firemní účet</div>' +
+                '<div class="lk-biz-title">' + (hasOtherCompanies ? 'Přidat další firmu' : 'Žádost o firemní účet') + '</div>' +
+                (noticeText ? '<p class="lk-biz-sub" style="margin-bottom:10px;color:#a32d2d;">' + noticeText + '</p>' : '') +
+                '<p class="lk-biz-sub" style="margin-bottom:18px;">Stačí IČO — název a adresu si ověříme automaticky v obchodním rejstříku (ARES). Žádost pak potvrdí náš tým.</p>' +
+                '<div class="lk-biz-field"><label>IČO</label><input id="lkBizIco" inputmode="numeric" maxlength="8" placeholder="12345678"></div>' +
+                '<div class="lk-biz-field"><label>Jméno a příjmení</label><input id="lkBizName"></div>' +
+                '<div class="lk-biz-field"><label>Telefon</label><input id="lkBizPhone"></div>' +
+                '<div class="lk-biz-field"><label>Telegram (nepovinné)</label><input id="lkBizTelegram" placeholder="@vasenick"></div>' +
+                '<div class="lk-biz-field"><label>Záložní e-mail (nepovinné)</label><input id="lkBizBackup" type="email"></div>' +
+                '<button class="lk-biz-submit" id="lkBizSubmit">Odeslat žádost</button>' +
+                '<div class="lk-biz-error" id="lkBizError"></div>' +
+            '</div>' +
+            (hasOtherCompanies ? '<a class="lk-biz-add-link" href="#" id="lkBizCancel">← Zpět na moje firmy</a>' : '');
+
+        if (hasOtherCompanies) {
+            document.getElementById('lkBizCancel').addEventListener('click', function(e) { e.preventDefault(); init(); });
+        }
+
+        document.getElementById('lkBizSubmit').addEventListener('click', async function() {
+            const btn = this;
+            const errorEl = document.getElementById('lkBizError');
+            errorEl.textContent = '';
+            const ico = document.getElementById('lkBizIco').value.trim();
+            const full_name = document.getElementById('lkBizName').value.trim();
+            const phone = document.getElementById('lkBizPhone').value.trim();
+            const telegram = document.getElementById('lkBizTelegram').value.trim();
+            const backup_email = document.getElementById('lkBizBackup').value.trim();
+
+            if (!ico || !full_name || !phone) {
+                errorEl.textContent = 'Vyplňte prosím IČO, jméno a telefon.';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Ověřujeme…';
+            try {
+                const res = await fetch(REGISTER_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY },
+                    body: JSON.stringify({ email, ico, full_name, phone, telegram, backup_email })
+                });
+                const data = await res.json();
+                if (data.status === 'pending' || data.status === 'success') {
+                    init();
+                } else {
+                    errorEl.textContent = data.message || 'Nepodařilo se odeslat žádost.';
+                    btn.disabled = false;
+                    btn.textContent = 'Odeslat žádost';
+                }
+            } catch (err) {
+                errorEl.textContent = 'Chyba připojení, zkuste to prosím znovu.';
+                btn.disabled = false;
+                btn.textContent = 'Odeslat žádost';
+            }
+        });
+    }
+
+    function renderPending(request) {
+        root().innerHTML =
+            '<div class="lk-biz-card" style="text-align:center;">' +
+                '<div class="lk-biz-pending-icon" style="margin-left:auto;margin-right:auto;">⏳</div>' +
+                '<div class="lk-biz-title">Žádost čeká na potvrzení</div>' +
+                '<p class="lk-biz-sub">' + (request.ares_name || 'Vaše firma') + ' — odesláno ' + formatDate(request.created_at) + '. Ozveme se vám, jakmile žádost potvrdíme.</p>' +
+            '</div>';
+    }
+
+    async function renderCompany(email, companies, activeId) {
+        const active = companies.find(function(c) { return c.id === activeId; }) || companies[0];
+
+        let html = '';
+        if (companies.length > 1) {
+            html += '<div class="lk-biz-switcher">' + companies.map(function(c) {
+                return '<button data-id="' + c.id + '" class="' + (c.id === active.id ? 'on' : '') + '">' + c.name + '</button>';
+            }).join('') + '</div>';
+        }
+
+        html +=
+            '<div class="lk-biz-hero">' +
+                '<div class="lk-biz-hero-eyebrow">Firma</div>' +
+                '<div class="lk-biz-hero-name">' + active.name + '</div>' +
+                '<div class="lk-biz-hero-meta">' +
+                    'IČO ' + (active.ico || '—') + (active.dic ? ' · DIČ ' + active.dic : '') + '<br>' +
+                    (active.billing_address || '') +
+                    (active.member_full_name ? '<br>Zástupce: ' + active.member_full_name + (active.member_phone ? ' · ' + active.member_phone : '') : '') +
+                '</div>' +
+                '<div class="lk-biz-hero-balance-row">' +
+                    '<div><div class="lk-biz-hero-balance-label">Zůstatek na účtu</div><div class="lk-biz-hero-balance-amount">' + (active.balance || 0) + ' Kč</div></div>' +
+                    '<div class="lk-biz-hero-topup-note">Nabíjí se převodem na základě domluvy s naším týmem.</div>' +
+                '</div>' +
+            '</div>' +
+            '<div class="lk-biz-card">' +
+                '<div class="lk-biz-eyebrow">Historie pohybů na účtu</div>' +
+                '<div id="lkBizBalanceTx"><p class="lk-biz-empty">Načítáme…</p></div>' +
+            '</div>' +
+            '<div class="lk-biz-card">' +
+                '<div class="lk-biz-eyebrow">Faktury</div>' +
+                '<div id="lkBizInvoices"><p class="lk-biz-empty">Načítáme…</p></div>' +
+            '</div>' +
+            '<div class="lk-biz-card">' +
+                '<div class="lk-biz-eyebrow">Historie objednávek</div>' +
+                '<div id="lkBizOrders"><p class="lk-biz-empty">Načítáme…</p></div>' +
+            '</div>' +
+            '<a class="lk-biz-add-link" href="#" id="lkBizAddCompany">+ Přidat další firmu</a>';
+
+        root().innerHTML = html;
+
+        document.querySelectorAll('.lk-biz-switcher button').forEach(function(btn) {
+            btn.addEventListener('click', function() { renderCompany(email, companies, btn.getAttribute('data-id')); });
+        });
+        document.getElementById('lkBizAddCompany').addEventListener('click', function(e) {
+            e.preventDefault();
+            renderRegisterForm(email, true);
+        });
+
+        const balanceTx = await rpc('list_my_company_balance_transactions', { p_email: email, p_company_id: active.id });
+        const txList = Array.isArray(balanceTx) ? balanceTx : [];
+        const txEl = document.getElementById('lkBizBalanceTx');
+        if (!txList.length) {
+            txEl.innerHTML = '<p class="lk-biz-empty">Zatím žádné pohyby.</p>';
+        } else {
+            txEl.innerHTML = txList.map(function(t) {
+                const positive = t.amount >= 0;
+                return '<div class="lk-biz-tx">' +
+                    '<div class="lk-biz-tx-info">' +
+                        '<div>' + (TX_TYPE_LABELS[t.type] || t.type) + (t.description ? ' — ' + t.description : '') + '</div>' +
+                        '<div class="date">' + formatDate(t.created_at) + '</div>' +
+                    '</div>' +
+                    '<div class="lk-biz-tx-amount ' + (positive ? 'pos' : 'neg') + '">' + (positive ? '+' : '') + t.amount + ' Kč</div>' +
+                '</div>';
+            }).join('');
+        }
+
+        const invoices = await rpc('list_my_company_invoices', { p_email: email, p_company_id: active.id });
+        const list = (Array.isArray(invoices) ? invoices : []).filter(function(i) { return i.status !== 'draft' && i.status !== 'cancelled'; });
+        const invEl = document.getElementById('lkBizInvoices');
+        if (!list.length) {
+            invEl.innerHTML = '<p class="lk-biz-empty">Zatím žádné faktury.</p>';
+        } else {
+            invEl.innerHTML = list.map(function(inv) {
+                const dlUrl = INVOICE_PDF_URL + '?email=' + encodeURIComponent(email) + '&invoice=' + inv.id;
+                return '<div class="lk-biz-invoice">' +
+                    '<div class="lk-biz-invoice-info">' +
+                        '<div class="num">č. ' + (inv.invoice_number || '—') + '</div>' +
+                        formatDate(inv.period_start) + ' – ' + formatDate(inv.period_end) + ' · ' + inv.total_amount + ' Kč' +
+                    '</div>' +
+                    '<div style="display:flex;align-items:center;gap:8px;">' +
+                        '<span class="lk-biz-badge" style="' + (STATUS_COLORS[inv.status] || '') + '">' + (STATUS_LABELS[inv.status] || inv.status) + '</span>' +
+                        '<a class="lk-biz-dl" href="' + dlUrl + '" target="_blank" rel="noopener">PDF</a>' +
+                    '</div>' +
+                '</div>';
+            }).join('');
+        }
+
+        const orders = await rpc('list_my_company_orders', { p_email: email, p_company_id: active.id });
+        const orderList = Array.isArray(orders) ? orders : [];
+        const ordEl = document.getElementById('lkBizOrders');
+        if (!orderList.length) {
+            ordEl.innerHTML = '<p class="lk-biz-empty">Zatím žádné objednávky.</p>';
+        } else {
+            ordEl.innerHTML = orderList.map(function(o) {
+                return '<div class="lk-biz-order">' +
+                    '<div class="lk-biz-order-info">' +
+                        '<div class="date">' + formatDate(o.delivery_date || o.created_at) + ' · ' + (ORDER_STATUS_LABELS[o.status] || o.status) + '</div>' +
+                        '<div class="products">' + (o.products_text || '') + '</div>' +
+                    '</div>' +
+                    '<div class="lk-biz-order-total">' + (o.order_total || 0) + ' Kč</div>' +
+                '</div>';
+            }).join('');
+        }
+    }
+
+    async function init() {
+        const email = getTildaEmail();
+        if (!email) {
+            root().innerHTML = '<div class="lk-biz-card"><p class="lk-biz-sub">Pro přístup do firemního účtu se prosím <a href="https://vezminarin.cz/members/login" style="color:#186ce0;font-weight:600;text-decoration:none;">přihlaste</a>.</p></div>';
+            return;
+        }
+
+        const companies = await rpc('list_my_companies', { p_email: email });
+        if (Array.isArray(companies) && companies.length > 0) {
+            renderCompany(email, companies, companies[0].id);
+            return;
+        }
+
+        const request = await rpc('get_my_company_request', { p_email: email });
+        const latest = Array.isArray(request) && request.length ? request[0] : null;
+
+        if (latest && latest.status === 'pending') {
+            renderPending(latest);
+            return;
+        }
+
+        renderRegisterForm(email, false, latest && latest.status === 'rejected' ? 'Vaše předchozí žádost byla zamítnuta. Zkuste to prosím znovu, nebo nás kontaktujte.' : null);
+    }
+
+    init();
+})();
+</script>
