@@ -1,0 +1,200 @@
+<style>
+#lkAuthGateOverlay { position: fixed; inset: 0; background: rgba(16,24,40,0.55); display: none; align-items: center; justify-content: center; z-index: 99999; padding: 20px; box-sizing: border-box; font-family: 'Rubik', sans-serif; }
+#lkAuthGateOverlay.active { display: flex; }
+.lkag-card { background: #ffffff; border-radius: 24px; padding: 24px 20px; max-width: 320px; width: 100%; box-sizing: border-box; text-align: center; }
+.lkag-title { font-size: 16px; font-weight: 700; color: #16181d; margin-bottom: 8px; }
+.lkag-lead { font-size: 12.5px; color: #8a8f98; margin-bottom: 16px; line-height: 1.4; }
+.lkag-email { font-size: 13px; font-weight: 600; color: #186ce0; margin-bottom: 16px; }
+.lkag-input { width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 12px; border: 1px solid #e8eaed; font-size: 18px; text-align: center; letter-spacing: 4px; font-family: 'Rubik', sans-serif; margin-bottom: 10px; }
+.lkag-btn { width: 100%; box-sizing: border-box; padding: 10px; border-radius: 12px; border: none; background: #186ce0; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; margin-bottom: 8px; font-family: 'Rubik', sans-serif; }
+.lkag-btn:disabled { opacity: 0.5; cursor: default; }
+.lkag-btn-secondary { background: none; color: #186ce0; }
+.lkag-error { font-size: 12px; color: #e0392c; margin-bottom: 8px; min-height: 15px; }
+.lkag-step { display: none; }
+.lkag-step.active { display: block; }
+.lkag-spinner { width: 28px; height: 28px; border: 3px solid #eef4fc; border-top-color: #186ce0; border-radius: 50%; margin: 4px auto 16px; animation: lkagSpin 0.7s linear infinite; }
+@keyframes lkagSpin { to { transform: rotate(360deg); } }
+</style>
+
+<div id="lkAuthGateOverlay">
+    <div class="lkag-card">
+        <div id="lkagStep1" class="lkag-step active">
+            <div class="lkag-title">Potvrďte svůj e-mail</div>
+            <div class="lkag-lead">Jednorázově ověříme váš účet, aby k vašim datům, depozitu a zprávám měl přístup jen vy.</div>
+            <div class="lkag-email" id="lkagEmail"></div>
+            <div class="lkag-error" id="lkagError1"></div>
+            <button class="lkag-btn" id="lkagSendBtn">Odeslat kód na e-mail</button>
+        </div>
+        <div id="lkagStep2" class="lkag-step">
+            <div class="lkag-title">Zadejte kód</div>
+            <div class="lkag-lead">Poslali jsme 6místný kód na váš e-mail. Platí 10 minut.</div>
+            <input type="text" class="lkag-input" id="lkagCodeInput" maxlength="6" inputmode="numeric" placeholder="000000">
+            <div class="lkag-error" id="lkagError2"></div>
+            <button class="lkag-btn" id="lkagVerifyBtn">Potvrdit</button>
+            <button class="lkag-btn lkag-btn-secondary" id="lkagResendBtn">Odeslat znovu</button>
+        </div>
+        <div id="lkagStepLoading" class="lkag-step">
+            <div class="lkag-spinner"></div>
+            <div class="lkag-title">Ověřujeme…</div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const SUPABASE_URL = "https://wqburlamuipxmenqsjnx.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_ORMmBYvVjH6i2GanWa2JyA_mWm3fTCZ";
+    const TOKEN_KEY = "lk_auth_token";
+
+    function getTildaEmail() {
+        for (let key in localStorage) {
+            if (key.indexOf("tilda_members_profile") === 0 && key.indexOf("_timestamp") === -1) {
+                try {
+                    const profile = JSON.parse(localStorage.getItem(key));
+                    const email = profile.login || profile.email;
+                    if (email) return String(email).trim().toLowerCase();
+                } catch (e) {}
+            }
+        }
+        return null;
+    }
+
+    function decodeTokenEmail(token) {
+        try {
+            const payload = JSON.parse(atob(String(token).split('.')[0]));
+            return payload.email ? String(payload.email).trim().toLowerCase() : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    // Vrací token, jen pokud opravdu patří aktuálně přihlášenému Tilda
+    // účtu. lk_auth_token žije samostatně 60 dní v localStorage — pokud
+    // se mezitím na stejném zařízení přihlásil jiný zákazník, starý token
+    // by jinak zůstal v platnosti a brána by ho tiše propustila jako
+    // "už ověřeno", i když patří někomu jinému. Při neshodě token rovnou
+    // zahodíme, ať ho po sobě nemusí uklízet každý jednotlivý widget.
+    function getStoredToken() {
+        try {
+            const raw = localStorage.getItem(TOKEN_KEY);
+            if (!raw) return null;
+            const data = JSON.parse(raw);
+            if (!data.token || !data.exp || data.exp < Date.now()) return null;
+
+            const tildaEmail = getTildaEmail();
+            const tokenEmail = decodeTokenEmail(data.token);
+            if (tildaEmail && tokenEmail && tildaEmail !== tokenEmail) {
+                localStorage.removeItem(TOKEN_KEY);
+                return null;
+            }
+
+            return data;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function storeToken(token) {
+        const payloadB64 = token.split('.')[0];
+        let exp = Date.now();
+        try { exp = JSON.parse(atob(payloadB64)).exp; } catch (e) {}
+        localStorage.setItem(TOKEN_KEY, JSON.stringify({ token: token, exp: exp }));
+    }
+
+    async function callAuthApi(payload) {
+        const res = await fetch(SUPABASE_URL + "/functions/v1/auth-verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+            body: JSON.stringify(payload)
+        });
+        return res.json();
+    }
+
+    function getLinkCode() {
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get('lk_code');
+        if (!code) return null;
+        params.delete('lk_code');
+        const newSearch = params.toString();
+        const newUrl = window.location.pathname + (newSearch ? '?' + newSearch : '') + window.location.hash;
+        window.history.replaceState({}, '', newUrl);
+        return code;
+    }
+
+    function init() {
+        const email = getTildaEmail();
+        const linkCode = getLinkCode();
+        if (!email) return;
+
+        const existing = getStoredToken();
+        if (existing && !linkCode) return;
+
+        const overlay = document.getElementById('lkAuthGateOverlay');
+        document.getElementById('lkagEmail').textContent = email;
+        overlay.classList.add('active');
+
+        const step1 = document.getElementById('lkagStep1');
+        const step2 = document.getElementById('lkagStep2');
+        const stepLoading = document.getElementById('lkagStepLoading');
+        const sendBtn = document.getElementById('lkagSendBtn');
+        const resendBtn = document.getElementById('lkagResendBtn');
+        const verifyBtn = document.getElementById('lkagVerifyBtn');
+        const codeInput = document.getElementById('lkagCodeInput');
+        const error1 = document.getElementById('lkagError1');
+        const error2 = document.getElementById('lkagError2');
+
+        function showStep(step) {
+            [step1, step2, stepLoading].forEach(function(s) { s.classList.remove('active'); });
+            step.classList.add('active');
+        }
+
+        async function sendCode(btn) {
+            btn.disabled = true;
+            error1.textContent = '';
+            error2.textContent = '';
+            const res = await callAuthApi({ action: 'send_code', email: email });
+            btn.disabled = false;
+            if (res.error) {
+                (step2.classList.contains('active') ? error2 : error1).textContent = res.error;
+                return;
+            }
+            showStep(step2);
+            codeInput.focus();
+        }
+
+        async function verifyCode(code) {
+            const res = await callAuthApi({ action: 'verify_code', email: email, code: code });
+            if (res.error) {
+                showStep(step2);
+                error2.textContent = res.error;
+                return;
+            }
+            storeToken(res.token);
+            overlay.classList.remove('active');
+        }
+
+        sendBtn.addEventListener('click', function() { sendCode(sendBtn); });
+        resendBtn.addEventListener('click', function() { sendCode(resendBtn); });
+
+        verifyBtn.addEventListener('click', async function() {
+            const code = codeInput.value.trim();
+            if (!code) return;
+            verifyBtn.disabled = true;
+            error2.textContent = '';
+            await verifyCode(code);
+            verifyBtn.disabled = false;
+        });
+
+        if (linkCode) {
+            showStep(stepLoading);
+            verifyCode(linkCode);
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>

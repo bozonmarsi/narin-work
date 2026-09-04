@@ -1,0 +1,83 @@
+<script>
+(function() {
+    const SUPABASE_URL = "https://wqburlamuipxmenqsjnx.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_ORMmBYvVjH6i2GanWa2JyA_mWm3fTCZ";
+    const TOKEN_KEY = "lk_auth_token";
+
+    let loaded = false;
+    let timer = null;
+
+    function getTildaEmail() {
+        for (let key in localStorage) {
+            if (key.indexOf("tilda_members_profile") === 0 && key.indexOf("_timestamp") === -1) {
+                try {
+                    const profile = JSON.parse(localStorage.getItem(key));
+                    return profile.login || profile.email;
+                } catch (e) {}
+            }
+        }
+        return null;
+    }
+
+    function getStoredToken() {
+        try {
+            const raw = localStorage.getItem(TOKEN_KEY);
+            if (!raw) return null;
+            const data = JSON.parse(raw);
+            if (!data.token || !data.exp || data.exp < Date.now()) return null;
+            return data.token;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    // lkAuthGateOverlay (vloženo globálně na celý web) ověří e-mail a
+    // uloží lk_auth_token dřív, než se člověk vůbec dostane na tuto
+    // stránku — tady jen čekáme, až se objeví, žádnou vlastní obrazovku
+    // potvrzení nepotřebujeme.
+    async function loadMemberData() {
+        const token = getStoredToken();
+        if (!token) {
+            scheduleNext();
+            return;
+        }
+        try {
+            const res = await fetch(SUPABASE_URL + "/functions/v1/member-data", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    apikey: SUPABASE_KEY,
+                    Authorization: "Bearer " + SUPABASE_KEY
+                },
+                body: JSON.stringify({ token: token })
+            });
+            const data = await res.json();
+
+            if (data.error === 'invalid_token') {
+                // Token expiroval, nebo ho jiný widget na stránce smazal
+                // po zjištění neshody s aktuálně přihlášeným Tilda účtem —
+                // lkAuthGateOverlay ho při dalším načtení stránky obnoví.
+                loaded = false;
+                scheduleNext();
+                return;
+            }
+
+            window.__memberData = data;
+            document.querySelectorAll(".user-balance").forEach(el => { el.textContent = data.balance; });
+            loaded = true;
+            console.log("member-data загружены:", data);
+        } catch (e) {
+            console.log("member-data ошибка:", e);
+        }
+        scheduleNext();
+    }
+
+    function scheduleNext() {
+        clearTimeout(timer);
+        const delay = loaded ? 15000 : 400;
+        timer = setTimeout(loadMemberData, delay);
+    }
+
+    loadMemberData();
+})();
+</script>
