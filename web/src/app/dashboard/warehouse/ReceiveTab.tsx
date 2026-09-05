@@ -9,12 +9,13 @@ import type { RawMaterial, Supplier } from "./types";
 type Row = {
   key: string;
   productStickerId: string;
+  packs: string;
   quantity: string;
   price: string;
 };
 
 function newRow(): Row {
-  return { key: crypto.randomUUID(), productStickerId: "", quantity: "", price: "" };
+  return { key: crypto.randomUUID(), productStickerId: "", packs: "", quantity: "", price: "" };
 }
 
 function todayStr() {
@@ -49,7 +50,7 @@ export function ReceiveTab() {
       supabase.from("suppliers").select("id, name, contact_phone, contact_email").order("name"),
       supabase
         .from("product_stickers")
-        .select("id, product_name, material_type, unit, default_vase_life_days")
+        .select("id, product_name, material_type, unit, default_vase_life_days, order_unit_size")
         .eq("category", "ohapka")
         .order("product_name"),
     ]);
@@ -64,6 +65,14 @@ export function ReceiveTab() {
 
   function updateRow(key: string, patch: Partial<Row>) {
     setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+  }
+
+  // Поставщики считают связками (10 пионов = 1 связка), а склад — в
+  // стеблях. Ввёл число связок — количество стеблей посчиталось само;
+  // если нужно, поле "Кол-во" всё равно можно поправить руками.
+  function updateRowPacks(key: string, packsValue: string, unitSize: number) {
+    const packs = parseFloat(packsValue);
+    updateRow(key, { packs: packsValue, quantity: packs > 0 ? String(packs * unitSize) : "" });
   }
 
   function removeRow(key: string) {
@@ -253,12 +262,27 @@ export function ReceiveTab() {
                     </option>
                   ))}
                 </select>
+                {material && material.order_unit_size > 1 && (
+                  <>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      min={0}
+                      value={row.packs}
+                      onChange={(e) => updateRowPacks(row.key, e.target.value, material.order_unit_size)}
+                      placeholder="Связок"
+                      title={`1 связка = ${material.order_unit_size} ${material.unit ?? "шт"}`}
+                      className="w-20 rounded-md border border-zinc-300 dark:border-zinc-600 bg-transparent px-2 py-1.5 text-sm outline-none focus:border-accent"
+                    />
+                    <span className="shrink-0 text-xs text-zinc-400">×{material.order_unit_size} =</span>
+                  </>
+                )}
                 <input
                   type="number"
                   inputMode="decimal"
                   min={0}
                   value={row.quantity}
-                  onChange={(e) => updateRow(row.key, { quantity: e.target.value })}
+                  onChange={(e) => updateRow(row.key, { quantity: e.target.value, packs: "" })}
                   onKeyDown={(e) => handleRowKeyDown(e, row, isLast)}
                   placeholder="Кол-во"
                   className="w-24 rounded-md border border-zinc-300 dark:border-zinc-600 bg-transparent px-2 py-1.5 text-sm outline-none focus:border-accent"

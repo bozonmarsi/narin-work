@@ -9,6 +9,7 @@ export type RawMaterial = {
   material_type: "flower" | "greenery" | "packaging" | null;
   unit: string | null;
   default_vase_life_days: number | null;
+  order_unit_size: number;
 };
 
 export type Supplier = {
