@@ -861,7 +861,7 @@ export default function ShopPage() {
     load();
   }
 
-  if (profile?.role !== "manager") return null;
+  if (profile?.role !== "manager" && profile?.role !== "warehouse") return null;
   if (loading) return <p className="text-zinc-500 dark:text-zinc-400">Загрузка…</p>;
 
   return (
