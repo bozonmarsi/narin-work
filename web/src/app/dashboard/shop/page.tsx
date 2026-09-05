@@ -23,6 +23,7 @@ type Product = {
   badge_text: string | null;
   badge_color: string | null;
   quantity: number | null;
+  order_unit_size: number;
 };
 
 // Ниже этого остатка на сайте сама встаёт плашка "Zbývá N ks" — если
@@ -138,6 +139,7 @@ function ProductCard({
   onAddDelivery,
   onAddRecipeItem,
   onRemoveRecipeItem,
+  onSetOrderUnitSize,
 }: {
   product: Product;
   isAvailable: boolean;
@@ -157,6 +159,7 @@ function ProductCard({
   onAddDelivery: (id: string, delta: number) => void;
   onAddRecipeItem: (bouquetId: string, ingredientId: string, qty: number) => void;
   onRemoveRecipeItem: (recipeId: string) => void;
+  onSetOrderUnitSize: (id: string, size: number) => void;
 }) {
   const [tagsOpen, setTagsOpen] = useState(false);
   const [recipeOpen, setRecipeOpen] = useState(false);
@@ -439,6 +442,21 @@ function ProductCard({
               </button>
             </div>
           </div>
+          {p.category === "ohapka" && (
+            <div className="mt-1 flex items-center gap-1" title="Сколько стеблей в одной единице заказа на сайте (весовой товар в Tilda)">
+              <span className="text-[9px] text-zinc-400">стеблей/ед.:</span>
+              <input
+                type="number"
+                min={1}
+                defaultValue={p.order_unit_size}
+                onBlur={(e) => {
+                  const v = parseInt(e.target.value, 10);
+                  if (v > 0 && v !== p.order_unit_size) onSetOrderUnitSize(p.id, v);
+                }}
+                className="w-10 rounded border border-zinc-300 dark:border-zinc-600 bg-transparent px-1 py-0 text-[10px]"
+              />
+            </div>
+          )}
           {badgeOpen && (
             <div className="mt-1 space-y-1 rounded-md border border-zinc-200 dark:border-zinc-700 p-1.5">
               <input
@@ -558,7 +576,7 @@ export default function ShopPage() {
     const [productsRes, availabilityRes] = await Promise.all([
       supabase
         .from("product_stickers")
-        .select("id, product_name, image_url, category, archived, special_order, flower_type, color, height, fragrant, badge_text, badge_color, quantity")
+        .select("id, product_name, image_url, category, archived, special_order, flower_type, color, height, fragrant, badge_text, badge_color, quantity, order_unit_size")
         .order("product_name", { ascending: true }),
       supabase.from("product_availability").select("product_name"),
     ]);
@@ -580,6 +598,7 @@ export default function ShopPage() {
           badge_text: p.badge_text ?? null,
           badge_color: p.badge_color ?? null,
           quantity: p.quantity ?? null,
+          order_unit_size: p.order_unit_size ?? 1,
         })),
     );
     setAvailableToday(new Set((availabilityRes.data ?? []).map((r) => r.product_name)));
@@ -755,6 +774,12 @@ export default function ShopPage() {
   async function toggleFragrant(productId: string, current: boolean) {
     const supabase = createClient();
     await supabase.from("product_stickers").update({ fragrant: !current }).eq("id", productId);
+    loadAvailability();
+  }
+
+  async function setOrderUnitSize(productId: string, size: number) {
+    const supabase = createClient();
+    await supabase.from("product_stickers").update({ order_unit_size: size }).eq("id", productId);
     loadAvailability();
   }
 
@@ -1038,6 +1063,7 @@ export default function ShopPage() {
                 rawMaterials={rawMaterialOptions}
                 onAddRecipeItem={addRecipeItem}
                 onRemoveRecipeItem={removeRecipeItem}
+                onSetOrderUnitSize={setOrderUnitSize}
                 onToggleAvailable={toggleAvailable}
                 onSetCategory={setCategory}
                 onToggleFlowerType={toggleFlowerType}

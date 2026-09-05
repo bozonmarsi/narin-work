@@ -4,6 +4,11 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useDashboard } from "../layout";
 import { decodeHtmlEntities, formatDateTime } from "@/lib/format";
+import { statusLabel, statusColor, isPickupOrder } from "@/lib/order-status";
+import { NewOrderPanel } from "./NewOrderPanel";
+
+const VISIBLE_STATUSES = ["confirmed", "courier_assigned", "assembling", "assembled", "in_transit"];
+const ASSEMBLABLE_STATUSES = ["confirmed", "courier_assigned"];
 
 type OrderLite = {
   id: string;
@@ -12,11 +17,13 @@ type OrderLite = {
   recipient_name: string | null;
   delivery_date: string | null;
   delivery_slot: string | null;
+  delivery_type: string | null;
   products_text: string | null;
+  status: string | null;
   raw_payload: { payment?: { products?: { name?: string; quantity?: number }[] } } | null;
 };
 
-type StickerLite = { id: string; product_name: string; category: string | null; unit: string | null };
+type StickerLite = { id: string; product_name: string; category: string | null; unit: string | null; order_unit_size: number };
 type RecipeLite = { bouquet_sticker_id: string; ingredient_sticker_id: string; quantity_needed: number };
 type BatchLite = { id: string; product_sticker_id: string; remaining: number; purchase_date: string };
 
@@ -64,10 +71,10 @@ export function AssembleTab() {
     const [ordersRes, stickersRes, recipesRes] = await Promise.all([
       supabase
         .from("tilda_orders")
-        .select("id, order_id, customer_name, recipient_name, delivery_date, delivery_slot, products_text, raw_payload")
-        .eq("status", "confirmed")
+        .select("id, order_id, customer_name, recipient_name, delivery_date, delivery_slot, delivery_type, products_text, status, raw_payload")
+        .in("status", VISIBLE_STATUSES)
         .order("delivery_date", { ascending: true }),
-      supabase.from("product_stickers").select("id, product_name, category, unit"),
+      supabase.from("product_stickers").select("id, product_name, category, unit, order_unit_size"),
       supabase.from("product_recipes").select("bouquet_sticker_id, ingredient_sticker_id, quantity_needed"),
     ]);
     setOrders(ordersRes.data ?? []);
@@ -106,7 +113,10 @@ export function AssembleTab() {
         continue;
       }
       if (sticker.category === "ohapka") {
-        needMap.set(sticker.id, (needMap.get(sticker.id) ?? 0) + item.quantity);
+        // В Tilda количество заказа — это число ЕДИНИЦ, а не стеблей
+        // (весовой товар); order_unit_size переводит это в реальный
+        // расход склада.
+        needMap.set(sticker.id, (needMap.get(sticker.id) ?? 0) + item.quantity * sticker.order_unit_size);
         continue;
       }
       const bouquetRecipe = recipes.filter((r) => r.bouquet_sticker_id === sticker.id);
@@ -250,19 +260,27 @@ export function AssembleTab() {
     }
   }
 
+  async function markDelivered(orderId: string) {
+    const supabase = createClient();
+    await supabase.from("tilda_orders").update({ status: "delivered" }).eq("id", orderId);
+    load();
+  }
+
   if (loading) {
     return <p className="text-sm text-zinc-500 dark:text-zinc-400">Загрузка…</p>;
   }
 
-  if (orders.length === 0) {
-    return <p className="text-sm text-zinc-400">Нет заказов, готовых к сборке.</p>;
-  }
-
   return (
-    <div className="max-w-2xl space-y-2">
+    <div className="max-w-2xl space-y-3">
+      <NewOrderPanel stickers={stickers.filter((s) => s.product_name !== "__default__")} onCreated={load} />
+
+      {orders.length === 0 && <p className="text-sm text-zinc-400">Нет активных заказов.</p>}
+
       {orders.map((order) => {
         const isOpen = openOrderId === order.id;
         const items = parseLineItems(order);
+        const canAssemble = ASSEMBLABLE_STATUSES.includes(order.status ?? "");
+        const canMarkDelivered = order.status === "assembled" && isPickupOrder(order.delivery_type);
         return (
           <div key={order.id} className="rounded-md border border-zinc-200 dark:border-zinc-700 p-3">
             <div className="flex items-center justify-between gap-2">
@@ -274,12 +292,25 @@ export function AssembleTab() {
                   {order.delivery_date ? formatDateTime(order.delivery_date) : "—"} {order.delivery_slot ?? ""}
                 </p>
               </div>
-              <button
-                onClick={() => (isOpen ? closeOrder() : openOrder(order))}
-                className="shrink-0 rounded-md border border-zinc-300 dark:border-zinc-600 px-3 py-1.5 text-xs font-medium text-accent hover:bg-zinc-100 dark:hover:bg-zinc-800"
-              >
-                {isOpen ? "Свернуть" : "Собрать"}
-              </button>
+              <div className="flex shrink-0 items-center gap-2">
+                <span className={`rounded-full px-2 py-1 text-xs font-medium ${statusColor(order.status)}`}>{statusLabel(order.status)}</span>
+                {canMarkDelivered && (
+                  <button
+                    onClick={() => markDelivered(order.id)}
+                    className="rounded-md border border-zinc-300 dark:border-zinc-600 px-3 py-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                  >
+                    Выдано
+                  </button>
+                )}
+                {canAssemble && (
+                  <button
+                    onClick={() => (isOpen ? closeOrder() : openOrder(order))}
+                    className="rounded-md border border-zinc-300 dark:border-zinc-600 px-3 py-1.5 text-xs font-medium text-accent hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                  >
+                    {isOpen ? "Свернуть" : "Собрать"}
+                  </button>
+                )}
+              </div>
             </div>
 
             {isOpen && (

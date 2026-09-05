@@ -8,7 +8,7 @@ import { AssembleTab } from "./AssembleTab";
 import { RecipesTab } from "./RecipesTab";
 
 const TABS = [
-  { key: "assemble", label: "Сборка" },
+  { key: "assemble", label: "Заказы" },
   { key: "receive", label: "Приёмка" },
   { key: "stock", label: "Остатки" },
   { key: "recipes", label: "Рецепты" },
