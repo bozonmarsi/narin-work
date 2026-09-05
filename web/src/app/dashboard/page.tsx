@@ -10,6 +10,7 @@ import { ORDER_COLUMNS } from "./queries";
 import { statusLabel } from "@/lib/order-status";
 import { decodeHtmlEntities } from "@/lib/format";
 import { CourierView } from "./courier/CourierView";
+import { WarehouseView } from "./warehouse/WarehouseView";
 import { useRealtimeRefresh } from "@/lib/useRealtimeRefresh";
 import type { OrderRow, CourierOption, ProductOption } from "./types";
 
@@ -106,14 +107,14 @@ export default function DashboardPage() {
     return <CourierView />;
   }
 
+  if (profile?.role === "warehouse") {
+    return <WarehouseView />;
+  }
+
   if (profile?.role !== "manager") {
     return (
       <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6">
-        <p className="text-zinc-600 dark:text-zinc-300">
-          Кабинет для вашей роли (
-          {profile?.role === "warehouse" ? "склад" : "не назначена"}) ещё не готов. Пока доступны
-          кабинеты менеджера и курьера.
-        </p>
+        <p className="text-zinc-600 dark:text-zinc-300">Роль не назначена. Обратитесь к менеджеру.</p>
       </div>
     );
   }
