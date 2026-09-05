@@ -4,8 +4,10 @@ import { useState } from "react";
 import { ReceiveTab } from "./ReceiveTab";
 import { SuppliersTab } from "./SuppliersTab";
 import { StockTab } from "./StockTab";
+import { AssembleTab } from "./AssembleTab";
 
 const TABS = [
+  { key: "assemble", label: "Сборка" },
   { key: "receive", label: "Приёмка" },
   { key: "stock", label: "Остатки" },
   { key: "suppliers", label: "Поставщики" },
@@ -14,7 +16,7 @@ const TABS = [
 type TabKey = (typeof TABS)[number]["key"];
 
 export function WarehouseView() {
-  const [tab, setTab] = useState<TabKey>("receive");
+  const [tab, setTab] = useState<TabKey>("assemble");
 
   return (
     <div>
@@ -34,6 +36,7 @@ export function WarehouseView() {
         ))}
       </div>
 
+      {tab === "assemble" && <AssembleTab />}
       {tab === "receive" && <ReceiveTab />}
       {tab === "stock" && <StockTab />}
       {tab === "suppliers" && <SuppliersTab />}

@@ -7,6 +7,7 @@ import { decodeHtmlEntities } from "@/lib/format";
 import { useRealtimeRefresh } from "@/lib/useRealtimeRefresh";
 
 type ClosedDate = { closed_date: string; reason: string | null };
+type RecipeRow = { id: string; bouquet_sticker_id: string; ingredient_sticker_id: string; quantity_needed: number };
 type Product = {
   id: string;
   name: string;
@@ -122,6 +123,8 @@ function ProductCard({
   product: p,
   isAvailable,
   uploadingId,
+  recipe,
+  rawMaterials,
   onToggleAvailable,
   onSetCategory,
   onToggleFlowerType,
@@ -133,10 +136,14 @@ function ProductCard({
   onToggleArchived,
   onSetBadge,
   onAddDelivery,
+  onAddRecipeItem,
+  onRemoveRecipeItem,
 }: {
   product: Product;
   isAvailable: boolean;
   uploadingId: string | null;
+  recipe: RecipeRow[];
+  rawMaterials: { id: string; name: string }[];
   onToggleAvailable: (name: string) => void;
   onSetCategory: (id: string, category: string) => void;
   onToggleFlowerType: (id: string, type: string) => void;
@@ -148,8 +155,13 @@ function ProductCard({
   onToggleArchived: (id: string, current: boolean) => void;
   onSetBadge: (id: string, text: string | null, color: string | null) => void;
   onAddDelivery: (id: string, delta: number) => void;
+  onAddRecipeItem: (bouquetId: string, ingredientId: string, qty: number) => void;
+  onRemoveRecipeItem: (recipeId: string) => void;
 }) {
   const [tagsOpen, setTagsOpen] = useState(false);
+  const [recipeOpen, setRecipeOpen] = useState(false);
+  const [newIngredientId, setNewIngredientId] = useState("");
+  const [newIngredientQty, setNewIngredientQty] = useState("1");
   const [badgeOpen, setBadgeOpen] = useState(false);
   const [badgeDraftText, setBadgeDraftText] = useState(p.badge_text ?? "");
   const [badgeDraftColor, setBadgeDraftColor] = useState(p.badge_color ?? BADGE_COLOR_OPTIONS[0].value);
@@ -289,6 +301,70 @@ function ProductCard({
                   }`}
                 >
                   🌸 Voňavé
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div>
+          <button
+            type="button"
+            onClick={() => setRecipeOpen((v) => !v)}
+            className="line-clamp-1 text-left text-[10px] text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+          >
+            {recipe.length > 0 ? `Состав: ${recipe.length}` : "Состав не задан"} {recipeOpen ? "▴" : "▾"}
+          </button>
+          {recipeOpen && (
+            <div className="mt-1 space-y-1 rounded-md border border-zinc-200 dark:border-zinc-700 p-1.5">
+              {recipe.map((r) => {
+                const ing = rawMaterials.find((m) => m.id === r.ingredient_sticker_id);
+                return (
+                  <div key={r.id} className="flex items-center justify-between gap-1 text-[10px]">
+                    <span className="text-zinc-600 dark:text-zinc-300">
+                      {ing?.name ?? "—"} × {r.quantity_needed}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onRemoveRecipeItem(r.id)}
+                      className="text-zinc-400 hover:text-red-600 dark:hover:text-red-400"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                );
+              })}
+              <div className="flex items-center gap-1 pt-0.5">
+                <select
+                  value={newIngredientId}
+                  onChange={(e) => setNewIngredientId(e.target.value)}
+                  className="min-w-0 flex-1 rounded-md border border-zinc-300 dark:border-zinc-600 bg-transparent px-1 py-0.5 text-[10px]"
+                >
+                  <option value="">Ингредиент…</option>
+                  {rawMaterials.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min={1}
+                  value={newIngredientQty}
+                  onChange={(e) => setNewIngredientQty(e.target.value)}
+                  className="w-10 rounded-md border border-zinc-300 dark:border-zinc-600 bg-transparent px-1 py-0.5 text-[10px]"
+                />
+                <button
+                  type="button"
+                  disabled={!newIngredientId || !(parseFloat(newIngredientQty) > 0)}
+                  onClick={() => {
+                    onAddRecipeItem(p.id, newIngredientId, parseFloat(newIngredientQty));
+                    setNewIngredientId("");
+                    setNewIngredientQty("1");
+                  }}
+                  className="rounded-md bg-accent px-1.5 py-0.5 text-[10px] font-medium text-white disabled:opacity-40"
+                >
+                  +
                 </button>
               </div>
             </div>
@@ -464,6 +540,7 @@ export default function ShopPage() {
   const [activeTab, setActiveTab] = useState<string>("all");
   const [autoFilling, setAutoFilling] = useState(false);
   const [autoFillResult, setAutoFillResult] = useState<string | null>(null);
+  const [recipes, setRecipes] = useState<RecipeRow[]>([]);
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -511,7 +588,31 @@ export default function ShopPage() {
   useEffect(() => {
     load();
     loadAvailability();
+    createClient()
+      .from("product_recipes")
+      .select("id, bouquet_sticker_id, ingredient_sticker_id, quantity_needed")
+      .then(({ data }) => setRecipes(data ?? []));
   }, [load, loadAvailability]);
+
+  async function addRecipeItem(bouquetId: string, ingredientId: string, qty: number) {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("product_recipes")
+      .upsert(
+        { bouquet_sticker_id: bouquetId, ingredient_sticker_id: ingredientId, quantity_needed: qty },
+        { onConflict: "bouquet_sticker_id,ingredient_sticker_id" }
+      )
+      .select("id, bouquet_sticker_id, ingredient_sticker_id, quantity_needed")
+      .single();
+    if (error || !data) return;
+    setRecipes((prev) => [...prev.filter((r) => r.id !== data.id), data]);
+  }
+
+  async function removeRecipeItem(id: string) {
+    const supabase = createClient();
+    await supabase.from("product_recipes").delete().eq("id", id);
+    setRecipes((prev) => prev.filter((r) => r.id !== id));
+  }
 
   useRealtimeRefresh("product_availability", loadAvailability);
 
@@ -708,6 +809,14 @@ export default function ShopPage() {
   }
 
   const activeProducts = useMemo(() => products.filter((p) => !p.archived), [products]);
+
+  // Ингредиенты для рецептов — те же product_stickers с категорией
+  // "ohapka" (продаются поштучно одним видом), больше ничего искать не
+  // нужно, это уже загружено в `products`.
+  const rawMaterialOptions = useMemo(
+    () => products.filter((p) => p.category === "ohapka").map((p) => ({ id: p.id, name: p.name })),
+    [products]
+  );
 
   const filteredProducts = useMemo(() => {
     const q = availabilitySearch.trim().toLowerCase();
@@ -925,6 +1034,10 @@ export default function ShopPage() {
                 product={p}
                 isAvailable={availableToday.has(p.name)}
                 uploadingId={uploadingId}
+                recipe={recipes.filter((r) => r.bouquet_sticker_id === p.id)}
+                rawMaterials={rawMaterialOptions}
+                onAddRecipeItem={addRecipeItem}
+                onRemoveRecipeItem={removeRecipeItem}
                 onToggleAvailable={toggleAvailable}
                 onSetCategory={setCategory}
                 onToggleFlowerType={toggleFlowerType}
