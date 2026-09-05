@@ -267,26 +267,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </Link>
             </nav>
           )}
-          {state.profile?.role === "warehouse" && (
-            <nav className="mt-3 flex gap-1">
-              <Link
-                href="/dashboard"
-                className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-                  pathname === "/dashboard" ? "bg-accent text-white" : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                }`}
-              >
-                Склад
-              </Link>
-              <Link
-                href="/dashboard/shop"
-                className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-                  pathname === "/dashboard/shop" ? "bg-accent text-white" : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                }`}
-              >
-                Магазин
-              </Link>
-            </nav>
-          )}
         </header>
         <main className="flex-1 bg-zinc-50 dark:bg-zinc-950 px-6 py-6">{children}</main>
       </div>

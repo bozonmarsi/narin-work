@@ -7,7 +7,7 @@ import { decodeHtmlEntities } from "@/lib/format";
 type Sticker = { id: string; product_name: string; category: string | null };
 type RecipeRow = { id: string; bouquet_sticker_id: string; ingredient_sticker_id: string; quantity_needed: number };
 
-export function RecipesTab() {
+export function RecipesTab({ onOpenCatalog }: { onOpenCatalog: () => void }) {
   const [stickers, setStickers] = useState<Sticker[]>([]);
   const [recipes, setRecipes] = useState<RecipeRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,7 +74,11 @@ export function RecipesTab() {
       />
       <p className="text-xs text-zinc-400">
         Здесь только готовые букеты/сеты (не сами цветы). Если нужного букета нет в списке — его сначала надо завести
-        как товар в "Магазине".
+        как товар в{" "}
+        <button type="button" onClick={onOpenCatalog} className="text-accent underline">
+          Каталоге
+        </button>
+        .
       </p>
 
       <div className="space-y-2">

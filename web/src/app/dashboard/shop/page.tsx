@@ -310,7 +310,7 @@ function ProductCard({
           )}
         </div>
 
-        <div>
+        <div className={p.category === "ohapka" ? "hidden" : undefined}>
           <button
             type="button"
             onClick={() => setRecipeOpen((v) => !v)}

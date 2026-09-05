@@ -22,7 +22,7 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function ReceiveTab() {
+export function ReceiveTab({ onOpenCatalog }: { onOpenCatalog: () => void }) {
   const { user } = useDashboard();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [materials, setMaterials] = useState<RawMaterial[]>([]);
@@ -56,6 +56,9 @@ export function ReceiveTab() {
     ]);
     setSuppliers(supRes.data ?? []);
     setMaterials(matRes.data ?? []);
+    // Единственный поставщик — почти наверняка тот, что нужен; не
+    // заставляем лишний раз кликать, чтобы его "выбрать".
+    if (supRes.data?.length === 1) setSupplierId(supRes.data[0].id);
     setLoading(false);
   }
 
@@ -314,10 +317,10 @@ export function ReceiveTab() {
           + Добавить позицию
         </button>
         <p className="mt-1 text-xs text-zinc-400">
-          Enter в количестве или цене — сразу новая строка. Нет нужного цветка в списке? Добавь товар на странице{" "}
-          <a href="/dashboard/shop" className="text-accent underline">
-            Магазин
-          </a>{" "}
+          Enter в количестве или цене — сразу новая строка. Нет нужного цветка в списке?{" "}
+          <button type="button" onClick={onOpenCatalog} className="text-accent underline">
+            Добавь его в каталоге
+          </button>{" "}
           — он сразу появится и здесь.
         </p>
       </div>
@@ -357,6 +360,11 @@ export function ReceiveTab() {
       >
         {submitting ? "Сохраняем…" : "Оприходовать партию"}
       </button>
+      {!canSubmit && !submitting && (
+        <p className="text-xs text-zinc-400">
+          {!supplierId ? "Выбери поставщика выше" : "Укажи хотя бы один цветок и количество"}
+        </p>
+      )}
     </div>
   );
 }
