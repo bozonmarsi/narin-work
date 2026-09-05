@@ -5,11 +5,13 @@ import { ReceiveTab } from "./ReceiveTab";
 import { SuppliersTab } from "./SuppliersTab";
 import { StockTab } from "./StockTab";
 import { AssembleTab } from "./AssembleTab";
+import { RecipesTab } from "./RecipesTab";
 
 const TABS = [
   { key: "assemble", label: "Сборка" },
   { key: "receive", label: "Приёмка" },
   { key: "stock", label: "Остатки" },
+  { key: "recipes", label: "Рецепты" },
   { key: "suppliers", label: "Поставщики" },
 ] as const;
 
@@ -39,6 +41,7 @@ export function WarehouseView() {
       {tab === "assemble" && <AssembleTab />}
       {tab === "receive" && <ReceiveTab />}
       {tab === "stock" && <StockTab />}
+      {tab === "recipes" && <RecipesTab />}
       {tab === "suppliers" && <SuppliersTab />}
     </div>
   );

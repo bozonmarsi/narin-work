@@ -53,8 +53,7 @@ export function AssembleTab() {
 
   const [openOrderId, setOpenOrderId] = useState<string | null>(null);
   const [needs, setNeeds] = useState<NeedRow[]>([]);
-  const [unmatched, setUnmatched] = useState<string[]>([]);
-  const [noRecipe, setNoRecipe] = useState<{ name: string; qty: number; stickerId: string }[]>([]);
+  const [noRecipe, setNoRecipe] = useState<{ name: string; qty: number }[]>([]);
   const [adHocPicks, setAdHocPicks] = useState<Record<string, { ingredientId: string; qty: string }>>({});
   const [planLoading, setPlanLoading] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -94,14 +93,16 @@ export function AssembleTab() {
     setAdHocPicks({});
 
     const items = parseLineItems(order);
-    const unmatchedNames: string[] = [];
-    const noRecipeItems: { name: string; qty: number; stickerId: string }[] = [];
+    const noRecipeItems: { name: string; qty: number }[] = [];
     const needMap = new Map<string, number>();
 
     for (const item of items) {
       const sticker = findSticker(item.rawName, item.name);
       if (!sticker) {
-        unmatchedNames.push(item.name);
+        // Не нашли в каталоге вообще (обычный кастомный букет без своей
+        // карточки товара) — для склада это то же самое, что "нет
+        // рецепта": просто просим флориста вписать состав руками.
+        noRecipeItems.push({ name: item.name, qty: item.quantity });
         continue;
       }
       if (sticker.category === "ohapka") {
@@ -110,7 +111,7 @@ export function AssembleTab() {
       }
       const bouquetRecipe = recipes.filter((r) => r.bouquet_sticker_id === sticker.id);
       if (bouquetRecipe.length === 0) {
-        noRecipeItems.push({ name: item.name, qty: item.quantity, stickerId: sticker.id });
+        noRecipeItems.push({ name: item.name, qty: item.quantity });
         continue;
       }
       for (const r of bouquetRecipe) {
@@ -148,7 +149,6 @@ export function AssembleTab() {
     });
 
     setNeeds(rows);
-    setUnmatched(unmatchedNames);
     setNoRecipe(noRecipeItems);
     setPlanLoading(false);
   }
@@ -156,7 +156,6 @@ export function AssembleTab() {
   function closeOrder() {
     setOpenOrderId(null);
     setNeeds([]);
-    setUnmatched([]);
     setNoRecipe([]);
     setError(null);
   }
@@ -370,10 +369,6 @@ export function AssembleTab() {
                         </div>
                       </div>
                     ))}
-
-                    {unmatched.length > 0 && (
-                      <p className="text-xs text-zinc-400">Не найдено в каталоге: {unmatched.join(", ")}</p>
-                    )}
 
                     {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
