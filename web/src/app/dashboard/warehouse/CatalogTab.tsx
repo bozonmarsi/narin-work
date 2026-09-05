@@ -11,6 +11,7 @@ type Product = {
   category: string | null;
   archived: boolean;
   quantity: number | null;
+  price: number | null;
 };
 
 type BatchLite = { id: string; product_sticker_id: string; remaining: number; purchase_date: string; estimated_wilt_date: string | null };
@@ -51,7 +52,7 @@ export function CatalogTab() {
   async function load() {
     const supabase = createClient();
     const [productsRes, availabilityRes, batchesRes, recipesRes] = await Promise.all([
-      supabase.from("product_stickers").select("id, product_name, image_url, category, archived, quantity").order("product_name"),
+      supabase.from("product_stickers").select("id, product_name, image_url, category, archived, quantity, price").order("product_name"),
       supabase.from("product_availability").select("product_name"),
       supabase.from("batches").select("id, product_sticker_id, remaining, purchase_date, estimated_wilt_date").gt("remaining", 0),
       supabase.from("product_recipes").select("id, bouquet_sticker_id, ingredient_sticker_id, quantity_needed"),
@@ -76,6 +77,12 @@ export function CatalogTab() {
     } else {
       await supabase.from("product_availability").upsert({ product_name: name });
     }
+    load();
+  }
+
+  async function setPrice(id: string, price: number) {
+    const supabase = createClient();
+    await supabase.from("product_stickers").update({ price }).eq("id", id);
     load();
   }
 
@@ -209,6 +216,21 @@ export function CatalogTab() {
                   <p className="truncate text-sm font-medium">{name}</p>
                   {isOhapka && <p className="text-xs text-zinc-400">{p.quantity ?? 0} стеблей на складе</p>}
                 </div>
+                <span className="flex shrink-0 items-center gap-0.5 text-sm font-semibold text-accent">
+                  <input
+                    type="number"
+                    min={0}
+                    defaultValue={p.price ?? ""}
+                    placeholder="—"
+                    title="Цена — можно поправить вручную, если сайт её не подтягивает сам"
+                    onBlur={(e) => {
+                      const v = parseFloat(e.target.value);
+                      if (v >= 0 && v !== p.price) setPrice(p.id, v);
+                    }}
+                    className="w-14 rounded border-0 bg-transparent text-right outline-none focus:ring-1 focus:ring-accent"
+                  />
+                  <span>Kč</span>
+                </span>
               </div>
 
               <div className="mt-2 flex items-center justify-between gap-2">
