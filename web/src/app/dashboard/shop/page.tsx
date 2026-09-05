@@ -60,18 +60,8 @@ function categoryColor(value: string | null) {
 
 // Тип цветка — отдельная ось тегов, нужна для кастомного фильтра на
 // странице "Охапки" на сайте (встроенный фильтр Тильды не подошёл).
-const FLOWER_TYPE_OPTIONS = [
-  "Tulipán",
-  "Karafiát",
-  "Pivoňka",
-  "Ranunkulus",
-  "Kala",
-  "Hortenzie",
-  "Hyacint",
-  "Fialka",
-  "Exotika",
-  "Vytrvalé",
-];
+// Сами варианты больше не хардкодятся тут — это species_reference
+// (material_type = 'flower'), тот же список, что и на складе.
 
 function normalizeForMatch(s: string) {
   return s
@@ -82,9 +72,9 @@ function normalizeForMatch(s: string) {
 
 // Чешские названия почти всегда содержат тип цветка прямо в тексте
 // ("Pivoňka bílá", "Tulipán žlutý") — сравниваем без учёта диакритики.
-function guessFlowerType(name: string): string | null {
+function guessFlowerType(name: string, options: string[]): string | null {
   const normalized = normalizeForMatch(name);
-  return FLOWER_TYPE_OPTIONS.find((t) => normalized.includes(normalizeForMatch(t))) ?? null;
+  return options.find((t) => normalized.includes(normalizeForMatch(t))) ?? null;
 }
 
 // Основа слова без окончания — чешские прилагательные цвета склоняются по
@@ -119,6 +109,7 @@ function ProductCard({
   product: p,
   isAvailable,
   uploadingId,
+  flowerOptions,
   onToggleAvailable,
   onSetCategory,
   onToggleFlowerType,
@@ -134,6 +125,7 @@ function ProductCard({
   product: Product;
   isAvailable: boolean;
   uploadingId: string | null;
+  flowerOptions: string[];
   onToggleAvailable: (name: string) => void;
   onSetCategory: (id: string, category: string) => void;
   onToggleFlowerType: (id: string, type: string) => void;
@@ -221,7 +213,7 @@ function ProductCard({
           {tagsOpen && (
             <div className="mt-1 space-y-1 rounded-md border border-zinc-200 dark:border-zinc-700 p-1.5">
               <div className="flex flex-wrap gap-1">
-                {FLOWER_TYPE_OPTIONS.map((t) => {
+                {flowerOptions.map((t) => {
                   const active = p.flower_type.includes(t);
                   return (
                     <button
@@ -461,6 +453,10 @@ export default function ShopPage() {
   const [activeTab, setActiveTab] = useState<string>("all");
   const [autoFilling, setAutoFilling] = useState(false);
   const [autoFillResult, setAutoFillResult] = useState<string | null>(null);
+  // Общий со складом список видов (species_reference) — раньше был
+  // отдельный захардкоженный FLOWER_TYPE_OPTIONS, из-за чего новый вид,
+  // заведённый флористом при приёмке, не появлялся тут как тег, и наоборот.
+  const [flowerOptions, setFlowerOptions] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -508,6 +504,12 @@ export default function ShopPage() {
   useEffect(() => {
     load();
     loadAvailability();
+    createClient()
+      .from("species_reference")
+      .select("name")
+      .eq("material_type", "flower")
+      .order("name")
+      .then(({ data }) => setFlowerOptions((data ?? []).map((s) => s.name)));
   }, [load, loadAvailability]);
 
   useRealtimeRefresh("product_availability", loadAvailability);
@@ -671,7 +673,7 @@ export default function ShopPage() {
     for (const p of candidates) {
       const update: Record<string, string | string[]> = {};
       if (p.flower_type.length === 0) {
-        const guessed = guessFlowerType(p.name);
+        const guessed = guessFlowerType(p.name, flowerOptions);
         if (guessed) update.flower_type = [guessed];
       }
       if (p.color.length === 0) {
@@ -922,6 +924,7 @@ export default function ShopPage() {
                 product={p}
                 isAvailable={availableToday.has(p.name)}
                 uploadingId={uploadingId}
+                flowerOptions={flowerOptions}
                 onToggleAvailable={toggleAvailable}
                 onSetCategory={setCategory}
                 onToggleFlowerType={toggleFlowerType}
