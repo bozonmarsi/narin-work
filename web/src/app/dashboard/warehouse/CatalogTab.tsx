@@ -249,13 +249,14 @@ export function CatalogTab() {
                 <div className="mt-2 flex flex-wrap gap-1 border-t border-zinc-100 dark:border-zinc-800 pt-2">
                   {productBatches.map((b) => {
                     const f = freshness(b.estimated_wilt_date);
+                    const ageDays = Math.floor((Date.now() - new Date(b.purchase_date).getTime()) / 86400000);
                     return (
                       <span
                         key={b.id}
                         title={`Партия от ${new Date(b.purchase_date).toLocaleDateString("ru-RU")}`}
                         className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${f.className}`}
                       >
-                        {b.remaining} шт · {f.label}
+                        {b.remaining} шт · {ageDays === 0 ? "сегодня" : `${ageDays} дн. на складе`} · св. {f.label}
                       </span>
                     );
                   })}

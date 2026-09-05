@@ -23,7 +23,7 @@ type OrderLite = {
   raw_payload: { payment?: { products?: { name?: string; quantity?: number }[] } } | null;
 };
 
-type StickerLite = { id: string; product_name: string; category: string | null; unit: string | null; order_unit_size: number };
+type StickerLite = { id: string; product_name: string; category: string | null; unit: string | null; order_unit_size: number; price: number | null };
 type RecipeLite = { bouquet_sticker_id: string; ingredient_sticker_id: string; quantity_needed: number };
 
 function itemsSummary(order: OrderLite): string {
@@ -50,7 +50,7 @@ export function OrdersView() {
         .select("id, order_id, customer_name, recipient_name, delivery_date, delivery_slot, delivery_type, products_text, status, raw_payload")
         .in("status", VISIBLE_STATUSES)
         .order("delivery_date", { ascending: true }),
-      supabase.from("product_stickers").select("id, product_name, category, unit, order_unit_size"),
+      supabase.from("product_stickers").select("id, product_name, category, unit, order_unit_size, price"),
       supabase.from("product_recipes").select("bouquet_sticker_id, ingredient_sticker_id, quantity_needed"),
     ]);
     setOrders(ordersRes.data ?? []);

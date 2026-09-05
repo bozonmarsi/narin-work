@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { decodeHtmlEntities } from "@/lib/format";
 import { Modal } from "./Modal";
 
-type Sticker = { id: string; product_name: string };
+type Sticker = { id: string; product_name: string; price: number | null };
 type Row = { key: string; stickerId: string; quantity: string; price: string };
 
 function newRow(): Row {
@@ -109,7 +109,13 @@ export function NewOrderModal({ stickers, onClose, onCreated }: { stickers: Stic
                     rowRefs.current[row.key] = el;
                   }}
                   value={row.stickerId}
-                  onChange={(e) => updateRow(row.key, { stickerId: e.target.value })}
+                  onChange={(e) => {
+                    const sticker = stickers.find((s) => s.id === e.target.value);
+                    updateRow(row.key, {
+                      stickerId: e.target.value,
+                      price: sticker?.price != null ? String(sticker.price) : row.price,
+                    });
+                  }}
                   className="min-w-0 flex-1 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-transparent px-3 py-2 text-sm outline-none focus:border-accent"
                 >
                   <option value="" disabled>
