@@ -1,8 +1,13 @@
-export type Species = {
+// Сырьё — это те же product_stickers, что и весь остальной каталог
+// (категория "ohapka" — товары, которые продаются поштучно одним видом),
+// просто с добавленными складскими полями. Отдельного справочника видов
+// больше нет — новый вид сырья заводится обычной кнопкой "+ Добавить"
+// на странице "Магазин" и сразу доступен здесь.
+export type RawMaterial = {
   id: string;
-  name: string;
-  material_type: "flower" | "greenery" | "packaging";
-  unit: string;
+  product_name: string;
+  material_type: "flower" | "greenery" | "packaging" | null;
+  unit: string | null;
   default_vase_life_days: number | null;
 };
 
@@ -15,7 +20,7 @@ export type Supplier = {
 
 export type BatchRow = {
   id: string;
-  species_id: string;
+  product_sticker_id: string;
   remaining: number;
   purchase_date: string;
   estimated_wilt_date: string | null;

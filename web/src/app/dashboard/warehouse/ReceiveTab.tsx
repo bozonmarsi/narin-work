@@ -3,23 +3,18 @@
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useDashboard } from "../layout";
-import type { Species, Supplier } from "./types";
+import { decodeHtmlEntities } from "@/lib/format";
+import type { RawMaterial, Supplier } from "./types";
 
 type Row = {
   key: string;
-  speciesId: string;
+  productStickerId: string;
   quantity: string;
   price: string;
 };
 
-const MATERIAL_LABELS: Record<Species["material_type"], string> = {
-  flower: "Цветок",
-  greenery: "Зелень",
-  packaging: "Упаковка",
-};
-
 function newRow(): Row {
-  return { key: crypto.randomUUID(), speciesId: "", quantity: "", price: "" };
+  return { key: crypto.randomUUID(), productStickerId: "", quantity: "", price: "" };
 }
 
 function todayStr() {
@@ -29,7 +24,7 @@ function todayStr() {
 export function ReceiveTab() {
   const { user } = useDashboard();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [species, setSpecies] = useState<Species[]>([]);
+  const [materials, setMaterials] = useState<RawMaterial[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [supplierId, setSupplierId] = useState<string | null>(null);
@@ -38,11 +33,6 @@ export function ReceiveTab() {
 
   const [purchaseDate, setPurchaseDate] = useState(todayStr());
   const [rows, setRows] = useState<Row[]>([newRow()]);
-  const [addingSpeciesForRow, setAddingSpeciesForRow] = useState<string | null>(null);
-  const [newSpeciesName, setNewSpeciesName] = useState("");
-  const [newSpeciesType, setNewSpeciesType] = useState<Species["material_type"]>("flower");
-  const [newSpeciesUnit, setNewSpeciesUnit] = useState("стебель");
-  const [newSpeciesVaseLife, setNewSpeciesVaseLife] = useState("7");
 
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -55,12 +45,16 @@ export function ReceiveTab() {
 
   async function loadRefs() {
     const supabase = createClient();
-    const [supRes, spRes] = await Promise.all([
+    const [supRes, matRes] = await Promise.all([
       supabase.from("suppliers").select("id, name, contact_phone, contact_email").order("name"),
-      supabase.from("species_reference").select("id, name, material_type, unit, default_vase_life_days").order("name"),
+      supabase
+        .from("product_stickers")
+        .select("id, product_name, material_type, unit, default_vase_life_days")
+        .eq("category", "ohapka")
+        .order("product_name"),
     ]);
     setSuppliers(supRes.data ?? []);
-    setSpecies(spRes.data ?? []);
+    setMaterials(matRes.data ?? []);
     setLoading(false);
   }
 
@@ -83,7 +77,7 @@ export function ReceiveTab() {
   }
 
   function handleRowKeyDown(e: React.KeyboardEvent, row: Row, isLast: boolean) {
-    if (e.key === "Enter" && isLast && row.speciesId && parseFloat(row.quantity) > 0) {
+    if (e.key === "Enter" && isLast && row.productStickerId && parseFloat(row.quantity) > 0) {
       e.preventDefault();
       addRowAndFocus();
     }
@@ -104,38 +98,13 @@ export function ReceiveTab() {
     setNewSupplierName("");
   }
 
-  async function createSpecies(forRowKey: string) {
-    const name = newSpeciesName.trim();
-    if (!name) return;
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from("species_reference")
-      .insert({
-        name,
-        material_type: newSpeciesType,
-        unit: newSpeciesUnit.trim() || "шт",
-        default_vase_life_days: newSpeciesType === "packaging" ? null : parseInt(newSpeciesVaseLife, 10) || null,
-      })
-      .select("id, name, material_type, unit, default_vase_life_days")
-      .single();
-    if (error) {
-      setError(error.message);
-      return;
-    }
-    setSpecies((prev) => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
-    updateRow(forRowKey, { speciesId: data.id });
-    setAddingSpeciesForRow(null);
-    setNewSpeciesName("");
-    setNewSpeciesVaseLife("7");
-  }
-
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null;
     setPhotoFile(file);
     setPhotoPreview(file ? URL.createObjectURL(file) : null);
   }
 
-  const validRows = rows.filter((r) => r.speciesId && parseFloat(r.quantity) > 0);
+  const validRows = rows.filter((r) => r.productStickerId && parseFloat(r.quantity) > 0);
   const canSubmit = !!supplierId && validRows.length > 0 && !submitting;
 
   async function submit() {
@@ -156,17 +125,17 @@ export function ReceiveTab() {
       }
 
       for (const row of validRows) {
-        const sp = species.find((s) => s.id === row.speciesId);
+        const material = materials.find((m) => m.id === row.productStickerId);
         const qty = parseFloat(row.quantity);
         const wiltDate =
-          sp?.default_vase_life_days != null
-            ? new Date(new Date(purchaseDate).getTime() + sp.default_vase_life_days * 86400000).toISOString().slice(0, 10)
+          material?.default_vase_life_days != null
+            ? new Date(new Date(purchaseDate).getTime() + material.default_vase_life_days * 86400000).toISOString().slice(0, 10)
             : null;
 
         const { data: batch, error: batchErr } = await supabase
           .from("batches")
           .insert({
-            species_id: row.speciesId,
+            product_sticker_id: row.productStickerId,
             supplier_id: supplierId,
             quantity_received: qty,
             remaining: 0,
@@ -264,111 +233,55 @@ export function ReceiveTab() {
         <div className="space-y-2">
           {rows.map((row, i) => {
             const isLast = i === rows.length - 1;
-            const sp = species.find((s) => s.id === row.speciesId);
+            const material = materials.find((m) => m.id === row.productStickerId);
             return (
-              <div key={row.key}>
-                <div className="flex items-center gap-2">
-                  <select
-                    ref={(el) => {
-                      rowRefs.current[row.key] = el;
-                    }}
-                    value={row.speciesId}
-                    onChange={(e) => {
-                      if (e.target.value === "__new__") {
-                        setAddingSpeciesForRow(row.key);
-                      } else {
-                        updateRow(row.key, { speciesId: e.target.value });
-                      }
-                    }}
-                    className="min-w-0 flex-1 rounded-md border border-zinc-300 dark:border-zinc-600 bg-transparent px-2 py-1.5 text-sm outline-none focus:border-accent"
-                  >
-                    <option value="" disabled>
-                      Вид сырья…
+              <div key={row.key} className="flex items-center gap-2">
+                <select
+                  ref={(el) => {
+                    rowRefs.current[row.key] = el;
+                  }}
+                  value={row.productStickerId}
+                  onChange={(e) => updateRow(row.key, { productStickerId: e.target.value })}
+                  className="min-w-0 flex-1 rounded-md border border-zinc-300 dark:border-zinc-600 bg-transparent px-2 py-1.5 text-sm outline-none focus:border-accent"
+                >
+                  <option value="" disabled>
+                    Что привезли…
+                  </option>
+                  {materials.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {decodeHtmlEntities(m.product_name)}
                     </option>
-                    {species.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                    <option value="__new__">+ Новый вид…</option>
-                  </select>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    min={0}
-                    value={row.quantity}
-                    onChange={(e) => updateRow(row.key, { quantity: e.target.value })}
-                    onKeyDown={(e) => handleRowKeyDown(e, row, isLast)}
-                    placeholder="Кол-во"
-                    className="w-24 rounded-md border border-zinc-300 dark:border-zinc-600 bg-transparent px-2 py-1.5 text-sm outline-none focus:border-accent"
-                  />
-                  {sp && <span className="w-14 shrink-0 text-xs text-zinc-400">{sp.unit}</span>}
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    min={0}
-                    value={row.price}
-                    onChange={(e) => updateRow(row.key, { price: e.target.value })}
-                    onKeyDown={(e) => handleRowKeyDown(e, row, isLast)}
-                    placeholder="Цена/ед."
-                    className="w-24 rounded-md border border-zinc-300 dark:border-zinc-600 bg-transparent px-2 py-1.5 text-sm outline-none focus:border-accent"
-                  />
-                  <button
-                    onClick={() => removeRow(row.key)}
-                    disabled={rows.length === 1}
-                    className="shrink-0 text-zinc-400 hover:text-red-500 disabled:opacity-30"
-                    title="Удалить строку"
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                {addingSpeciesForRow === row.key && (
-                  <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md border border-dashed border-zinc-300 dark:border-zinc-600 p-2.5">
-                    <input
-                      autoFocus
-                      value={newSpeciesName}
-                      onChange={(e) => setNewSpeciesName(e.target.value)}
-                      placeholder="Название вида"
-                      className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-transparent px-2 py-1 text-sm outline-none focus:border-accent"
-                    />
-                    <select
-                      value={newSpeciesType}
-                      onChange={(e) => setNewSpeciesType(e.target.value as Species["material_type"])}
-                      className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-transparent px-2 py-1 text-sm outline-none focus:border-accent"
-                    >
-                      {Object.entries(MATERIAL_LABELS).map(([v, l]) => (
-                        <option key={v} value={v}>
-                          {l}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      value={newSpeciesUnit}
-                      onChange={(e) => setNewSpeciesUnit(e.target.value)}
-                      placeholder="Ед. (стебель)"
-                      className="w-28 rounded-md border border-zinc-300 dark:border-zinc-600 bg-transparent px-2 py-1 text-sm outline-none focus:border-accent"
-                    />
-                    {newSpeciesType !== "packaging" && (
-                      <input
-                        type="number"
-                        value={newSpeciesVaseLife}
-                        onChange={(e) => setNewSpeciesVaseLife(e.target.value)}
-                        placeholder="Дней стоит"
-                        className="w-24 rounded-md border border-zinc-300 dark:border-zinc-600 bg-transparent px-2 py-1 text-sm outline-none focus:border-accent"
-                      />
-                    )}
-                    <button onClick={() => createSpecies(row.key)} className="text-sm font-medium text-accent">
-                      Создать
-                    </button>
-                    <button
-                      onClick={() => setAddingSpeciesForRow(null)}
-                      className="text-sm text-zinc-400 hover:text-zinc-600"
-                    >
-                      Отмена
-                    </button>
-                  </div>
-                )}
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  value={row.quantity}
+                  onChange={(e) => updateRow(row.key, { quantity: e.target.value })}
+                  onKeyDown={(e) => handleRowKeyDown(e, row, isLast)}
+                  placeholder="Кол-во"
+                  className="w-24 rounded-md border border-zinc-300 dark:border-zinc-600 bg-transparent px-2 py-1.5 text-sm outline-none focus:border-accent"
+                />
+                {material?.unit && <span className="w-14 shrink-0 text-xs text-zinc-400">{material.unit}</span>}
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  value={row.price}
+                  onChange={(e) => updateRow(row.key, { price: e.target.value })}
+                  onKeyDown={(e) => handleRowKeyDown(e, row, isLast)}
+                  placeholder="Цена/ед."
+                  className="w-24 rounded-md border border-zinc-300 dark:border-zinc-600 bg-transparent px-2 py-1.5 text-sm outline-none focus:border-accent"
+                />
+                <button
+                  onClick={() => removeRow(row.key)}
+                  disabled={rows.length === 1}
+                  className="shrink-0 text-zinc-400 hover:text-red-500 disabled:opacity-30"
+                  title="Удалить строку"
+                >
+                  ✕
+                </button>
               </div>
             );
           })}
@@ -376,7 +289,13 @@ export function ReceiveTab() {
         <button onClick={addRowAndFocus} className="mt-2 text-sm font-medium text-accent">
           + Добавить позицию
         </button>
-        <p className="mt-1 text-xs text-zinc-400">Enter в количестве или цене — сразу новая строка</p>
+        <p className="mt-1 text-xs text-zinc-400">
+          Enter в количестве или цене — сразу новая строка. Нет нужного цветка в списке? Добавь товар на странице{" "}
+          <a href="/dashboard/shop" className="text-accent underline">
+            Магазин
+          </a>{" "}
+          — он сразу появится и здесь.
+        </p>
       </div>
 
       <div>
