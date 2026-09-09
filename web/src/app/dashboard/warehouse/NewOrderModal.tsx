@@ -24,6 +24,9 @@ function newRow(): Row {
   return { key: crypto.randomUUID(), stickerId: "", quantity: "1", price: "" };
 }
 
+const SERVICE_FEE = 80;
+const COURIER_FEE = 159;
+
 const PAYMENT_METHODS: { value: string; label: string; icon: string }[] = [
   { value: "cash", label: "Наличными", icon: "💵" },
   { value: "card", label: "Картой", icon: "💳" },
@@ -121,10 +124,15 @@ export function NewOrderModal({ stickers, onClose, onCreated }: { stickers: Stic
   }
 
   const validRows = rows.filter((r) => r.stickerId && parseFloat(r.quantity) > 0);
-  const total = validRows.reduce((sum, r) => sum + (parseFloat(r.quantity) || 0) * (parseFloat(r.price) || 0), 0);
-  const maxRedeem = customer ? maxRedeemablePoints(total, customer.balance) : 0;
+  const goodsTotal = validRows.reduce((sum, r) => sum + (parseFloat(r.quantity) || 0) * (parseFloat(r.price) || 0), 0);
+  // Тот же сервисный сбор и доставка, что и на сайте (те же суммы зашиты
+  // в маркеры delivery_type — "Servisní poplatek = 80" на самовывоз,
+  // "...= 239" на курьера, то есть 80 + 159).
+  const fees = SERVICE_FEE + (fulfillment === "courier" ? COURIER_FEE : 0);
+  const grandTotal = goodsTotal + fees;
+  const maxRedeem = customer ? maxRedeemablePoints(grandTotal, customer.balance) : 0;
   const redeemAmount = customer ? Math.min(Math.max(0, parseFloat(redeemPoints) || 0), maxRedeem) : 0;
-  const payable = Math.max(0, total - redeemAmount);
+  const payable = Math.max(0, grandTotal - redeemAmount);
   const fulfillmentReady =
     fulfillment === "pickup_now" || (fulfillment === "pickup_later" && pickupLaterAt) || (fulfillment === "courier" && courierAddress.trim() && courierAt);
   const canSubmit = validRows.length > 0 && !!paymentMethod && !!fulfillmentReady && !submitting && !orderDone;
@@ -166,10 +174,10 @@ export function NewOrderModal({ stickers, onClose, onCreated }: { stickers: Stic
         payment_status: "🟢 Оплачено",
         status: "confirmed",
         order_total: payable,
-        goods_total: payable,
+        goods_total: goodsTotal,
         used_points: redeemAmount || null,
         confirmed_at: now,
-        raw_payload: { payment: { products, amount: String(payable), subtotal: String(payable) } },
+        raw_payload: { payment: { products, amount: String(payable), subtotal: String(goodsTotal) } },
       })
       .select("id")
       .single();
@@ -456,16 +464,32 @@ export function NewOrderModal({ stickers, onClose, onCreated }: { stickers: Stic
           </div>
         </div>
 
-        <div className="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800 pt-3">
-          <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
-            {redeemAmount > 0 ? (
-              <>
-                Итого: <span className="line-through opacity-60">{total} Kč</span> −{redeemAmount} б. ={" "}
-                <span className="font-semibold text-accent">{payable} Kč</span>
-              </>
-            ) : (
-              <>Итого: {total} Kč</>
-            )}
+        <div className="space-y-1 border-t border-zinc-100 dark:border-zinc-800 pt-3 text-xs text-zinc-400">
+          <div className="flex justify-between">
+            <span>Товары</span>
+            <span>{goodsTotal} Kč</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Сервисный сбор</span>
+            <span>{SERVICE_FEE} Kč</span>
+          </div>
+          {fulfillment === "courier" && (
+            <div className="flex justify-between">
+              <span>Доставка</span>
+              <span>{COURIER_FEE} Kč</span>
+            </div>
+          )}
+          {redeemAmount > 0 && (
+            <div className="flex justify-between">
+              <span>Списано баллами</span>
+              <span>−{redeemAmount} Kč</span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between pt-1">
+          <span className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">
+            Итого: <span className="text-accent">{payable} Kč</span>
           </span>
           <button
             onClick={submit}
