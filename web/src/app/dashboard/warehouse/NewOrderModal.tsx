@@ -143,6 +143,10 @@ export function NewOrderModal({ stickers, onClose, onCreated }: { stickers: Stic
     });
 
     const now = new Date().toISOString();
+    // Заказы с сайта получают номер от Tilda; кассовым нужен свой,
+    // отдельно узнаваемый (как KASSA-, так и PREDPL- у подписок) —
+    // иначе order_id остаётся пустым и заказ в списке показывает "№—".
+    const orderId = "KASSA-" + crypto.randomUUID().split("-")[0].toUpperCase();
     const deliveryType = fulfillment === "courier" ? "Doručení kurýrem + servisní poplatek = 239" : "Servisní poplatek = 80";
     const deliveryDate =
       fulfillment === "courier" ? new Date(courierAt).toISOString() : fulfillment === "pickup_later" ? new Date(pickupLaterAt).toISOString() : now;
@@ -150,6 +154,7 @@ export function NewOrderModal({ stickers, onClose, onCreated }: { stickers: Stic
     const { data: order, error: insertErr } = await supabase
       .from("tilda_orders")
       .insert({
+        order_id: orderId,
         customer_name: customerName.trim() || "Клиент с кассы",
         recipient_name: customerName.trim() || "Клиент с кассы",
         customer_phone: customerPhone.trim() || null,
@@ -191,7 +196,7 @@ export function NewOrderModal({ stickers, onClose, onCreated }: { stickers: Stic
             user_email: customer.email,
             amount: -redeemAmount,
             type: "redemption",
-            order_id: order.id,
+            order_id: orderId,
             description: "Списание на кассе",
           });
           if (redeemErr) throw redeemErr;
@@ -210,7 +215,7 @@ export function NewOrderModal({ stickers, onClose, onCreated }: { stickers: Stic
             user_email: customer.email,
             amount: earnedPoints,
             type: "accrual",
-            order_id: order.id,
+            order_id: orderId,
             description: "Начисление за заказ на кассе",
           });
           if (accrualErr) throw accrualErr;
