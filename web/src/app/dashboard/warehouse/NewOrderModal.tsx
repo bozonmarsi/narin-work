@@ -6,7 +6,7 @@ import { decodeHtmlEntities, formatDate } from "@/lib/format";
 import { getCashbackPercent, maxRedeemablePoints } from "@/lib/loyalty";
 import { Modal } from "./Modal";
 
-type Sticker = { id: string; product_name: string; price: number | null };
+type Sticker = { id: string; product_name: string; price: number | null; order_unit_size: number };
 type Row = { key: string; stickerId: string; quantity: string; price: string };
 type Customer = {
   email: string;
@@ -294,6 +294,14 @@ export function NewOrderModal({ stickers, onClose, onCreated }: { stickers: Stic
         <div className="space-y-2">
           {rows.map((row, i) => {
             const isLast = i === rows.length - 1;
+            // Некоторые товары (охапки) продаются пачками — цена в
+            // прайсе за пачку из order_unit_size стеблей, не за один.
+            // "Кол-во" тут значит "сколько пачек", как и на сайте —
+            // подписываем реальное число стеблей рядом, чтобы флорист
+            // не подумал, что продал всего 1 цветок за 390 крон.
+            const sticker = stickers.find((s) => s.id === row.stickerId);
+            const packSize = sticker?.order_unit_size ?? 1;
+            const realStems = (parseFloat(row.quantity) || 0) * packSize;
             return (
               <div key={row.key} className="flex items-center gap-2">
                 <select
@@ -302,10 +310,10 @@ export function NewOrderModal({ stickers, onClose, onCreated }: { stickers: Stic
                   }}
                   value={row.stickerId}
                   onChange={(e) => {
-                    const sticker = stickers.find((s) => s.id === e.target.value);
+                    const s = stickers.find((s) => s.id === e.target.value);
                     updateRow(row.key, {
                       stickerId: e.target.value,
-                      price: sticker?.price != null ? String(sticker.price) : row.price,
+                      price: s?.price != null ? String(s.price) : row.price,
                     });
                   }}
                   className="min-w-0 flex-1 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-transparent px-3 py-2 text-sm outline-none focus:border-accent"
@@ -316,6 +324,7 @@ export function NewOrderModal({ stickers, onClose, onCreated }: { stickers: Stic
                   {stickers.map((s) => (
                     <option key={s.id} value={s.id}>
                       {decodeHtmlEntities(s.product_name)}
+                      {s.order_unit_size > 1 ? ` (пачка ${s.order_unit_size} шт)` : ""}
                     </option>
                   ))}
                 </select>
@@ -328,6 +337,7 @@ export function NewOrderModal({ stickers, onClose, onCreated }: { stickers: Stic
                   placeholder="Кол-во"
                   className="w-20 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-transparent px-3 py-2 text-sm outline-none focus:border-accent"
                 />
+                {packSize > 1 && <span className="shrink-0 whitespace-nowrap text-xs text-zinc-400">= {realStems} шт</span>}
                 <input
                   type="number"
                   min={0}
