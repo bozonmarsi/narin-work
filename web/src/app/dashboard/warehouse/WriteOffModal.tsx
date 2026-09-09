@@ -11,10 +11,15 @@ const REASONS: { value: string; label: string }[] = [
   { value: "miscount", label: "Пересчёт" },
 ];
 
-type BatchInfo = { id: string; remaining: number; productName: string };
+type BatchInfo = { id: string | null; remaining: number; productName: string; productStickerId: string };
 
 // Фото не грузится в Supabase Storage — уходит менеджеру прямо в
 // Telegram, здесь остаётся только file_id (см. миграцию writeoff_telegram_photo).
+// batch.id может быть null — это остаток, который посчитан в
+// product_stickers.quantity напрямую (например, руками поправили на
+// странице Магазина) и никогда не проходил через приёмку партии. Чтобы
+// списание всё равно легло в тот же журнал stock_movements, партия для
+// него заводится прямо здесь, перед списанием.
 export function WriteOffModal({ batch, onClose, onDone }: { batch: BatchInfo; onClose: () => void; onDone: () => void }) {
   const [reason, setReason] = useState(REASONS[0].value);
   const [quantity, setQuantity] = useState(String(batch.remaining));
@@ -63,8 +68,23 @@ export function WriteOffModal({ batch, onClose, onDone }: { batch: BatchInfo; on
       telegramFileId = data.telegramFileId ?? null;
     }
 
+    let batchId = batch.id;
+    if (!batchId) {
+      const { data: newBatch, error: batchErr } = await supabase
+        .from("batches")
+        .insert({ product_sticker_id: batch.productStickerId, quantity_received: batch.remaining, remaining: batch.remaining })
+        .select("id")
+        .single();
+      if (batchErr || !newBatch) {
+        setError(batchErr?.message ?? "Не удалось завести партию для списания");
+        setSubmitting(false);
+        return;
+      }
+      batchId = newBatch.id;
+    }
+
     const { error: insertErr } = await supabase.from("write_offs").insert({
-      batch_id: batch.id,
+      batch_id: batchId,
       quantity: qty,
       reason,
       notes: notes.trim() || null,

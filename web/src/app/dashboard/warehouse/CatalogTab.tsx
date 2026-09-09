@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { decodeHtmlEntities } from "@/lib/format";
+import { freshness } from "@/lib/freshness";
+import { WriteOffModal } from "./WriteOffModal";
 
 type Product = {
   id: string;
@@ -15,17 +17,26 @@ type Product = {
   order_unit_size: number;
 };
 
+type BatchLite = { id: string; product_sticker_id: string; remaining: number; purchase_date: string; estimated_wilt_date: string | null };
 type RecipeRow = { id: string; bouquet_sticker_id: string; ingredient_sticker_id: string; quantity_needed: number };
+type WriteOffTarget = { id: string | null; remaining: number; productName: string; productStickerId: string };
 
-// Каталог — весь ассортимент и его редактирование (цена, фото, состав).
-// Для охапок наличие считается само (по остатку, через триггер в базе) —
-// руками тут ничего не переключаем. Партии и свежесть — отдельная вкладка
-// "Наличие", здесь только карточка товара как единица ассортимента.
-// Для готовых букетов/сетов своего учёта стеблей нет, там наличие
-// "на сегодня" по-прежнему решает флорист сам.
+function quantityBadgeClass(qty: number): string {
+  if (qty <= 0) return "bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400";
+  if (qty <= 5) return "bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400";
+  return "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400";
+}
+
+// Каталог и наличие — одна вкладка: то, что продаём, и то, что реально
+// лежит на складе, это одно и то же с двух сторон, незачем гонять
+// флориста между экранами. Для охапок наличие считается само (по
+// остатку, через триггер в базе) — руками тут ничего не переключаем,
+// только смотрим партии/свежесть и списываем. Для готовых букетов/сетов
+// своего учёта стеблей нет, там наличие "на сегодня" решает флорист сам.
 export function CatalogTab() {
   const [products, setProducts] = useState<Product[]>([]);
   const [availableToday, setAvailableToday] = useState<Set<string>>(new Set());
+  const [batches, setBatches] = useState<BatchLite[]>([]);
   const [recipes, setRecipes] = useState<RecipeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -40,15 +51,19 @@ export function CatalogTab() {
   const [newIngredientId, setNewIngredientId] = useState("");
   const [newIngredientQty, setNewIngredientQty] = useState("1");
 
+  const [writeOffTarget, setWriteOffTarget] = useState<WriteOffTarget | null>(null);
+
   async function load() {
     const supabase = createClient();
-    const [productsRes, availabilityRes, recipesRes] = await Promise.all([
+    const [productsRes, availabilityRes, batchesRes, recipesRes] = await Promise.all([
       supabase.from("product_stickers").select("id, product_name, image_url, category, archived, quantity, price, order_unit_size").order("product_name"),
       supabase.from("product_availability").select("product_name"),
+      supabase.from("batches").select("id, product_sticker_id, remaining, purchase_date, estimated_wilt_date").gt("remaining", 0),
       supabase.from("product_recipes").select("id, bouquet_sticker_id, ingredient_sticker_id, quantity_needed"),
     ]);
     setProducts((productsRes.data ?? []).filter((p) => p.product_name !== "__default__" && !p.archived));
     setAvailableToday(new Set((availabilityRes.data ?? []).map((r) => r.product_name)));
+    setBatches((batchesRes.data ?? []).sort((a, b) => a.purchase_date.localeCompare(b.purchase_date)));
     setRecipes(recipesRes.data ?? []);
     setLoading(false);
   }
@@ -131,11 +146,15 @@ export function CatalogTab() {
   const rawMaterials = products.filter((p) => p.category === "ohapka");
   const filtered = products.filter((p) => decodeHtmlEntities(p.product_name).toLowerCase().includes(search.toLowerCase()));
 
-  // В наличии — сначала. Внутри группы — по названию.
+  // В наличии — сначала, а среди охапок в наличии — у кого меньше
+  // остаток, тот выше: то, что заканчивается, сразу бросается в глаза.
   const sorted = [...filtered].sort((a, b) => {
     const aIn = a.category === "ohapka" ? (a.quantity ?? 0) > 0 : availableToday.has(decodeHtmlEntities(a.product_name));
     const bIn = b.category === "ohapka" ? (b.quantity ?? 0) > 0 : availableToday.has(decodeHtmlEntities(b.product_name));
     if (aIn !== bIn) return aIn ? -1 : 1;
+    if (aIn && a.category === "ohapka" && b.category === "ohapka") {
+      return (a.quantity ?? 0) - (b.quantity ?? 0);
+    }
     return a.product_name.localeCompare(b.product_name);
   });
 
@@ -186,8 +205,10 @@ export function CatalogTab() {
         {sorted.map((p) => {
           const name = decodeHtmlEntities(p.product_name);
           const isOhapka = p.category === "ohapka";
-          const inStock = (p.quantity ?? 0) > 0;
+          const qty = p.quantity ?? 0;
+          const inStock = qty > 0;
           const isAvailable = isOhapka ? inStock : availableToday.has(name);
+          const productBatches = batches.filter((b) => b.product_sticker_id === p.id);
           const recipeOpen = openRecipeId === p.id;
           const recipe = recipes.filter((r) => r.bouquet_sticker_id === p.id);
 
@@ -202,7 +223,11 @@ export function CatalogTab() {
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{name}</p>
-                  {isOhapka && <p className="text-xs text-zinc-400">{p.quantity ?? 0} стеблей на складе</p>}
+                  {isOhapka && (
+                    <span className={`mt-0.5 inline-block rounded-md px-1.5 py-0.5 text-xs font-bold ${quantityBadgeClass(qty)}`}>
+                      {qty} шт
+                    </span>
+                  )}
                 </div>
                 <span className="flex shrink-0 items-center gap-0.5 text-sm font-semibold text-accent">
                   <input
@@ -255,6 +280,43 @@ export function CatalogTab() {
                 )}
               </div>
 
+              {isOhapka && productBatches.length > 0 && (
+                <div className="mt-2 space-y-1 border-t border-zinc-100 dark:border-zinc-800 pt-2">
+                  {productBatches.map((b) => {
+                    const f = freshness(b.estimated_wilt_date);
+                    const ageDays = Math.floor((Date.now() - new Date(b.purchase_date).getTime()) / 86400000);
+                    return (
+                      <div key={b.id} className="flex items-center justify-between gap-2">
+                        <span
+                          title={`Партия от ${new Date(b.purchase_date).toLocaleDateString("ru-RU")}`}
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${f.className}`}
+                        >
+                          {b.remaining} шт · {ageDays === 0 ? "сегодня" : `${ageDays} дн. на складе`} · св. {f.label}
+                        </span>
+                        <button
+                          onClick={() => setWriteOffTarget({ id: b.id, remaining: b.remaining, productName: name, productStickerId: p.id })}
+                          className="shrink-0 text-[11px] text-zinc-400 hover:text-red-500"
+                        >
+                          Списать
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {isOhapka && productBatches.length === 0 && inStock && (
+                <div className="mt-2 flex items-center justify-between gap-2 border-t border-zinc-100 dark:border-zinc-800 pt-2">
+                  <span className="text-[11px] text-zinc-400">Без партии — {qty} шт</span>
+                  <button
+                    onClick={() => setWriteOffTarget({ id: null, remaining: qty, productName: name, productStickerId: p.id })}
+                    className="shrink-0 text-[11px] text-zinc-400 hover:text-red-500"
+                  >
+                    Списать
+                  </button>
+                </div>
+              )}
+
               {recipeOpen && (
                 <div className="mt-2 space-y-1 border-t border-zinc-100 dark:border-zinc-800 pt-2">
                   {recipe.map((r) => {
@@ -301,6 +363,17 @@ export function CatalogTab() {
         })}
         {sorted.length === 0 && <p className="text-sm text-zinc-400">Ничего не найдено.</p>}
       </div>
+
+      {writeOffTarget && (
+        <WriteOffModal
+          batch={writeOffTarget}
+          onClose={() => setWriteOffTarget(null)}
+          onDone={() => {
+            setWriteOffTarget(null);
+            load();
+          }}
+        />
+      )}
     </div>
   );
 }
