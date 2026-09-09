@@ -25,8 +25,15 @@ export function WriteOffModal({ batch, onClose, onDone }: { batch: BatchInfo; on
   const [quantity, setQuantity] = useState(String(batch.remaining));
   const [notes, setNotes] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null;
+    setPhoto(file);
+    setPhotoPreview(file ? URL.createObjectURL(file) : null);
+  }
 
   const qty = parseFloat(quantity);
   const canSubmit = qty > 0 && qty <= batch.remaining && !submitting;
@@ -147,13 +154,27 @@ export function WriteOffModal({ batch, onClose, onDone }: { batch: BatchInfo; on
           <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
             Фото (необязательно — уйдёт в Telegram менеджеру, у нас не хранится)
           </label>
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
-            className="w-full text-xs"
-          />
+          {photoPreview ? (
+            <div className="relative inline-block">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={photoPreview} alt="" className="h-28 w-28 rounded-md border border-zinc-200 dark:border-zinc-700 object-cover" />
+              <button
+                onClick={() => {
+                  setPhoto(null);
+                  setPhotoPreview(null);
+                }}
+                className="absolute -right-2 -top-2 h-6 w-6 rounded-full bg-zinc-900 text-xs text-white"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <label className="flex h-28 w-28 cursor-pointer flex-col items-center justify-center gap-1 rounded-md border-2 border-dashed border-zinc-300 dark:border-zinc-600 text-zinc-400 hover:border-accent hover:text-accent">
+              <span className="text-2xl">📷</span>
+              <span className="text-xs">Снять фото</span>
+              <input type="file" accept="image/*" capture="environment" onChange={handlePhotoChange} className="hidden" />
+            </label>
+          )}
         </div>
 
         {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
