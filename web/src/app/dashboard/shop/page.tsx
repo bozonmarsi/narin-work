@@ -507,6 +507,21 @@ function ProductCard({
           <p className="rounded-md bg-orange-50 dark:bg-orange-500/10 px-2 py-1 text-[11px] font-medium text-orange-600 dark:text-orange-400 ring-1 ring-inset ring-orange-200 dark:ring-orange-500/30">
             🚚 Всегда под заказ (+2 дня)
           </p>
+        ) : p.category === "ohapka" ? (
+          // Наличие охапок считается само по остатку со склада (см.
+          // tg_sync_ohapka_availability) — ручной тоггл тут только мешал
+          // бы: секунду спустя следующее движение по складу снова
+          // перезапишет product_availability поверх ручного клика.
+          <span
+            title="Считается само по остатку на складе — меняется после приёмки/списания у флориста"
+            className={`rounded-md px-2 py-1 text-xs font-medium ${
+              isAvailable
+                ? "bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-200 dark:ring-green-500/30"
+                : "border border-zinc-300 dark:border-zinc-600 text-zinc-500 dark:text-zinc-400"
+            }`}
+          >
+            {isAvailable ? "✓ В наличии" : "Нет в наличии"}
+          </span>
         ) : (
           <button
             onClick={() => onToggleAvailable(p.name)}

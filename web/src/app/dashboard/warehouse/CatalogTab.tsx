@@ -15,6 +15,7 @@ type Product = {
   quantity: number | null;
   price: number | null;
   order_unit_size: number;
+  default_vase_life_days: number | null;
 };
 
 type BatchLite = { id: string; product_sticker_id: string; remaining: number; purchase_date: string; estimated_wilt_date: string | null };
@@ -56,7 +57,10 @@ export function CatalogTab() {
   async function load() {
     const supabase = createClient();
     const [productsRes, availabilityRes, batchesRes, recipesRes] = await Promise.all([
-      supabase.from("product_stickers").select("id, product_name, image_url, category, archived, quantity, price, order_unit_size").order("product_name"),
+      supabase
+        .from("product_stickers")
+        .select("id, product_name, image_url, category, archived, quantity, price, order_unit_size, default_vase_life_days")
+        .order("product_name"),
       supabase.from("product_availability").select("product_name"),
       supabase.from("batches").select("id, product_sticker_id, remaining, purchase_date, estimated_wilt_date").gt("remaining", 0),
       supabase.from("product_recipes").select("id, bouquet_sticker_id, ingredient_sticker_id, quantity_needed"),
@@ -87,6 +91,14 @@ export function CatalogTab() {
   async function setPrice(id: string, price: number) {
     const supabase = createClient();
     await supabase.from("product_stickers").update({ price }).eq("id", id);
+    load();
+  }
+
+  // Влияет только на будущие приёмки — дата увядания уже принятых
+  // партий это снимок на момент приёмки, задним числом не переписывается.
+  async function setVaseLife(id: string, days: number) {
+    const supabase = createClient();
+    await supabase.from("product_stickers").update({ default_vase_life_days: days }).eq("id", id);
     load();
   }
 
@@ -224,9 +236,24 @@ export function CatalogTab() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{name}</p>
                   {isOhapka && (
-                    <span className={`mt-0.5 inline-block rounded-md px-1.5 py-0.5 text-xs font-bold ${quantityBadgeClass(qty)}`}>
-                      {qty} шт
-                    </span>
+                    <div className="mt-0.5 flex items-center gap-1.5">
+                      <span className={`inline-block rounded-md px-1.5 py-0.5 text-xs font-bold ${quantityBadgeClass(qty)}`}>{qty} шт</span>
+                      <span className="flex items-center gap-0.5 text-[11px] text-zinc-400">
+                        <input
+                          type="number"
+                          min={0}
+                          defaultValue={p.default_vase_life_days ?? ""}
+                          placeholder="—"
+                          title="Сколько дней товар свежий после приёмки — определяет дату увядания партии. Действует только на новые приёмки."
+                          onBlur={(e) => {
+                            const v = parseInt(e.target.value, 10);
+                            if (v >= 0 && v !== p.default_vase_life_days) setVaseLife(p.id, v);
+                          }}
+                          className="w-8 rounded border-0 bg-transparent text-right outline-none focus:ring-1 focus:ring-accent"
+                        />
+                        дн. св.
+                      </span>
+                    </div>
                   )}
                 </div>
                 <span className="flex shrink-0 items-center gap-0.5 text-sm font-semibold text-accent">
