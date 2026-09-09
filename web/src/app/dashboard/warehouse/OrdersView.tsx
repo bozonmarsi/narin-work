@@ -26,15 +26,20 @@ type OrderLite = {
 type StickerLite = { id: string; product_name: string; category: string | null; unit: string | null; order_unit_size: number; price: number | null };
 type RecipeLite = { bouquet_sticker_id: string; ingredient_sticker_id: string; quantity_needed: number };
 
-function orderItems(order: OrderLite): string[] {
+type OrderItem = { name: string; quantity: number | null };
+
+function orderItems(order: OrderLite): OrderItem[] {
   const items = order.raw_payload?.payment?.products;
   if (items && items.length > 0) {
-    return items.map((p) => `${decodeHtmlEntities(p.name ?? "")} × ${p.quantity ?? 1}`);
+    return items.map((p) => ({ name: decodeHtmlEntities(p.name ?? ""), quantity: p.quantity ?? 1 }));
   }
-  return (order.products_text ?? "").split("\n").filter(Boolean);
+  return (order.products_text ?? "")
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => ({ name: line, quantity: null }));
 }
 
-const MAX_ITEMS_SHOWN = 4;
+const MAX_ITEMS_SHOWN = 6;
 
 // Насколько горит время сборки — чтобы флорист видел с первого взгляда
 // на список, что брать в первую очередь, а не читал каждую карточку.
@@ -136,13 +141,13 @@ function OrderCard({
   return (
     <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="font-medium">№{order.order_id ?? "—"}</p>
-            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColor(order.status)}`}>{statusLabel(order.status)}</span>
-            <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${deadlineClass(order.delivery_date)}`}>{deadlineText(order)}</span>
-          </div>
-          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{order.recipient_name ?? order.customer_name ?? "—"}</p>
+        {/* Мелкая служебная строка сверху — номер/статус/дедлайн важны
+            для сортировки и статус-борда, но не для того, что физически
+            собирать, поэтому она приглушена и уступает место составу. */}
+        <div className="flex flex-wrap items-center gap-1.5 text-xs text-zinc-400">
+          <span>№{order.order_id ?? "—"}</span>
+          <span className={`rounded-full px-2 py-0.5 font-medium ${statusColor(order.status)}`}>{statusLabel(order.status)}</span>
+          <span className={`rounded-full px-2 py-0.5 font-bold ${deadlineClass(order.delivery_date)}`}>{deadlineText(order)}</span>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {canMarkDelivered && (
@@ -164,16 +169,25 @@ function OrderCard({
         </div>
       </div>
 
-      {shownItems.length > 0 && (
-        <ul className="mt-2 space-y-0.5 border-t border-zinc-100 dark:border-zinc-800 pt-2">
+      {/* Что собирать — главное содержимое карточки: крупно, жирно,
+          чтобы флорист прочитал это в первую очередь, а не искал среди
+          служебных деталей. Тот же текст, что он потом ищет глазами,
+          когда забыл на середине сборки. */}
+      {shownItems.length > 0 ? (
+        <ul className="mt-2 space-y-1">
           {shownItems.map((item, i) => (
-            <li key={i} className="text-xs text-zinc-500 dark:text-zinc-400">
-              {item}
+            <li key={i} className="flex items-baseline gap-1.5 text-[15px] leading-snug">
+              {item.quantity != null && <span className="shrink-0 font-bold text-accent">{item.quantity}×</span>}
+              <span className="font-medium text-zinc-900 dark:text-zinc-50">{item.name}</span>
             </li>
           ))}
-          {hiddenCount > 0 && <li className="text-xs text-zinc-400">+{hiddenCount} ещё</li>}
+          {hiddenCount > 0 && <li className="text-sm text-zinc-400">+{hiddenCount} ещё</li>}
         </ul>
+      ) : (
+        <p className="mt-2 text-sm text-zinc-400">Состав не указан</p>
       )}
+
+      <p className="mt-2 text-xs text-zinc-400">Кому: {order.recipient_name ?? order.customer_name ?? "—"}</p>
     </div>
   );
 }
