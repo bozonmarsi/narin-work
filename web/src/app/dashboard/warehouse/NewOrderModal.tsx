@@ -2,26 +2,67 @@
 
 import { useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { decodeHtmlEntities } from "@/lib/format";
+import { decodeHtmlEntities, formatDate } from "@/lib/format";
 import { getCashbackPercent, maxRedeemablePoints } from "@/lib/loyalty";
 import { Modal } from "./Modal";
 
 type Sticker = { id: string; product_name: string; price: number | null };
 type Row = { key: string; stickerId: string; quantity: string; price: string };
-type Customer = { email: string; balance: number; ma_id: string | null };
+type Customer = {
+  email: string;
+  balance: number;
+  ma_id: string | null;
+  customer_name: string | null;
+  customer_phone: string | null;
+  orders_count: number;
+  last_order_at: string | null;
+  total_earned: number;
+};
+type FulfillmentMode = "pickup_now" | "pickup_later" | "courier";
 
 function newRow(): Row {
   return { key: crypto.randomUUID(), stickerId: "", quantity: "1", price: "" };
 }
 
+const PAYMENT_METHODS: { value: string; label: string; icon: string }[] = [
+  { value: "cash", label: "Наличными", icon: "💵" },
+  { value: "card", label: "Картой", icon: "💳" },
+  { value: "transfer", label: "Переводом", icon: "🏦" },
+];
+
+function atTime(hour: number, minute: number, addDays = 0): Date {
+  const d = new Date();
+  d.setDate(d.getDate() + addDays);
+  d.setHours(hour, minute, 0, 0);
+  if (addDays === 0 && d.getTime() <= Date.now()) d.setDate(d.getDate() + 1);
+  return d;
+}
+
+const PICKUP_LATER_PRESETS: { label: string; getDate: () => Date }[] = [
+  { label: "Через 1 час", getDate: () => new Date(Date.now() + 60 * 60000) },
+  { label: "Через 2 часа", getDate: () => new Date(Date.now() + 120 * 60000) },
+  { label: "Сегодня в 18:00", getDate: () => atTime(18, 0) },
+  { label: "Завтра в 10:00", getDate: () => atTime(10, 0, 1) },
+];
+
+function toDatetimeLocal(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 // Заказ "с кассы" — клиент стоит перед флористом, платит сразу и
-// забирает букет на месте. Заводится сразу в статусе "Подтверждён",
-// поэтому дальше проходит через ту же сборку, что и обычные заказы
-// с сайта — отдельного пути списания для него нет.
+// забирает букет на месте (или просит попозже/курьером). Заводится сразу
+// в статусе "Подтверждён", поэтому дальше проходит через ту же сборку,
+// что и обычные заказы с сайта — отдельного пути списания для него нет.
 export function NewOrderModal({ stickers, onClose, onCreated }: { stickers: Sticker[]; onClose: () => void; onCreated: () => void }) {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [rows, setRows] = useState<Row[]>([newRow()]);
+  const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
+  const [fulfillment, setFulfillment] = useState<FulfillmentMode>("pickup_now");
+  const [pickupLaterAt, setPickupLaterAt] = useState<string>(toDatetimeLocal(PICKUP_LATER_PRESETS[0].getDate()));
+  const [courierAddress, setCourierAddress] = useState("");
+  const [courierAt, setCourierAt] = useState<string>(toDatetimeLocal(atTime(12, 0)));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Заказ уже создан (продажа физически состоялась), но начисление/
@@ -65,9 +106,12 @@ export function NewOrderModal({ stickers, onClose, onCreated }: { stickers: Stic
       setScanError("Клиент с таким кодом не найден");
       return;
     }
-    setCustomer(data as Customer);
+    const found = data as Customer;
+    setCustomer(found);
     setRedeemPoints("0");
     setScanCode("");
+    if (found.customer_name) setCustomerName(found.customer_name);
+    if (found.customer_phone) setCustomerPhone(found.customer_phone);
   }
 
   function detachCustomer() {
@@ -81,10 +125,12 @@ export function NewOrderModal({ stickers, onClose, onCreated }: { stickers: Stic
   const maxRedeem = customer ? maxRedeemablePoints(total, customer.balance) : 0;
   const redeemAmount = customer ? Math.min(Math.max(0, parseFloat(redeemPoints) || 0), maxRedeem) : 0;
   const payable = Math.max(0, total - redeemAmount);
-  const canSubmit = validRows.length > 0 && !submitting && !orderDone;
+  const fulfillmentReady =
+    fulfillment === "pickup_now" || (fulfillment === "pickup_later" && pickupLaterAt) || (fulfillment === "courier" && courierAddress.trim() && courierAt);
+  const canSubmit = validRows.length > 0 && !!paymentMethod && !!fulfillmentReady && !submitting && !orderDone;
 
   async function submit() {
-    if (!canSubmit) return;
+    if (!canSubmit || !paymentMethod) return;
     setSubmitting(true);
     setError(null);
     const supabase = createClient();
@@ -96,7 +142,11 @@ export function NewOrderModal({ stickers, onClose, onCreated }: { stickers: Stic
       return { name: sticker?.product_name ?? "", price: String(price), quantity: qty };
     });
 
-    const today = new Date().toISOString();
+    const now = new Date().toISOString();
+    const deliveryType = fulfillment === "courier" ? "Doručení kurýrem + servisní poplatek = 239" : "Servisní poplatek = 80";
+    const deliveryDate =
+      fulfillment === "courier" ? new Date(courierAt).toISOString() : fulfillment === "pickup_later" ? new Date(pickupLaterAt).toISOString() : now;
+
     const { data: order, error: insertErr } = await supabase
       .from("tilda_orders")
       .insert({
@@ -104,14 +154,16 @@ export function NewOrderModal({ stickers, onClose, onCreated }: { stickers: Stic
         recipient_name: customerName.trim() || "Клиент с кассы",
         customer_phone: customerPhone.trim() || null,
         customer_email: customer?.email ?? null,
-        delivery_date: today,
-        delivery_type: "Servisní poplatek = 80",
+        delivery_date: deliveryDate,
+        delivery_type: deliveryType,
+        address: fulfillment === "courier" ? courierAddress.trim() : null,
+        payment_method: paymentMethod,
         payment_status: "🟢 Оплачено",
         status: "confirmed",
         order_total: payable,
         goods_total: payable,
         used_points: redeemAmount || null,
-        confirmed_at: today,
+        confirmed_at: now,
         raw_payload: { payment: { products, amount: String(payable), subtotal: String(payable) } },
       })
       .select("id")
@@ -183,9 +235,14 @@ export function NewOrderModal({ stickers, onClose, onCreated }: { stickers: Stic
           {customer ? (
             <div className="flex items-center justify-between gap-2 rounded-lg border border-accent/40 bg-accent/5 px-3 py-2 text-sm">
               <div className="min-w-0">
-                <p className="truncate font-medium">{customer.email}</p>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  Карта {customer.ma_id ?? "—"} · Баланс: {customer.balance} б.
+                <p className="truncate font-medium">{customer.customer_name || customer.email}</p>
+                <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
+                  {customer.email}
+                  {customer.customer_phone ? ` · ${customer.customer_phone}` : ""}
+                </p>
+                <p className="text-xs text-zinc-400">
+                  Карта {customer.ma_id ?? "—"} · Баланс {customer.balance} б. · Заказов: {customer.orders_count}
+                  {customer.last_order_at ? ` · последний ${formatDate(customer.last_order_at)}` : ""}
                 </p>
               </div>
               <button onClick={detachCustomer} className="shrink-0 text-zinc-400 hover:text-red-500">
@@ -301,6 +358,89 @@ export function NewOrderModal({ stickers, onClose, onCreated }: { stickers: Stic
           </div>
         )}
 
+        <div className="space-y-2 border-t border-zinc-100 dark:border-zinc-800 pt-3">
+          <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Получение</p>
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                { value: "pickup_now", label: "Самовывоз сейчас" },
+                { value: "pickup_later", label: "Самовывоз позже" },
+                { value: "courier", label: "Доставка курьером" },
+              ] as { value: FulfillmentMode; label: string }[]
+            ).map((f) => (
+              <button
+                key={f.value}
+                onClick={() => setFulfillment(f.value)}
+                className={`rounded-full px-3.5 py-1.5 text-sm font-medium border transition-colors ${
+                  fulfillment === f.value
+                    ? "bg-accent border-accent text-white"
+                    : "border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          {fulfillment === "pickup_later" && (
+            <div className="space-y-2">
+              <div className="flex flex-wrap gap-2">
+                {PICKUP_LATER_PRESETS.map((p) => (
+                  <button
+                    key={p.label}
+                    onClick={() => setPickupLaterAt(toDatetimeLocal(p.getDate()))}
+                    className="rounded-full border border-zinc-300 dark:border-zinc-600 px-3 py-1 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+              <input
+                type="datetime-local"
+                value={pickupLaterAt}
+                onChange={(e) => setPickupLaterAt(e.target.value)}
+                className="rounded-lg border border-zinc-300 dark:border-zinc-600 bg-transparent px-3 py-1.5 text-sm outline-none focus:border-accent"
+              />
+            </div>
+          )}
+
+          {fulfillment === "courier" && (
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                value={courierAddress}
+                onChange={(e) => setCourierAddress(e.target.value)}
+                placeholder="Адрес доставки (Praha, ул., дом)"
+                className="min-w-0 flex-1 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-transparent px-3 py-2 text-sm outline-none focus:border-accent"
+              />
+              <input
+                type="datetime-local"
+                value={courierAt}
+                onChange={(e) => setCourierAt(e.target.value)}
+                className="rounded-lg border border-zinc-300 dark:border-zinc-600 bg-transparent px-3 py-1.5 text-sm outline-none focus:border-accent"
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-2 border-t border-zinc-100 dark:border-zinc-800 pt-3">
+          <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Оплата</p>
+          <div className="flex flex-wrap gap-2">
+            {PAYMENT_METHODS.map((m) => (
+              <button
+                key={m.value}
+                onClick={() => setPaymentMethod(m.value)}
+                className={`rounded-full px-3.5 py-1.5 text-sm font-medium border transition-colors ${
+                  paymentMethod === m.value
+                    ? "bg-accent border-accent text-white"
+                    : "border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                }`}
+              >
+                {m.icon} {m.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800 pt-3">
           <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
             {redeemAmount > 0 ? (
@@ -320,6 +460,7 @@ export function NewOrderModal({ stickers, onClose, onCreated }: { stickers: Stic
             {submitting ? "Создаём…" : "Создать заказ"}
           </button>
         </div>
+        {!paymentMethod && <p className="text-right text-xs text-zinc-400">Выбери способ оплаты выше</p>}
 
         {error && (
           <div className="flex items-center justify-between gap-2">
