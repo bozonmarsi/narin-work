@@ -24,6 +24,7 @@ type Product = {
   badge_color: string | null;
   quantity: number | null;
   order_unit_size: number;
+  default_vase_life_days: number | null;
 };
 
 // Ниже этого остатка на сайте сама встаёт плашка "Zbývá N ks" — если
@@ -140,6 +141,7 @@ function ProductCard({
   onAddRecipeItem,
   onRemoveRecipeItem,
   onSetOrderUnitSize,
+  onSetVaseLife,
 }: {
   product: Product;
   isAvailable: boolean;
@@ -160,6 +162,7 @@ function ProductCard({
   onAddRecipeItem: (bouquetId: string, ingredientId: string, qty: number) => void;
   onRemoveRecipeItem: (recipeId: string) => void;
   onSetOrderUnitSize: (id: string, size: number) => void;
+  onSetVaseLife: (id: string, days: number) => void;
 }) {
   const [tagsOpen, setTagsOpen] = useState(false);
   const [recipeOpen, setRecipeOpen] = useState(false);
@@ -443,18 +446,34 @@ function ProductCard({
             </div>
           </div>
           {p.category === "ohapka" && (
-            <div className="mt-1 flex items-center gap-1" title="Сколько стеблей в одной единице заказа на сайте (весовой товар в Tilda)">
-              <span className="text-[9px] text-zinc-400">стеблей/ед.:</span>
-              <input
-                type="number"
-                min={1}
-                defaultValue={p.order_unit_size}
-                onBlur={(e) => {
-                  const v = parseInt(e.target.value, 10);
-                  if (v > 0 && v !== p.order_unit_size) onSetOrderUnitSize(p.id, v);
-                }}
-                className="w-10 rounded border border-zinc-300 dark:border-zinc-600 bg-transparent px-1 py-0 text-[10px]"
-              />
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <div className="flex items-center gap-1" title="Сколько стеблей в одной единице заказа на сайте (весовой товар в Tilda)">
+                <span className="text-[9px] text-zinc-400">стеблей/ед.:</span>
+                <input
+                  type="number"
+                  min={1}
+                  defaultValue={p.order_unit_size}
+                  onBlur={(e) => {
+                    const v = parseInt(e.target.value, 10);
+                    if (v > 0 && v !== p.order_unit_size) onSetOrderUnitSize(p.id, v);
+                  }}
+                  className="w-10 rounded border border-zinc-300 dark:border-zinc-600 bg-transparent px-1 py-0 text-[10px]"
+                />
+              </div>
+              <div className="flex items-center gap-1" title="Сколько дней товар свежий после приёмки — определяет дату увядания партии на складе. Действует только на новые приёмки.">
+                <span className="text-[9px] text-zinc-400">дней свежести:</span>
+                <input
+                  type="number"
+                  min={0}
+                  defaultValue={p.default_vase_life_days ?? ""}
+                  placeholder="—"
+                  onBlur={(e) => {
+                    const v = parseInt(e.target.value, 10);
+                    if (v >= 0 && v !== p.default_vase_life_days) onSetVaseLife(p.id, v);
+                  }}
+                  className="w-10 rounded border border-zinc-300 dark:border-zinc-600 bg-transparent px-1 py-0 text-[10px]"
+                />
+              </div>
             </div>
           )}
           {badgeOpen && (
@@ -591,7 +610,9 @@ export default function ShopPage() {
     const [productsRes, availabilityRes] = await Promise.all([
       supabase
         .from("product_stickers")
-        .select("id, product_name, image_url, category, archived, special_order, flower_type, color, height, fragrant, badge_text, badge_color, quantity, order_unit_size")
+        .select(
+          "id, product_name, image_url, category, archived, special_order, flower_type, color, height, fragrant, badge_text, badge_color, quantity, order_unit_size, default_vase_life_days",
+        )
         .order("product_name", { ascending: true }),
       supabase.from("product_availability").select("product_name"),
     ]);
@@ -614,6 +635,7 @@ export default function ShopPage() {
           badge_color: p.badge_color ?? null,
           quantity: p.quantity ?? null,
           order_unit_size: p.order_unit_size ?? 1,
+          default_vase_life_days: p.default_vase_life_days ?? null,
         })),
     );
     setAvailableToday(new Set((availabilityRes.data ?? []).map((r) => r.product_name)));
@@ -795,6 +817,14 @@ export default function ShopPage() {
   async function setOrderUnitSize(productId: string, size: number) {
     const supabase = createClient();
     await supabase.from("product_stickers").update({ order_unit_size: size }).eq("id", productId);
+    loadAvailability();
+  }
+
+  // Действует только на будущие приёмки — дата увядания уже принятой
+  // партии это снимок на момент приёмки, задним числом не переписывается.
+  async function setVaseLife(productId: string, days: number) {
+    const supabase = createClient();
+    await supabase.from("product_stickers").update({ default_vase_life_days: days }).eq("id", productId);
     loadAvailability();
   }
 
@@ -1079,6 +1109,7 @@ export default function ShopPage() {
                 onAddRecipeItem={addRecipeItem}
                 onRemoveRecipeItem={removeRecipeItem}
                 onSetOrderUnitSize={setOrderUnitSize}
+                onSetVaseLife={setVaseLife}
                 onToggleAvailable={toggleAvailable}
                 onSetCategory={setCategory}
                 onToggleFlowerType={toggleFlowerType}
