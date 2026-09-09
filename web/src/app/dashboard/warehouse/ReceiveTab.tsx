@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useDashboard } from "../layout";
 import { decodeHtmlEntities } from "@/lib/format";
 import type { RawMaterial, Supplier } from "./types";
+import { HistoryTab } from "./HistoryTab";
 
 type Row = {
   key: string;
@@ -23,6 +24,7 @@ function todayStr() {
 
 export function ReceiveTab({ onOpenCatalog }: { onOpenCatalog: () => void }) {
   const { user } = useDashboard();
+  const [view, setView] = useState<"form" | "history">("form");
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [materials, setMaterials] = useState<RawMaterial[]>([]);
   const [loading, setLoading] = useState(true);
@@ -174,12 +176,33 @@ export function ReceiveTab({ onOpenCatalog }: { onOpenCatalog: () => void }) {
     }
   }
 
-  if (loading) {
-    return <p className="text-sm text-zinc-500 dark:text-zinc-400">Загрузка…</p>;
-  }
-
   return (
-    <div className="space-y-5 max-w-2xl">
+    <div className="max-w-2xl space-y-4">
+      <div className="flex w-fit gap-1 rounded-lg border border-zinc-200 dark:border-zinc-700 p-1">
+        <button
+          onClick={() => setView("form")}
+          className={`rounded-md px-3 py-1 text-xs font-medium ${
+            view === "form" ? "bg-accent text-white" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
+          }`}
+        >
+          Приёмка
+        </button>
+        <button
+          onClick={() => setView("history")}
+          className={`rounded-md px-3 py-1 text-xs font-medium ${
+            view === "history" ? "bg-accent text-white" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
+          }`}
+        >
+          История
+        </button>
+      </div>
+
+      {view === "history" ? (
+        <HistoryTab />
+      ) : loading ? (
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">Загрузка…</p>
+      ) : (
+      <div className="space-y-5">
       <div>
         <p className="mb-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">Поставщик</p>
         <div className="flex flex-wrap gap-2">
@@ -340,6 +363,8 @@ export function ReceiveTab({ onOpenCatalog }: { onOpenCatalog: () => void }) {
         <p className="text-xs text-zinc-400">
           {!supplierId ? "Выбери поставщика выше" : "Укажи хотя бы один цветок и количество"}
         </p>
+      )}
+      </div>
       )}
     </div>
   );

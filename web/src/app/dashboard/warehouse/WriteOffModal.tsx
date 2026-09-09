@@ -4,7 +4,7 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Modal } from "./Modal";
 
-const REASONS: { value: string; label: string }[] = [
+export const REASONS: { value: string; label: string }[] = [
   { value: "wilted", label: "Увял" },
   { value: "damaged", label: "Сломан" },
   { value: "defect", label: "Брак" },
