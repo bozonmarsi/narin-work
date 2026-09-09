@@ -6,30 +6,34 @@ import { ReceiveTab } from "./ReceiveTab";
 import { SuppliersTab } from "./SuppliersTab";
 import { RecipesTab } from "./RecipesTab";
 import { CatalogTab } from "./CatalogTab";
+import { AvailabilityTab } from "./AvailabilityTab";
 import { SidePanel } from "./Modal";
 
-type PanelKey = "receive" | "recipes" | "suppliers";
+type PanelKey = "availability" | "receive" | "recipes" | "suppliers";
 
 const NAV_ITEMS: { key: PanelKey; label: string; icon: string }[] = [
+  { key: "availability", label: "Наличие", icon: "🧊" },
   { key: "receive", label: "Приёмка", icon: "📦" },
   { key: "recipes", label: "Рецепты", icon: "📋" },
   { key: "suppliers", label: "Поставщики", icon: "🚚" },
 ];
 
 const PANEL_TITLES: Record<PanelKey, string> = {
+  availability: "Наличие и партии",
   receive: "Приёмка партии",
   recipes: "Рецепты букетов",
   suppliers: "Поставщики",
 };
 
 function PanelContent({ panel, onOpenCatalog }: { panel: PanelKey; onOpenCatalog: () => void }) {
+  if (panel === "availability") return <AvailabilityTab />;
   if (panel === "receive") return <ReceiveTab onOpenCatalog={onOpenCatalog} />;
   if (panel === "recipes") return <RecipesTab onOpenCatalog={onOpenCatalog} />;
   return <SuppliersTab />;
 }
 
 export function WarehouseView() {
-  const [panel, setPanel] = useState<PanelKey>("receive");
+  const [panel, setPanel] = useState<PanelKey>("availability");
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
   const [mobileCatalogOpen, setMobileCatalogOpen] = useState(false);
   const openCatalog = () => setMobileCatalogOpen(true);
