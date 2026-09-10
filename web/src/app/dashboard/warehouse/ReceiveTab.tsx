@@ -6,6 +6,7 @@ import { useDashboard } from "../layout";
 import { decodeHtmlEntities } from "@/lib/format";
 import type { RawMaterial, Supplier } from "./types";
 import { HistoryTab } from "./HistoryTab";
+import { InvoiceDraftModal, type InvoiceDraft } from "./InvoiceDraftModal";
 
 type Row = {
   key: string;
@@ -27,6 +28,8 @@ export function ReceiveTab({ onOpenCatalog }: { onOpenCatalog: () => void }) {
   const [view, setView] = useState<"form" | "history">("form");
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [materials, setMaterials] = useState<RawMaterial[]>([]);
+  const [drafts, setDrafts] = useState<InvoiceDraft[]>([]);
+  const [openDraft, setOpenDraft] = useState<InvoiceDraft | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [supplierId, setSupplierId] = useState<string | null>(null);
@@ -47,16 +50,22 @@ export function ReceiveTab({ onOpenCatalog }: { onOpenCatalog: () => void }) {
 
   async function loadRefs() {
     const supabase = createClient();
-    const [supRes, matRes] = await Promise.all([
+    const [supRes, matRes, draftsRes] = await Promise.all([
       supabase.from("suppliers").select("id, name, contact_phone, contact_email").order("name"),
       supabase
         .from("product_stickers")
         .select("id, product_name, material_type, unit, default_vase_life_days, order_unit_size")
         .eq("category", "ohapka")
         .order("product_name"),
+      supabase
+        .from("invoice_drafts")
+        .select("id, supplier_name, supplier_id, invoice_number, invoice_date, drive_url, items")
+        .eq("status", "pending")
+        .order("created_at", { ascending: false }),
     ]);
     setSuppliers(supRes.data ?? []);
     setMaterials(matRes.data ?? []);
+    setDrafts(draftsRes.data ?? []);
     // Единственный поставщик — почти наверняка тот, что нужен; не
     // заставляем лишний раз кликать, чтобы его "выбрать".
     if (supRes.data?.length === 1) setSupplierId(supRes.data[0].id);
@@ -196,6 +205,27 @@ export function ReceiveTab({ onOpenCatalog }: { onOpenCatalog: () => void }) {
           История
         </button>
       </div>
+
+      {view === "form" && drafts.length > 0 && (
+        <div className="space-y-2 rounded-xl border border-accent/30 bg-accent/5 p-3">
+          <p className="text-sm font-semibold text-accent">📨 Фактур на подтверждение: {drafts.length}</p>
+          <div className="space-y-1.5">
+            {drafts.map((d) => (
+              <button
+                key={d.id}
+                onClick={() => setOpenDraft(d)}
+                className="flex w-full items-center justify-between gap-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-left text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+              >
+                <span className="min-w-0 truncate">
+                  {d.supplier_name ?? "Поставщик не распознан"}
+                  {d.invoice_number ? ` · №${d.invoice_number}` : ""}
+                </span>
+                <span className="shrink-0 text-xs text-zinc-400">{d.items.length} поз. · проверить →</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {view === "history" ? (
         <HistoryTab />
@@ -365,6 +395,19 @@ export function ReceiveTab({ onOpenCatalog }: { onOpenCatalog: () => void }) {
         </p>
       )}
       </div>
+      )}
+
+      {openDraft && (
+        <InvoiceDraftModal
+          draft={openDraft}
+          suppliers={suppliers}
+          materials={materials}
+          onClose={() => setOpenDraft(null)}
+          onDone={() => {
+            setOpenDraft(null);
+            loadRefs();
+          }}
+        />
       )}
     </div>
   );
