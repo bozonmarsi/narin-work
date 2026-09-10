@@ -82,13 +82,17 @@ export function AliasesTab() {
         фактур — никуда больше (заказы, каталог) не попадает.
       </p>
 
-      <div className="space-y-2 rounded-xl border border-zinc-200 dark:border-zinc-700 p-3">
-        <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Новое соответствие</p>
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="space-y-3 rounded-xl border border-zinc-200 dark:border-zinc-700 p-3">
+        <p className="text-sm font-semibold">Новое соответствие</p>
+
+        <div>
+          <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+            1. Поставщик, у которого так называется (необязательно)
+          </label>
           <select
             value={newSupplierId}
             onChange={(e) => setNewSupplierId(e.target.value)}
-            className="rounded-lg border border-zinc-300 dark:border-zinc-600 bg-transparent px-3 py-2 text-sm outline-none focus:border-accent"
+            className="w-full rounded-lg border border-zinc-300 dark:border-zinc-600 bg-transparent px-3 py-2 text-sm outline-none focus:border-accent"
           >
             <option value="">Любой поставщик</option>
             {suppliers.map((s) => (
@@ -97,20 +101,29 @@ export function AliasesTab() {
               </option>
             ))}
           </select>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+            2. Как это название написано в фактуре — скопируй как есть
+          </label>
           <input
             value={newAlias}
             onChange={(e) => setNewAlias(e.target.value)}
-            placeholder="Название в фактуре, например Paeonia l bowl of cream"
-            className="min-w-0 flex-1 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-transparent px-3 py-2 text-sm outline-none focus:border-accent"
+            placeholder="например: Paeonia l bowl of cream 55cm"
+            className="w-full rounded-lg border border-zinc-300 dark:border-zinc-600 bg-transparent px-3 py-2 text-sm outline-none focus:border-accent"
           />
-          <span className="text-zinc-400">→</span>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">3. Какой это товар у нас в каталоге</label>
           <select
             value={newProductId}
             onChange={(e) => setNewProductId(e.target.value)}
-            className="rounded-lg border border-zinc-300 dark:border-zinc-600 bg-transparent px-3 py-2 text-sm outline-none focus:border-accent"
+            className="w-full rounded-lg border border-zinc-300 dark:border-zinc-600 bg-transparent px-3 py-2 text-sm outline-none focus:border-accent"
           >
             <option value="" disabled>
-              Наш товар…
+              Выбери товар…
             </option>
             {materials.map((m) => (
               <option key={m.id} value={m.id}>
@@ -118,14 +131,15 @@ export function AliasesTab() {
               </option>
             ))}
           </select>
-          <button
-            onClick={addAlias}
-            disabled={!newAlias.trim() || !newProductId || saving}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
-          >
-            {saving ? "…" : "Добавить"}
-          </button>
         </div>
+
+        <button
+          onClick={addAlias}
+          disabled={!newAlias.trim() || !newProductId || saving}
+          className="w-full rounded-lg bg-accent py-2 text-sm font-semibold text-white disabled:opacity-40"
+        >
+          {saving ? "Сохраняем…" : "Запомнить соответствие"}
+        </button>
         {error && <p className="text-xs text-red-500">{error}</p>}
       </div>
 
