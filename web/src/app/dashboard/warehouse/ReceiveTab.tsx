@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useDashboard } from "../layout";
+import { useRealtimeRefresh } from "@/lib/useRealtimeRefresh";
 import { decodeHtmlEntities } from "@/lib/format";
 import type { RawMaterial, Supplier } from "./types";
 import { HistoryTab } from "./HistoryTab";
@@ -76,6 +77,10 @@ export function ReceiveTab({ onOpenCatalog }: { onOpenCatalog: () => void }) {
   useEffect(() => {
     loadRefs();
   }, []);
+
+  // Баннер "Фактур на подтверждение" должен появляться сам, как только
+  // n8n запишет новый черновик — без ручного обновления страницы.
+  useRealtimeRefresh("invoice_drafts", loadRefs);
 
   function updateRow(key: string, patch: Partial<Row>) {
     setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)));

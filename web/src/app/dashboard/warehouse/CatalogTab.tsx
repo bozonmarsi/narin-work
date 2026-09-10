@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useRealtimeRefresh } from "@/lib/useRealtimeRefresh";
 import { decodeHtmlEntities } from "@/lib/format";
 import { freshness } from "@/lib/freshness";
 import { WriteOffModal } from "./WriteOffModal";
@@ -71,6 +72,10 @@ export function CatalogTab() {
   useEffect(() => {
     load();
   }, []);
+
+  // Новый товар/изменённый остаток/цена — видно сразу на всех открытых
+  // сессиях, без ручного обновления страницы.
+  useRealtimeRefresh("product_stickers", load);
 
   // Наличие букетов/сетов (без своих партий) — единственное, что
   // флорист ещё переключает руками.
