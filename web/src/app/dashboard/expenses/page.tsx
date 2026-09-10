@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useDashboard } from "../layout";
 import { formatDate } from "@/lib/format";
+import { isPickupOrder } from "@/lib/order-status";
 
 type Expense = {
   id: string;
@@ -15,6 +16,20 @@ type Expense = {
   document_ref: string | null;
   description: string | null;
 };
+
+type CashOrder = {
+  order_id: string | null;
+  order_total: number | null;
+  delivery_type: string | null;
+};
+
+function todayBoundsISO() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  return { startISO: start.toISOString(), endISO: end.toISOString() };
+}
 
 const CATEGORY_SUGGESTIONS = ["Машина", "Реклама", "Офис", "Прочие"];
 const SUBCATEGORY_SUGGESTIONS = ["Упаковка", "Офис", "Реклама", "Зарплата"];
@@ -31,6 +46,7 @@ export default function ExpensesPage() {
   const { profile } = useDashboard();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cashToday, setCashToday] = useState<CashOrder[]>([]);
 
   const [occurredAt, setOccurredAt] = useState(todayStr());
   const [amount, setAmount] = useState("");
@@ -53,8 +69,26 @@ export default function ExpensesPage() {
     setLoading(false);
   }
 
+  // Наличные, которые сейчас реально должны лежать у флориста: заказы,
+  // забранные лично (самовывоз, включая продажи с кассы) и оплаченные
+  // наличными. Курьерские заказы сюда не попадают — там наличные у
+  // курьера, не в кассе магазина.
+  async function loadCashToday() {
+    const { startISO, endISO } = todayBoundsISO();
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("tilda_orders")
+      .select("order_id, order_total, delivery_type")
+      .eq("payment_method", "cash")
+      .eq("payment_status", "🟢 Оплачено")
+      .gte("created_at", startISO)
+      .lt("created_at", endISO);
+    setCashToday((data ?? []).filter((o) => isPickupOrder(o.delivery_type)));
+  }
+
   useEffect(() => {
     load();
+    loadCashToday();
   }, []);
 
   function resetForm() {
@@ -108,6 +142,9 @@ export default function ExpensesPage() {
   }
 
   const canAdd = parseFloat(amount) > 0 && !!category.trim() && !!description.trim() && !saving;
+  const cashTotal = cashToday.reduce((sum, o) => sum + (o.order_total ?? 0), 0);
+  const kassaCount = cashToday.filter((o) => (o.order_id ?? "").startsWith("KASSA-")).length;
+  const pickupCount = cashToday.length - kassaCount;
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
@@ -116,6 +153,34 @@ export default function ExpensesPage() {
         Общие траты бизнеса — аренда, зарплата, упаковка, реклама, офис. Закупка цветов сюда не пишется — она уже
         учитывается через Приёмку на складе.
       </p>
+
+      <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
+        <p className="text-sm font-semibold">Касса сегодня</p>
+        <p className="mb-2 text-xs text-zinc-400 dark:text-zinc-500">
+          Наличные, которые сейчас должны быть у флориста: самовывоз + продажи с кассы, оплаченные наличными.
+          Курьерские заказы сюда не входят — там деньги у курьера.
+        </p>
+        <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{cashTotal} Kč</p>
+        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+          {pickupCount} самовывозом · {kassaCount} с кассы
+        </p>
+        {cashToday.length > 0 && (
+          <details className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+            <summary className="cursor-pointer">Список ({cashToday.length})</summary>
+            <div className="mt-1.5 space-y-1">
+              {cashToday.map((o) => (
+                <div key={o.order_id} className="flex items-center justify-between">
+                  <span>
+                    {o.order_id}
+                    {(o.order_id ?? "").startsWith("KASSA-") ? " · касса" : " · самовывоз"}
+                  </span>
+                  <span className="font-medium">{o.order_total} Kč</span>
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
+      </div>
 
       <div className="space-y-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 p-4">
         <p className="text-sm font-semibold">Новый расход</p>
