@@ -178,8 +178,12 @@ function ProductCard({
 
   return (
     <div
-      className={`flex flex-col gap-1.5 rounded-lg border bg-white dark:bg-zinc-900 p-2 ${
-        p.archived ? "opacity-60" : isAvailable ? "border-green-300 ring-1 ring-green-200 dark:ring-green-500/30" : "border-zinc-200 dark:border-zinc-700"
+      className={`flex flex-col gap-1.5 rounded-lg border p-2 ${
+        p.archived
+          ? "opacity-60 border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900"
+          : isAvailable
+            ? "border-green-300 dark:border-green-500/40 bg-green-50 dark:bg-green-500/10 ring-1 ring-green-200 dark:ring-green-500/30"
+            : "border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900"
       }`}
     >
       <div className="flex gap-2">
@@ -900,6 +904,21 @@ export default function ShopPage() {
     return base.filter((p) => p.name.toLowerCase().includes(q));
   }, [products, activeProducts, availabilitySearch, activeTab]);
 
+  // В наличии — сначала, а среди охапок в наличии — у кого меньше
+  // остаток, тот выше: то, что заканчивается, сразу бросается в глаза.
+  // Порядок такой же, как у флориста на складе (CatalogTab).
+  const sortedProducts = useMemo(() => {
+    return [...filteredProducts].sort((a, b) => {
+      const aIn = availableToday.has(a.name);
+      const bIn = availableToday.has(b.name);
+      if (aIn !== bIn) return aIn ? -1 : 1;
+      if (aIn && a.category === "ohapka" && b.category === "ohapka") {
+        return (a.quantity ?? 0) - (b.quantity ?? 0);
+      }
+      return a.name.localeCompare(b.name);
+    });
+  }, [filteredProducts, availableToday]);
+
   const availableCount = useMemo(
     () => activeProducts.filter((p) => availableToday.has(p.name)).length,
     [activeProducts, availableToday],
@@ -1098,7 +1117,7 @@ export default function ShopPage() {
               </div>
             )}
 
-            {filteredProducts.map((p) => (
+            {sortedProducts.map((p) => (
               <ProductCard
                 key={p.id}
                 product={p}
