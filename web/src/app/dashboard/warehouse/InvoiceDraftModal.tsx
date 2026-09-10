@@ -24,7 +24,16 @@ export type InvoiceDraft = {
   items: DraftItem[];
 };
 
-type Row = { key: string; supplierItemName: string; productStickerId: string; quantity: string; price: string; skip: boolean };
+type Row = {
+  key: string;
+  supplierItemName: string;
+  productStickerId: string;
+  quantity: string;
+  price: string;
+  skip: boolean;
+  wasUnmatched: boolean;
+  rememberAlias: boolean;
+};
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -60,6 +69,8 @@ export function InvoiceDraftModal({
       quantity: String(it.quantity),
       price: it.unit_price != null ? String(it.unit_price) : "",
       skip: false,
+      wasUnmatched: it.matched_product_sticker_id == null,
+      rememberAlias: it.matched_product_sticker_id == null,
     })),
   );
   const [submitting, setSubmitting] = useState(false);
@@ -118,6 +129,15 @@ export function InvoiceDraftModal({
         .update({ status: "confirmed", confirmed_by: user.id, confirmed_at: new Date().toISOString() })
         .eq("id", draft.id);
       if (updErr) throw new Error(updErr.message);
+
+      // Не блокирует подтверждение партии, если вдруг не сохранится —
+      // словарь соответствий можно поправить и потом на вкладке "Соответствия".
+      const toRemember = activeRows.filter((r) => r.wasUnmatched && r.rememberAlias);
+      if (toRemember.length > 0) {
+        await supabase.from("product_name_aliases").insert(
+          toRemember.map((r) => ({ supplier_id: supplierId, alias: r.supplierItemName, product_sticker_id: r.productStickerId })),
+        );
+      }
 
       onDone();
     } catch (e) {
@@ -194,7 +214,19 @@ export function InvoiceDraftModal({
                     </option>
                   ))}
                 </select>
-                <p className="mt-0.5 truncate text-[11px] text-zinc-400">в фактуре: {row.supplierItemName}</p>
+                <div className="mt-0.5 flex items-center justify-between gap-2">
+                  <p className="truncate text-[11px] text-zinc-400">в фактуре: {row.supplierItemName}</p>
+                  {row.wasUnmatched && row.productStickerId && (
+                    <label className="flex shrink-0 items-center gap-1 text-[11px] text-zinc-400">
+                      <input
+                        type="checkbox"
+                        checked={row.rememberAlias}
+                        onChange={(e) => updateRow(row.key, { rememberAlias: e.target.checked })}
+                      />
+                      запомнить название
+                    </label>
+                  )}
+                </div>
               </div>
               <input
                 type="number"

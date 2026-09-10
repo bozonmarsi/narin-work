@@ -6,6 +6,7 @@ import { useDashboard } from "../layout";
 import { decodeHtmlEntities } from "@/lib/format";
 import type { RawMaterial, Supplier } from "./types";
 import { HistoryTab } from "./HistoryTab";
+import { AliasesTab } from "./AliasesTab";
 import { InvoiceDraftModal, type InvoiceDraft } from "./InvoiceDraftModal";
 
 type Row = {
@@ -25,7 +26,7 @@ function todayStr() {
 
 export function ReceiveTab({ onOpenCatalog }: { onOpenCatalog: () => void }) {
   const { user } = useDashboard();
-  const [view, setView] = useState<"form" | "history">("form");
+  const [view, setView] = useState<"form" | "aliases" | "history">("form");
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [materials, setMaterials] = useState<RawMaterial[]>([]);
   const [drafts, setDrafts] = useState<InvoiceDraft[]>([]);
@@ -197,6 +198,14 @@ export function ReceiveTab({ onOpenCatalog }: { onOpenCatalog: () => void }) {
           Приёмка
         </button>
         <button
+          onClick={() => setView("aliases")}
+          className={`rounded-md px-3 py-1 text-xs font-medium ${
+            view === "aliases" ? "bg-accent text-white" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
+          }`}
+        >
+          Соответствия
+        </button>
+        <button
           onClick={() => setView("history")}
           className={`rounded-md px-3 py-1 text-xs font-medium ${
             view === "history" ? "bg-accent text-white" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
@@ -229,6 +238,8 @@ export function ReceiveTab({ onOpenCatalog }: { onOpenCatalog: () => void }) {
 
       {view === "history" ? (
         <HistoryTab />
+      ) : view === "aliases" ? (
+        <AliasesTab />
       ) : loading ? (
         <p className="text-sm text-zinc-500 dark:text-zinc-400">Загрузка…</p>
       ) : (
