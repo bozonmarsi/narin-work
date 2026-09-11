@@ -32,6 +32,7 @@ type ResultGroup = {
   quantityWasUnspecified: boolean;
   candidates: Candidate[];
   date: string;
+  debugReceivedRequest?: unknown;
 };
 
 const COLOR_OPTIONS = ["White", "Pink", "Red", "Orange", "Yellow", "Purple", "Blue", "Green", "Creme", "Black"];
@@ -253,6 +254,11 @@ export function VanVlietPanel() {
                 {group.request}
                 {group.quantityWasUnspecified && <span className="text-zinc-400"> (количество не указано)</span>}
               </p>
+              {group.debugReceivedRequest != null && (
+                <p className="mb-1 text-[10px] text-zinc-400 break-all">
+                  debug: {JSON.stringify(group.debugReceivedRequest)}
+                </p>
+              )}
               {group.candidates.length === 0 ? (
                 <p className="text-xs text-zinc-400">Ничего не найдено</p>
               ) : (
