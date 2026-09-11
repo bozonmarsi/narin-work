@@ -80,7 +80,19 @@ async function fetchJson(step: string, url: string, init: RequestInit): Promise<
   return parsed
 }
 
-async function getToken(username: string, password: string): Promise<string> {
+// Every real wsngshop call carries `Authorization: Basic base64(username:servoygrant)`
+// — found by capturing a live browser session with Playwright (the earlier
+// attempts missed this because I'd filtered Authorization out of my own
+// diagnostic HAR dumps as "sensitive", so I never actually looked at it).
+// servoygrant isn't the account password — it's a per-login claim baked
+// into the JWT's payload, decoded here.
+function decodeJwtPayload(token: string): Record<string, unknown> {
+  const payload = token.split('.')[1]
+  const padded = payload.replace(/-/g, '+').replace(/_/g, '/').padEnd(payload.length + ((4 - (payload.length % 4)) % 4), '=')
+  return JSON.parse(atob(padded))
+}
+
+async function getAuth(username: string, password: string): Promise<{ token: string; basicAuth: string }> {
   const body = `grant_type=password&username=${encodeURIComponent(username)}&password=${encodeURIComponent(
     password
   )}&client_id=${CLIENT_ID}`
@@ -89,7 +101,10 @@ async function getToken(username: string, password: string): Promise<string> {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...BROWSER_HEADERS },
     body,
   })
-  return data.access_token
+  const claims = decodeJwtPayload(data.access_token)
+  const servoyGrant = String(claims.servoygrant)
+  const basicAuth = 'Basic ' + btoa(`${username}:${servoyGrant}`)
+  return { token: data.access_token, basicAuth }
 }
 
 type Product = {
@@ -106,21 +121,16 @@ type Product = {
 }
 
 async function loadCatalog(username: string, password: string, targetDate: string): Promise<Product[]> {
-  // NOTE: getToken() is called for parity with the real client's bootstrap
-  // (and to fail fast on bad credentials), but the resulting access_token is
-  // NOT sent anywhere below — verified against real browser HARs that not
-  // one wsngshop call carries an Authorization header. Session identity
-  // there rides entirely on x-sessionid + x-context-* headers instead.
-  await getToken(username, password)
+  const { basicAuth } = await getAuth(username, password)
 
   const sessionId = makeSessionId()
 
-  // Headers accumulate as the session "warms up" — verified byte-for-byte
-  // against real browser HARs. /v2/authentication/authorize in particular
-  // 401s if you send it x-context-*/x-sessionid/Content-Type: the real
-  // client sends it nothing but Accept + the browser fingerprint headers.
+  // Headers accumulate as the session "warms up", matching real browser
+  // behavior — but the one that was actually missing the whole time is
+  // Authorization: Basic (see getAuth above), present on every call here.
   const baseHeaders = {
     Accept: 'application/json, text/plain, */*',
+    Authorization: basicAuth,
     ...BROWSER_HEADERS,
   }
   const withSession = { ...baseHeaders, 'Content-Type': 'application/json', 'x-sessionid': sessionId, 'x-context-clientid': CLIENT_ID }
@@ -143,7 +153,11 @@ async function loadCatalog(username: string, password: string, targetDate: strin
   const wsGet = (step: string, path: string) => get(step, path, fullContext)
   const wsPost = (step: string, path: string, body: unknown) => post(step, path, fullContext, body)
 
-  const minimalResp = await wsGet('supply-minimal', `/v1/supply/minimal/${CATEGORY.key}/3/${DB_SERVER_ID}/false`)
+  // Third path segment is sourceListType (always "2" for Kvetiny here), NOT
+  // dbserverid — confirmed against a real capture. dbserverid only goes in
+  // the x-context-dbserverid header. Using DB_SERVER_ID here was the actual
+  // bug that made every search return zero results, on any date.
+  const minimalResp = await wsGet('supply-minimal', `/v1/supply/minimal/${CATEGORY.key}/3/${CATEGORY.sourceListType}/false`)
   const minimalItems: any[] = minimalResp?.content?.list || []
   const keys = minimalItems.map((i) => i.k)
 
@@ -187,7 +201,10 @@ function rank(catalog: Product[], req: SearchRequest) {
 
   let candidates = catalog.filter((it) => {
     const name = it.product.toLowerCase()
-    if (!kw.some((k) => name.includes(k))) return false
+    // "every", not "some" — with "some", generic tokens like "10st" (an
+    // almost-universal "10 pieces" suffix) or "60cm" matched nearly the
+    // whole catalog on their own, which is exactly what was happening.
+    if (!kw.every((k) => name.includes(k))) return false
     if (it.stock <= 0) return false
     if (req.maxPrice != null && it.price > req.maxPrice) return false
     if (wantColors.length === 0) return true
