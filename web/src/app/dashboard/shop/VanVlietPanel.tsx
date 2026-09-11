@@ -40,6 +40,47 @@ type ResultGroup = {
 
 const COLOR_OPTIONS = ["White", "Pink", "Red", "Orange", "Yellow", "Purple", "Blue", "Green", "Creme", "Black"];
 
+// Чешская основа слова (без учёта рода: -ý/-á/-é) -> английский цвет,
+// как его отдаёт Van Vliet. Нужно для автосопоставления: имя нашего
+// сырья обычно "Род + чешский цвет" ("Allium fialový"), а у поставщика
+// цвет уже структурирован отдельным полем на английском.
+const CZ_COLOR_STEMS: [string, string][] = [
+  ["fialov", "Purple"],
+  ["fialk", "Purple"],
+  ["růžov", "Pink"],
+  ["ruzov", "Pink"],
+  ["červen", "Red"],
+  ["cerven", "Red"],
+  ["bíl", "White"],
+  ["bil", "White"],
+  ["žlut", "Yellow"],
+  ["zlut", "Yellow"],
+  ["oranžov", "Orange"],
+  ["oranzov", "Orange"],
+  ["modr", "Blue"],
+  ["zelen", "Green"],
+  ["čern", "Black"],
+  ["cern", "Black"],
+  ["krémov", "Creme"],
+  ["kremov", "Creme"],
+  ["smetanov", "Creme"],
+];
+
+function guessColorFromName(name: string): string | null {
+  const lower = name.toLowerCase();
+  for (const [stem, color] of CZ_COLOR_STEMS) {
+    if (lower.includes(stem)) return color;
+  }
+  return null;
+}
+
+// Первое слово имени — почти всегда род цветка, который у большинства
+// растений пишется одинаково что по-чешски, что по-латински/английски
+// ("Allium", "Gerbera", "Dahlia"...).
+function guessGenus(name: string): string {
+  return name.trim().split(/\s+/)[0]?.toLowerCase() ?? "";
+}
+
 const emptyRow = (): SearchRow => ({ keyword: "", color: "", maxPrice: "", quantity: "", materialId: "" });
 
 // Дата в пражском часовом поясе, +offsetDays дней от сегодня, как "YYYY-MM-DD".
@@ -98,6 +139,12 @@ export function VanVlietPanel() {
   const [aliases, setAliases] = useState<Alias[]>([]);
   const [vanVlietSupplierId, setVanVlietSupplierId] = useState<string | null>(null);
   const [savingAlias, setSavingAlias] = useState<string | null>(null);
+  const [autoMatching, setAutoMatching] = useState(false);
+  const [autoMatchSummary, setAutoMatchSummary] = useState<{
+    saved: number;
+    noMatch: string[];
+    ambiguous: string[];
+  } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -143,6 +190,69 @@ export function VanVlietPanel() {
       }
     } finally {
       setSavingAlias(null);
+    }
+  }
+
+  // Автосопоставление: для каждого своего сырья без алиасов пытаемся
+  // угадать род (первое слово имени) + цвет (чешская основа слова) и
+  // ищем такое сочетание в живом каталоге Van Vliet. 1–5 совпадений —
+  // сохраняем все сразу как алиасы (несколько — это нормально, см. выше).
+  // 0 или >5 совпадений — не трогаем, оставляем на ручной поиск.
+  async function autoMatchAliases() {
+    if (!vanVlietSupplierId) return;
+    setAutoMatching(true);
+    setAutoMatchSummary(null);
+    try {
+      const supabase = createClient();
+      const { data, error: fnError } = await supabase.functions.invoke("vanvliet-search", {
+        body: { fullCatalog: true, targetDate },
+      });
+      if (fnError) throw fnError;
+      if (data?.ok === false) throw new Error(data.error ?? "fullCatalog failed");
+
+      const catalog: { product: string; color: string }[] = data.catalog ?? [];
+      const unaliased = materials.filter((m) => !aliases.some((a) => a.product_sticker_id === m.id));
+
+      const toInsert: { supplier_id: string; alias: string; product_sticker_id: string }[] = [];
+      const noMatch: string[] = [];
+      const ambiguous: string[] = [];
+
+      for (const m of unaliased) {
+        const name = decodeHtmlEntities(m.product_name);
+        const genus = guessGenus(name);
+        if (!genus) continue;
+        const color = guessColorFromName(name);
+        const matches = catalog.filter((c) => {
+          const productLower = c.product.toLowerCase();
+          if (!productLower.includes(genus)) return false;
+          return !color || c.color === color;
+        });
+        if (matches.length === 0) {
+          noMatch.push(name);
+        } else if (matches.length > 5) {
+          ambiguous.push(name);
+        } else {
+          for (const match of matches) {
+            toInsert.push({ supplier_id: vanVlietSupplierId, alias: match.product, product_sticker_id: m.id });
+          }
+        }
+      }
+
+      if (toInsert.length) {
+        const { error: insertErr } = await supabase.from("product_name_aliases").insert(toInsert);
+        if (insertErr) throw insertErr;
+        const { data: refreshed } = await supabase
+          .from("product_name_aliases")
+          .select("id, alias, product_sticker_id")
+          .eq("supplier_id", vanVlietSupplierId);
+        setAliases(refreshed ?? []);
+      }
+
+      setAutoMatchSummary({ saved: toInsert.length, noMatch, ambiguous });
+    } catch (e) {
+      setError(await describeFunctionError(e));
+    } finally {
+      setAutoMatching(false);
     }
   }
 
@@ -274,7 +384,32 @@ export function VanVlietPanel() {
 
   return (
     <div className="mb-4 space-y-3 border-b border-zinc-200 pb-4 dark:border-zinc-700">
-      <p className="text-sm font-medium">Van Vliet — поиск и заказ (Praha)</p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-medium">Van Vliet — поиск и заказ (Praha)</p>
+        <button
+          onClick={autoMatchAliases}
+          disabled={autoMatching || !vanVlietSupplierId}
+          className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-500 hover:border-accent hover:text-accent disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-400"
+        >
+          {autoMatching ? "Сопоставляю…" : "🪄 Найти соответствия автоматически"}
+        </button>
+      </div>
+
+      {autoMatchSummary && (
+        <div className="rounded-md border border-zinc-200 p-2 text-xs dark:border-zinc-700">
+          <p>Сохранено новых соответствий: {autoMatchSummary.saved}</p>
+          {autoMatchSummary.ambiguous.length > 0 && (
+            <p className="mt-1 text-zinc-500 dark:text-zinc-400">
+              Неоднозначно (больше 5 вариантов, разберись сама через поиск): {autoMatchSummary.ambiguous.join(", ")}
+            </p>
+          )}
+          {autoMatchSummary.noMatch.length > 0 && (
+            <p className="mt-1 text-zinc-400">
+              Не нашлось совпадений: {autoMatchSummary.noMatch.join(", ")}
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-1.5">
         {DATE_OPTIONS.map((opt) => (

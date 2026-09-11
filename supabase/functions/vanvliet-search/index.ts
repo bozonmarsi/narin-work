@@ -269,6 +269,17 @@ Deno.serve(async (req) => {
 
     const catalog = await loadCatalog(username, password, targetDate)
 
+    // fullCatalog:true — для автосопоставления алиасов на фронте: там
+    // нужны все товары с их цветом, а не top-4 по конкретному запросу.
+    if (body.fullCatalog === true) {
+      return json({
+        ok: true,
+        catalogSize: catalog.length,
+        catalog: catalog.map((c) => ({ product: c.product, color: c.color, key: c.key })),
+        date: targetDate,
+      })
+    }
+
     const results = requests.map((r) => ({
       request: r.label,
       requestedQuantity: r.quantity ?? null,
