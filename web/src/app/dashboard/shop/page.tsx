@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useDashboard } from "../layout";
 import { decodeHtmlEntities } from "@/lib/format";
 import { useRealtimeRefresh } from "@/lib/useRealtimeRefresh";
+import { VanVlietPanel } from "./VanVlietPanel";
 
 type ClosedDate = { closed_date: string; reason: string | null };
 type RecipeRow = { id: string; bouquet_sticker_id: string; ingredient_sticker_id: string; quantity_needed: number };
@@ -579,6 +580,10 @@ function ProductCard({
 export default function ShopPage() {
   const { profile } = useDashboard();
 
+  // "Заказы цветов" (заказ у поставщика Van Vliet) — только для менеджера,
+  // не для склада: это решение о деньгах, а не о наличии на полке.
+  const [mainTab, setMainTab] = useState<"catalog" | "orders" | "hours">("catalog");
+
   const [weeklyClosed, setWeeklyClosed] = useState<Set<number>>(new Set());
   const [closedDates, setClosedDates] = useState<ClosedDate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -956,11 +961,43 @@ export default function ShopPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-lg font-semibold">Магазин</h1>
-      <p className="text-xs text-zinc-400 dark:text-zinc-500">
-        Эти дни используются при расчёте дат доставок для подписок (нерабочие дни автоматически пропускаются).
-      </p>
 
+      <div className="flex flex-wrap gap-1.5">
+        <button
+          onClick={() => setMainTab("catalog")}
+          className={`rounded-full px-3 py-1.5 text-sm font-medium ${
+            mainTab === "catalog" ? "bg-accent text-white" : "border border-zinc-300 dark:border-zinc-600 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          }`}
+        >
+          Каталог
+        </button>
+        {profile?.role === "manager" && (
+          <button
+            onClick={() => setMainTab("orders")}
+            className={`rounded-full px-3 py-1.5 text-sm font-medium ${
+              mainTab === "orders" ? "bg-accent text-white" : "border border-zinc-300 dark:border-zinc-600 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            }`}
+          >
+            Заказы цветов
+          </button>
+        )}
+        <button
+          onClick={() => setMainTab("hours")}
+          className={`rounded-full px-3 py-1.5 text-sm font-medium ${
+            mainTab === "hours" ? "bg-accent text-white" : "border border-zinc-300 dark:border-zinc-600 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          }`}
+        >
+          Режим работы
+        </button>
+      </div>
+
+      {mainTab === "orders" && profile?.role === "manager" && <VanVlietPanel />}
+
+      {mainTab === "hours" && (
       <section className="space-y-3">
+        <p className="text-xs text-zinc-400 dark:text-zinc-500">
+          Эти дни используются при расчёте дат доставок для подписок (нерабочие дни автоматически пропускаются).
+        </p>
         <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
           <p className="mb-3 font-medium">Регулярно закрыто</p>
           <div className="flex flex-wrap gap-2">
@@ -1012,7 +1049,9 @@ export default function ShopPage() {
           )}
         </div>
       </section>
+      )}
 
+      {mainTab === "catalog" && (
       <section className="space-y-3">
         <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
           <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
@@ -1149,6 +1188,7 @@ export default function ShopPage() {
           )}
         </div>
       </section>
+      )}
     </div>
   );
 }

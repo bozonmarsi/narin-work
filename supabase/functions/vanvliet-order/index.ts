@@ -56,7 +56,16 @@ async function fetchJson(url: string, init: RequestInit): Promise<{ status: numb
   return { status: res.status, body: parsed }
 }
 
-async function getToken(username: string, password: string): Promise<string> {
+// Every real wsngshop call carries `Authorization: Basic base64(username:servoygrant)`
+// — servoygrant is a per-login claim baked into the JWT payload, not the
+// account password. Found by capturing a live browser session directly.
+function decodeJwtPayload(token: string): Record<string, unknown> {
+  const payload = token.split('.')[1]
+  const padded = payload.replace(/-/g, '+').replace(/_/g, '/').padEnd(payload.length + ((4 - (payload.length % 4)) % 4), '=')
+  return JSON.parse(atob(padded))
+}
+
+async function getAuth(username: string, password: string): Promise<string> {
   const body = `grant_type=password&username=${encodeURIComponent(username)}&password=${encodeURIComponent(
     password
   )}&client_id=${CLIENT_ID}`
@@ -66,7 +75,9 @@ async function getToken(username: string, password: string): Promise<string> {
     body,
   })
   if (status >= 400) throw new Error(`token failed: ${JSON.stringify(data)}`)
-  return data.access_token
+  const claims = decodeJwtPayload(data.access_token)
+  const servoyGrant = String(claims.servoygrant)
+  return 'Basic ' + btoa(`${username}:${servoyGrant}`)
 }
 
 Deno.serve(async (req) => {
@@ -97,15 +108,10 @@ Deno.serve(async (req) => {
 
     const date: string = targetDate || new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Prague' })
 
-    // getToken() validates credentials but its result is never sent as
-    // Authorization — verified against real browser HARs, wsngshop calls
-    // never carry one, identity rides on x-sessionid/x-context-* instead.
-    await getToken(username, password)
+    const basicAuth = await getAuth(username, password)
 
     const sessionId = makeSessionId()
-    // Headers accumulate exactly like the real client's bootstrap (see
-    // vanvliet-search) — authorize 401s if it gets x-context-*/x-sessionid.
-    const baseHeaders = { Accept: 'application/json, text/plain, */*', ...BROWSER_HEADERS }
+    const baseHeaders = { Accept: 'application/json, text/plain, */*', Authorization: basicAuth, ...BROWSER_HEADERS }
     const withSession = { ...baseHeaders, 'Content-Type': 'application/json', 'x-sessionid': sessionId, 'x-context-clientid': CLIENT_ID }
     const fullContext = {
       ...withSession,

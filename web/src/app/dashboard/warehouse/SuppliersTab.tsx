@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Supplier } from "./types";
-import { VanVlietPanel } from "./VanVlietPanel";
 
 export function SuppliersTab() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -33,8 +32,6 @@ export function SuppliersTab() {
 
   return (
     <div className="max-w-xl space-y-2">
-      <VanVlietPanel />
-
       {loading && <p className="text-sm text-zinc-500 dark:text-zinc-400">Загрузка…</p>}
       {!loading && suppliers.length === 0 && (
         <p className="text-sm text-zinc-400">Поставщиков пока нет — добавь на вкладке «Приёмка».</p>
