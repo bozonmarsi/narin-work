@@ -38,6 +38,21 @@ const COLOR_OPTIONS = ["White", "Pink", "Red", "Orange", "Yellow", "Purple", "Bl
 
 const emptyRow = (): SearchRow => ({ keyword: "", color: "", maxPrice: "", quantity: "" });
 
+// Дата в пражском часовом поясе, +offsetDays дней от сегодня, как "YYYY-MM-DD".
+function pragueDate(offsetDays: number): string {
+  const todayStr = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Prague" });
+  const d = new Date(`${todayStr}T12:00:00`); // полдень — подальше от границ DST
+  d.setDate(d.getDate() + offsetDays);
+  return d.toLocaleDateString("sv-SE", { timeZone: "Europe/Prague" });
+}
+
+const DATE_OPTIONS = [
+  { label: "Сегодня", value: pragueDate(0) },
+  { label: "Завтра", value: pragueDate(1) },
+  { label: "Послезавтра", value: pragueDate(2) },
+  { label: "Через 3 дня", value: pragueDate(3) },
+];
+
 // supabase-js only gives a generic "non-2xx status code" message by default —
 // the actual error body (which step failed, what the supplier's API said) is
 // on error.context (a Response). Without this we're debugging blind.
@@ -61,6 +76,7 @@ async function describeFunctionError(err: unknown): Promise<string> {
 
 export function VanVlietPanel() {
   const [rows, setRows] = useState<SearchRow[]>([emptyRow()]);
+  const [targetDate, setTargetDate] = useState(DATE_OPTIONS[0].value);
   const [results, setResults] = useState<ResultGroup[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -102,7 +118,7 @@ export function VanVlietPanel() {
     try {
       const supabase = createClient();
       const { data, error: fnError } = await supabase.functions.invoke("vanvliet-search", {
-        body: { requests },
+        body: { requests, targetDate },
       });
 
       if (fnError) throw fnError;
@@ -118,12 +134,12 @@ export function VanVlietPanel() {
     }
   }
 
-  async function buy(candidate: Candidate, requestLabel: string) {
+  async function buy(candidate: Candidate, requestLabel: string, date: string) {
     const key = `${requestLabel}:${candidate.cartProductKey}`;
     const total = candidate.price * candidate.cartAmount;
     if (
       !confirm(
-        `Заказать «${candidate.product}» — ${candidate.cartAmount} шт за ${total} Kč?\n\nЭто реальная покупка у поставщика, отменить нельзя.`
+        `Заказать «${candidate.product}» — ${candidate.cartAmount} шт за ${total} Kč на ${date}?\n\nЭто реальная покупка у поставщика, отменить нельзя.`
       )
     ) {
       return;
@@ -133,7 +149,7 @@ export function VanVlietPanel() {
     try {
       const supabase = createClient();
       const { data, error: fnError } = await supabase.functions.invoke("vanvliet-order", {
-        body: { cartProductKey: candidate.cartProductKey, cartAmount: candidate.cartAmount, confirm: true },
+        body: { cartProductKey: candidate.cartProductKey, cartAmount: candidate.cartAmount, targetDate: date, confirm: true },
       });
       if (fnError) throw fnError;
       if (data?.ok === false) throw new Error(JSON.stringify(data.body || data.error));
@@ -148,6 +164,22 @@ export function VanVlietPanel() {
   return (
     <div className="mb-4 space-y-3 border-b border-zinc-200 pb-4 dark:border-zinc-700">
       <p className="text-sm font-medium">Van Vliet — поиск и заказ (Praha)</p>
+
+      <div className="flex flex-wrap gap-1.5">
+        {DATE_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => setTargetDate(opt.value)}
+            className={`rounded-md border px-2 py-1 text-xs ${
+              targetDate === opt.value
+                ? "border-accent bg-accent text-white"
+                : "border-zinc-300 text-zinc-600 hover:border-accent dark:border-zinc-600 dark:text-zinc-300"
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
 
       <div className="space-y-1.5">
         {rows.map((row, i) => (
@@ -236,7 +268,7 @@ export function VanVlietPanel() {
                         </p>
                         <p className="text-zinc-400">на складе: {c.stock}</p>
                         <button
-                          onClick={() => buy(c, group.request)}
+                          onClick={() => buy(c, group.request, group.date)}
                           disabled={ordering === key || ordered[key]}
                           className="mt-1.5 w-full rounded-md bg-accent px-2 py-1 text-white disabled:opacity-50"
                         >
