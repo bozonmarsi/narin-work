@@ -150,13 +150,6 @@ export function VanVlietPanel() {
     setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   }
 
-  // Выбрали свой товар из списка — если для него уже есть сохранённый
-  // алиас от Van Vliet, сразу подставляем его в поле поиска.
-  function selectMaterial(i: number, materialId: string) {
-    const known = materialId ? aliasFor(materialId) : undefined;
-    updateRow(i, { materialId, ...(known ? { keyword: known } : {}) });
-  }
-
   function addRow() {
     setRows((prev) => [...prev, emptyRow()]);
   }
@@ -165,24 +158,43 @@ export function VanVlietPanel() {
     setRows((prev) => prev.filter((_, idx) => idx !== i));
   }
 
+  // Несколько алиасов на один свой цветок — это нормально (у поставщика
+  // может быть несколько подходящих товаров), поэтому раскрываем строку
+  // во ВСЕ известные алиасы сразу + вручную введённую фразу, если она
+  // отличается, а не только в первый найденный.
+  function phrasesForRow(row: SearchRow): string[] {
+    const known = row.materialId ? aliases.filter((a) => a.product_sticker_id === row.materialId).map((a) => a.alias) : [];
+    const manual = row.keyword.trim();
+    const set = new Set(known);
+    if (manual) set.add(manual);
+    return Array.from(set);
+  }
+
   async function search() {
     setError(null);
     setResults(null);
     setCatalogSize(null);
 
-    const activeRows = rows.filter((r) => r.keyword.trim());
-    const requests = activeRows.map((r) => ({
-      label: r.keyword.trim(),
-      keywords: r.keyword.trim().toLowerCase().split(/\s+/).filter(Boolean),
-      colors: r.color ? [r.color] : [],
-      maxPrice: r.maxPrice ? Number(r.maxPrice) : null,
-      quantity: r.quantity ? Number(r.quantity) : null,
-    }));
+    // expanded: один элемент на каждую фразу-алиас; rowIndex указывает,
+    // к какой строке формы (и, значит, к какому materialId) её потом
+    // приплюсовать обратно после ответа сервера.
+    const expanded: { rowIndex: number; phrase: string }[] = [];
+    rows.forEach((row, rowIndex) => {
+      for (const phrase of phrasesForRow(row)) expanded.push({ rowIndex, phrase });
+    });
 
-    if (!requests.length) {
+    if (!expanded.length) {
       setError("Добавь хотя бы одну позицию");
       return;
     }
+
+    const requests = expanded.map(({ phrase, rowIndex }) => ({
+      label: phrase,
+      keywords: phrase.toLowerCase().split(/\s+/).filter(Boolean),
+      colors: rows[rowIndex].color ? [rows[rowIndex].color] : [],
+      maxPrice: rows[rowIndex].maxPrice ? Number(rows[rowIndex].maxPrice) : null,
+      quantity: rows[rowIndex].quantity ? Number(rows[rowIndex].quantity) : null,
+    }));
 
     setLoading(true);
     try {
@@ -196,8 +208,35 @@ export function VanVlietPanel() {
         throw new Error(data.step ? `${data.step}: ${JSON.stringify(data.body)}` : data.error);
       }
 
-      setResults(data.results);
-      setResultMaterialIds(activeRows.map((r) => r.materialId));
+      const rawResults: ResultGroup[] = data.results;
+
+      // Схлопываем результаты по всем алиасам одной строки обратно в одну
+      // карточку — с дедупликацией по cartProductKey (один и тот же
+      // товар мог найтись сразу по нескольким алиасам).
+      const merged: ResultGroup[] = [];
+      const mergedMaterialIds: string[] = [];
+      rows.forEach((row, rowIndex) => {
+        const parts = rawResults.filter((_, i) => expanded[i].rowIndex === rowIndex);
+        if (!parts.length) return;
+        const byKey = new Map<number, Candidate>();
+        for (const part of parts) {
+          for (const c of part.candidates) {
+            if (!byKey.has(c.cartProductKey)) byKey.set(c.cartProductKey, c);
+          }
+        }
+        const material = row.materialId ? materials.find((m) => m.id === row.materialId) : undefined;
+        merged.push({
+          request: material ? decodeHtmlEntities(material.product_name) : parts[0].request,
+          requestedQuantity: parts[0].requestedQuantity,
+          quantityWasUnspecified: parts[0].quantityWasUnspecified,
+          candidates: Array.from(byKey.values()),
+          date: parts[0].date,
+        });
+        mergedMaterialIds.push(row.materialId);
+      });
+
+      setResults(merged);
+      setResultMaterialIds(mergedMaterialIds);
       setCatalogSize(typeof data.catalogSize === "number" ? data.catalogSize : null);
     } catch (e) {
       setError(await describeFunctionError(e));
@@ -258,7 +297,7 @@ export function VanVlietPanel() {
           <div key={i} className="flex flex-wrap items-center gap-1.5">
             <select
               value={row.materialId}
-              onChange={(e) => selectMaterial(i, e.target.value)}
+              onChange={(e) => updateRow(i, { materialId: e.target.value })}
               className="max-w-[9rem] rounded-md border border-zinc-300 bg-transparent px-1 py-1 text-xs outline-none focus:border-accent dark:border-zinc-600"
             >
               <option value="">свой товар…</option>
