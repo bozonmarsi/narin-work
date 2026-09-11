@@ -97,29 +97,30 @@ Deno.serve(async (req) => {
 
     const date: string = targetDate || new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Prague' })
 
-    const token = await getToken(username, password)
+    // getToken() validates credentials but its result is never sent as
+    // Authorization — verified against real browser HARs, wsngshop calls
+    // never carry one, identity rides on x-sessionid/x-context-* instead.
+    await getToken(username, password)
 
     const sessionId = makeSessionId()
-    const headers = {
-      Accept: 'application/json, text/plain, */*',
-      Authorization: `Bearer ${token}`,
-      'x-sessionid': sessionId,
-      'x-context-clientid': CLIENT_ID,
+    // Headers accumulate exactly like the real client's bootstrap (see
+    // vanvliet-search) — authorize 401s if it gets x-context-*/x-sessionid.
+    const baseHeaders = { Accept: 'application/json, text/plain, */*', ...BROWSER_HEADERS }
+    const withSession = { ...baseHeaders, 'Content-Type': 'application/json', 'x-sessionid': sessionId, 'x-context-clientid': CLIENT_ID }
+    const fullContext = {
+      ...withSession,
       'x-context-markname': username,
       'x-context-dbserverid': DB_SERVER_ID,
       'x-context-date': date,
-      ...BROWSER_HEADERS,
     }
 
-    // Mirror the real browser's bootstrap sequence before touching the cart —
-    // /v1/cart/item is only ever called by the site after these three, and
-    // the server likely ties the session's authorized state to them.
     await fetchJson(`${WS_BASE}/v2/authentication/authorize?clientId=${CLIENT_ID}&databaseServerId=${DB_SERVER_ID}`, {
       method: 'GET',
-      headers,
+      headers: baseHeaders,
     })
-    await fetchJson(`${WS_BASE}/v1/user/settings`, { method: 'GET', headers })
+    await fetchJson(`${WS_BASE}/v1/user/settings`, { method: 'GET', headers: withSession })
 
+    const headers = fullContext
     const url =
       `${WS_BASE}/v1/cart/item?productKey=${encodeURIComponent(cartProductKey)}` +
       `&amount=${encodeURIComponent(cartAmount)}&salesPrice=-1&retailPrice=-1`

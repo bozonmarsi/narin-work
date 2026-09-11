@@ -106,36 +106,42 @@ type Product = {
 }
 
 async function loadCatalog(username: string, password: string, targetDate: string): Promise<Product[]> {
-  const token = await getToken(username, password)
+  // NOTE: getToken() is called for parity with the real client's bootstrap
+  // (and to fail fast on bad credentials), but the resulting access_token is
+  // NOT sent anywhere below — verified against real browser HARs that not
+  // one wsngshop call carries an Authorization header. Session identity
+  // there rides entirely on x-sessionid + x-context-* headers instead.
+  await getToken(username, password)
 
   const sessionId = makeSessionId()
-  const wsHeaders = () => ({
+
+  // Headers accumulate as the session "warms up" — verified byte-for-byte
+  // against real browser HARs. /v2/authentication/authorize in particular
+  // 401s if you send it x-context-*/x-sessionid/Content-Type: the real
+  // client sends it nothing but Accept + the browser fingerprint headers.
+  const baseHeaders = {
     Accept: 'application/json, text/plain, */*',
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
-    'x-sessionid': sessionId,
-    'x-context-clientid': CLIENT_ID,
-    'x-context-markname': username,
-    'x-context-dbserverid': DB_SERVER_ID,
-    'x-context-date': targetDate,
     ...BROWSER_HEADERS,
-  })
+  }
+  const withSession = { ...baseHeaders, 'Content-Type': 'application/json', 'x-sessionid': sessionId, 'x-context-clientid': CLIENT_ID }
+  const withMarkname = { ...withSession, 'x-context-markname': username }
+  const fullContext = { ...withMarkname, 'x-context-dbserverid': DB_SERVER_ID, 'x-context-date': targetDate }
 
-  const wsGet = (step: string, path: string) =>
-    fetchJson(step, `${WS_BASE}${path}`, { method: 'GET', headers: wsHeaders() })
-  const wsPost = (step: string, path: string, body: unknown) =>
-    fetchJson(step, `${WS_BASE}${path}`, {
-      method: 'POST',
-      headers: wsHeaders(),
-      body: JSON.stringify(body),
-    })
+  const get = (step: string, path: string, headers: Record<string, string>) =>
+    fetchJson(step, `${WS_BASE}${path}`, { method: 'GET', headers })
+  const post = (step: string, path: string, headers: Record<string, string>, body: unknown) =>
+    fetchJson(step, `${WS_BASE}${path}`, { method: 'POST', headers, body: JSON.stringify(body) })
 
-  await wsGet('authorize', `/v2/authentication/authorize?clientId=${CLIENT_ID}&databaseServerId=${DB_SERVER_ID}`)
-  await wsGet('user-settings', `/v1/user/settings`)
-  await wsGet(
+  await get('authorize', `/v2/authentication/authorize?clientId=${CLIENT_ID}&databaseServerId=${DB_SERVER_ID}`, baseHeaders)
+  await get('user-settings', `/v1/user/settings`, withSession)
+  await get(
     'autoselect',
-    `/v2/autoselect?firstDate=true&databaseServerId=${DB_SERVER_ID}&pricelistKey=${CATEGORY.key}`
+    `/v2/autoselect?firstDate=true&databaseServerId=${DB_SERVER_ID}&pricelistKey=${CATEGORY.key}`,
+    withMarkname
   )
+
+  const wsGet = (step: string, path: string) => get(step, path, fullContext)
+  const wsPost = (step: string, path: string, body: unknown) => post(step, path, fullContext, body)
 
   const minimalResp = await wsGet('supply-minimal', `/v1/supply/minimal/${CATEGORY.key}/3/${DB_SERVER_ID}/false`)
   const minimalItems: any[] = minimalResp?.content?.list || []
