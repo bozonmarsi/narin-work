@@ -78,6 +78,7 @@ export function VanVlietPanel() {
   const [rows, setRows] = useState<SearchRow[]>([emptyRow()]);
   const [targetDate, setTargetDate] = useState(DATE_OPTIONS[0].value);
   const [results, setResults] = useState<ResultGroup[] | null>(null);
+  const [catalogSize, setCatalogSize] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ordering, setOrdering] = useState<string | null>(null);
@@ -98,6 +99,7 @@ export function VanVlietPanel() {
   async function search() {
     setError(null);
     setResults(null);
+    setCatalogSize(null);
 
     const requests = rows
       .filter((r) => r.keyword.trim())
@@ -127,6 +129,7 @@ export function VanVlietPanel() {
       }
 
       setResults(data.results);
+      setCatalogSize(typeof data.catalogSize === "number" ? data.catalogSize : null);
     } catch (e) {
       setError(await describeFunctionError(e));
     } finally {
@@ -238,6 +241,9 @@ export function VanVlietPanel() {
       </div>
 
       {error && <p className="text-xs text-red-500">{error}</p>}
+      {catalogSize != null && (
+        <p className="text-xs text-zinc-400">Каталог на {targetDate}: {catalogSize} товаров</p>
+      )}
 
       {results && (
         <div className="space-y-3">
