@@ -38,6 +38,27 @@ const COLOR_OPTIONS = ["White", "Pink", "Red", "Orange", "Yellow", "Purple", "Bl
 
 const emptyRow = (): SearchRow => ({ keyword: "", color: "", maxPrice: "", quantity: "" });
 
+// supabase-js only gives a generic "non-2xx status code" message by default —
+// the actual error body (which step failed, what the supplier's API said) is
+// on error.context (a Response). Without this we're debugging blind.
+async function describeFunctionError(err: unknown): Promise<string> {
+  const context = (err as { context?: Response })?.context;
+  if (context && typeof context.text === "function") {
+    try {
+      const text = await context.text();
+      try {
+        const parsed = JSON.parse(text);
+        return JSON.stringify(parsed);
+      } catch {
+        return text || String(err);
+      }
+    } catch {
+      // fall through
+    }
+  }
+  return err instanceof Error ? err.message : String(err);
+}
+
 export function VanVlietPanel() {
   const [rows, setRows] = useState<SearchRow[]>([emptyRow()]);
   const [results, setResults] = useState<ResultGroup[] | null>(null);
@@ -91,7 +112,7 @@ export function VanVlietPanel() {
 
       setResults(data.results);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(await describeFunctionError(e));
     } finally {
       setLoading(false);
     }
@@ -118,7 +139,7 @@ export function VanVlietPanel() {
       if (data?.ok === false) throw new Error(JSON.stringify(data.body || data.error));
       setOrdered((p) => ({ ...p, [key]: true }));
     } catch (e) {
-      alert("Не удалось заказать: " + (e instanceof Error ? e.message : String(e)));
+      alert("Не удалось заказать: " + (await describeFunctionError(e)));
     } finally {
       setOrdering(null);
     }
