@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { decodeHtmlEntities } from "@/lib/format";
 
 // Поиск и заказ у Van Vliet (склад Praha) — вызывает Edge Functions
 // vanvliet-search (только чтение) и vanvliet-order (реальная покупка).
@@ -11,7 +12,10 @@ import { createClient } from "@/lib/supabase/client";
 // спрашивает подтверждение перед вызовом, и vanvliet-order сама требует
 // confirm:true — сюда нельзя попасть случайно.
 
-type SearchRow = { keyword: string; color: string; maxPrice: string; quantity: string };
+type SearchRow = { keyword: string; color: string; maxPrice: string; quantity: string; materialId: string };
+
+type RawMaterial = { id: string; product_name: string };
+type Alias = { id: string; alias: string; product_sticker_id: string };
 
 type Candidate = {
   product: string;
@@ -36,7 +40,7 @@ type ResultGroup = {
 
 const COLOR_OPTIONS = ["White", "Pink", "Red", "Orange", "Yellow", "Purple", "Blue", "Green", "Creme", "Black"];
 
-const emptyRow = (): SearchRow => ({ keyword: "", color: "", maxPrice: "", quantity: "" });
+const emptyRow = (): SearchRow => ({ keyword: "", color: "", maxPrice: "", quantity: "", materialId: "" });
 
 // Дата в пражском часовом поясе, +offsetDays дней от сегодня, как "YYYY-MM-DD".
 function pragueDate(offsetDays: number): string {
@@ -78,14 +82,79 @@ export function VanVlietPanel() {
   const [rows, setRows] = useState<SearchRow[]>([emptyRow()]);
   const [targetDate, setTargetDate] = useState(DATE_OPTIONS[0].value);
   const [results, setResults] = useState<ResultGroup[] | null>(null);
+  // Параллельно results — для какой позиции (какой materialId) был этот
+  // результат, чтобы знать, куда сохранять "Запомнить соответствие".
+  const [resultMaterialIds, setResultMaterialIds] = useState<string[]>([]);
   const [catalogSize, setCatalogSize] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ordering, setOrdering] = useState<string | null>(null);
   const [ordered, setOrdered] = useState<Record<string, boolean>>({});
 
+  // Свой каталог сырья + уже сохранённые соответствия "как называет Van
+  // Vliet" → "какой это наш цветок" (та же таблица, что и во вкладке
+  // "Алиасы" на складе — просто переиспользуем её здесь для поиска).
+  const [materials, setMaterials] = useState<RawMaterial[]>([]);
+  const [aliases, setAliases] = useState<Alias[]>([]);
+  const [vanVlietSupplierId, setVanVlietSupplierId] = useState<string | null>(null);
+  const [savingAlias, setSavingAlias] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const supabase = createClient();
+      const [supplierRes, materialsRes] = await Promise.all([
+        supabase.from("suppliers").select("id").eq("name", "Van Vliet").maybeSingle(),
+        supabase
+          .from("product_stickers")
+          .select("id, product_name")
+          .eq("category", "ohapka")
+          .order("product_name"),
+      ]);
+      const supplierId = supplierRes.data?.id ?? null;
+      setVanVlietSupplierId(supplierId);
+      setMaterials(materialsRes.data ?? []);
+      if (supplierId) {
+        const { data } = await supabase
+          .from("product_name_aliases")
+          .select("id, alias, product_sticker_id")
+          .eq("supplier_id", supplierId);
+        setAliases(data ?? []);
+      }
+    })();
+  }, []);
+
+  function aliasFor(materialId: string): string | undefined {
+    return aliases.find((a) => a.product_sticker_id === materialId)?.alias;
+  }
+
+  async function rememberAlias(materialId: string, productName: string) {
+    if (!vanVlietSupplierId) return;
+    const key = `${materialId}:${productName}`;
+    setSavingAlias(key);
+    try {
+      const supabase = createClient();
+      const { error: insertErr } = await supabase.from("product_name_aliases").insert({
+        supplier_id: vanVlietSupplierId,
+        alias: productName,
+        product_sticker_id: materialId,
+      });
+      if (!insertErr) {
+        setAliases((prev) => [...prev, { id: key, alias: productName, product_sticker_id: materialId }]);
+      }
+    } finally {
+      setSavingAlias(null);
+    }
+  }
+
   function updateRow(i: number, patch: Partial<SearchRow>) {
     setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  }
+
+  // Выбрали свой товар из списка — если для него уже есть сохранённый
+  // алиас от Van Vliet, сразу подставляем его в поле поиска.
+  function selectMaterial(i: number, materialId: string) {
+    const known = materialId ? aliasFor(materialId) : undefined;
+    updateRow(i, { materialId, ...(known ? { keyword: known } : {}) });
   }
 
   function addRow() {
@@ -101,15 +170,14 @@ export function VanVlietPanel() {
     setResults(null);
     setCatalogSize(null);
 
-    const requests = rows
-      .filter((r) => r.keyword.trim())
-      .map((r) => ({
-        label: r.keyword.trim(),
-        keywords: r.keyword.trim().toLowerCase().split(/\s+/).filter(Boolean),
-        colors: r.color ? [r.color] : [],
-        maxPrice: r.maxPrice ? Number(r.maxPrice) : null,
-        quantity: r.quantity ? Number(r.quantity) : null,
-      }));
+    const activeRows = rows.filter((r) => r.keyword.trim());
+    const requests = activeRows.map((r) => ({
+      label: r.keyword.trim(),
+      keywords: r.keyword.trim().toLowerCase().split(/\s+/).filter(Boolean),
+      colors: r.color ? [r.color] : [],
+      maxPrice: r.maxPrice ? Number(r.maxPrice) : null,
+      quantity: r.quantity ? Number(r.quantity) : null,
+    }));
 
     if (!requests.length) {
       setError("Добавь хотя бы одну позицию");
@@ -129,6 +197,7 @@ export function VanVlietPanel() {
       }
 
       setResults(data.results);
+      setResultMaterialIds(activeRows.map((r) => r.materialId));
       setCatalogSize(typeof data.catalogSize === "number" ? data.catalogSize : null);
     } catch (e) {
       setError(await describeFunctionError(e));
@@ -187,6 +256,19 @@ export function VanVlietPanel() {
       <div className="space-y-1.5">
         {rows.map((row, i) => (
           <div key={i} className="flex flex-wrap items-center gap-1.5">
+            <select
+              value={row.materialId}
+              onChange={(e) => selectMaterial(i, e.target.value)}
+              className="max-w-[9rem] rounded-md border border-zinc-300 bg-transparent px-1 py-1 text-xs outline-none focus:border-accent dark:border-zinc-600"
+            >
+              <option value="">свой товар…</option>
+              {materials.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {decodeHtmlEntities(m.product_name)}
+                  {aliasFor(m.id) ? " ✓" : ""}
+                </option>
+              ))}
+            </select>
             <input
               value={row.keyword}
               onChange={(e) => updateRow(i, { keyword: e.target.value })}
@@ -247,7 +329,9 @@ export function VanVlietPanel() {
 
       {results && (
         <div className="space-y-3">
-          {results.map((group) => (
+          {results.map((group, groupIndex) => {
+            const materialId = resultMaterialIds[groupIndex];
+            return (
             <div key={group.request}>
               <p className="mb-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-300">
                 {group.request}
@@ -259,11 +343,17 @@ export function VanVlietPanel() {
                 <div className="grid grid-cols-2 gap-2">
                   {group.candidates.map((c) => {
                     const key = `${group.request}:${c.cartProductKey}`;
+                    const aliasKey = materialId ? `${materialId}:${c.product}` : null;
+                    const alreadyAliased = materialId && aliases.some((a) => a.product_sticker_id === materialId && a.alias === c.product);
                     return (
                       <div key={key} className="rounded-md border border-zinc-200 p-2 text-xs dark:border-zinc-700">
                         {c.photo && (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={c.photo} alt={c.product} className="mb-1 h-20 w-full rounded object-cover" />
+                          <img
+                            src={c.photo}
+                            alt={c.product}
+                            className="mb-1 h-36 w-full rounded bg-zinc-100 object-contain dark:bg-zinc-800"
+                          />
                         )}
                         <p className="font-medium leading-tight">{c.product}</p>
                         <p className="text-zinc-500 dark:text-zinc-400">
@@ -273,6 +363,15 @@ export function VanVlietPanel() {
                           {c.price} Kč × {c.cartAmount} = <b>{c.price * c.cartAmount} Kč</b>
                         </p>
                         <p className="text-zinc-400">на складе: {c.stock}</p>
+                        {materialId && (
+                          <button
+                            onClick={() => rememberAlias(materialId, c.product)}
+                            disabled={Boolean(alreadyAliased) || savingAlias === aliasKey}
+                            className="mt-1 w-full rounded-md border border-zinc-300 py-1 text-zinc-500 hover:border-accent hover:text-accent disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-400"
+                          >
+                            {alreadyAliased ? "🔗 Уже запомнено" : savingAlias === aliasKey ? "…" : "🔗 Запомнить соответствие"}
+                          </button>
+                        )}
                         <button
                           onClick={() => buy(c, group.request, group.date)}
                           disabled={ordering === key || ordered[key]}
@@ -286,7 +385,8 @@ export function VanVlietPanel() {
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
