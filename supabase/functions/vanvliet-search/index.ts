@@ -106,12 +106,13 @@ type Product = {
 }
 
 async function loadCatalog(username: string, password: string, targetDate: string): Promise<Product[]> {
-  await getToken(username, password)
+  const token = await getToken(username, password)
 
   const sessionId = makeSessionId()
   const wsHeaders = () => ({
     Accept: 'application/json, text/plain, */*',
     'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
     'x-sessionid': sessionId,
     'x-context-clientid': CLIENT_ID,
     'x-context-markname': username,

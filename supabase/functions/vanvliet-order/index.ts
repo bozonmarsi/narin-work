@@ -97,11 +97,12 @@ Deno.serve(async (req) => {
 
     const date: string = targetDate || new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Prague' })
 
-    await getToken(username, password)
+    const token = await getToken(username, password)
 
     const sessionId = makeSessionId()
     const headers = {
       Accept: 'application/json, text/plain, */*',
+      Authorization: `Bearer ${token}`,
       'x-sessionid': sessionId,
       'x-context-clientid': CLIENT_ID,
       'x-context-markname': username,
@@ -109,6 +110,15 @@ Deno.serve(async (req) => {
       'x-context-date': date,
       ...BROWSER_HEADERS,
     }
+
+    // Mirror the real browser's bootstrap sequence before touching the cart —
+    // /v1/cart/item is only ever called by the site after these three, and
+    // the server likely ties the session's authorized state to them.
+    await fetchJson(`${WS_BASE}/v2/authentication/authorize?clientId=${CLIENT_ID}&databaseServerId=${DB_SERVER_ID}`, {
+      method: 'GET',
+      headers,
+    })
+    await fetchJson(`${WS_BASE}/v1/user/settings`, { method: 'GET', headers })
 
     const url =
       `${WS_BASE}/v1/cart/item?productKey=${encodeURIComponent(cartProductKey)}` +
