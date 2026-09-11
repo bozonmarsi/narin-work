@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Supplier } from "./types";
+import { VanVlietPanel } from "./VanVlietPanel";
 
 export function SuppliersTab() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -30,16 +31,15 @@ export function SuppliersTab() {
     await supabase.from("suppliers").update(editing[id]).eq("id", id);
   }
 
-  if (loading) {
-    return <p className="text-sm text-zinc-500 dark:text-zinc-400">Загрузка…</p>;
-  }
-
-  if (suppliers.length === 0) {
-    return <p className="text-sm text-zinc-400">Поставщиков пока нет — добавь на вкладке «Приёмка».</p>;
-  }
-
   return (
     <div className="max-w-xl space-y-2">
+      <VanVlietPanel />
+
+      {loading && <p className="text-sm text-zinc-500 dark:text-zinc-400">Загрузка…</p>}
+      {!loading && suppliers.length === 0 && (
+        <p className="text-sm text-zinc-400">Поставщиков пока нет — добавь на вкладке «Приёмка».</p>
+      )}
+
       {suppliers.map((s) => (
         <div key={s.id} className="rounded-md border border-zinc-200 dark:border-zinc-700 p-3">
           <p className="mb-2 text-sm font-medium">{s.name}</p>
