@@ -68,6 +68,22 @@ function makeSessionId(): string {
   })
 }
 
+function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = []
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size))
+  return out
+}
+
+// Та же функция, что и в vanvliet-search, для сравнения названий один в
+// один с тем, что видел поиск.
+function decode(s: unknown): string {
+  try {
+    return decodeURIComponent(String(s || '').replace(/\+/g, ' '))
+  } catch {
+    return String(s || '')
+  }
+}
+
 async function fetchJson(url: string, init: RequestInit): Promise<{ status: number; body: any }> {
   const res = await fetch(url, init)
   const text = await res.text()
@@ -200,44 +216,53 @@ Deno.serve(async (req) => {
       { method: 'GET', headers: withMarkname }
     )
 
-    // Подгружаем каталог на эту дату В ЭТОЙ ЖЕ сессии — cartProductKey
-    // пришёл из vanvliet-search (другая сессия), и без этого шага сервер
-    // поставщика отвечает "Položka nenalezena" (товар не найден), даже
-    // если сам ключ на самом деле верный. ВАЖНО: keysArray в реальном
-    // браузере уходит С ТЕМ ЖЕ ЗНАКОМ, что и productKey у cart/item (см.
-    // HAR: -1738163 в обоих местах).
-    const minimal = await fetchJson(`${WS_BASE}/v1/supply/minimal/${CATEGORY.key}/3/${CATEGORY.sourceListType}/false`, {
+    // ОКАЗАЛОСЬ: даже "прогрев" каталога в этой же сессии не помогал —
+    // ключ упорно был "не найден". Настоящая причина: их числовой "key",
+    // судя по всему, не постоянный ID товара, а что-то вроде временного
+    // номера строки результата ИМЕННО ТОЙ сессии, что делала поиск —
+    // подтверждено вживую (тот же товар по названию реально есть в живом
+    // каталоге на сайте, но переданный из vanvliet-search ключ сессия
+    // покупки не узнаёт). Значит ключ через границу сессий передавать
+    // нельзя вообще — ищем товар заново ЗДЕСЬ, в этой же сессии, по
+    // названию (оно стабильно, в отличие от ключа), и берём его свежий
+    // ключ прямо из этого ответа.
+    const minimalResp = await fetchJson(`${WS_BASE}/v1/supply/minimal/${CATEGORY.key}/3/${CATEGORY.sourceListType}/false`, {
       method: 'GET',
       headers: fullContext,
     })
+    const minimalKeys: number[] = ((minimalResp.body?.content?.list || []) as any[]).map((i: any) => i.k)
 
-    // Проверяем СРАЗУ по свежему списку: если этого ключа там уже нет —
-    // значит дело не в "session warm-up", а в том, что позиция на эту
-    // дату у поставщика протухла/переехала между поиском и покупкой
-    // (у них это часто "плавающие" лоты). Сообщаем честно, а не пытаемся
-    // всё равно положить в корзину заведомо мёртвый ключ.
-    if (!containsValue(minimal.body, Number(cartProductKey))) {
+    let freshCartKey: number | null = null
+    for (const batch of chunk(minimalKeys, 20)) {
+      const fullResp = await fetchJson(`${WS_BASE}/v1/supply/full/${CATEGORY.sourceListType}/false`, {
+        method: 'POST',
+        headers: fullContext,
+        body: JSON.stringify({ keysArray: batch }),
+      })
+      const list: any[] = fullResp.body?.content?.list || []
+      const match = list.find(
+        (p) => (productName && decode(p.product) === productName) || -Number(p.key) === Number(cartProductKey)
+      )
+      if (match) {
+        freshCartKey = -Number(match.key)
+        break
+      }
+    }
+
+    if (freshCartKey == null) {
       return json(
         {
           ok: false,
-          error: 'stale_product_key',
-          message:
-            'Van Vliet: этой позиции уже нет в свежем списке на эту дату — она протухла между поиском и покупкой. Поищи заново и попробуй со свежими результатами.',
-          minimalStatus: minimal.status,
+          error: 'product_not_found_in_fresh_catalog',
+          message: `Van Vliet: «${productName || cartProductKey}» не нашёлся в свежем каталоге на эту дату — поищи заново.`,
         },
         502
       )
     }
 
-    await fetchJson(`${WS_BASE}/v1/supply/full/${CATEGORY.sourceListType}/false`, {
-      method: 'POST',
-      headers: fullContext,
-      body: JSON.stringify({ keysArray: [Number(cartProductKey)] }),
-    })
-
     const headers = fullContext
     const url =
-      `${WS_BASE}/v1/cart/item?productKey=${encodeURIComponent(cartProductKey)}` +
+      `${WS_BASE}/v1/cart/item?productKey=${encodeURIComponent(freshCartKey)}` +
       `&amount=${encodeURIComponent(cartAmount)}&salesPrice=-1&retailPrice=-1`
 
     const { status, body: result } = await fetchJson(url, { method: 'POST', headers })
@@ -258,7 +283,7 @@ Deno.serve(async (req) => {
     // перечитываем саму корзину на эту дату и ищем там наш товар, точно
     // как это делает сайт поставщика сразу после добавления.
     const cartCheck = await fetchJson(`${WS_BASE}/v1/cart/${date}`, { method: 'GET', headers: fullContext })
-    const verified = cartCheck.status < 400 && containsValue(cartCheck.body, Number(cartProductKey))
+    const verified = cartCheck.status < 400 && containsValue(cartCheck.body, freshCartKey)
     if (!verified) {
       return json(
         {
@@ -291,7 +316,7 @@ Deno.serve(async (req) => {
           price_per_unit: unitPrice,
           total_price: unitPrice != null ? unitPrice * cartAmount : null,
           target_date: date,
-          cart_product_key: cartProductKey,
+          cart_product_key: freshCartKey,
           ordered_by: callerUserId(req),
         })
       }
