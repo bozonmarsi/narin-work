@@ -160,6 +160,7 @@ async function describeFunctionError(err: unknown): Promise<string> {
       const text = await context.text();
       try {
         const parsed = JSON.parse(text);
+        if (typeof parsed?.message === "string") return parsed.message;
         return JSON.stringify(parsed);
       } catch {
         return text || String(err);

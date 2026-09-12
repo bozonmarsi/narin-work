@@ -16,6 +16,15 @@
 // productName/color/price/materialId — не обязательные для самой покупки,
 // только для этой записи (фронт и так их уже знает из результатов поиска).
 //
+// ВАЖНО: HTTP-статус < 400 от /v1/cart/item НЕ означает, что товар
+// реально попал в корзину — на практике поймали случай, когда сервер
+// поставщика отвечал успехом, а товара в корзине на нужную дату не
+// оказывалось (сверено вживую через личный кабинет). Поэтому после
+// добавления мы ОБЯЗАТЕЛЬНО перечитываем саму корзину (GET
+// /v1/cart/{date} — ровно то же самое, что делает их сайт сразу после
+// добавления, см. HAR) и считаем покупку успешной только если товар
+// реально нашёлся в ответе.
+//
 // Секреты: VANVLIET_USERNAME, VANVLIET_PASSWORD (те же, что у
 // vanvliet-search), SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
 
@@ -36,6 +45,7 @@ function json(body: unknown, status = 200) {
 const CLIENT_ID = 'be38bc54e6c04589b5fc3c9e11f1f3a2'
 const DB_SERVER_ID = '47'
 const WS_BASE = 'https://wsngshop.orderyourflowers.nl/servoy-service/rest_ws/ws_ngshop'
+const CATEGORY = { key: '4_1' } // тот же прайслист, что и в vanvliet-search
 
 const BROWSER_HEADERS: Record<string, string> = {
   'User-Agent':
@@ -85,6 +95,19 @@ function callerUserId(req: Request): string | null {
   } catch {
     return null
   }
+}
+
+// Ищем productKey где угодно в ответе /v1/cart/{date} — схему ответа мы
+// не знаем точно (в HAR не сохранилось тело), поэтому вместо разбора
+// конкретных полей просто рекурсивно проверяем, встречается ли число
+// нашего товара (в любом знаке — на добавлении ключ шёл отрицательным)
+// хоть где-то в структуре.
+function containsValue(node: unknown, needle: number, depth = 0): boolean {
+  if (depth > 8) return false
+  if (typeof node === 'number') return node === needle || node === -needle
+  if (Array.isArray(node)) return node.some((v) => containsValue(v, needle, depth + 1))
+  if (node && typeof node === 'object') return Object.values(node as Record<string, unknown>).some((v) => containsValue(v, needle, depth + 1))
+  return false
 }
 
 async function getAuth(username: string, password: string): Promise<string> {
@@ -142,11 +165,20 @@ Deno.serve(async (req) => {
       'x-context-date': date,
     }
 
+    const withMarkname = { ...withSession, 'x-context-markname': username }
+
     await fetchJson(`${WS_BASE}/v2/authentication/authorize?clientId=${CLIENT_ID}&databaseServerId=${DB_SERVER_ID}`, {
       method: 'GET',
       headers: baseHeaders,
     })
     await fetchJson(`${WS_BASE}/v1/user/settings`, { method: 'GET', headers: withSession })
+    // Тот же прогрев сессии, что и в vanvliet-search перед любым чтением
+    // каталога — здесь его не было вообще, а без него, похоже, сессия не
+    // успевала "открыть" нужный день на сервере поставщика.
+    await fetchJson(
+      `${WS_BASE}/v2/autoselect?firstDate=true&databaseServerId=${DB_SERVER_ID}&pricelistKey=${CATEGORY.key}`,
+      { method: 'GET', headers: withMarkname }
+    )
 
     const headers = fullContext
     const url =
@@ -159,8 +191,29 @@ Deno.serve(async (req) => {
       return json({ ok: false, status, body: result }, 502)
     }
 
-    // Заказ у поставщика уже реально ушёл — запись в наш журнал делаем
-    // best-effort и не валим успешный ответ, если она вдруг не удалась.
+    // HTTP-успех тут ничего не гарантирует (см. комментарий вверху файла) —
+    // перечитываем саму корзину на эту дату и ищем там наш товар, точно
+    // как это делает сайт поставщика сразу после добавления.
+    const cartCheck = await fetchJson(`${WS_BASE}/v1/cart/${date}`, { method: 'GET', headers: fullContext })
+    const verified = cartCheck.status < 400 && containsValue(cartCheck.body, Number(cartProductKey))
+    if (!verified) {
+      return json(
+        {
+          ok: false,
+          error: 'cart_verification_failed',
+          message: 'Van Vliet ответил успехом, но товара не оказалось в корзине на эту дату — заказ не подтверждён',
+          orderStatus: status,
+          orderBody: result,
+          cartCheckStatus: cartCheck.status,
+          cartCheckBody: cartCheck.body,
+        },
+        502
+      )
+    }
+
+    // Заказ у поставщика реально подтверждён (найден в их корзине) — запись
+    // в наш журнал делаем best-effort и не валим успешный ответ, если она
+    // вдруг не удалась.
     try {
       const supabaseUrl = Deno.env.get('SUPABASE_URL')
       const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
