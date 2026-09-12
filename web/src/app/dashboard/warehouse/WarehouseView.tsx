@@ -7,24 +7,28 @@ import { SuppliersTab } from "./SuppliersTab";
 import { RecipesTab } from "./RecipesTab";
 import { CatalogTab } from "./CatalogTab";
 import { SidePanel } from "./Modal";
+import { FloristRequestsPanel } from "../shop/FloristRequestsPanel";
 
-type PanelKey = "receive" | "recipes" | "suppliers";
+type PanelKey = "receive" | "recipes" | "suppliers" | "flowers";
 
 const NAV_ITEMS: { key: PanelKey; label: string; icon: string }[] = [
   { key: "receive", label: "Приёмка", icon: "📦" },
   { key: "recipes", label: "Рецепты", icon: "📋" },
   { key: "suppliers", label: "Поставщики", icon: "🚚" },
+  { key: "flowers", label: "Не хватает", icon: "🌸" },
 ];
 
 const PANEL_TITLES: Record<PanelKey, string> = {
   receive: "Приёмка партии",
   recipes: "Рецепты букетов",
   suppliers: "Поставщики",
+  flowers: "Не хватает цветов",
 };
 
 function PanelContent({ panel, onOpenCatalog }: { panel: PanelKey; onOpenCatalog: () => void }) {
   if (panel === "receive") return <ReceiveTab onOpenCatalog={onOpenCatalog} />;
   if (panel === "recipes") return <RecipesTab onOpenCatalog={onOpenCatalog} />;
+  if (panel === "flowers") return <FloristRequestsPanel />;
   return <SuppliersTab />;
 }
 

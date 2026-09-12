@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { decodeHtmlEntities } from "@/lib/format";
 import { useRealtimeRefresh } from "@/lib/useRealtimeRefresh";
 import { parseLineItems, type OrderLite } from "../warehouse/OrderAssembleModal";
+import { FloristRequestsPanel } from "./FloristRequestsPanel";
 
 // Поиск и заказ у Van Vliet (склад Praha) — вызывает Edge Functions
 // vanvliet-search (только чтение) и vanvliet-order (реальная покупка).
@@ -481,7 +482,8 @@ export function VanVlietPanel() {
   }
 
   return (
-    <div className="mb-4 space-y-3 border-b border-zinc-200 pb-4 dark:border-zinc-700">
+    <div className="grid items-start gap-4 lg:grid-cols-2">
+    <div className="mb-4 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-medium">Van Vliet — поиск и заказ (Praha)</p>
         <button
@@ -632,7 +634,18 @@ export function VanVlietPanel() {
         <p className="text-xs text-zinc-400">Каталог на {targetDate}: {catalogSize} товаров</p>
       )}
 
-      {results && (
+      <div className="border-t border-zinc-200 pt-3 dark:border-zinc-700">
+        <FloristRequestsPanel showForm={false} />
+      </div>
+    </div>
+
+    <div className="lg:sticky lg:top-4 space-y-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+      <p className="text-sm font-medium">🛒 Корзина</p>
+      {!results || results.length === 0 ? (
+        <p className="text-xs text-zinc-400">
+          Пусто — найди что-нибудь слева (вручную или кнопкой «Искать у Van Vliet» из списка «К заказу»).
+        </p>
+      ) : (
         <div className="space-y-3">
           {results.map((group, groupIndex) => {
             const materialId = resultMaterialIds[groupIndex];
@@ -695,6 +708,7 @@ export function VanVlietPanel() {
           })}
         </div>
       )}
+    </div>
     </div>
   );
 }

@@ -6,11 +6,12 @@ import { decodeHtmlEntities } from "@/lib/format";
 import { useRealtimeRefresh } from "@/lib/useRealtimeRefresh";
 import { useDashboard } from "../layout";
 
-// Флорист лучше менеджера знает, какие цветы нужны для её букетов —
-// здесь можно попросить цветок на дату напрямую, вместо объяснений на
-// словах. Видно и менеджеру (может отметить "заказано"/"отклонить"), и
-// складу (может добавлять и удалять свои же пожелания) — доступ
-// разграничен в RLS таблицы florist_flower_requests, а не только в UI.
+// Склад (флорист) пишет здесь, каких цветов не хватает и на какую
+// дату — напрямую, вместо объяснений на словах менеджеру. Форма живёт
+// на складе, в "Приёмке" (showForm=true); на "Заказы цветов" у
+// менеджера показывается только сам список — заказывать решает
+// менеджер, а не склад. Доступ разграничен ещё и в RLS таблицы
+// florist_flower_requests, а не только в UI.
 
 type Material = { id: string; product_name: string };
 type Request = {
@@ -27,7 +28,7 @@ function pragueToday(): string {
   return new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Prague" });
 }
 
-export function FloristRequestsPanel() {
+export function FloristRequestsPanel({ showForm = true }: { showForm?: boolean }) {
   const { user, profile } = useDashboard();
   const isManager = profile?.role === "manager";
 
@@ -110,53 +111,59 @@ export function FloristRequestsPanel() {
 
   return (
     <div className="space-y-3">
-      <p className="text-sm font-medium">Пожелания флориста</p>
-      <p className="text-xs text-zinc-400">Попроси цветок на дату напрямую — менеджер увидит и закажет у поставщика.</p>
+      <p className="text-sm font-medium">Не хватает цветов</p>
+      {showForm ? (
+        <>
+          <p className="text-xs text-zinc-400">Напиши, какого цветка не хватает и на какую дату — менеджер увидит и закажет у поставщика.</p>
 
-      <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-zinc-200 p-2 dark:border-zinc-700">
-        <select
-          value={materialId}
-          onChange={(e) => setMaterialId(e.target.value)}
-          className="max-w-[10rem] rounded-md border border-zinc-300 bg-transparent px-1 py-1 text-xs outline-none focus:border-accent dark:border-zinc-600"
-        >
-          <option value="">какой цветок…</option>
-          {materials.map((m) => (
-            <option key={m.id} value={m.id}>
-              {decodeHtmlEntities(m.product_name)}
-            </option>
-          ))}
-        </select>
-        <input
-          type="date"
-          value={neededDate}
-          onChange={(e) => setNeededDate(e.target.value)}
-          className="rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-xs outline-none focus:border-accent dark:border-zinc-600"
-        />
-        <input
-          value={quantity}
-          onChange={(e) => setQuantity(e.target.value)}
-          placeholder="шт"
-          type="number"
-          className="w-16 rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-xs outline-none focus:border-accent dark:border-zinc-600"
-        />
-        <input
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder="комментарий (необязательно)"
-          className="min-w-[10rem] flex-1 rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-xs outline-none focus:border-accent dark:border-zinc-600"
-        />
-        <button
-          onClick={addRequest}
-          disabled={saving || !materialId || !(Number(quantity) > 0)}
-          className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-white disabled:opacity-50"
-        >
-          {saving ? "…" : "Попросить"}
-        </button>
-      </div>
-      {error && <p className="text-xs text-red-500">{error}</p>}
+          <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-zinc-200 p-2 dark:border-zinc-700">
+            <select
+              value={materialId}
+              onChange={(e) => setMaterialId(e.target.value)}
+              className="max-w-[10rem] rounded-md border border-zinc-300 bg-transparent px-1 py-1 text-xs outline-none focus:border-accent dark:border-zinc-600"
+            >
+              <option value="">какой цветок…</option>
+              {materials.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {decodeHtmlEntities(m.product_name)}
+                </option>
+              ))}
+            </select>
+            <input
+              type="date"
+              value={neededDate}
+              onChange={(e) => setNeededDate(e.target.value)}
+              className="rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-xs outline-none focus:border-accent dark:border-zinc-600"
+            />
+            <input
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              placeholder="шт"
+              type="number"
+              className="w-16 rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-xs outline-none focus:border-accent dark:border-zinc-600"
+            />
+            <input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="комментарий (необязательно)"
+              className="min-w-[10rem] flex-1 rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-xs outline-none focus:border-accent dark:border-zinc-600"
+            />
+            <button
+              onClick={addRequest}
+              disabled={saving || !materialId || !(Number(quantity) > 0)}
+              className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-white disabled:opacity-50"
+            >
+              {saving ? "…" : "Отправить"}
+            </button>
+          </div>
+          {error && <p className="text-xs text-red-500">{error}</p>}
+        </>
+      ) : (
+        <p className="text-xs text-zinc-400">То, что склад отметил как нехватку — заказать или отклонить.</p>
+      )}
 
       <div className="space-y-1.5">
-        {pending.length === 0 && <p className="text-xs text-zinc-400">Пожеланий пока нет.</p>}
+        {pending.length === 0 && <p className="text-xs text-zinc-400">Нехватки пока нет.</p>}
         {pending.map((r) => (
           <div
             key={r.id}
@@ -189,7 +196,7 @@ export function FloristRequestsPanel() {
 
       {resolved.length > 0 && (
         <details className="text-xs text-zinc-400">
-          <summary className="cursor-pointer">Закрытые пожелания ({resolved.length})</summary>
+          <summary className="cursor-pointer">Закрытые заявки ({resolved.length})</summary>
           <div className="mt-1 space-y-1">
             {resolved.map((r) => (
               <p key={r.id}>
