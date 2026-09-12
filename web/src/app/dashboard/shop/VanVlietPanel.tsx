@@ -19,6 +19,16 @@ type SearchRow = { keyword: string; color: string; maxPrice: string; quantity: s
 
 type RawMaterial = { id: string; product_name: string };
 type Alias = { id: string; alias: string; product_sticker_id: string };
+type Purchase = {
+  id: string;
+  product_name: string;
+  color: string | null;
+  quantity: number;
+  price_per_unit: number | null;
+  total_price: number | null;
+  target_date: string | null;
+  created_at: string;
+};
 
 type Candidate = {
   product: string;
@@ -173,6 +183,27 @@ export function VanVlietPanel() {
   const [error, setError] = useState<string | null>(null);
   const [ordering, setOrdering] = useState<string | null>(null);
   const [ordered, setOrdered] = useState<Record<string, boolean>>({});
+
+  // Журнал того, что уже реально куплено у Van Vliet (пишет сама функция
+  // vanvliet-order при успехе) — чтобы видеть, чего и на какую дату ждать,
+  // не заходя каждый раз на сайт поставщика.
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
+
+  async function loadPurchases() {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("vanvliet_purchases")
+      .select("id, product_name, color, quantity, price_per_unit, total_price, target_date, created_at")
+      .order("target_date", { ascending: true })
+      .limit(50);
+    setPurchases((data ?? []) as Purchase[]);
+  }
+
+  useEffect(() => {
+    loadPurchases();
+  }, []);
+
+  useRealtimeRefresh("vanvliet_purchases", loadPurchases);
 
   // Свой каталог сырья + уже сохранённые соответствия "как называет Van
   // Vliet" → "какой это наш цветок" (та же таблица, что и во вкладке
@@ -454,7 +485,7 @@ export function VanVlietPanel() {
     }
   }
 
-  async function buy(candidate: Candidate, requestLabel: string, date: string) {
+  async function buy(candidate: Candidate, requestLabel: string, date: string, materialId: string | null) {
     const key = `${requestLabel}:${candidate.cartProductKey}`;
     const total = candidate.price * candidate.cartAmount;
     if (
@@ -469,7 +500,16 @@ export function VanVlietPanel() {
     try {
       const supabase = createClient();
       const { data, error: fnError } = await supabase.functions.invoke("vanvliet-order", {
-        body: { cartProductKey: candidate.cartProductKey, cartAmount: candidate.cartAmount, targetDate: date, confirm: true },
+        body: {
+          cartProductKey: candidate.cartProductKey,
+          cartAmount: candidate.cartAmount,
+          targetDate: date,
+          confirm: true,
+          productName: candidate.product,
+          color: candidate.color,
+          price: candidate.price,
+          materialId,
+        },
       });
       if (fnError) throw fnError;
       if (data?.ok === false) throw new Error(JSON.stringify(data.body || data.error));
@@ -692,7 +732,7 @@ export function VanVlietPanel() {
                           </button>
                         )}
                         <button
-                          onClick={() => buy(c, group.request, group.date)}
+                          onClick={() => buy(c, group.request, group.date, materialId || null)}
                           disabled={ordering === key || ordered[key]}
                           className="mt-1.5 w-full rounded-md bg-accent px-2 py-1 text-white disabled:opacity-50"
                         >
@@ -708,6 +748,22 @@ export function VanVlietPanel() {
           })}
         </div>
       )}
+
+      <div className="space-y-1.5 border-t border-zinc-200 pt-3 dark:border-zinc-700">
+        <p className="text-sm font-medium">🧾 Что уже заказано</p>
+        {purchases.length === 0 ? (
+          <p className="text-xs text-zinc-400">Пока ничего не куплено.</p>
+        ) : (
+          purchases.map((p) => (
+            <div key={p.id} className="rounded-md border border-zinc-200 px-2 py-1.5 text-xs dark:border-zinc-700">
+              <span className="font-medium">{p.product_name}</span>
+              {p.color && <span className="text-zinc-400"> · {p.color}</span>} — {p.quantity} шт
+              {p.total_price != null && <> за {p.total_price} Kč</>}
+              {p.target_date && <> на {p.target_date}</>}
+            </div>
+          ))
+        )}
+      </div>
     </div>
     </div>
   );

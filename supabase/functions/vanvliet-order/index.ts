@@ -11,7 +11,15 @@
 // cartProductKey и cartAmount — это ровно то, что отдаёт vanvliet-search
 // в каждом кандидате (уже готовые, ничего пересчитывать не надо).
 //
-// Секреты: VANVLIET_USERNAME, VANVLIET_PASSWORD (те же, что у vanvliet-search).
+// После реального успеха у поставщика пишем строку в vanvliet_purchases —
+// иначе нет способа посмотреть, что и когда мы заказали и чего ждать.
+// productName/color/price/materialId — не обязательные для самой покупки,
+// только для этой записи (фронт и так их уже знает из результатов поиска).
+//
+// Секреты: VANVLIET_USERNAME, VANVLIET_PASSWORD (те же, что у
+// vanvliet-search), SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
+
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -65,6 +73,20 @@ function decodeJwtPayload(token: string): Record<string, unknown> {
   return JSON.parse(atob(padded))
 }
 
+// Кто нажал "Купить" — платформа уже проверила этот JWT (verify_jwt
+// включён для этой функции), достаточно просто прочитать sub, отдельно
+// перепроверять не нужно.
+function callerUserId(req: Request): string | null {
+  const authHeader = req.headers.get('authorization') || ''
+  const token = authHeader.replace(/^Bearer\s+/i, '')
+  if (!token) return null
+  try {
+    return String(decodeJwtPayload(token).sub ?? '') || null
+  } catch {
+    return null
+  }
+}
+
 async function getAuth(username: string, password: string): Promise<string> {
   const body = `grant_type=password&username=${encodeURIComponent(username)}&password=${encodeURIComponent(
     password
@@ -87,7 +109,7 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}))
-    const { cartProductKey, cartAmount, targetDate, confirm } = body
+    const { cartProductKey, cartAmount, targetDate, confirm, productName, color, price, materialId } = body
 
     if (cartProductKey == null || cartAmount == null) {
       return json({ error: 'cartProductKey and cartAmount required' }, 400)
@@ -135,6 +157,30 @@ Deno.serve(async (req) => {
 
     if (status >= 400) {
       return json({ ok: false, status, body: result }, 502)
+    }
+
+    // Заказ у поставщика уже реально ушёл — запись в наш журнал делаем
+    // best-effort и не валим успешный ответ, если она вдруг не удалась.
+    try {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')
+      const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+      if (supabaseUrl && serviceKey) {
+        const supabase = createClient(supabaseUrl, serviceKey)
+        const unitPrice = typeof price === 'number' ? price : null
+        await supabase.from('vanvliet_purchases').insert({
+          product_sticker_id: materialId || null,
+          product_name: productName || `#${cartProductKey}`,
+          color: color || null,
+          quantity: cartAmount,
+          price_per_unit: unitPrice,
+          total_price: unitPrice != null ? unitPrice * cartAmount : null,
+          target_date: date,
+          cart_product_key: cartProductKey,
+          ordered_by: callerUserId(req),
+        })
+      }
+    } catch {
+      // не мешаем успешному ответу — покупка у поставщика уже состоялась
     }
 
     return json({ ok: true, result })
