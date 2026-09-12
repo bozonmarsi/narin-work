@@ -211,7 +211,8 @@ ${catalogLines}
       },
       body: JSON.stringify({
         model: 'claude-sonnet-5',
-        max_tokens: 8192,
+        max_tokens: 16000,
+        thinking: { type: 'disabled' },
         messages: [{ role: 'user', content: prompt }],
       }),
     })
