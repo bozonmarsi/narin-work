@@ -13,9 +13,10 @@
 // реально нашлось) — так устаревшие соответствия не копятся, а
 // естественно обновляются вместе с каталогом поставщика.
 //
-// Вызывается по расписанию через pg_cron (см. миграцию), не пользователем
-// напрямую — поэтому проверяем свой отдельный секрет (CRON_SECRET), а не
-// полагаемся только на платформенный JWT.
+// Вызывается либо по расписанию через pg_cron (свой секрет CRON_SECRET,
+// см. миграцию), либо вручную кнопкой из интерфейса менеджером (тогда
+// приходит его настоящая сессия) — платформенная проверка JWT для этой
+// функции отключена в Dashboard, поэтому оба случая проверяем сами ниже.
 //
 // Секреты: VANVLIET_USERNAME, VANVLIET_PASSWORD (те же, что у
 // vanvliet-search), ANTHROPIC_API_KEY, CRON_SECRET.
@@ -161,20 +162,30 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
-  const cronSecret = Deno.env.get('CRON_SECRET')
-  const authHeader = req.headers.get('authorization') || ''
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-    return json({ error: 'unauthorized' }, 401)
-  }
-
   try {
+    const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+
+    const cronSecret = Deno.env.get('CRON_SECRET')
+    const authHeader = req.headers.get('authorization') || ''
+    const token = authHeader.replace(/^Bearer\s+/i, '')
+
+    let authorized = Boolean(cronSecret) && token === cronSecret
+    if (!authorized && token) {
+      // Ручной вызов кнопкой из интерфейса — приходит настоящая сессия
+      // менеджера (supabase.functions.invoke подставляет её сама).
+      const { data: userData } = await supabase.auth.getUser(token)
+      if (userData?.user) {
+        const { data: profile } = await supabase.from('users').select('role').eq('id', userData.user.id).maybeSingle()
+        authorized = profile?.role === 'manager'
+      }
+    }
+    if (!authorized) return json({ error: 'unauthorized' }, 401)
+
     const username = Deno.env.get('VANVLIET_USERNAME')!
     const password = Deno.env.get('VANVLIET_PASSWORD')!
     const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY')
     if (!username || !password) return json({ error: 'missing_vanvliet_credentials' }, 500)
     if (!anthropicKey) return json({ error: 'missing_anthropic_key' }, 500)
-
-    const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 
     const { data: supplier } = await supabase.from('suppliers').select('id').eq('name', 'Van Vliet').maybeSingle()
     if (!supplier) return json({ error: 'van_vliet_supplier_not_found' }, 500)
