@@ -81,6 +81,21 @@ function guessGenus(name: string): string {
   return name.trim().split(/\s+/)[0]?.toLowerCase() ?? "";
 }
 
+// Названия у Van Vliet меняются день ото дня в части высоты/веса/партии
+// ("60cm", "38gram", "10st", "(imp)", "(10)") — сам цветок при этом тот
+// же. Сохраняем алиас БЕЗ этого хвоста, чтобы он не переставал совпадать
+// при малейшем изменении на сайте поставщика.
+function coreName(name: string): string {
+  return name
+    .replace(/\(\s*imp\s*\)/gi, " ")
+    .replace(/\(\s*\d+\s*\)/g, " ")
+    .replace(/\b\d+([.,]\d+)?\s*cm\b/gi, " ")
+    .replace(/\b\d+([.,]\d+)?\s*gram\b/gi, " ")
+    .replace(/\b\d+\s*st\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 const emptyRow = (): SearchRow => ({ keyword: "", color: "", maxPrice: "", quantity: "", materialId: "" });
 
 // Дата в пражском часовом поясе, +offsetDays дней от сегодня, как "YYYY-MM-DD".
@@ -177,16 +192,17 @@ export function VanVlietPanel() {
   async function rememberAlias(materialId: string, productName: string) {
     if (!vanVlietSupplierId) return;
     const key = `${materialId}:${productName}`;
+    const alias = coreName(productName);
     setSavingAlias(key);
     try {
       const supabase = createClient();
       const { error: insertErr } = await supabase.from("product_name_aliases").insert({
         supplier_id: vanVlietSupplierId,
-        alias: productName,
+        alias,
         product_sticker_id: materialId,
       });
       if (!insertErr) {
-        setAliases((prev) => [...prev, { id: key, alias: productName, product_sticker_id: materialId }]);
+        setAliases((prev) => [...prev, { id: key, alias, product_sticker_id: materialId }]);
       }
     } finally {
       setSavingAlias(null);
@@ -232,8 +248,12 @@ export function VanVlietPanel() {
         } else if (matches.length > 5) {
           ambiguous.push(name);
         } else {
-          for (const match of matches) {
-            toInsert.push({ supplier_id: vanVlietSupplierId, alias: match.product, product_sticker_id: m.id });
+          // coreName + Set — несколько реальных товаров могут схлопнуться
+          // в одно и то же "ядро" (только высота/партия разная), не нужно
+          // вставлять один и тот же алиас дважды.
+          const cores = new Set(matches.map((match) => coreName(match.product)));
+          for (const alias of cores) {
+            toInsert.push({ supplier_id: vanVlietSupplierId, alias, product_sticker_id: m.id });
           }
         }
       }
@@ -518,7 +538,8 @@ export function VanVlietPanel() {
                   {group.candidates.map((c) => {
                     const key = `${group.request}:${c.cartProductKey}`;
                     const aliasKey = materialId ? `${materialId}:${c.product}` : null;
-                    const alreadyAliased = materialId && aliases.some((a) => a.product_sticker_id === materialId && a.alias === c.product);
+                    const alreadyAliased =
+                      materialId && aliases.some((a) => a.product_sticker_id === materialId && a.alias === coreName(c.product));
                     return (
                       <div key={key} className="rounded-md border border-zinc-200 p-2 text-xs dark:border-zinc-700">
                         {c.photo && (
