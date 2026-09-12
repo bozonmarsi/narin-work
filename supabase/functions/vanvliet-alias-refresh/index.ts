@@ -214,7 +214,8 @@ ${catalogLines}
       body: JSON.stringify({
         model: 'claude-sonnet-5',
         max_tokens: 24000,
-        thinking: { type: 'enabled', budget_tokens: 6000 },
+        thinking: { type: 'adaptive' },
+        output_config: { effort: 'high' },
         messages: [{ role: 'user', content: prompt }],
       }),
     })
