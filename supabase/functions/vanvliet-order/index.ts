@@ -117,14 +117,14 @@ function containsValue(node: unknown, needle: number, depth = 0): boolean {
 }
 
 // Их текстовые сообщения об ошибках закодированы старым JS escape()
-// (%uXXXX для не-ASCII, %XX для остального) — не то же самое, что
-// decodeURIComponent сам по себе понимает.
+// (%uXXXX и %XX как "сырой" байт Latin-1, например %ED = í) — это НЕ
+// UTF-8, decodeURIComponent на таком падает (URIError: malformed URI).
+// unescape() — ровно обратная функция к escape(), для этого и существует.
 function decodeVanVlietMessage(body: unknown): string | null {
   const raw = (body as any)?.content?.list?.message
   if (typeof raw !== 'string') return null
   try {
-    const withUnicode = raw.replace(/%u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
-    return decodeURIComponent(withUnicode)
+    return unescape(raw)
   } catch {
     return raw
   }
@@ -203,7 +203,10 @@ Deno.serve(async (req) => {
     // Подгружаем каталог на эту дату В ЭТОЙ ЖЕ сессии — cartProductKey
     // пришёл из vanvliet-search (другая сессия), и без этого шага сервер
     // поставщика отвечает "Položka nenalezena" (товар не найден), даже
-    // если сам ключ на самом деле верный.
+    // если сам ключ на самом деле верный. ВАЖНО: keysArray в реальном
+    // браузере уходит С ТЕМ ЖЕ ЗНАКОМ, что и productKey у cart/item (см.
+    // HAR: -1738163 в обоих местах) — Math.abs() тут был первой (неверной)
+    // попыткой и ломал прогрев.
     await fetchJson(`${WS_BASE}/v1/supply/minimal/${CATEGORY.key}/3/${CATEGORY.sourceListType}/false`, {
       method: 'GET',
       headers: fullContext,
@@ -211,7 +214,7 @@ Deno.serve(async (req) => {
     await fetchJson(`${WS_BASE}/v1/supply/full/${CATEGORY.sourceListType}/false`, {
       method: 'POST',
       headers: fullContext,
-      body: JSON.stringify({ keysArray: [Math.abs(Number(cartProductKey))] }),
+      body: JSON.stringify({ keysArray: [Number(cartProductKey)] }),
     })
 
     const headers = fullContext
