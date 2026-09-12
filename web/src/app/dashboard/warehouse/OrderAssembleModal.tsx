@@ -6,7 +6,7 @@ import { useDashboard } from "../layout";
 import { decodeHtmlEntities } from "@/lib/format";
 import { Modal } from "./Modal";
 
-type OrderLite = {
+export type OrderLite = {
   id: string;
   order_id: string | null;
   customer_name: string | null;
@@ -21,7 +21,7 @@ type BatchLite = { id: string; product_sticker_id: string; remaining: number; pu
 type BatchAlloc = { batchId: string; available: number; purchaseDate: string; take: string };
 type NeedRow = { ingredientId: string; ingredientName: string; unit: string | null; neededQty: number; batches: BatchAlloc[] };
 
-function parseLineItems(order: OrderLite): { name: string; rawName: string; quantity: number }[] {
+export function parseLineItems(order: OrderLite): { name: string; rawName: string; quantity: number }[] {
   const items = order.raw_payload?.payment?.products;
   if (items && items.length > 0) {
     return items.map((p) => ({

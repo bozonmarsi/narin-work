@@ -6,6 +6,7 @@ import { useDashboard } from "../layout";
 import { decodeHtmlEntities } from "@/lib/format";
 import { useRealtimeRefresh } from "@/lib/useRealtimeRefresh";
 import { VanVlietPanel } from "./VanVlietPanel";
+import { FloristRequestsPanel } from "./FloristRequestsPanel";
 
 type ClosedDate = { closed_date: string; reason: string | null };
 type RecipeRow = { id: string; bouquet_sticker_id: string; ingredient_sticker_id: string; quantity_needed: number };
@@ -971,7 +972,7 @@ export default function ShopPage() {
         >
           Каталог
         </button>
-        {profile?.role === "manager" && (
+        {(profile?.role === "manager" || profile?.role === "warehouse") && (
           <button
             onClick={() => setMainTab("orders")}
             className={`rounded-full px-3 py-1.5 text-sm font-medium ${
@@ -992,6 +993,7 @@ export default function ShopPage() {
       </div>
 
       {mainTab === "orders" && profile?.role === "manager" && <VanVlietPanel />}
+      {mainTab === "orders" && (profile?.role === "manager" || profile?.role === "warehouse") && <FloristRequestsPanel />}
 
       {mainTab === "hours" && (
       <section className="space-y-3">

@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { decodeHtmlEntities } from "@/lib/format";
+import { useRealtimeRefresh } from "@/lib/useRealtimeRefresh";
+import { parseLineItems, type OrderLite } from "../warehouse/OrderAssembleModal";
 
 // Поиск и заказ у Van Vliet (склад Praha) — вызывает Edge Functions
 // vanvliet-search (только чтение) и vanvliet-order (реальная покупка).
@@ -56,6 +58,71 @@ function coreName(name: string): string {
 }
 
 const emptyRow = (): SearchRow => ({ keyword: "", color: "", maxPrice: "", quantity: "", materialId: "" });
+
+type StickerLite = { id: string; product_name: string; category: string | null; order_unit_size: number; quantity: number | null };
+type RecipeLite = { bouquet_sticker_id: string; ingredient_sticker_id: string; quantity_needed: number };
+type QueueOrder = OrderLite & { delivery_date: string | null; status: string | null };
+
+type ShortfallRow = { materialId: string; neededDate: string; shortfall: number };
+
+// Заказы в этих статусах ещё не собраны — их стебли ещё не списаны из
+// batches/product_stickers.quantity (списание происходит только при
+// подтверждении сборки, см. OrderAssembleModal). Более поздние статусы
+// (assembled и дальше) уже реально забрали своё из остатка, второй раз
+// их считать нельзя.
+const NOT_YET_ASSEMBLED_STATUSES = ["new", "confirmed", "courier_assigned", "assembling"];
+
+// Та же логика, что и при сборке одного заказа (OrderAssembleModal), но
+// по всем ещё не собранным заказам сразу — чтобы увидеть дефицит
+// заранее, а не в момент, когда флорист уже стоит и собирает букет.
+function computeShortfalls(orders: QueueOrder[], stickers: StickerLite[], recipes: RecipeLite[]): ShortfallRow[] {
+  function findSticker(rawName: string, decodedName: string) {
+    return stickers.find((s) => s.product_name === rawName) ?? stickers.find((s) => decodeHtmlEntities(s.product_name) === decodedName);
+  }
+
+  const ordersByDate = new Map<string, QueueOrder[]>();
+  for (const order of orders) {
+    const date = order.delivery_date;
+    if (!date) continue;
+    const list = ordersByDate.get(date) ?? [];
+    list.push(order);
+    ordersByDate.set(date, list);
+  }
+  const dates = Array.from(ordersByDate.keys()).sort();
+
+  // Текущий остаток по каждому сырью — расходуется по датам от ближайшей
+  // к дальней, а не заново на каждую дату, иначе один и тот же остаток
+  // "покроет" сразу несколько разных дней вместо одного.
+  const availableByMaterial = new Map(
+    stickers.filter((s) => s.category === "ohapka").map((s) => [s.id, s.quantity ?? 0])
+  );
+
+  const rows: ShortfallRow[] = [];
+  for (const date of dates) {
+    const needMap = new Map<string, number>();
+    for (const order of ordersByDate.get(date) ?? []) {
+      for (const item of parseLineItems(order)) {
+        const sticker = findSticker(item.rawName, item.name);
+        if (!sticker) continue;
+        if (sticker.category === "ohapka") {
+          needMap.set(sticker.id, (needMap.get(sticker.id) ?? 0) + item.quantity * sticker.order_unit_size);
+          continue;
+        }
+        for (const r of recipes.filter((r) => r.bouquet_sticker_id === sticker.id)) {
+          needMap.set(r.ingredient_sticker_id, (needMap.get(r.ingredient_sticker_id) ?? 0) + r.quantity_needed * item.quantity);
+        }
+      }
+    }
+    for (const [materialId, needed] of needMap.entries()) {
+      const available = availableByMaterial.get(materialId) ?? 0;
+      const used = Math.min(available, needed);
+      availableByMaterial.set(materialId, available - used);
+      const shortfall = needed - used;
+      if (shortfall > 0) rows.push({ materialId, neededDate: date, shortfall });
+    }
+  }
+  return rows;
+}
 
 // Дата в пражском часовом поясе, +offsetDays дней от сегодня, как "YYYY-MM-DD".
 function pragueDate(offsetDays: number): string {
@@ -119,6 +186,37 @@ export function VanVlietPanel() {
     totalAliases: number;
     report: { name: string; aliases: string[] }[];
   } | null>(null);
+
+  // Авто-расчёт "что закончится под ещё не собранные заказы" — считается
+  // на лету при каждом изменении заказов/остатков, не хранится (иначе
+  // протухнет так же, как раньше протухали алиасы).
+  const [shortfalls, setShortfalls] = useState<ShortfallRow[]>([]);
+  const [queueLoading, setQueueLoading] = useState(true);
+  const [searchingQueueKey, setSearchingQueueKey] = useState<string | null>(null);
+
+  async function loadShortfalls() {
+    setQueueLoading(true);
+    const supabase = createClient();
+    const [ordersRes, stickersRes, recipesRes] = await Promise.all([
+      supabase
+        .from("tilda_orders")
+        .select("id, order_id, customer_name, recipient_name, products_text, raw_payload, delivery_date, status")
+        .in("status", NOT_YET_ASSEMBLED_STATUSES),
+      supabase.from("product_stickers").select("id, product_name, category, order_unit_size, quantity"),
+      supabase.from("product_recipes").select("bouquet_sticker_id, ingredient_sticker_id, quantity_needed"),
+    ]);
+    setShortfalls(
+      computeShortfalls((ordersRes.data ?? []) as QueueOrder[], stickersRes.data ?? [], recipesRes.data ?? [])
+    );
+    setQueueLoading(false);
+  }
+
+  useEffect(() => {
+    loadShortfalls();
+  }, []);
+
+  useRealtimeRefresh("tilda_orders", loadShortfalls);
+  useRealtimeRefresh("product_stickers", loadShortfalls);
 
   useEffect(() => {
     (async () => {
@@ -202,6 +300,57 @@ export function VanVlietPanel() {
       setError(await describeFunctionError(e));
     } finally {
       setRefreshingAliases(false);
+    }
+  }
+
+  // Кнопка на строке дефицита — ищет по уже сохранённым алиасам этого
+  // цветка сразу на нужную дату и добавляет результат к тем же карточкам
+  // "Купить" сверху, что и обычный ручной поиск.
+  async function searchForShortfall(row: ShortfallRow) {
+    const material = materials.find((m) => m.id === row.materialId);
+    if (!material) return;
+    const phrases = aliases.filter((a) => a.product_sticker_id === row.materialId).map((a) => a.alias);
+    if (!phrases.length) {
+      setError(
+        `Нет сохранённых соответствий для «${decodeHtmlEntities(material.product_name)}» — сначала обнови соответствия или найди вручную`
+      );
+      return;
+    }
+    const key = `${row.materialId}:${row.neededDate}`;
+    setSearchingQueueKey(key);
+    setError(null);
+    try {
+      const supabase = createClient();
+      const requests = phrases.map((phrase) => ({
+        label: phrase,
+        keywords: phrase.toLowerCase().split(/\s+/).filter(Boolean),
+        colors: [],
+        maxPrice: null,
+        quantity: row.shortfall,
+      }));
+      const { data, error: fnError } = await supabase.functions.invoke("vanvliet-search", {
+        body: { requests, targetDate: row.neededDate },
+      });
+      if (fnError) throw fnError;
+      if (data?.ok === false) throw new Error(data.step ? `${data.step}: ${JSON.stringify(data.body)}` : data.error);
+
+      const rawResults: ResultGroup[] = data.results ?? [];
+      const byKey = new Map<number, Candidate>();
+      for (const part of rawResults) for (const c of part.candidates) if (!byKey.has(c.cartProductKey)) byKey.set(c.cartProductKey, c);
+
+      const merged: ResultGroup = {
+        request: decodeHtmlEntities(material.product_name),
+        requestedQuantity: row.shortfall,
+        quantityWasUnspecified: false,
+        candidates: Array.from(byKey.values()),
+        date: row.neededDate,
+      };
+      setResults((prev) => [merged, ...(prev ?? [])]);
+      setResultMaterialIds((prev) => [row.materialId, ...(prev ?? [])]);
+    } catch (e) {
+      setError(await describeFunctionError(e));
+    } finally {
+      setSearchingQueueKey(null);
     }
   }
 
@@ -444,6 +593,38 @@ export function VanVlietPanel() {
             {loading ? "Ищу…" : "Искать"}
           </button>
         </div>
+      </div>
+
+      <div className="space-y-1.5 border-t border-zinc-200 pt-3 dark:border-zinc-700">
+        <p className="text-sm font-medium">К заказу (по ещё не собранным заказам)</p>
+        {queueLoading ? (
+          <p className="text-xs text-zinc-400">Считаю…</p>
+        ) : shortfalls.length === 0 ? (
+          <p className="text-xs text-zinc-400">Дефицита не видно — на всё хватает остатка.</p>
+        ) : (
+          shortfalls.map((row) => {
+            const material = materials.find((m) => m.id === row.materialId);
+            const key = `${row.materialId}:${row.neededDate}`;
+            return (
+              <div
+                key={key}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-zinc-200 px-2 py-1.5 text-xs dark:border-zinc-700"
+              >
+                <span>
+                  <span className="font-medium">{material ? decodeHtmlEntities(material.product_name) : "—"}</span> — не хватает{" "}
+                  {row.shortfall} на {row.neededDate}
+                </span>
+                <button
+                  onClick={() => searchForShortfall(row)}
+                  disabled={searchingQueueKey === key}
+                  className="rounded-md border border-zinc-300 px-2 py-1 text-zinc-500 hover:border-accent hover:text-accent disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-400"
+                >
+                  {searchingQueueKey === key ? "…" : "Искать у Van Vliet"}
+                </button>
+              </div>
+            );
+          })
+        )}
       </div>
 
       {error && <p className="text-xs text-red-500">{error}</p>}
