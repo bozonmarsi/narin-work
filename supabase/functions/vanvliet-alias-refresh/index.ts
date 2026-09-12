@@ -224,7 +224,20 @@ ${catalogLines}
     try {
       mapping = JSON.parse(cleaned)
     } catch {
-      return json({ ok: false, step: 'parse', raw: rawText }, 502)
+      // TEMP DEBUG — показать реальный ответ модели целиком, раз text
+      // пришёл пустым/битым, чтобы понять почему, а не гадать.
+      return json(
+        {
+          ok: false,
+          step: 'parse',
+          raw: rawText,
+          stopReason: aiData?.stop_reason,
+          usage: aiData?.usage,
+          contentBlockCount: Array.isArray(aiData?.content) ? aiData.content.length : null,
+          fullResponse: aiData,
+        },
+        502
+      )
     }
 
     let updatedMaterials = 0
