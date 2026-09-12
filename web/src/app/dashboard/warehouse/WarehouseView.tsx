@@ -15,14 +15,14 @@ const NAV_ITEMS: { key: PanelKey; label: string; icon: string }[] = [
   { key: "receive", label: "Приёмка", icon: "📦" },
   { key: "recipes", label: "Рецепты", icon: "📋" },
   { key: "suppliers", label: "Поставщики", icon: "🚚" },
-  { key: "flowers", label: "Не хватает", icon: "🌸" },
+  { key: "flowers", label: "Пожелания", icon: "🌸" },
 ];
 
 const PANEL_TITLES: Record<PanelKey, string> = {
   receive: "Приёмка партии",
   recipes: "Рецепты букетов",
   suppliers: "Поставщики",
-  flowers: "Не хватает цветов",
+  flowers: "Пожелания флориста",
 };
 
 function PanelContent({ panel, onOpenCatalog }: { panel: PanelKey; onOpenCatalog: () => void }) {

@@ -6,12 +6,13 @@ import { decodeHtmlEntities } from "@/lib/format";
 import { useRealtimeRefresh } from "@/lib/useRealtimeRefresh";
 import { useDashboard } from "../layout";
 
-// Склад (флорист) пишет здесь, каких цветов не хватает и на какую
-// дату — напрямую, вместо объяснений на словах менеджеру. Форма живёт
-// на складе, в "Приёмке" (showForm=true); на "Заказы цветов" у
-// менеджера показывается только сам список — заказывать решает
-// менеджер, а не склад. Доступ разграничен ещё и в RLS таблицы
-// florist_flower_requests, а не только в UI.
+// Пожелания флориста — не то же самое, что автоматический дефицит по
+// остаткам и заказам (тот отдельно считается в VanVlietPanel). Флорист
+// сама лучше знает, какой цветок хочет для своих букетов — вкус, а не
+// нехватка. Форма живёт на складе, в "Приёмке" (showForm=true); на
+// "Заказы цветов" у менеджера показывается только сам список — решает
+// заказывать менеджер, а не склад. Доступ разграничен ещё и в RLS
+// таблицы florist_flower_requests, а не только в UI.
 
 type Material = { id: string; product_name: string };
 type Request = {
@@ -111,10 +112,10 @@ export function FloristRequestsPanel({ showForm = true }: { showForm?: boolean }
 
   return (
     <div className="space-y-3">
-      <p className="text-sm font-medium">Не хватает цветов</p>
+      <p className="text-sm font-medium">Пожелания флориста</p>
       {showForm ? (
         <>
-          <p className="text-xs text-zinc-400">Напиши, какого цветка не хватает и на какую дату — менеджер увидит и закажет у поставщика.</p>
+          <p className="text-xs text-zinc-400">Попроси цветок на дату напрямую — менеджер увидит и закажет у поставщика.</p>
 
           <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-zinc-200 p-2 dark:border-zinc-700">
             <select
@@ -153,17 +154,17 @@ export function FloristRequestsPanel({ showForm = true }: { showForm?: boolean }
               disabled={saving || !materialId || !(Number(quantity) > 0)}
               className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-white disabled:opacity-50"
             >
-              {saving ? "…" : "Отправить"}
+              {saving ? "…" : "Попросить"}
             </button>
           </div>
           {error && <p className="text-xs text-red-500">{error}</p>}
         </>
       ) : (
-        <p className="text-xs text-zinc-400">То, что склад отметил как нехватку — заказать или отклонить.</p>
+        <p className="text-xs text-zinc-400">Что попросил флорист — закажи или отклони.</p>
       )}
 
       <div className="space-y-1.5">
-        {pending.length === 0 && <p className="text-xs text-zinc-400">Нехватки пока нет.</p>}
+        {pending.length === 0 && <p className="text-xs text-zinc-400">Пожеланий пока нет.</p>}
         {pending.map((r) => (
           <div
             key={r.id}
@@ -196,7 +197,7 @@ export function FloristRequestsPanel({ showForm = true }: { showForm?: boolean }
 
       {resolved.length > 0 && (
         <details className="text-xs text-zinc-400">
-          <summary className="cursor-pointer">Закрытые заявки ({resolved.length})</summary>
+          <summary className="cursor-pointer">Закрытые пожелания ({resolved.length})</summary>
           <div className="mt-1 space-y-1">
             {resolved.map((r) => (
               <p key={r.id}>
