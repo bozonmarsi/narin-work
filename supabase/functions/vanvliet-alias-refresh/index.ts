@@ -243,8 +243,13 @@ ${catalogLines}
       )
     }
 
+    const materialNameById = new Map((materials ?? []).map((m) => [m.id, m.product_name]))
+
     let updatedMaterials = 0
     let totalAliases = 0
+    // Читаемый отчёт "наше название -> что сохранили" — по имени, не по id,
+    // чтобы результат можно было проверить глазами.
+    const report: { name: string; aliases: string[] }[] = []
     for (const [materialId, productNames] of Object.entries(mapping)) {
       if (!Array.isArray(productNames) || productNames.length === 0) continue
       // Полная замена — устаревшие соответствия для этого цветка не
@@ -259,12 +264,14 @@ ${catalogLines}
       if (!error) {
         updatedMaterials++
         totalAliases += rows.length
+        report.push({ name: materialNameById.get(materialId) ?? materialId, aliases: cores })
       }
     }
 
     return json({
       ok: true,
       catalogSize: catalog.length,
+      report,
       materialsConsidered: (materials ?? []).length,
       updatedMaterials,
       totalAliases,
