@@ -200,7 +200,7 @@ ${catalogLines}
 
 Для каждого нашего цветка найди подходящие товары поставщика — тот же вид/род цветка И тот же цвет (если цвет вообще указан в нашем названии). Чешские названия могут сильно отличаться по буквам от латинских/английских/торговых: например "Pivoňka"="Peony"/"Paeonia", "Karafiát"="Dianthus"/"Carnation", "Růže"="Rosa"/"Rose", "Tulipán"="Tulipa"/"Tulip", "Hortenzie"="Hydrangea"/"Hortensia", "Kala"="Calla"/"Zantedeschia", "Slunečnice"="Helianthus"/"Sunflower", "Heřmánek"="Chamomile"/"Matricaria", "Anturium"="Anthurium", "Eukalyptus"="Eucalyptus". Переводи по смыслу, не по совпадению букв.
 
-Верни СТРОГО валидный JSON, без markdown-разметки и пояснений: объект вида {"id_нашего_цветка": ["точное название товара из каталога", ...]}. Названия товаров копируй один в один из каталога поставщика. От 0 до 4 названий на цветок — только те, в которых ты действительно уверена. Если для цветка нет ни одного уверенного совпадения — не включай его в ответ вообще.`
+Верни СТРОГО валидный JSON, без markdown-разметки и пояснений: объект вида {"id_нашего_цветка": ["точное название товара из каталога", ...]}. Названия товаров копируй один в один из каталога поставщика, БЕЗ части " | Цвет" — это в каталоге просто разделитель для тебя, в ответе его быть не должно. От 0 до 4 названий на цветок — только те, в которых ты действительно уверена. Если для цветка нет ни одного уверенного совпадения — не включай его в ответ вообще.`
 
     const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -218,7 +218,10 @@ ${catalogLines}
     const aiData = await aiRes.json()
     if (!aiRes.ok) return json({ ok: false, step: 'anthropic', status: aiRes.status, body: aiData }, 502)
 
-    const rawText: string = aiData?.content?.[0]?.text ?? ''
+    // Модель думает перед ответом ("thinking"-блок первым) — реальный
+    // текст надо искать по type, а не по первому индексу.
+    const textBlock = (aiData?.content ?? []).find((b: any) => b?.type === 'text')
+    const rawText: string = textBlock?.text ?? ''
     const cleaned = rawText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim()
     let mapping: Record<string, string[]>
     try {
@@ -247,7 +250,9 @@ ${catalogLines}
       // Полная замена — устаревшие соответствия для этого цветка не
       // накапливаются, а перезаписываются свежим ответом модели.
       await supabase.from('product_name_aliases').delete().eq('supplier_id', supplier.id).eq('product_sticker_id', materialId)
-      const cores = Array.from(new Set(productNames.map(coreName).filter(Boolean)))
+      // На всякий случай отрезаем " | Цвет", если модель всё же скопировала
+      // его вместе с названием из формата каталога в промпте.
+      const cores = Array.from(new Set(productNames.map((p) => coreName(p.split(' | ')[0])).filter(Boolean)))
       if (!cores.length) continue
       const rows = cores.map((alias) => ({ supplier_id: supplier.id, alias, product_sticker_id: materialId }))
       const { error } = await supabase.from('product_name_aliases').insert(rows)
