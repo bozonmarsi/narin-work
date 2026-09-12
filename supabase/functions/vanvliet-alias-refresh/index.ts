@@ -212,7 +212,7 @@ ${catalogLines}
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-5',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 24000,
         thinking: { type: 'adaptive' },
         output_config: { effort: 'high' },
