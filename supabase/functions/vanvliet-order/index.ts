@@ -205,12 +205,30 @@ Deno.serve(async (req) => {
     // поставщика отвечает "Položka nenalezena" (товар не найден), даже
     // если сам ключ на самом деле верный. ВАЖНО: keysArray в реальном
     // браузере уходит С ТЕМ ЖЕ ЗНАКОМ, что и productKey у cart/item (см.
-    // HAR: -1738163 в обоих местах) — Math.abs() тут был первой (неверной)
-    // попыткой и ломал прогрев.
-    await fetchJson(`${WS_BASE}/v1/supply/minimal/${CATEGORY.key}/3/${CATEGORY.sourceListType}/false`, {
+    // HAR: -1738163 в обоих местах).
+    const minimal = await fetchJson(`${WS_BASE}/v1/supply/minimal/${CATEGORY.key}/3/${CATEGORY.sourceListType}/false`, {
       method: 'GET',
       headers: fullContext,
     })
+
+    // Проверяем СРАЗУ по свежему списку: если этого ключа там уже нет —
+    // значит дело не в "session warm-up", а в том, что позиция на эту
+    // дату у поставщика протухла/переехала между поиском и покупкой
+    // (у них это часто "плавающие" лоты). Сообщаем честно, а не пытаемся
+    // всё равно положить в корзину заведомо мёртвый ключ.
+    if (!containsValue(minimal.body, Number(cartProductKey))) {
+      return json(
+        {
+          ok: false,
+          error: 'stale_product_key',
+          message:
+            'Van Vliet: этой позиции уже нет в свежем списке на эту дату — она протухла между поиском и покупкой. Поищи заново и попробуй со свежими результатами.',
+          minimalStatus: minimal.status,
+        },
+        502
+      )
+    }
+
     await fetchJson(`${WS_BASE}/v1/supply/full/${CATEGORY.sourceListType}/false`, {
       method: 'POST',
       headers: fullContext,
