@@ -261,16 +261,32 @@ Deno.serve(async (req) => {
     }
 
     const headers = fullContext
-    const url =
-      `${WS_BASE}/v1/cart/item?productKey=${encodeURIComponent(freshCartKey)}` +
-      `&amount=${encodeURIComponent(cartAmount)}&salesPrice=-1&retailPrice=-1`
+    const addToCart = (key: number) =>
+      fetchJson(
+        `${WS_BASE}/v1/cart/item?productKey=${encodeURIComponent(key)}` +
+          `&amount=${encodeURIComponent(cartAmount)}&salesPrice=-1&retailPrice=-1`,
+        { method: 'POST', headers }
+      )
+    const isApiError = (r: any) => r && typeof r === 'object' && String(r.error).toLowerCase() === 'true'
 
-    const { status, body: result } = await fetchJson(url, { method: 'POST', headers })
+    // Уже дважды гадали со знаком ключа между разными эндпоинтами и оба
+    // раза мимо — вместо третьей догадки просто пробуем оба знака и
+    // берём тот, который поставщик реально принял.
+    let usedKey = freshCartKey
+    let { status, body: result } = await addToCart(freshCartKey)
+    if (status >= 400 || isApiError(result)) {
+      const retry = await addToCart(-freshCartKey)
+      if (!(retry.status >= 400 || isApiError(retry.body))) {
+        usedKey = -freshCartKey
+        status = retry.status
+        result = retry.body
+      }
+    }
 
     // Поставщик сигналит ошибки текстовым полем error в теле ответа, а не
     // HTTP-статусом — тело может прийти с "200 OK" и всё равно означать
     // отказ (например "товар не найден").
-    const apiError = result && typeof result === 'object' && String((result as any).error).toLowerCase() === 'true'
+    const apiError = isApiError(result)
     if (status >= 400 || apiError) {
       const supplierMessage = decodeVanVlietMessage(result)
       return json(
@@ -278,6 +294,7 @@ Deno.serve(async (req) => {
         502
       )
     }
+    freshCartKey = usedKey
 
     // HTTP-успех тут ничего не гарантирует (см. комментарий вверху файла) —
     // перечитываем саму корзину на эту дату и ищем там наш товар, точно
