@@ -17,13 +17,19 @@
 // только для этой записи (фронт и так их уже знает из результатов поиска).
 //
 // ВАЖНО: HTTP-статус < 400 от /v1/cart/item НЕ означает, что товар
-// реально попал в корзину — на практике поймали случай, когда сервер
-// поставщика отвечал успехом, а товара в корзине на нужную дату не
-// оказывалось (сверено вживую через личный кабинет). Поэтому после
-// добавления мы ОБЯЗАТЕЛЬНО перечитываем саму корзину (GET
-// /v1/cart/{date} — ровно то же самое, что делает их сайт сразу после
-// добавления, см. HAR) и считаем покупку успешной только если товар
-// реально нашёлся в ответе.
+// реально попал в корзину — поймали живьём случай "200 OK" с телом
+// {"error":"true","content":{"list":{"message":"Položka nenalezena.
+// Obnovte seznam a zkuste znovu, prosím"}}} ("товар не найден, обновите
+// список и попробуйте снова"). Причина: cartProductKey приходит с более
+// раннего вызова vanvliet-search — а это ДРУГАЯ сессия у поставщика,
+// которая никогда не видела каталог на эту дату. Сама покупка стартует
+// с чистого листа (authorize → user-settings → autoselect → сразу
+// cart/item), поэтому сервер поставщика этот ключ просто не узнаёт.
+// Фикс — как и в реальном браузере/vanvliet-search, перед покупкой
+// подгружаем каталог (supply/minimal + supply/full) на эту дату В ТОЙ ЖЕ
+// сессии, чтобы сервер "увидел" нужный товар. И проверяем не только
+// статус, но и текстовое поле error в самом теле ответа — поставщик
+// сигналит ошибки именно так, а не HTTP-кодом.
 //
 // Секреты: VANVLIET_USERNAME, VANVLIET_PASSWORD (те же, что у
 // vanvliet-search), SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
@@ -45,7 +51,7 @@ function json(body: unknown, status = 200) {
 const CLIENT_ID = 'be38bc54e6c04589b5fc3c9e11f1f3a2'
 const DB_SERVER_ID = '47'
 const WS_BASE = 'https://wsngshop.orderyourflowers.nl/servoy-service/rest_ws/ws_ngshop'
-const CATEGORY = { key: '4_1' } // тот же прайслист, что и в vanvliet-search
+const CATEGORY = { key: '4_1', sourceListType: '2' } // тот же прайслист, что и в vanvliet-search
 
 const BROWSER_HEADERS: Record<string, string> = {
   'User-Agent':
@@ -108,6 +114,20 @@ function containsValue(node: unknown, needle: number, depth = 0): boolean {
   if (Array.isArray(node)) return node.some((v) => containsValue(v, needle, depth + 1))
   if (node && typeof node === 'object') return Object.values(node as Record<string, unknown>).some((v) => containsValue(v, needle, depth + 1))
   return false
+}
+
+// Их текстовые сообщения об ошибках закодированы старым JS escape()
+// (%uXXXX для не-ASCII, %XX для остального) — не то же самое, что
+// decodeURIComponent сам по себе понимает.
+function decodeVanVlietMessage(body: unknown): string | null {
+  const raw = (body as any)?.content?.list?.message
+  if (typeof raw !== 'string') return null
+  try {
+    const withUnicode = raw.replace(/%u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    return decodeURIComponent(withUnicode)
+  } catch {
+    return raw
+  }
 }
 
 async function getAuth(username: string, password: string): Promise<string> {
@@ -180,6 +200,20 @@ Deno.serve(async (req) => {
       { method: 'GET', headers: withMarkname }
     )
 
+    // Подгружаем каталог на эту дату В ЭТОЙ ЖЕ сессии — cartProductKey
+    // пришёл из vanvliet-search (другая сессия), и без этого шага сервер
+    // поставщика отвечает "Položka nenalezena" (товар не найден), даже
+    // если сам ключ на самом деле верный.
+    await fetchJson(`${WS_BASE}/v1/supply/minimal/${CATEGORY.key}/3/${CATEGORY.sourceListType}/false`, {
+      method: 'GET',
+      headers: fullContext,
+    })
+    await fetchJson(`${WS_BASE}/v1/supply/full/${CATEGORY.sourceListType}/false`, {
+      method: 'POST',
+      headers: fullContext,
+      body: JSON.stringify({ keysArray: [Math.abs(Number(cartProductKey))] }),
+    })
+
     const headers = fullContext
     const url =
       `${WS_BASE}/v1/cart/item?productKey=${encodeURIComponent(cartProductKey)}` +
@@ -187,8 +221,16 @@ Deno.serve(async (req) => {
 
     const { status, body: result } = await fetchJson(url, { method: 'POST', headers })
 
-    if (status >= 400) {
-      return json({ ok: false, status, body: result }, 502)
+    // Поставщик сигналит ошибки текстовым полем error в теле ответа, а не
+    // HTTP-статусом — тело может прийти с "200 OK" и всё равно означать
+    // отказ (например "товар не найден").
+    const apiError = result && typeof result === 'object' && String((result as any).error).toLowerCase() === 'true'
+    if (status >= 400 || apiError) {
+      const supplierMessage = decodeVanVlietMessage(result)
+      return json(
+        { ok: false, status, body: result, message: supplierMessage ? `Van Vliet: ${supplierMessage}` : undefined },
+        502
+      )
     }
 
     // HTTP-успех тут ничего не гарантирует (см. комментарий вверху файла) —
