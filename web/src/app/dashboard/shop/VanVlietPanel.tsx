@@ -72,6 +72,15 @@ function coreName(name: string): string {
 
 const emptyRow = (): SearchRow => ({ keyword: "", color: "", maxPrice: "", quantity: "", materialId: "" });
 
+// У поставщика заказ идёт партиями (шаг = orderPer: 1 шт гортензии, 10
+// эустомы и т.п.) — округляем вверх до ближайшего кратного шагу, а не
+// разрешаем произвольное число, которое реальный заказ не примет.
+function roundToStep(amount: number, step: number): number {
+  const s = step > 0 ? step : 1;
+  if (!(amount > 0)) return s;
+  return Math.ceil(amount / s) * s;
+}
+
 type StickerLite = { id: string; product_name: string; category: string | null; order_unit_size: number; quantity: number | null };
 type RecipeLite = { bouquet_sticker_id: string; ingredient_sticker_id: string; quantity_needed: number };
 type QueueOrder = OrderLite & { delivery_date: string | null; status: string | null };
@@ -186,6 +195,10 @@ export function VanVlietPanel() {
   const [error, setError] = useState<string | null>(null);
   const [ordering, setOrdering] = useState<string | null>(null);
   const [ordered, setOrdered] = useState<Record<string, boolean>>({});
+  // Ручная правка количества прямо на карточке — по умолчанию берём
+  // предложенный минимум партии у поставщика, но можно взять и больше
+  // (кратно шагу заказа: 10 эустом, 20, 30…, а не только ровно 10).
+  const [cartAmounts, setCartAmounts] = useState<Record<string, number>>({});
 
   // Журнал того, что уже реально куплено у Van Vliet (пишет сама функция
   // vanvliet-order при успехе) — чтобы видеть, чего и на какую дату ждать,
@@ -515,12 +528,12 @@ export function VanVlietPanel() {
     }
   }
 
-  async function buy(candidate: Candidate, requestLabel: string, date: string, materialId: string | null) {
+  async function buy(candidate: Candidate, requestLabel: string, date: string, materialId: string | null, amount: number) {
     const key = `${requestLabel}:${candidate.cartProductKey}`;
-    const total = candidate.price * candidate.cartAmount;
+    const total = candidate.price * amount;
     if (
       !confirm(
-        `Заказать «${candidate.product}» — ${candidate.cartAmount} шт за ${total} Kč на ${date}?\n\nЭто реальная покупка у поставщика, отменить нельзя.`
+        `Заказать «${candidate.product}» — ${amount} шт за ${total} Kč на ${date}?\n\nЭто реальная покупка у поставщика, отменить нельзя.`
       )
     ) {
       return;
@@ -532,7 +545,7 @@ export function VanVlietPanel() {
       const { data, error: fnError } = await supabase.functions.invoke("vanvliet-order", {
         body: {
           cartProductKey: candidate.cartProductKey,
-          cartAmount: candidate.cartAmount,
+          cartAmount: amount,
           targetDate: date,
           confirm: true,
           productName: candidate.product,
@@ -745,6 +758,8 @@ export function VanVlietPanel() {
                     const aliasKey = materialId ? `${materialId}:${c.product}` : null;
                     const alreadyAliased =
                       materialId && aliases.some((a) => a.product_sticker_id === materialId && a.alias === coreName(c.product));
+                    const step = c.orderPer || 1;
+                    const amount = cartAmounts[key] ?? c.cartAmount;
                     return (
                       <div key={key} className="rounded-md border border-zinc-200 p-2 text-xs dark:border-zinc-700">
                         {c.photo && (
@@ -759,8 +774,32 @@ export function VanVlietPanel() {
                         <p className="text-zinc-500 dark:text-zinc-400">
                           {c.color} · {c.quality} · {c.grower || "—"}
                         </p>
+                        <div className="mt-1 flex items-center gap-1">
+                          <button
+                            onClick={() => setCartAmounts((p) => ({ ...p, [key]: Math.max(step, amount - step) }))}
+                            className="rounded border border-zinc-300 px-1.5 leading-5 text-zinc-500 hover:border-accent hover:text-accent dark:border-zinc-600"
+                          >
+                            −
+                          </button>
+                          <input
+                            type="number"
+                            value={amount}
+                            min={step}
+                            step={step}
+                            onChange={(e) => setCartAmounts((p) => ({ ...p, [key]: Number(e.target.value) || step }))}
+                            onBlur={() => setCartAmounts((p) => ({ ...p, [key]: roundToStep(amount, step) }))}
+                            className="w-12 rounded border border-zinc-300 bg-transparent px-1 py-0.5 text-center outline-none focus:border-accent dark:border-zinc-600"
+                          />
+                          <button
+                            onClick={() => setCartAmounts((p) => ({ ...p, [key]: amount + step }))}
+                            className="rounded border border-zinc-300 px-1.5 leading-5 text-zinc-500 hover:border-accent hover:text-accent dark:border-zinc-600"
+                          >
+                            +
+                          </button>
+                          <span className="text-zinc-400">шт (партия {step})</span>
+                        </div>
                         <p className="mt-1">
-                          {c.price} Kč × {c.cartAmount} = <b>{c.price * c.cartAmount} Kč</b>
+                          {c.price} Kč × {amount} = <b>{c.price * amount} Kč</b>
                         </p>
                         <p className="text-zinc-400">на складе: {c.stock}</p>
                         {materialId && (
@@ -773,7 +812,7 @@ export function VanVlietPanel() {
                           </button>
                         )}
                         <button
-                          onClick={() => buy(c, group.request, group.date, materialId || null)}
+                          onClick={() => buy(c, group.request, group.date, materialId || null, roundToStep(amount, step))}
                           disabled={ordering === key || ordered[key]}
                           className="mt-1.5 w-full rounded-md bg-accent px-2 py-1 text-white disabled:opacity-50"
                         >
