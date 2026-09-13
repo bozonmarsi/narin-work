@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { decodeHtmlEntities } from "@/lib/format";
 import { useRealtimeRefresh } from "@/lib/useRealtimeRefresh";
 import { parseLineItems, type OrderLite } from "../warehouse/OrderAssembleModal";
+import { Modal } from "../warehouse/Modal";
 import { FloristRequestsPanel } from "./FloristRequestsPanel";
 
 // Поиск и заказ у Van Vliet (склад Praha) — вызывает Edge Functions
@@ -28,6 +29,7 @@ type Purchase = {
   total_price: number | null;
   target_date: string | null;
   created_at: string;
+  picked_up: boolean;
 };
 
 type Candidate = {
@@ -194,10 +196,29 @@ export function VanVlietPanel() {
     const supabase = createClient();
     const { data } = await supabase
       .from("vanvliet_purchases")
-      .select("id, product_name, color, quantity, price_per_unit, total_price, target_date, created_at")
+      .select("id, product_name, color, quantity, price_per_unit, total_price, target_date, created_at, picked_up")
       .order("target_date", { ascending: true })
       .limit(50);
     setPurchases((data ?? []) as Purchase[]);
+  }
+
+  // Реальная логика склада: заказала сегодня — завтра с утра едешь на
+  // оптовую базу и собираешь по списку. Отмечаем то, что физически
+  // забрано, отдельно от самого факта заказа — забранное больше не
+  // должно маячить среди "ещё надо забрать".
+  const [pickupModalOpen, setPickupModalOpen] = useState(false);
+  const [markingPickedUp, setMarkingPickedUp] = useState<string | null>(null);
+  const pendingPickup = purchases.filter((p) => !p.picked_up);
+
+  async function markPickedUp(id: string) {
+    setMarkingPickedUp(id);
+    try {
+      const supabase = createClient();
+      await supabase.from("vanvliet_purchases").update({ picked_up: true, picked_up_at: new Date().toISOString() }).eq("id", id);
+      await loadPurchases();
+    } finally {
+      setMarkingPickedUp(null);
+    }
   }
 
   useEffect(() => {
@@ -399,15 +420,23 @@ export function VanVlietPanel() {
     setRows((prev) => prev.filter((_, idx) => idx !== i));
   }
 
-  // Несколько алиасов на один свой цветок — это нормально (у поставщика
-  // может быть несколько подходящих товаров), поэтому раскрываем строку
-  // во ВСЕ известные алиасы сразу + вручную введённую фразу, если она
-  // отличается, а не только в первый найденный.
+  // Выбор из своего списка и ручной ввод названия — два независимых
+  // способа сказать, что искать, а не связка "выбери И обязательно
+  // допиши". Несколько алиасов на один свой цветок — это нормально (у
+  // поставщика может быть несколько подходящих товаров), поэтому
+  // раскрываем строку во ВСЕ известные алиасы сразу + вручную введённую
+  // фразу, если она есть. Если у выбранного цветка ещё нет ни одного
+  // сохранённого алиаса — ищем хотя бы по его собственному названию,
+  // чтобы выбор из списка сам по себе уже был достаточен для поиска.
   function phrasesForRow(row: SearchRow): string[] {
     const known = row.materialId ? aliases.filter((a) => a.product_sticker_id === row.materialId).map((a) => a.alias) : [];
     const manual = row.keyword.trim();
     const set = new Set(known);
     if (manual) set.add(manual);
+    if (set.size === 0 && row.materialId) {
+      const material = materials.find((m) => m.id === row.materialId);
+      if (material) set.add(decodeHtmlEntities(material.product_name));
+    }
     return Array.from(set);
   }
 
@@ -523,17 +552,26 @@ export function VanVlietPanel() {
   }
 
   return (
+    <>
     <div className="grid items-start gap-4 lg:grid-cols-2">
     <div className="mb-4 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-medium">Van Vliet — поиск и заказ (Praha)</p>
-        <button
-          onClick={refreshAliases}
-          disabled={refreshingAliases}
-          className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-500 hover:border-accent hover:text-accent disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-400"
-        >
-          {refreshingAliases ? "Обновляю соответствия (может занять минуту)…" : "🔄 Обновить соответствия (AI)"}
-        </button>
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            onClick={() => setPickupModalOpen(true)}
+            className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-500 hover:border-accent hover:text-accent dark:border-zinc-600 dark:text-zinc-400"
+          >
+            📦 Забрать со склада{pendingPickup.length > 0 ? ` (${pendingPickup.length})` : ""}
+          </button>
+          <button
+            onClick={refreshAliases}
+            disabled={refreshingAliases}
+            className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-500 hover:border-accent hover:text-accent disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-400"
+          >
+            {refreshingAliases ? "Обновляю соответствия (может занять минуту)…" : "🔄 Обновить соответствия (AI)"}
+          </button>
+        </div>
       </div>
 
       {refreshResult && (
@@ -680,8 +718,10 @@ export function VanVlietPanel() {
       </div>
     </div>
 
-    <div className="lg:sticky lg:top-4 space-y-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-      <p className="text-sm font-medium">🛒 Корзина</p>
+    <div className="space-y-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
+      <p className="sticky top-0 -mt-3 -mx-3 border-b border-zinc-200 bg-white px-3 pb-2 pt-3 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-900">
+        🛒 Корзина
+      </p>
       {!results || results.length === 0 ? (
         <p className="text-xs text-zinc-400">
           Пусто — найди что-нибудь слева (вручную или кнопкой «Искать у Van Vliet» из списка «К заказу»).
@@ -752,10 +792,10 @@ export function VanVlietPanel() {
 
       <div className="space-y-1.5 border-t border-zinc-200 pt-3 dark:border-zinc-700">
         <p className="text-sm font-medium">🧾 Что уже заказано</p>
-        {purchases.length === 0 ? (
-          <p className="text-xs text-zinc-400">Пока ничего не куплено.</p>
+        {pendingPickup.length === 0 ? (
+          <p className="text-xs text-zinc-400">Пока ничего не куплено (или всё уже забрано со склада).</p>
         ) : (
-          purchases.map((p) => (
+          pendingPickup.map((p) => (
             <div key={p.id} className="rounded-md border border-zinc-200 px-2 py-1.5 text-xs dark:border-zinc-700">
               <span className="font-medium">{p.product_name}</span>
               {p.color && <span className="text-zinc-400"> · {p.color}</span>} — {p.quantity} шт
@@ -767,5 +807,54 @@ export function VanVlietPanel() {
       </div>
     </div>
     </div>
+
+    {pickupModalOpen && (
+      <Modal title="Забрать со склада" onClose={() => setPickupModalOpen(false)}>
+        <p className="mb-3 text-xs text-zinc-400">
+          Отметь то, что реально забрала на оптовой базе — исчезнет из списка "Что уже заказано".
+        </p>
+        {pendingPickup.length === 0 ? (
+          <p className="text-sm text-zinc-400">Забирать пока нечего — всё уже собрано.</p>
+        ) : (
+          <div className="space-y-3">
+            {Object.entries(
+              pendingPickup.reduce<Record<string, Purchase[]>>((acc, p) => {
+                const key = p.target_date ?? "без даты";
+                (acc[key] ??= []).push(p);
+                return acc;
+              }, {})
+            )
+              .sort(([a], [b]) => a.localeCompare(b))
+              .map(([date, items]) => (
+                <div key={date}>
+                  <p className="mb-1 text-xs font-semibold text-zinc-500 dark:text-zinc-400">{date}</p>
+                  <div className="space-y-1">
+                    {items.map((p) => (
+                      <label
+                        key={p.id}
+                        className="flex cursor-pointer items-center gap-2 rounded-md border border-zinc-200 px-2 py-1.5 text-sm dark:border-zinc-700"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={false}
+                          disabled={markingPickedUp === p.id}
+                          onChange={() => markPickedUp(p.id)}
+                          className="h-4 w-4 shrink-0 accent-accent"
+                        />
+                        <span>
+                          <span className="font-medium">{p.product_name}</span>
+                          {p.color && <span className="text-zinc-400"> · {p.color}</span>} — {p.quantity} шт
+                          {p.total_price != null && <> за {p.total_price} Kč</>}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+          </div>
+        )}
+      </Modal>
+    )}
+    </>
   );
 }
