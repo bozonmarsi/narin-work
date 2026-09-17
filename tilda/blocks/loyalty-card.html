@@ -19,6 +19,8 @@
 .lk-card-content { position: relative; height: 100%; width: 100%; padding: 18px 20px; display: flex; flex-direction: column; color: #fff; box-sizing: border-box; }
 .lk-card-top-row { flex-shrink: 0; display: flex; justify-content: space-between; align-items: flex-start; }
 .lk-card-tier-badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.35); }
+.lk-card-info-btn { width: 18px; height: 18px; border-radius: 50%; background: #186ce0; display: flex; align-items: center; justify-content: center; text-decoration: none; flex-shrink: 0; box-shadow: 0 1px 4px rgba(0,0,0,0.35); }
+.lk-card-info-btn:active { opacity: 0.8; }
 .lk-card-mid { flex: 1 1 auto; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; min-height: 0; }
 .lk-card-balance-panel { background: rgba(0,0,0,0.32); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 14px; padding: 10px 18px; display: inline-flex; flex-direction: column; }
 .lk-card-balance-label { font-size: 14px; font-weight: 700; color: #ffffff; margin-bottom: 4px; letter-spacing: 0.03em; text-shadow: 0 1px 5px rgba(0,0,0,0.7); }
@@ -142,7 +144,16 @@
                     </div>
                     <div class="lk-card-bottom-row">
                         <span class="lk-card-number" id="lkCardNumber">●● ●● ●● ••••</span>
-                        <i class="ti ti-rotate-clockwise-2" style="font-size:16px;opacity:0.85;color:#fff;" aria-hidden="true"></i>
+                        <span style="display:flex; align-items:center; gap:8px;">
+                            <a href="/bonussystem" class="lk-card-info-btn" id="lkCardInfoBtn" aria-label="Jak funguje věrnostní program">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="16" x2="12" y2="11.5"></line>
+                                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                </svg>
+                            </a>
+                            <i class="ti ti-rotate-clockwise-2" style="font-size:16px;opacity:0.85;color:#fff;" aria-hidden="true"></i>
+                        </span>
                     </div>
                 </div>
             </div>
@@ -248,6 +259,9 @@
         tierBadgeEl.style.background = tierDef.color;
         tierBadgeEl.style.color = '#ffffff';
 
+        const infoBtnEl = document.getElementById('lkCardInfoBtn');
+        if (infoBtnEl) infoBtnEl.style.background = tierDef.color;
+
         const code = getClientCode(data);
         document.getElementById('lkCardNumber').textContent = '●● ●● ●● ' + code.slice(-4);
         document.getElementById('lkCardNumberFull').textContent = code;
@@ -310,18 +324,35 @@
         }, 300);
     }
 
-    document.getElementById('lkCardInner').addEventListener('click', function() {
-        this.style.transform = this.style.transform === 'rotateY(180deg)' ? '' : 'rotateY(180deg)';
-    });
+    const cardInnerEl = document.getElementById('lkCardInner');
+    if (cardInnerEl) {
+        cardInnerEl.addEventListener('click', function() {
+            this.style.transform = this.style.transform === 'rotateY(180deg)' ? '' : 'rotateY(180deg)';
+        });
+    }
 
-    document.getElementById('lkProgressHeader').addEventListener('click', function() {
-        const collapse = document.getElementById('lkTiersCollapse');
-        const chevron = document.getElementById('lkProgressChevron');
-        const isOpen = collapse.style.maxHeight && collapse.style.maxHeight !== '0px';
-        // Measure instead of hardcoding, so the list can never get clipped
-        // if tier names wrap or another tier is added later.
-        collapse.style.maxHeight = isOpen ? '0' : collapse.scrollHeight + 'px';
-        chevron.classList.toggle('lk-open', !isOpen);
-    });
+    // Klik na info-ikonu nesmí zároveň otočit kartu — ikona sedí uvnitř
+    // otočitelné plochy (lkCardInner), tak zastavíme probublání eventu.
+    // Každý listener je zabalený zvlášť, aby chybějící element (nebo
+    // jiná chyba u jednoho tlačítka) nezastavila registraci těch dalších.
+    const infoBtnClickEl = document.getElementById('lkCardInfoBtn');
+    if (infoBtnClickEl) {
+        infoBtnClickEl.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+    }
+
+    const progressHeaderEl = document.getElementById('lkProgressHeader');
+    if (progressHeaderEl) {
+        progressHeaderEl.addEventListener('click', function() {
+            const collapse = document.getElementById('lkTiersCollapse');
+            const chevron = document.getElementById('lkProgressChevron');
+            const isOpen = collapse.style.maxHeight && collapse.style.maxHeight !== '0px';
+            // Measure instead of hardcoding, so the list can never get clipped
+            // if tier names wrap or another tier is added later.
+            collapse.style.maxHeight = isOpen ? '0' : collapse.scrollHeight + 'px';
+            chevron.classList.toggle('lk-open', !isOpen);
+        });
+    }
 })();
 </script>

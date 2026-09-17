@@ -53,10 +53,12 @@
             });
             const data = await res.json();
 
-            if (data.error === 'invalid_token') {
-                // Token expiroval, nebo ho jiný widget na stránce smazal
-                // po zjištění neshody s aktuálně přihlášeným Tilda účtem —
-                // lkAuthGateOverlay ho při dalším načtení stránky obnoví.
+            if (data.error) {
+                // "token required" (chybí token) nebo "invalid_token"
+                // (expiroval, nebo ho jiný widget smazal po zjištění
+                // neshody s aktuálně přihlášeným Tilda účtem) — v obou
+                // případech nic neukládáme, lkAuthGateOverlay token při
+                // dalším načtení stránky obnoví.
                 loaded = false;
                 scheduleNext();
                 return;
