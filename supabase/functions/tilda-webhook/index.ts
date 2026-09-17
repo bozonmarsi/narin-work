@@ -26,6 +26,33 @@ function getCashbackPercent(totalEarned: number): number {
   return cashback;
 }
 
+// Стало 2026-09-17: get_promo раньше принимал голый email в теле запроса
+// и отдавал по нему баланс баллов (message: "Nedostatek bodů. Máte: N")
+// без всякой проверки владения — тот же класс дыры, что был в member-data
+// до фикса 2026-09-04. Приём заказа от самой Tilda (ниже по файлу) email
+// по-прежнему берёт из тела запроса как есть — это server-to-server вызов
+// от платёжной системы, а не от браузера клиента, токена там нет и не
+// нужно. Токен нужен только для get_promo, потому что его дёргает JS
+// прямо со страницы оплаты.
+const encoder = new TextEncoder();
+
+async function verifyToken(token: string, secret: string): Promise<string | null> {
+  const parts = String(token).split('.');
+  if (parts.length !== 2) return null;
+  const [payloadB64, sigB64] = parts;
+  const key = await crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sigBuf = await crypto.subtle.sign('HMAC', key, encoder.encode(payloadB64));
+  const expectedSigB64 = btoa(String.fromCharCode(...new Uint8Array(sigBuf)));
+  if (expectedSigB64 !== sigB64) return null;
+  try {
+    const payload = JSON.parse(atob(payloadB64));
+    if (!payload.exp || payload.exp < Date.now()) return null;
+    return payload.email;
+  } catch {
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
 
@@ -51,10 +78,19 @@ Deno.serve(async (req) => {
 
     // --- ЛОГИКА Б: КОРЗИНА (ПРОВЕРКА) ---
     if (action === 'get_promo') {
+      const token = data.token;
+      if (!token) {
+        return new Response(JSON.stringify({ status: 'error', message: 'Chybí token, přihlaste se prosím.' }), { status: 200, headers: corsHeaders });
+      }
+      const verifiedEmail = await verifyToken(token, Deno.env.get('AUTH_TOKEN_SECRET')!);
+      if (!verifiedEmail) {
+        return new Response(JSON.stringify({ status: 'error', message: 'Neplatný token, přihlaste se prosím znovu.' }), { status: 200, headers: corsHeaders });
+      }
+
       const pointsToSpend = Number(data.amount || 0);
       const totalOrderSum = Number(data.total_sum || data.amount_total || data.total || 0);
 
-      const { data: userData } = await supabase.from('Tilda points').select('balance').ilike('email', cleanEmail).maybeSingle();
+      const { data: userData } = await supabase.from('Tilda points').select('balance').ilike('email', verifiedEmail).maybeSingle();
       if (!userData) return new Response(JSON.stringify({ status: 'error', message: 'Uživatel nenalezen.' }), { status: 200, headers: corsHeaders });
 
       const currentBalance = Number(userData.balance || 0);

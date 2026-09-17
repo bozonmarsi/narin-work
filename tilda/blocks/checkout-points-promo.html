@@ -11,21 +11,6 @@ $(document).ready(function() {
 
     $('.pole-promocode-procent, .pole-promocode-sum').hide().css('opacity', '0');
 
-    function getTildaEmail() {
-        let email = null;
-        for (let i = 0; i < localStorage.length; i++) {
-            let key = localStorage.key(i);
-            if (key && key.indexOf("tilda_members_profile") !== -1) {
-                try {
-                    const profile = JSON.parse(localStorage.getItem(key));
-                    email = profile.login || profile.email;
-                    if (email) break;
-                } catch (e) {}
-            }
-        }
-        return email;
-    }
-
     function getStoredToken() {
         try {
             const raw = localStorage.getItem('lk_auth_token');
@@ -113,8 +98,8 @@ $(document).ready(function() {
             }
 
             $btnText.text('...');
-            let email = getTildaEmail();
-            if (!email) { showError("Přihlaste se."); $btnText.text(originalBtnText); return; }
+            let token = getStoredToken();
+            if (!token) { showError("Přihlaste se."); $btnText.text(originalBtnText); return; }
 
             let cartTotal = 0;
             let priceText = $('.my-price-only .tn-atom').text();
@@ -125,7 +110,7 @@ $(document).ready(function() {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        action: 'get_promo', email: email, amount: rounded, total_sum: cartTotal, check_only: true
+                        action: 'get_promo', token: token, amount: rounded, total_sum: cartTotal, check_only: true
                     })
                 });
                 const resData = await response.json();
