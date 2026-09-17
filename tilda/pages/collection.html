@@ -1,0 +1,704 @@
+<style>
+.lk-collection-wrap { font-family: 'Rubik', sans-serif; max-width: 600px; margin: 0 auto; padding: 0 20px 40px; box-sizing: border-box; }
+.lk-topbar { display: flex; justify-content: space-between; align-items: center; padding: 20px 0 0; }
+.lk-brand-header { text-align: center; margin: 18px 0 12px; }
+.lk-brand-header img { max-width: 280px; width: 100%; height: auto; display: inline-block; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; pointer-events: none; }
+.lk-brand-tagline { font-size: 13px; color: #8a8f98; margin-top: 6px; }
+.lk-collection-count { font-size: 13px; color: #8a8f98; margin-bottom: 14px; text-align: center; }
+.lk-action-row { display: flex; gap: 8px; margin-bottom: 14px; }
+.lk-shake-btn { flex: 1; padding: 13px; border-radius: 16px; border: none; background: #186ce0; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; display: none; }
+.lk-share-btn { width: 50px; border-radius: 16px; border: none; background: linear-gradient(135deg,#f58529,#dd2a7b,#8134af,#515bd4); display: none; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: opacity 0.2s ease; }
+.lk-jar { position: relative; width: 100%; height: 370px; border-radius: 24px; overflow: hidden; touch-action: none; display: none; background: linear-gradient(160deg,#eaf3fc,#dcecfb); }
+.lk-spark { position: absolute; background: #fff; border-radius: 50%; animation: lkTwinkle 2.4s ease-in-out infinite; pointer-events: none; }
+@keyframes lkTwinkle { 0%, 100% { opacity: 0.12; transform: scale(0.6); } 50% { opacity: 0.85; transform: scale(1.2); } }
+.lk-collection-empty { display: none; text-align: center; padding: 60px 20px; color: #8a8f98; font-size: 14px; background: #f7f8fa; border-radius: 24px; }
+
+.lk-sticker-reveal { position: fixed; inset: 0; background: rgba(16,24,40,0.55); display: flex; align-items: center; justify-content: center; z-index: 999; padding: 20px; box-sizing: border-box; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
+.lk-sticker-reveal.active { opacity: 1; pointer-events: auto; }
+.lk-sticker-reveal-card { background: #ffffff; border-radius: 24px; padding: 28px 24px 24px; max-width: 320px; width: 100%; text-align: center; transform: scale(0.88) translateY(14px); transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1); }
+.lk-sticker-reveal.active .lk-sticker-reveal-card { transform: scale(1) translateY(0); }
+.lk-sticker-reveal-label { font-size: 13px; font-weight: 700; color: #186ce0; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 16px; }
+.lk-sticker-reveal-img-wrap { height: 140px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
+.lk-sticker-reveal-img-wrap img { max-height: 140px; max-width: 100%; filter: drop-shadow(0 6px 14px rgba(20,40,70,0.28)); }
+.lk-sticker-pop { animation: lkStickerPop 0.6s cubic-bezier(0.34,1.56,0.64,1); }
+@keyframes lkStickerPop {
+    0% { transform: scale(0) rotate(-18deg); opacity: 0; }
+    60% { transform: scale(1.15) rotate(6deg); opacity: 1; }
+    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+.lk-sticker-reveal-batch { display: none; font-size: 52px; font-weight: 700; color: #186ce0; margin-bottom: 12px; }
+.lk-sticker-reveal-name { font-size: 16px; font-weight: 600; color: #16181d; margin-bottom: 20px; }
+.lk-sticker-reveal-btn { width: auto; min-width: 150px; padding: 10px 26px; border-radius: 13px; border: none; background: #186ce0; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; display: block; margin: 0 auto; transition: transform 0.12s ease; }
+.lk-sticker-reveal-btn:active { transform: scale(0.95); }
+
+.lk-share-preview { position: fixed; inset: 0; background: rgba(16,24,40,0.6); display: flex; align-items: center; justify-content: center; z-index: 999; padding: 20px; box-sizing: border-box; opacity: 0; pointer-events: none; transition: opacity 0.25s ease; }
+.lk-share-preview.active { opacity: 1; pointer-events: auto; }
+.lk-share-preview-card { background: #ffffff; border-radius: 24px; padding: 16px; max-width: 260px; width: 100%; text-align: center; position: relative; transform: scale(0.92); transition: transform 0.25s ease; }
+.lk-share-preview.active .lk-share-preview-card { transform: scale(1); }
+.lk-share-preview-close-x { position: absolute; top: 10px; right: 10px; width: 28px; height: 28px; border-radius: 50%; border: none; background: rgba(0,0,0,0.06); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; z-index: 2; }
+.lk-share-preview-card img { width: 100%; aspect-ratio: 9 / 16; object-fit: cover; border-radius: 16px; margin-bottom: 14px; background: #f0f2f5; }
+.lk-bg-picker { display: flex; gap: 10px; justify-content: center; margin-bottom: 14px; }
+.lk-bg-swatch { width: 40px; height: 40px; border-radius: 50%; border: 2.5px solid transparent; background-size: cover; background-position: center; padding: 0; cursor: pointer; }
+.lk-bg-swatch.active { border-color: #186ce0; }
+.lk-share-preview-btn { width: 100% !important; max-width: 228px !important; padding: 10px !important; border-radius: 12px !important; border: none !important; background: #186ce0 !important; color: #fff !important; font-size: 13px !important; font-weight: 600 !important; cursor: pointer !important; box-sizing: border-box !important; display: block !important; margin: 0 auto !important; }
+</style>
+
+<div class="lk-collection-wrap">
+    <div class="lk-topbar">
+        <a href="/members/" style="display:inline-flex;align-items:center;gap:4px;color:#186ce0;text-decoration:none;font-size:15px;font-weight:600;">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#186ce0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            Zpět do profilu
+        </a>
+        <a href="/" style="display:inline-flex;align-items:center;gap:7px;height:40px;padding:0 16px;border-radius:20px;background:#fff;border:1px solid #e8eaed;color:#16181d;text-decoration:none;font-size:13px;font-weight:500;">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#186ce0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
+            Domů
+        </a>
+    </div>
+
+    <div class="lk-brand-header">
+        <img src="https://static.tildacdn.com/tild3365-3764-4766-b162-383862333535/Photoroom_20260804_1.PNG" alt="Narin stickers" draggable="false" oncontextmenu="return false">
+        <div class="lk-brand-tagline">vaše kouzelná sbírka kytic</div>
+    </div>
+
+    <div class="lk-collection-count" id="lkCollectionCount"></div>
+
+    <div class="lk-action-row">
+        <button class="lk-shake-btn" id="lkShakeBtn">Zatřást sbírkou</button>
+        <button class="lk-share-btn" id="lkShareBtn" aria-label="Sdílet do Instagramu">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg>
+        </button>
+    </div>
+
+    <div class="lk-jar" id="lkJar">
+        <div id="lkSparkles" style="position:absolute; inset:0;"></div>
+    </div>
+
+    <div class="lk-collection-empty" id="lkCollectionEmpty">Zatím žádné stikery — objednejte si první kytici a sbírka se začne plnit.</div>
+</div>
+
+<div class="lk-sticker-reveal" id="lkStickerReveal">
+    <div class="lk-sticker-reveal-card">
+        <div class="lk-sticker-reveal-label" id="lkRevealLabel">Nová nálepka!</div>
+        <div class="lk-sticker-reveal-img-wrap" id="lkRevealImgWrap"><img id="lkRevealImg" src="" alt=""></div>
+        <div class="lk-sticker-reveal-batch" id="lkRevealBatch"></div>
+        <div class="lk-sticker-reveal-name" id="lkRevealName"></div>
+        <button class="lk-sticker-reveal-btn" id="lkRevealBtn">Pokračovat</button>
+    </div>
+</div>
+
+<div class="lk-share-preview" id="lkSharePreview">
+    <div class="lk-share-preview-card">
+        <button class="lk-share-preview-close-x" id="lkSharePreviewClose" aria-label="Zavřít">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#8a8f98" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+        <img id="lkSharePreviewImg" src="" alt="">
+        <div class="lk-bg-picker" id="lkBgPicker">
+            <button class="lk-bg-swatch active" data-bg-index="0" style="background-image:url('https://static.tildacdn.com/tild6631-6365-4462-b537-636137613861/2737C39E-DD56-4E1D-B.PNG');" aria-label="Pozadí louka"></button>
+            <button class="lk-bg-swatch" data-bg-index="1" style="background-image:url('https://static.tildacdn.com/tild3232-3633-4861-b639-396163633033/2A75B8F8-2BA1-4A04-A.PNG');" aria-label="Pozadí jezero"></button>
+            <button class="lk-bg-swatch" data-bg-index="2" style="background-image:url('https://static.tildacdn.com/tild3936-3637-4665-b363-326233336536/317F2FF1-7E48-40B1-A.PNG');" aria-label="Pozadí 3"></button>
+        </div>
+        <button class="lk-share-preview-btn" id="lkSharePreviewBtn">Sdílet</button>
+    </div>
+</div>
+
+<script>
+(function() {
+    const SUPABASE_URL = "https://wqburlamuipxmenqsjnx.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_ORMmBYvVjH6i2GanWa2JyA_mWm3fTCZ";
+    const TOKEN_KEY = "lk_auth_token";
+
+    let loaded = false;
+    let timer = null;
+
+    function getStoredToken() {
+        try {
+            const raw = localStorage.getItem(TOKEN_KEY);
+            if (!raw) return null;
+            const data = JSON.parse(raw);
+            if (!data.token || !data.exp || data.exp < Date.now()) return null;
+            return data.token;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    async function loadMemberData() {
+        const token = getStoredToken();
+        if (!token) { scheduleNext(); return; }
+        try {
+            const res = await fetch(SUPABASE_URL + "/functions/v1/member-data", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+                body: JSON.stringify({ token: token })
+            });
+            const data = await res.json();
+
+            if (data.error) {
+                loaded = false;
+                scheduleNext();
+                return;
+            }
+
+            window.__memberData = data;
+            loaded = true;
+        } catch (e) {
+            console.log("member-data ошибка:", e);
+        }
+        scheduleNext();
+    }
+
+    function scheduleNext() {
+        clearTimeout(timer);
+        timer = setTimeout(loadMemberData, loaded ? 15000 : 400);
+    }
+
+    loadMemberData();
+})();
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js"></script>
+<script>
+(function() {
+    const MAX_STICKERS = 60;
+    const BACKGROUNDS = [
+        'https://static.tildacdn.com/tild6631-6365-4462-b537-636137613861/2737C39E-DD56-4E1D-B.PNG',
+        'https://static.tildacdn.com/tild3232-3633-4861-b639-396163633033/2A75B8F8-2BA1-4A04-A.PNG',
+        'https://static.tildacdn.com/tild3936-3637-4665-b363-326233336536/317F2FF1-7E48-40B1-A.PNG'
+    ];
+    let selectedBgIndex = 0;
+    let lastLoadedImages = null;
+    let pendingShareBlob = null;
+    let motionRequested = false;
+    let lastShakeTime = 0;
+
+    function decodeEntities(str) {
+        if (!str) return str;
+        const el = document.createElement('textarea');
+        el.innerHTML = str;
+        return el.value;
+    }
+
+    function stickerWord(n) {
+        if (n === 1) return 'nálepka';
+        if (n >= 2 && n <= 4) return 'nálepky';
+        return 'nálepek';
+    }
+
+    function getAllStickers(orders) {
+        const list = [];
+        (orders || []).forEach(function(order) {
+            const products = order.raw_payload && order.raw_payload.payment && order.raw_payload.payment.products;
+            if (!Array.isArray(products)) return;
+            products.forEach(function(p, idx) {
+                const name = decodeEntities(p.name);
+                if (!name || !p.image_url) return;
+                const orderKey = order.order_id || order.id || order.created_at;
+                list.push({
+                    key: orderKey + '::' + idx + '::' + name,
+                    name: name,
+                    image_url: p.image_url,
+                    created_at: order.created_at
+                });
+            });
+        });
+        list.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+        return list;
+    }
+
+    function getSeenKeys() {
+        try { return JSON.parse(localStorage.getItem('lk_seen_stickers') || '[]'); } catch (e) { return []; }
+    }
+
+    function saveSeenKeys(keys) {
+        localStorage.setItem('lk_seen_stickers', JSON.stringify(keys));
+    }
+
+    function spawnSparkles() {
+        const wrap = document.getElementById('lkSparkles');
+        for (let i = 0; i < 16; i++) {
+            const s = document.createElement('div');
+            const size = 2 + Math.random() * 3;
+            s.className = 'lk-spark';
+            s.style.width = size + 'px';
+            s.style.height = size + 'px';
+            s.style.left = (Math.random() * 100) + '%';
+            s.style.top = (Math.random() * 70) + '%';
+            s.style.animationDelay = (Math.random() * 2.4) + 's';
+            wrap.appendChild(s);
+        }
+    }
+
+    function attachShakeListener() {
+        window.addEventListener('devicemotion', function(e) {
+            const acc = e.accelerationIncludingGravity;
+            if (!acc) return;
+            const magnitude = Math.abs(acc.x || 0) + Math.abs(acc.y || 0) + Math.abs(acc.z || 0);
+            const now = Date.now();
+            if (magnitude > 35 && now - lastShakeTime > 1000) {
+                lastShakeTime = now;
+                if (window.__shakeCollection) window.__shakeCollection();
+            }
+        });
+    }
+
+    function requestMotionPermissionOnce() {
+        if (motionRequested) return;
+        motionRequested = true;
+        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+            DeviceMotionEvent.requestPermission().then(function(state) {
+                if (state === 'granted') attachShakeListener();
+            }).catch(function() {});
+        } else {
+            attachShakeListener();
+        }
+    }
+
+    function showRevealSequence(newOnes, onDone) {
+        const overlay = document.getElementById('lkStickerReveal');
+        const label = document.getElementById('lkRevealLabel');
+        const imgWrap = document.getElementById('lkRevealImgWrap');
+        const img = document.getElementById('lkRevealImg');
+        const batchEl = document.getElementById('lkRevealBatch');
+        const nameEl = document.getElementById('lkRevealName');
+        const btn = document.getElementById('lkRevealBtn');
+        let idx = 0;
+
+        label.textContent = 'Nová nálepka!';
+        imgWrap.style.display = 'flex';
+        batchEl.style.display = 'none';
+
+        function showNext() {
+            if (idx >= newOnes.length) {
+                overlay.classList.remove('active');
+                onDone();
+                return;
+            }
+            const item = newOnes[idx];
+            img.src = item.image_url;
+            nameEl.textContent = item.name;
+            img.classList.remove('lk-sticker-pop');
+            void img.offsetWidth;
+            img.classList.add('lk-sticker-pop');
+            idx++;
+        }
+
+        btn.onclick = showNext;
+        overlay.classList.add('active');
+        showNext();
+    }
+
+    function showBatchReveal(count, onDone) {
+        const overlay = document.getElementById('lkStickerReveal');
+        const label = document.getElementById('lkRevealLabel');
+        const imgWrap = document.getElementById('lkRevealImgWrap');
+        const batchEl = document.getElementById('lkRevealBatch');
+        const nameEl = document.getElementById('lkRevealName');
+        const btn = document.getElementById('lkRevealBtn');
+
+        label.textContent = 'Nové nálepky!';
+        imgWrap.style.display = 'none';
+        batchEl.style.display = 'block';
+        batchEl.textContent = '+' + count;
+        batchEl.classList.remove('lk-sticker-pop');
+        void batchEl.offsetWidth;
+        batchEl.classList.add('lk-sticker-pop');
+        nameEl.textContent = 'přibylo do vaší sbírky';
+
+        btn.onclick = function() {
+            overlay.classList.remove('active');
+            onDone();
+        };
+        overlay.classList.add('active');
+    }
+
+    function loadImageEl(src) {
+        return new Promise(function(resolve) {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = function() { resolve(img); };
+            img.onerror = function() { resolve(null); };
+            img.src = src;
+        });
+    }
+
+    function roundRect(ctx, x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
+    }
+
+    function drawCover(ctx, img, W, H) {
+        const imgRatio = img.naturalWidth / img.naturalHeight;
+        const canvasRatio = W / H;
+        let sw, sh, sx, sy;
+        if (imgRatio > canvasRatio) {
+            sh = img.naturalHeight;
+            sw = sh * canvasRatio;
+            sx = (img.naturalWidth - sw) / 2;
+            sy = 0;
+        } else {
+            sw = img.naturalWidth;
+            sh = sw / canvasRatio;
+            sx = 0;
+            sy = (img.naturalHeight - sh) / 2;
+        }
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, W, H);
+    }
+
+    async function buildShareCard(loadedImages, bgUrl) {
+        const logo = await loadImageEl('https://static.tildacdn.com/tild3131-3033-4536-a130-623830646536/Photoroom_20260804_1.PNG');
+        const bg = await loadImageEl(bgUrl);
+        const W = 1080, H = 1920;
+        const canvas = document.createElement('canvas');
+        canvas.width = W;
+        canvas.height = H;
+        const ctx = canvas.getContext('2d');
+
+        if (bg) {
+            drawCover(ctx, bg, W, H);
+            ctx.fillStyle = 'rgba(255,255,255,0.22)';
+            ctx.fillRect(0, 0, W, H);
+        } else {
+            ctx.fillStyle = '#eaf3fc';
+            ctx.fillRect(0, 0, W, H);
+        }
+
+        ctx.textAlign = 'center';
+
+        let headerTop = 60;
+        let logoBottom = 220;
+        let logoBoxW = 0;
+        if (logo) {
+            const logoW = 260;
+            const logoH = logoW * (logo.naturalHeight / logo.naturalWidth);
+            const padX = 26, padY = 18;
+            const boxW = logoW + padX * 2;
+            const boxH = logoH + padY * 2;
+            const boxY = 70;
+            ctx.save();
+            ctx.shadowColor = 'rgba(0,0,0,0.25)';
+            ctx.shadowBlur = 16;
+            ctx.shadowOffsetY = 5;
+            ctx.fillStyle = '#ffffff';
+            roundRect(ctx, (W - boxW) / 2, boxY, boxW, boxH, 26);
+            ctx.fill();
+            ctx.restore();
+            ctx.drawImage(logo, (W - logoW) / 2, boxY + padY, logoW, logoH);
+            logoBottom = boxY + boxH;
+            headerTop = boxY;
+            logoBoxW = boxW;
+        }
+
+        const taglineText = 'vaše kouzelná sbírka kytic';
+        ctx.font = '30px -apple-system, Arial';
+        const taglineWidth = ctx.measureText(taglineText).width;
+        const taglinePillW = taglineWidth + 60;
+        const taglinePillH = 58;
+        const taglinePillY = logoBottom + 26;
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.25)';
+        ctx.shadowBlur = 14;
+        ctx.shadowOffsetY = 4;
+        ctx.fillStyle = '#ffffff';
+        roundRect(ctx, (W - taglinePillW) / 2, taglinePillY, taglinePillW, taglinePillH, 29);
+        ctx.fill();
+        ctx.restore();
+        ctx.fillStyle = '#186ce0';
+        ctx.fillText(taglineText, W / 2, taglinePillY + 39);
+
+        const statText = loadedImages.filter(function(img) { return img; }).length + ' nálepek';
+        ctx.font = 'bold 50px -apple-system, Arial';
+        const statWidth = ctx.measureText(statText).width;
+        const pillW = statWidth + 72;
+        const pillH = 88;
+        const pillY = taglinePillY + taglinePillH + 22;
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.3)';
+        ctx.shadowBlur = 18;
+        ctx.shadowOffsetY = 6;
+        ctx.fillStyle = '#ffffff';
+        roundRect(ctx, (W - pillW) / 2, pillY, pillW, pillH, 44);
+        ctx.fill();
+        ctx.restore();
+        ctx.fillStyle = '#186ce0';
+        ctx.fillText(statText, W / 2, pillY + 60);
+
+        const headerBottom = pillY + pillH;
+        const exclusionHalfW = Math.max(logoBoxW, taglinePillW, pillW) / 2 + 16;
+        const exLeft = W / 2 - exclusionHalfW;
+        const exRight = W / 2 + exclusionHalfW;
+
+        const usable = loadedImages.filter(function(img) { return img; });
+        for (let i = usable.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            const tmp = usable[i]; usable[i] = usable[j]; usable[j] = tmp;
+        }
+
+        const zoneLeft = W * 0.1;
+        const zoneRight = W * 0.9;
+        const zoneTop = 40;
+        const zoneBottom = H - 130;
+        const zoneW = zoneRight - zoneLeft;
+        const zoneH = zoneBottom - zoneTop;
+
+        const cols = Math.max(1, Math.round(Math.sqrt(usable.length * (zoneW / zoneH))));
+        const rows = Math.max(1, Math.ceil(usable.length / cols));
+        const cellW = zoneW / cols;
+        const cellH = zoneH / rows;
+        const uniformDim = Math.min(cellW, cellH) * 0.9;
+
+        const placed = [];
+        usable.forEach(function(img) {
+            let bestX = zoneLeft + zoneW / 2;
+            let bestY = headerBottom + uniformDim;
+            let bestScore = -Infinity;
+            const half = uniformDim / 2;
+            for (let c = 0; c < 24; c++) {
+                const tx = Math.max(zoneLeft + half, Math.min(zoneRight - half, zoneLeft + Math.random() * zoneW));
+                const ty = Math.max(zoneTop + half, Math.min(zoneBottom - half, zoneTop + Math.random() * zoneH));
+                const overlapsHeader = (ty - half < headerBottom) && (ty + half > headerTop) && (tx + half > exLeft) && (tx - half < exRight);
+                if (overlapsHeader) continue;
+                let minDist = 999999;
+                for (let p = 0; p < placed.length; p++) {
+                    const dx = tx - placed[p].x, dy = ty - placed[p].y;
+                    const d = Math.sqrt(dx * dx + dy * dy);
+                    if (d < minDist) minDist = d;
+                }
+                if (minDist > bestScore) {
+                    bestScore = minDist;
+                    bestX = tx;
+                    bestY = ty;
+                }
+            }
+            placed.push({ x: bestX, y: bestY });
+
+            const angle = (Math.random() - 0.5) * 0.5;
+            const ratio = img.naturalWidth / img.naturalHeight;
+            let dh = uniformDim;
+            let dw = dh * ratio;
+            if (dw > uniformDim * 1.15) {
+                dw = uniformDim * 1.15;
+                dh = dw / ratio;
+            }
+
+            ctx.save();
+            ctx.translate(bestX, bestY);
+            ctx.rotate(angle);
+            ctx.shadowColor = 'rgba(0,0,0,0.55)';
+            ctx.shadowBlur = 24;
+            ctx.shadowOffsetY = 10;
+            ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
+            ctx.restore();
+        });
+
+        ctx.save();
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = 'rgba(0,0,0,0.55)';
+        ctx.shadowBlur = 16;
+        ctx.shadowOffsetY = 3;
+        ctx.font = 'bold 38px -apple-system, Arial';
+        ctx.fillText('vezminarin.cz', W / 2, H - 50);
+        ctx.restore();
+
+        return new Promise(function(resolve) {
+            canvas.toBlob(resolve, 'image/png');
+        });
+    }
+
+    function buildJar(stickers) {
+        const jar = document.getElementById('lkJar');
+        const shakeBtn = document.getElementById('lkShakeBtn');
+        const shareBtn = document.getElementById('lkShareBtn');
+        jar.style.display = 'block';
+        shakeBtn.style.display = 'block';
+        shareBtn.style.display = 'flex';
+        shareBtn.style.opacity = '0.5';
+        shareBtn.disabled = true;
+        spawnSparkles();
+
+        const Engine = Matter.Engine, World = Matter.World, Bodies = Matter.Bodies, Body = Matter.Body, Mouse = Matter.Mouse, MouseConstraint = Matter.MouseConstraint;
+        const w = jar.clientWidth, h = jar.clientHeight;
+        const engine = Engine.create();
+        engine.gravity.y = 0.55;
+
+        const items = [];
+        const loadedImages = [];
+        let pending = stickers.length;
+
+        function onImageDone(imgEl) {
+            loadedImages.push(imgEl);
+            pending--;
+            if (pending === 0) {
+                lastLoadedImages = loadedImages;
+                buildShareCard(loadedImages, BACKGROUNDS[selectedBgIndex]).then(function(blob) {
+                    pendingShareBlob = blob;
+                    shareBtn.style.opacity = '1';
+                    shareBtn.disabled = false;
+                });
+            }
+        }
+
+        stickers.forEach(function(sticker, index) {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = function() {
+                const maxDim = 60;
+                const ratio = img.naturalWidth / img.naturalHeight;
+                const dw = ratio >= 1 ? maxDim : maxDim * ratio;
+                const dh = ratio >= 1 ? maxDim / ratio : maxDim;
+                const r = Math.max(dw, dh) / 2 * 0.8;
+                const x = 30 + Math.random() * (w - 60);
+                const y = -20 - (index % 10) * 15;
+                const body = Bodies.circle(x, y, r, { restitution: 0.5, friction: 0.15, frictionAir: 0.02 });
+                World.add(engine.world, body);
+
+                const el = document.createElement('div');
+                el.style.cssText = 'position:absolute; width:' + dw + 'px; height:' + dh + 'px; pointer-events:none;';
+                const imgEl = document.createElement('img');
+                imgEl.src = sticker.image_url;
+                imgEl.style.cssText = 'width:100%; height:100%; display:block; filter: drop-shadow(0 3px 6px rgba(20,40,70,0.25)); -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;';
+                imgEl.setAttribute('draggable', 'false');
+                imgEl.setAttribute('oncontextmenu', 'return false');
+                el.appendChild(imgEl);
+                jar.appendChild(el);
+
+                items.push({ el: el, body: body, hw: dw / 2, hh: dh / 2 });
+                onImageDone(img);
+            };
+            img.onerror = function() {
+                console.warn('Sticker image failed to load:', sticker.name, sticker.image_url);
+                onImageDone(null);
+            };
+            img.src = sticker.image_url;
+        });
+
+        const wallOpts = { isStatic: true, render: { visible: false } };
+        World.add(engine.world, [
+            Bodies.rectangle(w / 2, h + 20, w + 40, 40, wallOpts),
+            Bodies.rectangle(-20, h / 2, 40, h * 3, wallOpts),
+            Bodies.rectangle(w + 20, h / 2, 40, h * 3, wallOpts),
+            Bodies.rectangle(w / 2, -220, w + 40, 40, wallOpts)
+        ]);
+
+        const mouse = Mouse.create(jar);
+        const mc = MouseConstraint.create(engine, { mouse: mouse, constraint: { stiffness: 0.15 } });
+        World.add(engine.world, mc);
+
+        function loop() {
+            Engine.update(engine, 1000 / 60);
+            items.forEach(function(item) {
+                item.el.style.transform = 'translate(' + (item.body.position.x - item.hw) + 'px,' + (item.body.position.y - item.hh) + 'px) rotate(' + item.body.angle + 'rad)';
+            });
+            requestAnimationFrame(loop);
+        }
+        loop();
+
+        window.__shakeCollection = function() {
+            items.forEach(function(item) {
+                Body.setVelocity(item.body, { x: (Math.random() - 0.5) * 14, y: -8 - Math.random() * 10 });
+                Body.setAngularVelocity(item.body, (Math.random() - 0.5) * 0.9);
+            });
+        };
+    }
+
+    function renderCollection(data) {
+        const allStickers = getAllStickers(data.orders);
+        const emptyEl = document.getElementById('lkCollectionEmpty');
+        const countEl = document.getElementById('lkCollectionCount');
+
+        if (!allStickers.length) {
+            emptyEl.style.display = 'block';
+            return;
+        }
+
+        const displayed = allStickers.slice(0, MAX_STICKERS);
+        const total = allStickers.length;
+        countEl.textContent = total + ' ' + stickerWord(total) + (total > MAX_STICKERS ? ' (v bance posledních ' + MAX_STICKERS + ')' : '');
+
+        const seenKeys = getSeenKeys();
+        const seenSet = {};
+        seenKeys.forEach(function(k) { seenSet[k] = true; });
+        const newOnes = displayed.filter(function(s) { return !seenSet[s.key]; });
+
+        function startJar() {
+            saveSeenKeys(displayed.map(function(s) { return s.key; }));
+            buildJar(displayed);
+        }
+
+        if (newOnes.length > 5) {
+            showBatchReveal(newOnes.length, startJar);
+        } else if (newOnes.length > 0) {
+            showRevealSequence(newOnes, startJar);
+        } else {
+            startJar();
+        }
+    }
+
+    document.getElementById('lkShakeBtn').addEventListener('click', function() {
+        if (window.__shakeCollection) window.__shakeCollection();
+        requestMotionPermissionOnce();
+    });
+
+    document.getElementById('lkShareBtn').addEventListener('click', function() {
+        if (!pendingShareBlob) return;
+        document.getElementById('lkSharePreviewImg').src = URL.createObjectURL(pendingShareBlob);
+        document.getElementById('lkSharePreview').classList.add('active');
+    });
+
+    document.querySelectorAll('.lk-bg-swatch').forEach(function(btn, idx) {
+        btn.addEventListener('click', async function() {
+            document.querySelectorAll('.lk-bg-swatch').forEach(function(b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            selectedBgIndex = idx;
+            if (lastLoadedImages) {
+                const previewBtn = document.getElementById('lkSharePreviewBtn');
+                previewBtn.disabled = true;
+                previewBtn.style.opacity = '0.5';
+                const blob = await buildShareCard(lastLoadedImages, BACKGROUNDS[selectedBgIndex]);
+                pendingShareBlob = blob;
+                document.getElementById('lkSharePreviewImg').src = URL.createObjectURL(blob);
+                previewBtn.disabled = false;
+                previewBtn.style.opacity = '1';
+            }
+        });
+    });
+
+    document.getElementById('lkSharePreviewBtn').addEventListener('click', async function() {
+        if (!pendingShareBlob) return;
+        const file = new File([pendingShareBlob], 'narin-stickers.png', { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+                await navigator.share({ files: [file], title: 'Moje sbírka nálepek Narin', text: 'Podívejte se na mou sbírku kytičkových nálepek!' });
+            } catch (e) {}
+        } else if (navigator.share) {
+            try {
+                await navigator.share({ title: 'Moje sbírka nálepek Narin', text: 'Podívejte se na mou sbírku kytičkových nálepek!', url: 'https://vezminarin.cz/members/collection' });
+            } catch (e) {}
+        } else {
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(pendingShareBlob);
+            link.download = 'narin-stickers.png';
+            link.click();
+        }
+    });
+
+    document.getElementById('lkSharePreviewClose').addEventListener('click', function() {
+        document.getElementById('lkSharePreview').classList.remove('active');
+    });
+
+    if (window.__memberData) {
+        renderCollection(window.__memberData);
+    } else {
+        const wait = setInterval(function() {
+            if (window.__memberData) {
+                renderCollection(window.__memberData);
+                clearInterval(wait);
+            }
+        }, 300);
+    }
+})();
+</script>

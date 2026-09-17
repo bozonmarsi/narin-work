@@ -1,0 +1,112 @@
+<style>
+.narin-custom-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 6;
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-family: 'Rubik', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(20,30,50,0.18);
+    pointer-events: none;
+    white-space: nowrap;
+    max-width: calc(100% - 16px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+</style>
+<script>
+(function () {
+    var SUPABASE_URL = 'https://wqburlamuipxmenqsjnx.supabase.co';
+    var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxYnVybGFtdWlweG1lbnFzam54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTY2MTIsImV4cCI6MjA4ODgzMjYxMn0.NYnQoorm3z5gkjr954JdYhzDNmYfCjefzK1ddq3cflw';
+
+    function decodeEntities(text) {
+        var el = document.createElement('textarea');
+        el.innerHTML = text;
+        return el.value;
+    }
+
+    function normalize(text) {
+        return decodeEntities(text || '').replace(/\s+/g, ' ').trim();
+    }
+
+    function addCustomBadge(card, text, color) {
+        if (card.querySelector('.narin-custom-badge')) return;
+        if (window.getComputedStyle(card).position === 'static') {
+            card.style.position = 'relative';
+        }
+        var badge = document.createElement('div');
+        badge.className = 'narin-custom-badge';
+        badge.textContent = text;
+        badge.style.background = color || '#186ce0';
+        card.appendChild(badge);
+    }
+
+    var LOW_STOCK_THRESHOLD = 3;
+    function resolveBadge(row) {
+        if (row.badge_text) {
+            return { text: row.badge_text, color: row.badge_color || '#186ce0' };
+        }
+        // quantity === 0 už nedostává vlastní "Vyprodáno" plaketu — o tom,
+        // že dnes není skladem, už informuje narin-avail-badge (přepne na
+        // "Doručíme zítra" samo, přes get_available_products()). Dvě různé
+        // plaketky se stejnou informací (jedna klidná, jedna poplašná
+        // červená "Vyprodáno") byly matoucí.
+        if (row.quantity === null || row.quantity === undefined || row.quantity === 0) return null;
+        if (row.quantity < LOW_STOCK_THRESHOLD) return { text: 'Zbývá ' + row.quantity + ' ks', color: '#ff7c76' };
+        return null;
+    }
+
+    function applyCustomBadges(badgeMap) {
+        var cards = document.querySelectorAll('.t-store__card');
+        cards.forEach(function (card) {
+            var nameEl = card.querySelector('.js-product-name');
+            if (!nameEl) return;
+            var name = normalize(nameEl.textContent);
+            var row = badgeMap[name];
+            if (!row) return;
+            var resolved = resolveBadge(row);
+            if (!resolved) return;
+            addCustomBadge(card, resolved.text, resolved.color);
+        });
+    }
+
+    function init() {
+        fetch(SUPABASE_URL + '/rest/v1/rpc/get_product_badges', {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+                'Content-Type': 'application/json',
+            },
+            body: '{}',
+        })
+            .then(function (r) { return r.ok ? r.json() : []; })
+            .then(function (rows) {
+                var badgeMap = {};
+                (rows || []).forEach(function (row) { badgeMap[normalize(row.product_name)] = row; });
+
+                applyCustomBadges(badgeMap);
+
+                var pending = null;
+                var observer = new MutationObserver(function () {
+                    if (pending) clearTimeout(pending);
+                    pending = setTimeout(function () { applyCustomBadges(badgeMap); }, 150);
+                });
+                observer.observe(document.body, { childList: true, subtree: true });
+            })
+            .catch(function (err) { console.error('narin custom badges', err); });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>

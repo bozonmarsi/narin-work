@@ -1,0 +1,139 @@
+<style>
+.narin-avail-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 3px;
+    font-family: 'Rubik', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+}
+.narin-avail-badge .narin-avail-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.narin-avail-badge.today { color: #0a8a3a; }
+.narin-avail-badge.today .narin-avail-dot { background: #00cc00; }
+.narin-avail-badge.tomorrow { color: #196fe3; }
+.narin-avail-badge.tomorrow .narin-avail-dot { background: #196fe3; }
+.narin-avail-badge.special { color: #ff2a20; }
+.narin-avail-badge.special .narin-avail-dot { background: #ff2a20; }
+</style>
+<script>
+(function () {
+    var SUPABASE_URL = 'https://wqburlamuipxmenqsjnx.supabase.co';
+    var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxYnVybGFtdWlweG1lbnFzam54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTY2MTIsImV4cCI6MjA4ODgzMjYxMn0.NYnQoorm3z5gkjr954JdYhzDNmYfCjefzK1ddq3cflw';
+
+    function decodeEntities(text) {
+        var el = document.createElement('textarea');
+        el.innerHTML = text;
+        return el.value;
+    }
+
+    function normalize(text) {
+        return decodeEntities(text || '').replace(/\s+/g, ' ').trim();
+    }
+
+    function rpc(name) {
+        return fetch(SUPABASE_URL + '/rest/v1/rpc/' + name, {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+                'Content-Type': 'application/json',
+            },
+            body: '{}',
+        }).then(function (r) { return r.ok ? r.json() : []; });
+    }
+
+    function getTable(table, params) {
+        return fetch(SUPABASE_URL + '/rest/v1/' + table + '?' + params, {
+            headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+            },
+        }).then(function (r) { return r.ok ? r.json() : []; });
+    }
+
+    function addUtcDays(date, days) {
+        return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + days));
+    }
+
+    function dateKey(date) {
+        return date.toISOString().slice(0, 10);
+    }
+
+    function computeSpecialOrderDate(closedWeekdays, closedDates) {
+        var d = new Date();
+        var remaining = 2;
+        while (remaining > 0) {
+            d = addUtcDays(d, 1);
+            var closed = closedWeekdays.has(d.getUTCDay()) || closedDates.has(dateKey(d));
+            if (!closed) remaining--;
+        }
+        return d.getUTCDate() + '. ' + (d.getUTCMonth() + 1) + '.';
+    }
+
+    function addBadge(card, type, dateLabel) {
+        if (card.querySelector('.narin-avail-badge')) return;
+        var textWrapper = card.querySelector('.t-store__card__textwrapper');
+        if (!textWrapper) return;
+        var badge = document.createElement('div');
+        badge.className = 'narin-avail-badge ' + type;
+        var dot = document.createElement('span');
+        dot.className = 'narin-avail-dot';
+        var label = document.createElement('span');
+        label.textContent = type === 'today' ? 'Doručíme dnes' : type === 'special' ? 'Doručíme ' + dateLabel : 'Doručíme zítra';
+        badge.appendChild(dot);
+        badge.appendChild(label);
+        textWrapper.insertBefore(badge, textWrapper.firstChild);
+    }
+
+    function applyBadges(availableNames, specialNames, specialDateLabel) {
+        var cards = document.querySelectorAll('.t-store__card');
+        cards.forEach(function (card) {
+            var nameEl = card.querySelector('.js-product-name');
+            if (!nameEl) return;
+            var name = normalize(nameEl.textContent);
+            var type = specialNames.has(name) ? 'special' : availableNames.has(name) ? 'today' : 'tomorrow';
+            addBadge(card, type, specialDateLabel);
+        });
+    }
+
+    function init() {
+        Promise.all([
+            rpc('get_available_products'),
+            rpc('get_special_order_products'),
+            getTable('shop_weekly_closed_days', 'select=weekday'),
+            getTable('shop_closed_dates', 'select=closed_date'),
+        ])
+            .then(function (results) {
+                var availableNames = new Set(results[0].map(function (r) { return normalize(r.product_name); }));
+                var specialNames = new Set(results[1].map(function (r) { return normalize(r.product_name); }));
+                var closedWeekdays = new Set(results[2].map(function (r) { return r.weekday; }));
+                var closedDates = new Set(results[3].map(function (r) { return r.closed_date; }));
+                var specialDateLabel = computeSpecialOrderDate(closedWeekdays, closedDates);
+
+                applyBadges(availableNames, specialNames, specialDateLabel);
+
+                var pending = null;
+                var observer = new MutationObserver(function () {
+                    if (pending) clearTimeout(pending);
+                    pending = setTimeout(function () { applyBadges(availableNames, specialNames, specialDateLabel); }, 150);
+                });
+                observer.observe(document.body, { childList: true, subtree: true });
+            })
+            .catch(function (err) { console.error('narin availability badges', err); });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>

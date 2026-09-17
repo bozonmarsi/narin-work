@@ -230,7 +230,7 @@ export function CatalogTab() {
                   <p className="truncate text-sm font-medium">{name}</p>
                   {isOhapka && (
                     <span className={`mt-0.5 inline-block rounded-md px-1.5 py-0.5 text-xs font-bold ${quantityBadgeClass(qty)}`}>
-                      {qty} шт
+                      {qty > 0 ? `${qty} шт` : "Распродано"}
                     </span>
                   )}
                 </div>

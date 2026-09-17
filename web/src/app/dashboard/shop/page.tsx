@@ -588,6 +588,7 @@ export default function ShopPage() {
   const [closedDates, setClosedDates] = useState<ClosedDate[]>([]);
   const [loading, setLoading] = useState(true);
   const [newClosedDate, setNewClosedDate] = useState({ date: "", reason: "" });
+  const [closedDateError, setClosedDateError] = useState<string | null>(null);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [availableToday, setAvailableToday] = useState<Set<string>>(new Set());
@@ -933,10 +934,12 @@ export default function ShopPage() {
 
   async function toggleWeekday(day: number) {
     const supabase = createClient();
-    if (weeklyClosed.has(day)) {
-      await supabase.from("shop_weekly_closed_days").delete().eq("weekday", day);
-    } else {
-      await supabase.from("shop_weekly_closed_days").insert({ weekday: day });
+    const { error } = weeklyClosed.has(day)
+      ? await supabase.from("shop_weekly_closed_days").delete().eq("weekday", day)
+      : await supabase.from("shop_weekly_closed_days").insert({ weekday: day });
+    if (error) {
+      alert(`Не удалось изменить "${WEEKDAY_LABELS[day]}": ${error.message}`);
+      return;
     }
     load();
   }
@@ -944,7 +947,14 @@ export default function ShopPage() {
   async function addClosedDate() {
     if (!newClosedDate.date) return;
     const supabase = createClient();
-    await supabase.from("shop_closed_dates").insert({ closed_date: newClosedDate.date, reason: newClosedDate.reason.trim() || null });
+    const { error } = await supabase
+      .from("shop_closed_dates")
+      .insert({ closed_date: newClosedDate.date, reason: newClosedDate.reason.trim() || null });
+    if (error) {
+      setClosedDateError(error.code === "23505" ? "Этот день уже в списке закрытых." : error.message);
+      return;
+    }
+    setClosedDateError(null);
     setNewClosedDate({ date: "", reason: "" });
     load();
   }
@@ -1034,6 +1044,7 @@ export default function ShopPage() {
               + Добавить
             </button>
           </div>
+          {closedDateError && <p className="mb-3 text-xs text-red-500">{closedDateError}</p>}
           {closedDates.length === 0 ? (
             <p className="text-sm text-zinc-400 dark:text-zinc-500">Разовых закрытых дат пока нет.</p>
           ) : (

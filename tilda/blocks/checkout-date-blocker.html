@@ -1,0 +1,238 @@
+<style>
+.narin-date-block-tip {
+    position: fixed;
+    z-index: 100000;
+    max-width: 240px;
+    background: rgba(22,24,29,0.94);
+    color: #fff;
+    font-family: 'Rubik', sans-serif;
+    font-size: 12.5px;
+    line-height: 1.4;
+    padding: 10px 14px;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    transform: translate(-50%, calc(-100% - 10px)) translateY(4px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    text-align: center;
+}
+.narin-date-block-tip.active {
+    opacity: 1;
+    transform: translate(-50%, calc(-100% - 10px)) translateY(0);
+}
+.narin-date-block-tip::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: rgba(22,24,29,0.94);
+}
+</style>
+<script>
+(function() {
+  'use strict';
+
+  var SUPABASE_URL = "https://wqburlamuipxmenqsjnx.supabase.co";
+  var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxYnVybGFtdWlweG1lbnFzam54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTY2MTIsImV4cCI6MjA4ODgzMjYxMn0.NYnQoorm3z5gkjr954JdYhzDNmYfCjefzK1ddq3cflw";
+
+  // dateKey (v cs formátu data-picker atributu, bez nul navíc) -> proč je
+  // den zablokovaný (text pro bublinu). Dřív to byl jen holý seznam bez
+  // důvodu — teď každý blokovaný den nese svoje vysvětlení.
+  var blockedDates = {};
+
+  function markAllBlocked() {
+    Object.keys(blockedDates).forEach(function(dateStr) {
+      var cell = document.querySelector('[data-picker="' + dateStr + '"]');
+      if (cell) {
+        cell.classList.add('t_datepicker__day-cell--disabled');
+        cell.classList.remove('t_datepicker__future');
+      }
+    });
+  }
+
+  function pickerKey(date) {
+    return date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate();
+  }
+  function isoKey(date) {
+    var m = String(date.getMonth() + 1).padStart(2, '0');
+    var d = String(date.getDate()).padStart(2, '0');
+    return date.getFullYear() + '-' + m + '-' + d;
+  }
+  function addDays(date, days) {
+    var d = new Date(date);
+    d.setDate(d.getDate() + days);
+    return d;
+  }
+  function startOfDay(date) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  }
+
+  function decodeEntities(text) {
+    var el = document.createElement('textarea');
+    el.innerHTML = text;
+    return el.value;
+  }
+  function normalize(text) {
+    return decodeEntities(text || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function rpc(name) {
+    return fetch(SUPABASE_URL + "/rest/v1/rpc/" + name, {
+      method: "POST",
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer " + SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+      body: "{}"
+    }).then(function (r) { return r.ok ? r.json() : []; });
+  }
+  function getTable(table, params) {
+    return fetch(SUPABASE_URL + "/rest/v1/" + table + "?" + params, {
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer " + SUPABASE_ANON_KEY }
+    }).then(function (r) { return r.ok ? r.json() : []; });
+  }
+
+  // Tooltip s vysvětlením — zobrazí se, jen když se člověk pokusí kliknout
+  // na zablokovaný den.
+  var tipTimer = null;
+  function hideBlockTip() {
+    var existing = document.querySelector('.narin-date-block-tip');
+    if (existing) existing.remove();
+  }
+  function showBlockTip(cell, message) {
+    hideBlockTip();
+    var tip = document.createElement('div');
+    tip.className = 'narin-date-block-tip';
+    tip.textContent = message;
+    document.body.appendChild(tip);
+    var rect = cell.getBoundingClientRect();
+    tip.style.left = (rect.left + rect.width / 2) + 'px';
+    tip.style.top = rect.top + 'px';
+    requestAnimationFrame(function () { tip.classList.add('active'); });
+    clearTimeout(tipTimer);
+    tipTimer = setTimeout(hideBlockTip, 3500);
+  }
+  document.addEventListener('mousedown', function (e) {
+    if (!e.target.closest('.narin-date-block-tip') && !e.target.closest('[data-picker]')) hideBlockTip();
+  }, true);
+
+  // ============================
+  // 1. Разово закрытые дни склада (кабинет менеджера → "Магазин").
+  // ============================
+  fetch(SUPABASE_URL + "/rest/v1/shop_closed_dates?select=closed_date", {
+    headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer " + SUPABASE_ANON_KEY }
+  })
+    .then(function (r) { return r.json(); })
+    .then(function (rows) {
+      (rows || []).forEach(function (row) {
+        var p = row.closed_date.split('-');
+        var key = parseInt(p[0], 10) + '-' + parseInt(p[1], 10) + '-' + parseInt(p[2], 10);
+        blockedDates[key] = 'V tento den máme zavřeno.';
+      });
+      // The calendar may already be open (or its cells already rendered)
+      // by the time this resolves — re-paint immediately instead of
+      // waiting for the user to hover or reopen it.
+      markAllBlocked();
+    })
+    .catch(function (err) {
+      console.error('Nepodařilo se načíst zavřené dny ze Supabase', err);
+    });
+
+  // ============================
+  // 2. Položky v košíku bez naличi na dnes / speciální objednávky ze
+  // zahraničí (delší dodací lhůta). Stejný zdroj pravdy jako katalogová
+  // plaketa narin-avail-badge: get_available_products() + get_special_order_products().
+  // ============================
+  Promise.all([
+    rpc('get_available_products'),
+    rpc('get_special_order_products'),
+    getTable('shop_weekly_closed_days', 'select=weekday'),
+    getTable('shop_closed_dates', 'select=closed_date')
+  ])
+    .then(function (results) {
+      var availableNames = new Set(results[0].map(function (r) { return normalize(r.product_name); }));
+      var specialNames = new Set(results[1].map(function (r) { return normalize(r.product_name); }));
+      var closedWeekdays = new Set(results[2].map(function (r) { return r.weekday; }));
+      var closedDatesSet = new Set(results[3].map(function (r) { return r.closed_date; }));
+
+      function isClosedDay(date) {
+        return closedWeekdays.has(date.getDay()) || closedDatesSet.has(isoKey(date));
+      }
+
+      var products = (window.tcart && window.tcart.products) || [];
+      var hasSpecial = products.some(function (p) { return specialNames.has(normalize(p.name)); });
+      var hasUnavailableToday = products.some(function (p) { return !availableNames.has(normalize(p.name)); });
+
+      if (hasSpecial) {
+        // Speciální položky (objednáváme ze zahraničí) potřebují 2 pracovní
+        // dny předem — blokujeme všechny dny od dneška až do prvního
+        // možného termínu.
+        var specialDate = new Date();
+        var remaining = 2;
+        while (remaining > 0) {
+          specialDate = addDays(specialDate, 1);
+          if (!isClosedDay(specialDate)) remaining--;
+        }
+        var specialLabel = specialDate.getDate() + '. ' + (specialDate.getMonth() + 1) + '.';
+        var reason = 'Ve vašem košíku je položka, kterou objednáváme ze zahraničí — nejbližší doručení je ' + specialLabel + '.';
+        var cur = startOfDay(new Date());
+        var end = startOfDay(specialDate);
+        while (cur < end) {
+          var key = pickerKey(cur);
+          if (!blockedDates[key]) blockedDates[key] = reason;
+          cur = addDays(cur, 1);
+        }
+      } else if (hasUnavailableToday) {
+        var todayKey = pickerKey(new Date());
+        if (!blockedDates[todayKey]) {
+          blockedDates[todayKey] = 'Ve vašem košíku je položka, která dnes není skladem — nejbližší doručení je zítra.';
+        }
+      }
+
+      markAllBlocked();
+    })
+    .catch(function (err) {
+      console.error('Nepodařilo se ověřit dostupnost položek košíku', err);
+    });
+
+  document.addEventListener('mousedown', function(e) {
+    var cell = e.target.closest('[data-picker]');
+    if (!cell) return;
+    var dateStr = cell.getAttribute('data-picker');
+    if (blockedDates[dateStr]) {
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      showBlockTip(cell, blockedDates[dateStr]);
+    }
+  }, true);
+  document.addEventListener('mouseenter', function(e) {
+    var cell = e.target.closest('[data-picker]');
+    if (!cell) return;
+    var dateStr = cell.getAttribute('data-picker');
+    if (blockedDates[dateStr]) {
+      cell.classList.add('t_datepicker__day-cell--disabled');
+      cell.classList.remove('t_datepicker__future');
+    }
+  }, true);
+  document.addEventListener('mousedown', function(e) {
+    var icon = e.target.closest('.t-datepicker__icon, .t-datepicker');
+    if (!icon) return;
+    setTimeout(markAllBlocked, 50);
+  }, true);
+  document.addEventListener('click', function(e) {
+    var arrow = e.target.closest('.t_datepicker__arrow');
+    if (!arrow) return;
+    setTimeout(markAllBlocked, 50);
+  }, true);
+
+  // Belt-and-suspenders: also re-scan periodically for the first few
+  // seconds after page load, in case the calendar renders its cells after
+  // the fetch already resolved (no hover/click to trigger a re-paint yet).
+  var attempts = 0;
+  var poll = setInterval(function() {
+    attempts++;
+    markAllBlocked();
+    if (attempts >= 10) clearInterval(poll);
+  }, 500);
+})();
+</script>
