@@ -1,0 +1,245 @@
+<script>
+$(document).ready(function() {
+    const promoInputLid = "1771442353254000041";
+    const promoBtnElemId = "1771442353254000039";
+    const EDGE_URL = "https://wqburlamuipxmenqsjnx.supabase.co/functions/v1/tilda-webhook";
+    const SUPABASE_URL = "https://wqburlamuipxmenqsjnx.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_ORMmBYvVjH6i2GanWa2JyA_mWm3fTCZ";
+
+    let isReadyToSpend = false;
+    let lastCheckedValue = null;
+
+    $('.pole-promocode-procent, .pole-promocode-sum').hide().css('opacity', '0');
+
+    function getTildaEmail() {
+        let email = null;
+        for (let i = 0; i < localStorage.length; i++) {
+            let key = localStorage.key(i);
+            if (key && key.indexOf("tilda_members_profile") !== -1) {
+                try {
+                    const profile = JSON.parse(localStorage.getItem(key));
+                    email = profile.login || profile.email;
+                    if (email) break;
+                } catch (e) {}
+            }
+        }
+        return email;
+    }
+
+    function getStoredToken() {
+        try {
+            const raw = localStorage.getItem('lk_auth_token');
+            if (!raw) return null;
+            const data = JSON.parse(raw);
+            if (!data.token || !data.exp || data.exp < Date.now()) return null;
+            return data.token;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    // Přes lkAuthGateOverlay (vloženo globálně na celý web) — čteme už
+    // hotový token, žádnou vlastní obrazovku potvrzení nepotřebujeme.
+    async function updateBalance() {
+        const token = getStoredToken();
+        if (!token) return;
+        try {
+            const res = await fetch(`${SUPABASE_URL}/functions/v1/member-data`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    apikey: SUPABASE_KEY,
+                    Authorization: "Bearer " + SUPABASE_KEY
+                },
+                body: JSON.stringify({ token: token })
+            });
+            const data = await res.json();
+            if (data.error) return;
+            window.__memberData = data;
+            document.querySelectorAll(".user-balance").forEach(el => { el.textContent = data.balance; });
+        } catch (e) {}
+    }
+
+    function showError(text, type = '') {
+        $('.custom-promo-error').remove();
+        const errorHtml = $('<div class="custom-promo-error ' + type + '">' + text + '</div>');
+        $('body').append(errorHtml);
+        setTimeout(() => errorHtml.addClass('show'), 10);
+        setTimeout(() => {
+            errorHtml.removeClass('show');
+            setTimeout(() => errorHtml.remove(), 500);
+        }, 6000);
+    }
+
+    $(document).on('input', '[data-input-lid="'+promoInputLid+'"] .t-input', function() {
+        isReadyToSpend = false;
+        $(this).css('border-color', '#ffffff');
+        $('[data-elem-id="'+promoBtnElemId+'"]').find('.tn-atom__button-text, .tn-atom').text('POUŽÍT');
+        $zeroInput.prop('readonly', false).css('border-color', '#ffffff');
+        $('.pole-promocode-procent, .pole-promocode-sum').hide().css('opacity', '0');
+    });
+
+    $('body').off('click', '[data-elem-id="'+promoBtnElemId+'"]').on('click', '[data-elem-id="'+promoBtnElemId+'"]', async function(e) {
+        e.preventDefault();
+        var $zeroInput = $('[data-input-lid="'+promoInputLid+'"] .t-input');
+        var rawVal = $zeroInput.val().trim();
+        var $btnText = $(this).find('.tn-atom__button-text, .tn-atom');
+        var originalBtnText = "POUŽÍT";
+
+        if (!rawVal || rawVal.indexOf("Uplatněno") !== -1) return;
+
+        const isPoints = /^\d+$/.test(rawVal);
+
+        if (isPoints) {
+            var num = parseInt(rawVal);
+            var rounded = Math.floor(num / 100) * 100;
+            if (rounded > 1000) rounded = 1000;
+
+            if (rounded < 100) {
+                showError("Minimálně lze uplatnit 100 bodů.");
+                return;
+            }
+
+            if (num !== rounded || !isReadyToSpend || lastCheckedValue !== rounded) {
+                $zeroInput.val(rounded).css('border-color', '#f1c40f');
+                isReadyToSpend = true;
+                lastCheckedValue = rounded;
+                if (num !== rounded) {
+                    showError("Částka byla zaokrouhlena na " + rounded + ". Potvrďte kliknutím.", "warning");
+                } else {
+                    showError("Potvrďte uplatnění bodů opětovným kliknutím.", "warning");
+                }
+                return;
+            }
+
+            $btnText.text('...');
+            let email = getTildaEmail();
+            if (!email) { showError("Přihlaste se."); $btnText.text(originalBtnText); return; }
+
+            let cartTotal = 0;
+            let priceText = $('.my-price-only .tn-atom').text();
+            if (priceText) { cartTotal = parseInt(priceText.replace(/\D/g, '')) || 0; }
+
+            try {
+                const response = await fetch(EDGE_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'get_promo', email: email, amount: rounded, total_sum: cartTotal, check_only: true
+                    })
+                });
+                const resData = await response.json();
+
+                if (resData.status === 'success') {
+                    var tildaPromoCode = "Uplatněno" + rounded + "bodů";
+                    $btnText.text('...');
+                    window.alert = function() {};
+
+                    var $tildaInput = $('.t-inputpromocode');
+                    $tildaInput.val(tildaPromoCode).trigger('change');
+                    $('.t-inputpromocode__btn').click();
+
+                    var attempts = 0;
+                    var check = setInterval(function() {
+                        attempts++;
+                        var successText = $('.t-inputpromocode__wrapper').text().toLowerCase();
+                        var isSuccess = successText.indexOf('aktivov') !== -1 || successText.indexOf('активиров') !== -1;
+                        var hasError = $tildaInput.hasClass('t-input_error') || $('.t-inputpromocode__error:visible').text().length > 2;
+
+                        if (isSuccess) {
+                            clearInterval(check);
+                            var f = (n) => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                            $('.promocode-sum .tn-atom').text("-" + f(rounded) + " Kč");
+                            $('.zlevnena-cena .tn-atom').text(f(cartTotal - rounded) + " Kč");
+                            $('.pole-promocode-procent').show().css('opacity', '1');
+                            $('.pole-promocode-sum').show().css('opacity', '1');
+                            $zeroInput.val("Uplatněno " + rounded + " bodů").prop('readonly', true).css('border-color', '#2ecc71');
+                            $btnText.text('✓');
+                            let currentHeaderBal = parseInt($('.user-balance').first().text()) || 0;
+                            document.querySelectorAll(".user-balance").forEach(el => { el.textContent = currentHeaderBal - rounded; });
+
+                        } else if (hasError || attempts > 40) {
+                            clearInterval(check);
+                            showError("Kód " + tildaPromoCode + " nebyl v košíku nalezen.");
+                            $btnText.text(originalBtnText);
+                        }
+                    }, 100);
+
+                } else {
+                    showError(resData.message || "Chyba.");
+                    $btnText.text(originalBtnText);
+                    isReadyToSpend = false;
+                }
+            } catch (err) {
+                showError("Chyba spojení.");
+                $btnText.text(originalBtnText);
+            }
+        } else {
+            $btnText.text('...');
+            var $tildaInput = $('.t-inputpromocode');
+            $tildaInput.val(rawVal).trigger('change');
+            $('.t-inputpromocode__btn').click();
+
+            var attempts = 0;
+            var check = setInterval(function() {
+                attempts++;
+                var successText = $('.t-inputpromocode__wrapper').text().toLowerCase();
+                var isSuccess = successText.indexOf('aktivov') !== -1 || successText.indexOf('активиров') !== -1;
+                var hasError = $tildaInput.hasClass('t-input_error') || $('.t-inputpromocode__error:visible').text().length > 2;
+
+                if (isSuccess) {
+                    clearInterval(check);
+                    $zeroInput.prop('readonly', true).css('border-color', '#2ecc71');
+                    $btnText.text('✓');
+                    $('.pole-promocode-procent').show().css('opacity', '1');
+                    $('.pole-promocode-sum').show().css('opacity', '1');
+                } else if (hasError || attempts > 30) {
+                    clearInterval(check);
+                    showError("Slevový kód nebyl nalezen.");
+                    $btnText.text(originalBtnText);
+                }
+            }, 100);
+        }
+    });
+
+    updateBalance();
+});
+</script>
+<style>
+.custom-promo-error {
+  position: fixed;
+  bottom: -150px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #ff4747;
+  color: #ffffff;
+  padding: 20px 30px;
+  border-radius: 12px;
+  font-family: 'Rubik', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  z-index: 999999;
+  box-shadow: 0 10px 30px rgba(255, 71, 71, 0.4);
+  transition: bottom 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  text-align: center;
+  width: auto;
+  max-width: 380px;
+  white-space: normal;
+}
+.custom-promo-error.warning {
+  background-color: #f1c40f !important;
+  color: #2c3e50 !important;
+  box-shadow: 0 10px 30px rgba(241, 196, 15, 0.3);
+}
+.custom-promo-error.show { bottom: 50px; }
+@media screen and (max-width: 640px) {
+  .custom-promo-error { width: 85%; max-width: 300px; font-size: 13px; padding: 15px 20px; bottom: 20px; }
+}
+.user-balance {
+  font-family: 'Rubik', sans-serif;
+  font-size: 12px;
+  line-height: 12px;
+  display: inline-block;
+  transform: translateY(1px);
+}
+</style>
