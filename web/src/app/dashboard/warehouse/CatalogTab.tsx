@@ -22,6 +22,23 @@ type BatchLite = { id: string; product_sticker_id: string; remaining: number; pu
 type RecipeRow = { id: string; bouquet_sticker_id: string; ingredient_sticker_id: string; quantity_needed: number };
 type WriteOffTarget = { id: string | null; remaining: number; productName: string; productStickerId: string };
 
+// Тот же список, что в Магазине у менеджера (CATEGORY_OPTIONS) — держим
+// категорию одним и тем же набором значений везде, откуда бы товар ни
+// добавили.
+const CATEGORY_OPTIONS = [
+  { value: "buket", label: "Букеты" },
+  { value: "set", label: "Сеты" },
+  { value: "ohapka", label: "Náruče" },
+  { value: "atelier", label: "Atelier" },
+  { value: "darky", label: "Dárky" },
+  { value: "kolekce", label: "Kolekce" },
+  { value: "banky", label: "Banky" },
+];
+
+// Составом набираются только собранные букеты/сеты — охапки сами сырьё,
+// Atelier без фиксированного рецепта, Dárky вообще не цветы.
+const NO_RECIPE_CATEGORIES = new Set(["ohapka", "atelier", "darky"]);
+
 function quantityBadgeClass(qty: number): string {
   if (qty <= 0) return "bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400";
   if (qty <= 5) return "bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400";
@@ -44,6 +61,7 @@ export function CatalogTab() {
 
   const [addingProduct, setAddingProduct] = useState(false);
   const [newName, setNewName] = useState("");
+  const [newCategory, setNewCategory] = useState("");
   const [newFile, setNewFile] = useState<File | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
   const [addingBusy, setAddingBusy] = useState(false);
@@ -113,13 +131,22 @@ export function CatalogTab() {
       }
       imageUrl = supabase.storage.from("product-stickers").getPublicUrl(`${id}.${ext}`).data.publicUrl;
     }
-    const { error } = await supabase.from("product_stickers").insert({ id, product_name: name, image_url: imageUrl });
+    const category = newCategory || null;
+    const { error } = await supabase
+      .from("product_stickers")
+      .insert({ id, product_name: name, image_url: imageUrl, category });
     if (error) {
       setAddError(error.message);
       setAddingBusy(false);
       return;
     }
+    // Новая охапка сразу отправляется на подбор соответствия с Van Vliet
+    // в фоне — не ждать планового прогона раз в 2 недели.
+    if (category === "ohapka") {
+      supabase.functions.invoke("vanvliet-alias-refresh", { body: {} }).catch(() => {});
+    }
     setNewName("");
+    setNewCategory("");
     setNewFile(null);
     setAddingProduct(false);
     setAddingBusy(false);
@@ -189,6 +216,19 @@ export function CatalogTab() {
             placeholder="Название товара"
             className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 bg-transparent px-2 py-1 text-sm outline-none focus:border-accent"
           />
+          <select
+            value={newCategory}
+            onChange={(e) => setNewCategory(e.target.value)}
+            title="Категория — лучше выбрать сразу, чтобы товар везде вёл себя правильно"
+            className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 bg-transparent px-2 py-1 text-sm outline-none focus:border-accent"
+          >
+            <option value="">Категория…</option>
+            {CATEGORY_OPTIONS.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
+          </select>
           <input type="file" accept="image/*" onChange={(e) => setNewFile(e.target.files?.[0] ?? null)} className="w-full text-xs" />
           <div className="flex gap-2">
             <button onClick={() => setAddingProduct(false)} className="flex-1 rounded-md border border-zinc-300 dark:border-zinc-600 py-1 text-xs">
@@ -275,7 +315,7 @@ export function CatalogTab() {
                     {isAvailable ? "✓ В наличии" : "Нет сегодня"}
                   </button>
                 )}
-                {!isOhapka && (
+                {!NO_RECIPE_CATEGORIES.has(p.category ?? "") && (
                   <button
                     onClick={() => setOpenRecipeId(recipeOpen ? null : p.id)}
                     className="text-[11px] text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"

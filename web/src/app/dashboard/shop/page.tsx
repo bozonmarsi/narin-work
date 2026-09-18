@@ -49,10 +49,16 @@ const CATEGORY_OPTIONS = [
   { value: "set", label: "Сеты", color: "bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 ring-purple-200 dark:ring-purple-500/30" },
   { value: "ohapka", label: "Náruče", color: "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 ring-amber-200 dark:ring-amber-500/30" },
   { value: "atelier", label: "Atelier", color: "bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 ring-blue-200 dark:ring-blue-500/30" },
-  { value: "otkrytka", label: "Открытки", color: "bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-400 ring-teal-200 dark:ring-teal-500/30" },
+  { value: "darky", label: "Dárky", color: "bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-400 ring-teal-200 dark:ring-teal-500/30" },
   { value: "kolekce", label: "Kolekce", color: "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-emerald-200 dark:ring-emerald-500/30" },
   { value: "banky", label: "Banky", color: "bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400 ring-sky-200 dark:ring-sky-500/30" },
 ];
+
+// Составом (рецептом) из сырья набираются только собранные букеты/сеты.
+// Охапки — сами сырьё, Atelier — авторская работа без фиксированного
+// рецепта, Dárky (открытки, сладости и т.п.) — не цветы вообще, там
+// рецепту взяться неоткуда.
+const NO_RECIPE_CATEGORIES = new Set(["ohapka", "atelier", "darky"]);
 
 function categoryLabel(value: string | null) {
   return CATEGORY_OPTIONS.find((c) => c.value === value)?.label ?? null;
@@ -318,7 +324,7 @@ function ProductCard({
           )}
         </div>
 
-        <div className={p.category === "ohapka" ? "hidden" : undefined}>
+        <div className={NO_RECIPE_CATEGORIES.has(p.category ?? "") ? "hidden" : undefined}>
           <button
             type="button"
             onClick={() => setRecipeOpen((v) => !v)}
@@ -596,6 +602,7 @@ export default function ShopPage() {
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [newProductName, setNewProductName] = useState("");
+  const [newProductCategory, setNewProductCategory] = useState("");
   const [newProductFile, setNewProductFile] = useState<File | null>(null);
   const [addingProduct, setAddingProduct] = useState(false);
   const [addProductError, setAddProductError] = useState<string | null>(null);
@@ -752,14 +759,26 @@ export default function ShopPage() {
       imageUrl = urlData.publicUrl;
     }
 
-    const { error } = await supabase.from("product_stickers").insert({ id, product_name: name, image_url: imageUrl });
+    const category = newProductCategory || null;
+    const { error } = await supabase
+      .from("product_stickers")
+      .insert({ id, product_name: name, image_url: imageUrl, category });
     if (error) {
       setAddProductError(error.message);
       setAddingProduct(false);
       return;
     }
 
+    // Новая охапка сразу отправляется на подбор соответствия с Van
+    // Vliet — не ждать до следующего планового прогона раз в 2 недели,
+    // чтобы товар сразу стало видно в поиске у поставщика. Не блокирует
+    // форму — работает в фоне, результат появится в панели Van Vliet.
+    if (category === "ohapka") {
+      supabase.functions.invoke("vanvliet-alias-refresh", { body: {} }).catch(() => {});
+    }
+
     setNewProductName("");
+    setNewProductCategory("");
     setNewProductFile(null);
     setAddingProduct(false);
     loadAvailability();
@@ -1147,6 +1166,19 @@ export default function ShopPage() {
                   placeholder="Название"
                   className="rounded-md border border-zinc-300 dark:border-zinc-600 px-1.5 py-1 text-[11px]"
                 />
+                <select
+                  value={newProductCategory}
+                  onChange={(e) => setNewProductCategory(e.target.value)}
+                  title="Категория — лучше выбрать сразу, чтобы товар везде вёл себя правильно (рецепт, соответствие с поставщиком)"
+                  className="rounded-md border border-zinc-300 dark:border-zinc-600 px-1.5 py-1 text-[11px]"
+                >
+                  <option value="">Категория…</option>
+                  {CATEGORY_OPTIONS.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
                 <label className="cursor-pointer truncate rounded-md border border-zinc-300 dark:border-zinc-600 px-1.5 py-1 text-center text-[10px] text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800">
                   {newProductFile ? newProductFile.name : "Фото (необязательно)"}
                   <input

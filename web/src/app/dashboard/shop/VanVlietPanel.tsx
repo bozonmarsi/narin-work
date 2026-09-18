@@ -251,6 +251,8 @@ export function VanVlietPanel() {
   const [refreshResult, setRefreshResult] = useState<{
     updatedMaterials: number;
     totalAliases: number;
+    prunedMaterials: number;
+    genusRejected: number;
     report: { name: string; aliases: string[] }[];
   } | null>(null);
   const [scanningStock, setScanningStock] = useState(false);
@@ -380,6 +382,8 @@ export function VanVlietPanel() {
       setRefreshResult({
         updatedMaterials: data.updatedMaterials ?? 0,
         totalAliases: data.totalAliases ?? 0,
+        prunedMaterials: data.prunedMaterials ?? 0,
+        genusRejected: data.genusRejected ?? 0,
         report: data.report ?? [],
       });
 
@@ -627,6 +631,12 @@ export function VanVlietPanel() {
         <div className="rounded-md border border-zinc-200 p-2 text-xs dark:border-zinc-700">
           <p>
             Обновлено: {refreshResult.updatedMaterials} цветов, {refreshResult.totalAliases} соответствий.
+            {refreshResult.prunedMaterials > 0 && (
+              <> Убрано устаревших/неточных: {refreshResult.prunedMaterials} (сейчас нет уверенного совпадения — честно пусто, а не старое неверное).</>
+            )}
+            {refreshResult.genusRejected > 0 && (
+              <> Отклонено защитой от неверного рода: {refreshResult.genusRejected}.</>
+            )}
           </p>
           {refreshResult.report.length > 0 && (
             <ul className="mt-1 space-y-0.5 text-zinc-500 dark:text-zinc-400">

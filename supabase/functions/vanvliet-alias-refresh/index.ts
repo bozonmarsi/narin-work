@@ -109,6 +109,72 @@ async function getAuth(username: string, password: string): Promise<string> {
 
 type Product = { key: number; product: string; color: string }
 
+// Страховка от ошибки ИИ, а не только просьба в промпте — 12.09.2026
+// один прогон перепутал род у доброго десятка цветов (пионы -> розы,
+// тюльпаны -> розы/гербера, аллиум -> ирис и т.д.), и это тихо жило в
+// базе неделями, пока не нашли руками. Модель иногда всё равно путает
+// род, несмотря на явный запрет в промпте — значит нужна отдельная,
+// не-ИИ проверка поверх её ответа: если ни одно ожидаемое латинское/
+// английское слово рода не встречается в предложенном товаре, ответ
+// отбрасывается (для этого цветка — как будто модель ничего не нашла),
+// а не сохраняется как есть. Смысл ключей — начало НАШЕГО названия без
+// диакритики и в нижнем регистре, значения — что обязано быть в
+// названии поставщика (частичное совпадение по подстроке).
+const GENUS_KEYWORDS: Record<string, string[]> = {
+  allium: ['allium'],
+  anturium: ['anthurium'],
+  calla: ['calla'],
+  kala: ['calla'],
+  eukalyptus: ['euc'],
+  eustoma: ['eust'],
+  gerbera: ['gerbera'],
+  hermanek: ['chamomile', 'matricaria'],
+  hortenezie: ['hydra', 'hortensia'],
+  hortenzie: ['hydra', 'hortensia'],
+  hyacint: ['hyacin'],
+  karafiat: ['dia ', 'dia.', 'dianthus', 'carnation'],
+  leucadendron: ['leucadendron'],
+  leucospermum: ['leucospermum'],
+  lilie: ['lil'],
+  magnolie: ['magnolia'],
+  matthiola: ['matthiola'],
+  mimosa: ['mimosa'],
+  narcis: ['narcis', 'daffodil'],
+  peony: ['peony', 'paeonia'],
+  pivonka: ['peony', 'paeonia'],
+  protea: ['protea'],
+  ranunculus: ['ranuncul'],
+  ruze: ['rosa', 'rose'],
+  slunecnice: ['helianthus'],
+  tulipan: ['tulip'],
+}
+
+function stripDiacritics(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '')
+}
+
+function genusKeywordsFor(ourName: string): string[] | null {
+  const normalized = stripDiacritics(ourName).toLowerCase()
+  for (const [prefix, keywords] of Object.entries(GENUS_KEYWORDS)) {
+    if (normalized.startsWith(prefix)) return keywords
+  }
+  return null
+}
+
+// Возвращает только те предложенные моделью названия, что реально
+// содержат ожидаемое слово рода — остальные тихо роняем, не доверяя
+// модели вслепую там, где можем проверить сами. Если для нашего цветка
+// нет записи в GENUS_KEYWORDS (новый вид, ещё не добавили) — проверка
+// пропускается целиком, как и раньше, до этой правки.
+function filterByGenus(ourName: string, candidates: string[]): string[] {
+  const keywords = genusKeywordsFor(ourName)
+  if (!keywords) return candidates
+  return candidates.filter((c) => {
+    const lower = c.toLowerCase()
+    return keywords.some((k) => lower.includes(k))
+  })
+}
+
 async function loadCatalog(username: string, password: string, targetDate: string): Promise<Product[]> {
   const basicAuth = await getAuth(username, password)
   const sessionId = makeSessionId()
@@ -262,24 +328,37 @@ ${catalogLines}
 
     let updatedMaterials = 0
     let totalAliases = 0
+    let prunedMaterials = 0
     // Читаемый отчёт "наше название -> что сохранили" — по имени, не по id,
     // чтобы результат можно было проверить глазами.
     const report: { name: string; aliases: string[] }[] = []
-    for (const [materialId, productNames] of Object.entries(mapping)) {
-      if (!Array.isArray(productNames) || productNames.length === 0) continue
-      // Полная замена — устаревшие соответствия для этого цветка не
-      // накапливаются, а перезаписываются свежим ответом модели.
-      await supabase.from('product_name_aliases').delete().eq('supplier_id', supplier.id).eq('product_sticker_id', materialId)
-      // На всякий случай отрезаем " | Цвет", если модель всё же скопировала
-      // его вместе с названием из формата каталога в промпте.
-      const cores = Array.from(new Set(productNames.map((p) => coreName(p.split(' | ')[0])).filter(Boolean)))
-      if (!cores.length) continue
-      const rows = cores.map((alias) => ({ supplier_id: supplier.id, alias, product_sticker_id: materialId }))
+    // ВСЕ цветы, что отправляли модели — не только те, что попали в её
+    // ответ. Если модель сегодня не нашла уверенного совпадения (цветок,
+    // например, не сезонный прямо сейчас), старые алиасы для него надо
+    // УДАЛИТЬ, а не молча оставить — иначе ошибка одного неудачного
+    // прогона (например, от подбора не по тому роду) остаётся в базе
+    // навсегда, пока модель случайно не найдёт для этого же цветка что-то
+    // новое. Пустой список соответствий — честное "не знаем", а не старое
+    // неверное значение.
+    let genusRejected = 0
+    for (const m of materials ?? []) {
+      const rawNames = Array.isArray(mapping[m.id]) ? mapping[m.id] : []
+      const genusChecked = filterByGenus(m.product_name, rawNames)
+      genusRejected += rawNames.length - genusChecked.length
+      const cores = Array.from(new Set(genusChecked.map((p) => coreName(p.split(' | ')[0])).filter(Boolean)))
+
+      await supabase.from('product_name_aliases').delete().eq('supplier_id', supplier.id).eq('product_sticker_id', m.id)
+
+      if (cores.length === 0) {
+        prunedMaterials++
+        continue
+      }
+      const rows = cores.map((alias) => ({ supplier_id: supplier.id, alias, product_sticker_id: m.id }))
       const { error } = await supabase.from('product_name_aliases').insert(rows)
       if (!error) {
         updatedMaterials++
         totalAliases += rows.length
-        report.push({ name: materialNameById.get(materialId) ?? materialId, aliases: cores })
+        report.push({ name: materialNameById.get(m.id) ?? m.id, aliases: cores })
       }
     }
 
@@ -290,6 +369,8 @@ ${catalogLines}
       materialsConsidered: (materials ?? []).length,
       updatedMaterials,
       totalAliases,
+      prunedMaterials,
+      genusRejected,
     })
   } catch (e) {
     if (e instanceof UpstreamError) {
