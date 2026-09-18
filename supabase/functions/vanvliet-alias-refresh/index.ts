@@ -305,42 +305,34 @@ ${catalogLines}
 
 Верни СТРОГО валидный JSON, без markdown-разметки и пояснений: объект вида {"id_нашей_позиции": ["точное торговое название из прайс-листа", ...]}. Названия копируй один в один из прайс-листа поставщика, БЕЗ части " | Цвет" — это в прайс-листе просто разделитель для тебя, в ответе его быть не должно. От 0 до 4 названий на позицию — только те, в которых ты действительно уверена. Если для позиции нет ни одного уверенного совпадения — не включай её в ответ вообще.`
 
-    // Классификатор Anthropic изредка ложно отказывается отвечать
-    // (stop_reason: "refusal", category "bio") на плотный список
-    // ботанических названий — сам запрос совершенно безобидный (просто
-    // сопоставление товаров каталога). Ловили это живьём, причём
-    // воспроизводимо на одном и том же прогоне — значит просто повторить
-    // тот же запрос той же моделью не всегда помогает. Пробуем сперва
-    // так (отказ бывает и нестабильным), а на последней попытке — другой
-    // моделью, как и советует сама Anthropic в тексте отказа.
-    const MODEL_ATTEMPTS = ['claude-sonnet-5', 'claude-sonnet-5', 'claude-opus-5']
-    let aiRes: Response
-    let aiData: any
-    let attempt = 0
-    do {
-      const model = MODEL_ATTEMPTS[Math.min(attempt, MODEL_ATTEMPTS.length - 1)]
-      attempt++
-      aiRes = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'x-api-key': anthropicKey,
-          'anthropic-version': '2023-06-01',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model,
-          max_tokens: 24000,
-          thinking: { type: 'adaptive' },
-          output_config: { effort: 'high' },
-          messages: [{ role: 'user', content: prompt }],
-        }),
-      })
-      aiData = await aiRes.json()
-    } while (aiRes.ok && aiData?.stop_reason === 'refusal' && attempt < MODEL_ATTEMPTS.length)
+    // Раньше здесь был повтор до 3 раз (на случай ложного отказа
+    // классификатора Anthropic на плотный список ботанических
+    // названий) — но настоящую причину отказа починили самой
+    // формулировкой промпта (торговая рамка вместо таксономической),
+    // и повтор больше не воспроизводится. Три подряд тяжёлых вызова
+    // (adaptive thinking + effort:high) сами по себе упирались в лимит
+    // памяти/CPU этого проекта (Nano) — "not enough compute resources".
+    // Один вызов — и дешевле, и укладывается в лимит.
+    const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': anthropicKey,
+        'anthropic-version': '2023-06-01',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-5',
+        max_tokens: 24000,
+        thinking: { type: 'adaptive' },
+        output_config: { effort: 'high' },
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    })
+    const aiData = await aiRes.json()
 
     if (!aiRes.ok) return json({ ok: false, step: 'anthropic', status: aiRes.status, body: aiData }, 502)
     if (aiData?.stop_reason === 'refusal') {
-      return json({ ok: false, step: 'anthropic_refusal', attempts: attempt, body: aiData }, 502)
+      return json({ ok: false, step: 'anthropic_refusal', body: aiData }, 502)
     }
 
     // Модель думает перед ответом ("thinking"-блок первым) — реальный
