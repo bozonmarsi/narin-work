@@ -303,23 +303,38 @@ ${catalogLines}
 
 Верни СТРОГО валидный JSON, без markdown-разметки и пояснений: объект вида {"id_нашего_цветка": ["точное название товара из каталога", ...]}. Названия товаров копируй один в один из каталога поставщика, БЕЗ части " | Цвет" — это в каталоге просто разделитель для тебя, в ответе его быть не должно. От 0 до 4 названий на цветок — только те, в которых ты действительно уверена. Если для цветка нет ни одного уверенного совпадения — не включай его в ответ вообще.`
 
-    const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': anthropicKey,
-        'anthropic-version': '2023-06-01',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-5',
-        max_tokens: 24000,
-        thinking: { type: 'adaptive' },
-        output_config: { effort: 'high' },
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    })
-    const aiData = await aiRes.json()
+    // Классификатор Anthropic иногда ложно отказывается отвечать
+    // (stop_reason: "refusal") на плотный список латинских ботанических
+    // названий — ловили это на живую, сам запрос совершенно безобиден
+    // (просто сопоставление цветов). Отказ не всегда воспроизводится на
+    // повторе, поэтому пробуем ещё пару раз, прежде чем сдаться.
+    let aiRes: Response
+    let aiData: any
+    let attempt = 0
+    do {
+      attempt++
+      aiRes = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': anthropicKey,
+          'anthropic-version': '2023-06-01',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-5',
+          max_tokens: 24000,
+          thinking: { type: 'adaptive' },
+          output_config: { effort: 'high' },
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      })
+      aiData = await aiRes.json()
+    } while (aiRes.ok && aiData?.stop_reason === 'refusal' && attempt < 3)
+
     if (!aiRes.ok) return json({ ok: false, step: 'anthropic', status: aiRes.status, body: aiData }, 502)
+    if (aiData?.stop_reason === 'refusal') {
+      return json({ ok: false, step: 'anthropic_refusal', attempts: attempt, body: aiData }, 502)
+    }
 
     // Модель думает перед ответом ("thinking"-блок первым) — реальный
     // текст надо искать по type, а не по первому индексу.
