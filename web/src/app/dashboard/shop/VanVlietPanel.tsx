@@ -18,7 +18,7 @@ import { FloristRequestsPanel } from "./FloristRequestsPanel";
 
 type SearchRow = { keyword: string; color: string; maxPrice: string; quantity: string; materialId: string };
 
-type RawMaterial = { id: string; product_name: string };
+type RawMaterial = { id: string; product_name: string; vanvliet_in_stock: boolean | null; vanvliet_stock_checked_at: string | null };
 type Alias = { id: string; alias: string; product_sticker_id: string };
 type Purchase = {
   id: string;
@@ -253,6 +253,8 @@ export function VanVlietPanel() {
     totalAliases: number;
     report: { name: string; aliases: string[] }[];
   } | null>(null);
+  const [scanningStock, setScanningStock] = useState(false);
+  const [stockScanError, setStockScanError] = useState<string | null>(null);
 
   // Авто-расчёт "что закончится под ещё не собранные заказы" — считается
   // на лету при каждом изменении заказов/остатков, не хранится (иначе
@@ -285,29 +287,35 @@ export function VanVlietPanel() {
   useRealtimeRefresh("tilda_orders", loadShortfalls);
   useRealtimeRefresh("product_stickers", loadShortfalls);
 
+  async function loadMaterials() {
+    const supabase = createClient();
+    const [supplierRes, materialsRes] = await Promise.all([
+      supabase.from("suppliers").select("id").eq("name", "Van Vliet").maybeSingle(),
+      supabase
+        .from("product_stickers")
+        .select("id, product_name, vanvliet_in_stock, vanvliet_stock_checked_at")
+        .eq("category", "ohapka")
+        .order("product_name"),
+    ]);
+    const supplierId = supplierRes.data?.id ?? null;
+    setVanVlietSupplierId(supplierId);
+    setMaterials(materialsRes.data ?? []);
+    if (supplierId) {
+      const { data } = await supabase
+        .from("product_name_aliases")
+        .select("id, alias, product_sticker_id")
+        .eq("supplier_id", supplierId);
+      setAliases(data ?? []);
+    }
+  }
+
   useEffect(() => {
-    (async () => {
-      const supabase = createClient();
-      const [supplierRes, materialsRes] = await Promise.all([
-        supabase.from("suppliers").select("id").eq("name", "Van Vliet").maybeSingle(),
-        supabase
-          .from("product_stickers")
-          .select("id, product_name")
-          .eq("category", "ohapka")
-          .order("product_name"),
-      ]);
-      const supplierId = supplierRes.data?.id ?? null;
-      setVanVlietSupplierId(supplierId);
-      setMaterials(materialsRes.data ?? []);
-      if (supplierId) {
-        const { data } = await supabase
-          .from("product_name_aliases")
-          .select("id, alias, product_sticker_id")
-          .eq("supplier_id", supplierId);
-        setAliases(data ?? []);
-      }
-    })();
+    loadMaterials();
   }, []);
+
+  // Остаток у Van Vliet проставляет сканер (vanvliet-stock-scan) дважды в
+  // день — бейдж в панели должен обновиться сам, без перезагрузки.
+  useRealtimeRefresh("product_stickers", loadMaterials);
 
   function aliasFor(materialId: string): string | undefined {
     return aliases.find((a) => a.product_sticker_id === materialId)?.alias;
@@ -330,6 +338,25 @@ export function VanVlietPanel() {
       }
     } finally {
       setSavingAlias(null);
+    }
+  }
+
+  // Ручной запуск сканера остатков (та же функция, что дважды в день
+  // запускает pg_cron) — не ждать до 07:00/17:00, чтобы проверить
+  // прямо сейчас.
+  async function scanStock() {
+    setScanningStock(true);
+    setStockScanError(null);
+    try {
+      const supabase = createClient();
+      const { data, error: fnError } = await supabase.functions.invoke("vanvliet-stock-scan", { body: {} });
+      if (fnError) throw fnError;
+      if (data?.ok === false) throw new Error(data.step ? `${data.step}: ${JSON.stringify(data.body)}` : data.error);
+      await loadMaterials();
+    } catch (e) {
+      setStockScanError(await describeFunctionError(e));
+    } finally {
+      setScanningStock(false);
     }
   }
 
@@ -584,8 +611,17 @@ export function VanVlietPanel() {
           >
             {refreshingAliases ? "Обновляю соответствия (может занять минуту)…" : "🔄 Обновить соответствия (AI)"}
           </button>
+          <button
+            onClick={scanStock}
+            disabled={scanningStock}
+            className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-500 hover:border-accent hover:text-accent disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-400"
+          >
+            {scanningStock ? "Проверяю остаток…" : "📡 Проверить остаток у Van Vliet"}
+          </button>
         </div>
       </div>
+
+      {stockScanError && <p className="text-xs text-red-500">{stockScanError}</p>}
 
       {refreshResult && (
         <div className="rounded-md border border-zinc-200 p-2 text-xs dark:border-zinc-700">
@@ -688,6 +724,36 @@ export function VanVlietPanel() {
           </button>
         </div>
       </div>
+
+      {materials.some((m) => m.vanvliet_stock_checked_at) && (
+        <div className="space-y-1.5 border-t border-zinc-200 pt-3 dark:border-zinc-700">
+          <p className="text-sm font-medium">Наличие у поставщика</p>
+          <p className="text-xs text-zinc-400">
+            Проверяется само дважды в день — показывает, что реально можно заказать у Van Vliet прямо сейчас.
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {materials
+              .filter((m) => m.vanvliet_stock_checked_at)
+              .map((m) => (
+                <span
+                  key={m.id}
+                  title={
+                    m.vanvliet_stock_checked_at
+                      ? `Проверено: ${new Date(m.vanvliet_stock_checked_at).toLocaleString("ru-RU")}`
+                      : undefined
+                  }
+                  className={`rounded-full px-2 py-0.5 text-xs ${
+                    m.vanvliet_in_stock
+                      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400"
+                      : "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400"
+                  }`}
+                >
+                  {m.vanvliet_in_stock ? "✓" : "✗"} {decodeHtmlEntities(m.product_name)}
+                </span>
+              ))}
+          </div>
+        </div>
+      )}
 
       <div className="space-y-1.5 border-t border-zinc-200 pt-3 dark:border-zinc-700">
         <p className="text-sm font-medium">К заказу (по ещё не собранным заказам)</p>

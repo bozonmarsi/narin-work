@@ -275,7 +275,7 @@ Deno.serve(async (req) => {
       return json({
         ok: true,
         catalogSize: catalog.length,
-        catalog: catalog.map((c) => ({ product: c.product, color: c.color, key: c.key })),
+        catalog: catalog.map((c) => ({ product: c.product, color: c.color, key: c.key, stock: c.stock })),
         date: targetDate,
       })
     }

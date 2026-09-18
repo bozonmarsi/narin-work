@@ -93,12 +93,20 @@
         textWrapper.insertBefore(badge, textWrapper.firstChild);
     }
 
-    function applyBadges(availableNames, specialNames, specialDateLabel) {
+    function applyBadges(availableNames, specialNames, unsourceableNames, specialDateLabel) {
         var cards = document.querySelectorAll('.t-store__card');
         cards.forEach(function (card) {
             var nameEl = card.querySelector('.js-product-name');
             if (!nameEl) return;
             var name = normalize(nameEl.textContent);
+            // Нет ни у нас, ни у поставщика одновременно — "Doručíme
+            // zítra" по умолчанию было бы пустым обещанием, поэтому
+            // карточка прячется целиком, а не просто меняет бейдж.
+            if (unsourceableNames.has(name)) {
+                card.style.display = 'none';
+                return;
+            }
+            card.style.display = '';
             var type = specialNames.has(name) ? 'special' : availableNames.has(name) ? 'today' : 'tomorrow';
             addBadge(card, type, specialDateLabel);
         });
@@ -108,22 +116,24 @@
         Promise.all([
             rpc('get_available_products'),
             rpc('get_special_order_products'),
+            rpc('get_unsourceable_products'),
             getTable('shop_weekly_closed_days', 'select=weekday'),
             getTable('shop_closed_dates', 'select=closed_date'),
         ])
             .then(function (results) {
                 var availableNames = new Set(results[0].map(function (r) { return normalize(r.product_name); }));
                 var specialNames = new Set(results[1].map(function (r) { return normalize(r.product_name); }));
-                var closedWeekdays = new Set(results[2].map(function (r) { return r.weekday; }));
-                var closedDates = new Set(results[3].map(function (r) { return r.closed_date; }));
+                var unsourceableNames = new Set(results[2].map(function (r) { return normalize(r.product_name); }));
+                var closedWeekdays = new Set(results[3].map(function (r) { return r.weekday; }));
+                var closedDates = new Set(results[4].map(function (r) { return r.closed_date; }));
                 var specialDateLabel = computeSpecialOrderDate(closedWeekdays, closedDates);
 
-                applyBadges(availableNames, specialNames, specialDateLabel);
+                applyBadges(availableNames, specialNames, unsourceableNames, specialDateLabel);
 
                 var pending = null;
                 var observer = new MutationObserver(function () {
                     if (pending) clearTimeout(pending);
-                    pending = setTimeout(function () { applyBadges(availableNames, specialNames, specialDateLabel); }, 150);
+                    pending = setTimeout(function () { applyBadges(availableNames, specialNames, unsourceableNames, specialDateLabel); }, 150);
                 });
                 observer.observe(document.body, { childList: true, subtree: true });
             })
