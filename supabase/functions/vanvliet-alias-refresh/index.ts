@@ -169,6 +169,23 @@ function genusKeywordsFor(ourName: string): string[] | null {
   return null
 }
 
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+// Проверка по ГРАНИЦЕ слова ПЕРЕД ключом, не по любому вхождению
+// подстроки — просто includes() однажды чуть не подвёл прямо здесь:
+// ключ "euc" (для Eukalyptus) сам является подстрокой
+// "Leuc-adendron"/"Leuc-ospermum" — оба этих рода тоже есть в нашем
+// каталоге, и без проверки границы "Leucadendron" сошёл бы за
+// эвкалипт. Граница нужна именно ПЕРЕД ключом (не после) — иначе
+// сломались бы законные совпадения вроде "Lillium" (двойная L, после
+// "lil" сразу ещё одна "l", там границы нет).
+function containsGenusWord(text: string, keyword: string): boolean {
+  const re = new RegExp('\\b' + escapeRegExp(keyword), 'i')
+  return re.test(text)
+}
+
 // Возвращает только те предложенные моделью названия, что реально
 // содержат ожидаемое слово рода — остальные тихо роняем, не доверяя
 // модели вслепую там, где можем проверить сами. Если для нашего цветка
@@ -177,10 +194,7 @@ function genusKeywordsFor(ourName: string): string[] | null {
 function filterByGenus(ourName: string, candidates: string[]): string[] {
   const keywords = genusKeywordsFor(ourName)
   if (!keywords) return candidates
-  return candidates.filter((c) => {
-    const lower = c.toLowerCase()
-    return keywords.some((k) => lower.includes(k))
-  })
+  return candidates.filter((c) => keywords.some((k) => containsGenusWord(c, k)))
 }
 
 async function loadCatalog(username: string, password: string, targetDate: string): Promise<Product[]> {
