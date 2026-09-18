@@ -161,6 +161,41 @@ const DATE_OPTIONS = [
   { label: "Через 3 дня", value: pragueDate(3) },
 ];
 
+// "3 ч назад" / "вчера" — чтобы устаревшую проверку было видно сразу в
+// списке, а не только по наведению на каждый бейдж отдельно.
+function relativeTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const minutes = Math.round(diffMs / 60000);
+  if (minutes < 1) return "только что";
+  if (minutes < 60) return `${minutes} мин назад`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} ч назад`;
+  const days = Math.round(hours / 24);
+  return days === 1 ? "вчера" : `${days} дн назад`;
+}
+
+type SupplyStatus = "available" | "unavailable" | "pending" | "unmatched";
+
+function supplyStatusFor(material: RawMaterial, aliasCount: number): SupplyStatus {
+  if (aliasCount === 0) return "unmatched";
+  if (!material.vanvliet_stock_checked_at) return "pending";
+  return material.vanvliet_in_stock ? "available" : "unavailable";
+}
+
+const SUPPLY_STATUS_STYLE: Record<SupplyStatus, string> = {
+  available: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400",
+  unavailable: "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400",
+  pending: "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400",
+  unmatched: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400",
+};
+
+const SUPPLY_STATUS_ICON: Record<SupplyStatus, string> = {
+  available: "✓",
+  unavailable: "✗",
+  pending: "…",
+  unmatched: "?",
+};
+
 // supabase-js only gives a generic "non-2xx status code" message by default —
 // the actual error body (which step failed, what the supplier's API said) is
 // on error.context (a Response). Without this we're debugging blind.
@@ -484,7 +519,12 @@ export function VanVlietPanel() {
     return Array.from(set);
   }
 
-  async function search() {
+  // rowsOverride — для бейджа "Наличие у поставщика": клик на
+  // несопоставленный цветок ищет его сразу, минуя ручной выбор в форме
+  // (передаёт свежую строку напрямую, а не через состояние `rows`, у
+  // которого React иначе не успел бы обновиться к этому же вызову).
+  async function search(rowsOverride?: SearchRow[]) {
+    const activeRows = rowsOverride ?? rows;
     setError(null);
     setResults(null);
     setCatalogSize(null);
@@ -493,7 +533,7 @@ export function VanVlietPanel() {
     // к какой строке формы (и, значит, к какому materialId) её потом
     // приплюсовать обратно после ответа сервера.
     const expanded: { rowIndex: number; phrase: string }[] = [];
-    rows.forEach((row, rowIndex) => {
+    activeRows.forEach((row, rowIndex) => {
       for (const phrase of phrasesForRow(row)) expanded.push({ rowIndex, phrase });
     });
 
@@ -505,9 +545,9 @@ export function VanVlietPanel() {
     const requests = expanded.map(({ phrase, rowIndex }) => ({
       label: phrase,
       keywords: phrase.toLowerCase().split(/\s+/).filter(Boolean),
-      colors: rows[rowIndex].color ? [rows[rowIndex].color] : [],
-      maxPrice: rows[rowIndex].maxPrice ? Number(rows[rowIndex].maxPrice) : null,
-      quantity: rows[rowIndex].quantity ? Number(rows[rowIndex].quantity) : null,
+      colors: activeRows[rowIndex].color ? [activeRows[rowIndex].color] : [],
+      maxPrice: activeRows[rowIndex].maxPrice ? Number(activeRows[rowIndex].maxPrice) : null,
+      quantity: activeRows[rowIndex].quantity ? Number(activeRows[rowIndex].quantity) : null,
     }));
 
     setLoading(true);
@@ -529,7 +569,7 @@ export function VanVlietPanel() {
       // товар мог найтись сразу по нескольким алиасам).
       const merged: ResultGroup[] = [];
       const mergedMaterialIds: string[] = [];
-      rows.forEach((row, rowIndex) => {
+      activeRows.forEach((row, rowIndex) => {
         const parts = rawResults.filter((_, i) => expanded[i].rowIndex === rowIndex);
         if (!parts.length) return;
         const byKey = new Map<number, Candidate>();
@@ -557,6 +597,15 @@ export function VanVlietPanel() {
     } finally {
       setLoading(false);
     }
+  }
+
+  // Клик "Искать →" у несопоставленного цветка в блоке "Наличие у
+  // поставщика" — заполняет форму этим товаром и сразу ищет, чтобы не
+  // делать это руками через выпадающий список.
+  function searchForMaterial(materialId: string) {
+    const row: SearchRow = { ...emptyRow(), materialId };
+    setRows([row]);
+    search([row]);
   }
 
   async function buy(candidate: Candidate, requestLabel: string, date: string, materialId: string | null, amount: number) {
@@ -726,7 +775,7 @@ export function VanVlietPanel() {
             + ещё позиция
           </button>
           <button
-            onClick={search}
+            onClick={() => search()}
             disabled={loading}
             className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-white disabled:opacity-50"
           >
@@ -735,35 +784,60 @@ export function VanVlietPanel() {
         </div>
       </div>
 
-      {materials.some((m) => m.vanvliet_stock_checked_at) && (
-        <div className="space-y-1.5 border-t border-zinc-200 pt-3 dark:border-zinc-700">
-          <p className="text-sm font-medium">Наличие у поставщика</p>
-          <p className="text-xs text-zinc-400">
-            Проверяется само дважды в день — показывает, что реально можно заказать у Van Vliet прямо сейчас.
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {materials
-              .filter((m) => m.vanvliet_stock_checked_at)
-              .map((m) => (
-                <span
-                  key={m.id}
-                  title={
-                    m.vanvliet_stock_checked_at
-                      ? `Проверено: ${new Date(m.vanvliet_stock_checked_at).toLocaleString("ru-RU")}`
-                      : undefined
-                  }
-                  className={`rounded-full px-2 py-0.5 text-xs ${
-                    m.vanvliet_in_stock
-                      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400"
-                      : "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400"
-                  }`}
-                >
-                  {m.vanvliet_in_stock ? "✓" : "✗"} {decodeHtmlEntities(m.product_name)}
-                </span>
-              ))}
-          </div>
+      <div className="space-y-1.5 border-t border-zinc-200 pt-3 dark:border-zinc-700">
+        <p className="text-sm font-medium">Наличие у поставщика</p>
+        <p className="text-xs text-zinc-400">
+          Как это работает: раз в 2 недели (или кнопкой «🔄 Обновить соответствия» выше) ИИ подбирает, под каким
+          названием наш цветок продаётся у Van Vliet. Дважды в день (07:00 и 17:00) бот проверяет остаток у
+          поставщика именно по этому названию. Точность зависит от качества подбора — <b>серый «?»</b> не значит
+          «нет цветка», это значит «нет надёжного названия для проверки».
+        </p>
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-zinc-400">
+          <span>✓ есть у поставщика</span>
+          <span>✗ нет у поставщика</span>
+          <span>… алиас есть, ждём первой проверки</span>
+          <span>? не сопоставлено</span>
         </div>
-      )}
+        <div className="flex flex-wrap gap-1.5">
+          {materials
+            .map((m) => {
+              const materialAliases = aliases.filter((a) => a.product_sticker_id === m.id);
+              const status = supplyStatusFor(m, materialAliases.length);
+              return { m, status, aliasNames: materialAliases.map((a) => a.alias) };
+            })
+            .sort((a, b) => {
+              const order: Record<SupplyStatus, number> = { unmatched: 0, unavailable: 1, pending: 2, available: 3 };
+              if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
+              return a.m.product_name.localeCompare(b.m.product_name);
+            })
+            .map(({ m, status, aliasNames }) => (
+              <span
+                key={m.id}
+                title={
+                  aliasNames.length > 0
+                    ? `Ищем как: ${aliasNames.join(", ")}${
+                        m.vanvliet_stock_checked_at ? ` · проверено: ${new Date(m.vanvliet_stock_checked_at).toLocaleString("ru-RU")}` : ""
+                      }`
+                    : "Нет сохранённого названия у поставщика для этого цветка"
+                }
+                className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${SUPPLY_STATUS_STYLE[status]}`}
+              >
+                {SUPPLY_STATUS_ICON[status]} {decodeHtmlEntities(m.product_name)}
+                {status !== "unmatched" && m.vanvliet_stock_checked_at && (
+                  <span className="text-[10px] opacity-70">· {relativeTime(m.vanvliet_stock_checked_at)}</span>
+                )}
+                {status === "unmatched" && (
+                  <button
+                    onClick={() => searchForMaterial(m.id)}
+                    className="ml-0.5 underline decoration-dotted hover:text-accent"
+                  >
+                    Искать →
+                  </button>
+                )}
+              </span>
+            ))}
+        </div>
+      </div>
 
       <div className="space-y-1.5 border-t border-zinc-200 pt-3 dark:border-zinc-700">
         <p className="text-sm font-medium">К заказу (по ещё не собранным заказам)</p>
