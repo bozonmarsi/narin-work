@@ -147,6 +147,21 @@
                     pending = setTimeout(function () { applyBadges(availableNames, specialNames, unsourceableNames, specialDateLabel); }, 150);
                 });
                 observer.observe(document.body, { childList: true, subtree: true });
+
+                // Tilda сама дорисовывает/переотрисовывает карточки товаров
+                // отдельным, более поздним проходом (обнаружено вживую: через
+                // несколько секунд после нашего первого applyBadges инлайн-стиль
+                // карточки внезапно оказывался "display: none;" БЕЗ !important —
+                // то есть кто-то на стороне Tilda переустановил style целиком).
+                // MutationObserver не всегда успевает поймать этот момент вовремя
+                // (или ловит его, но applyBadges к тому моменту уже отработал).
+                // Простой setInterval "перебивает" эту гонку без гадания о её
+                // точном триггере — тот же приём уже используется в соседнем
+                // блоке (getPriceFromTilda: setInterval(prepareShapeAsProduct, 1000))
+                // для похожей проблемы с этой же платформой.
+                setInterval(function () {
+                    applyBadges(availableNames, specialNames, unsourceableNames, specialDateLabel);
+                }, 1000);
             })
             .catch(function (err) { console.error('narin availability badges', err); });
     }
