@@ -1,4 +1,14 @@
 <style>
+/* Tilda сама ставит row-gap: 60px на сетку карточек (инлайн-стиль,
+   #rec1915290073 — id сетки товаров на этой странице), из-за чего между
+   рядами получался большой пустой промежуток. Перебиваем тем же
+   селектором с !important — обычный класс без id-привязки Tilda всё
+   равно переигрывает по порядку подключения стилей. */
+#rec1915290073 .t-store__card-list { row-gap: 20px !important; }
+/* Название и цена были слишком далеко друг от друга (родной отступ
+   12px) и цена терялась среди мелкого текста — приближаем и укрупняем. */
+#rec1915290073 .t-store__card__price-wrapper { margin-top: 4px !important; }
+#rec1915290073 .t-store__card__price-value, #rec1915290073 .t-store__card__price { font-size: 20px !important; font-weight: 500 !important; }
 .narin-cat-nav { margin: 16px 0; font-family: 'Rubik', sans-serif; }
 .narin-cat-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 0 4px 6px 8px; margin: 0 -4px 10px; -webkit-overflow-scrolling: touch; }
 .narin-cat-tabs::-webkit-scrollbar { display: none; }
@@ -10,14 +20,30 @@
 .narin-cat-pill { flex: 0 0 auto; padding: 6px 14px; border-radius: 20px; border: 1px solid #e0e2e6; background: #fff; font-size: 12px; cursor: pointer; color: #16181d; white-space: nowrap; }
 .narin-cat-pill.active { background: #02e590; border-color: #02e590; color: #fff; }
 .narin-cat-empty { font-family: 'Rubik', sans-serif; font-size: 13px; color: #8a8f98; padding: 20px 0; }
-.narin-cat-promo-section { flex: 1 0 100%; width: 100%; box-sizing: border-box; background: #186ce0; border-radius: 0; padding: 20px 16px; margin: 10px 0; }
+/* width:100% тут считается от content-box флекс-контейнера .t-store__card-list,
+   а тот сам вложен в .t-store__grid-cont с боковым паддингом Tilda (родной
+   гаттер сетки) — без компенсации синий блок выглядит "коробкой" с белой
+   рамкой по бокам вместо полноценной синей плашки на весь экран.
+   Отрицательный margin той же величины съедает этот паддинг и растягивает
+   плашку впритык к краям экрана. Паддинг сетки у Tilda разный на мобильном
+   (5px, ≤960px) и на десктопе (25px, >960px) — проверено вживую на 375/768/
+   960/1400px, поэтому margin тоже задан отдельно на каждый случай. */
+.narin-cat-promo-section { flex: 1 0 100%; width: 100%; box-sizing: border-box; background: #186ce0; border-radius: 0; padding: 20px 16px; margin: 10px -5px; }
+@media screen and (min-width: 961px) {
+    .narin-cat-promo-section { margin: 10px -25px; }
+}
 .narin-cat-promo-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
 .narin-cat-promo-name { color: #fff; font-family: 'Rubik', sans-serif; font-size: 20px; font-weight: 700; }
 .narin-cat-promo-cta { color: #fff; font-family: 'Rubik', sans-serif; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer; }
 .narin-cat-promo-caption { color: #fff; opacity: 0.9; font-family: 'Rubik', sans-serif; font-size: 13px; font-style: italic; margin: 0 0 14px; max-width: 520px; }
 .narin-cat-promo-strip { display: flex; gap: 10px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .narin-cat-promo-strip::-webkit-scrollbar { display: none; }
-.narin-cat-promo-strip .t-store__card { flex: 0 0 auto !important; width: 190px !important; background: #fff; border-radius: 10px; overflow: hidden; }
+/* Кнопка "в корзину" у карточек в этой узкой ленте рендерится вплотную к
+   нижнему краю (0px запаса) при overflow:hidden — карточки в ряду
+   растягиваются на высоту самой высокой (flex align-items: stretch по
+   умолчанию), и у части карточек кнопку от этого срезает. +3px снизу дают
+   запас на такие расхождения. */
+.narin-cat-promo-strip .t-store__card { flex: 0 0 auto !important; width: 190px !important; background: #fff; border-radius: 10px; overflow: hidden; padding-bottom: 3px !important; }
 .js-store-grid-cont [data-narin-cat-hidden="1"] { display: none !important; }
 .js-store-grid-cont .t-clear { display: none !important; }
 </style>
@@ -44,6 +70,16 @@
         filters: { flower_type: new Set(), color: new Set(), height: new Set(), fragrant: false },
     };
     var tagMap = {};
+    // Своя копия того же списка, что использует catalog-availability-badges.html
+    // для скрытия карточек (нет своего остатка и нет подтверждения от Van
+    // Vliet). Без неё эта карусель считает промо-плашку "после каждой 4-й
+    // видимой карточки" по своим критериям (категория/фильтры), не зная,
+    // что часть из этих 4 на самом деле спрятана другим скриптом через
+    // display:none!important — в итоге плашка съезжает, а на месте скрытой
+    // карточки остаётся дырка. Оба скрипта независимые Zero Block'и без
+    // общего состояния, поэтому проще независимо запросить тот же RPC, чем
+    // городить обмен данными между ними.
+    var unsourceableNames = new Set();
     var grid = null;
     var observer = null;
 
@@ -225,7 +261,7 @@
             if (!nameEl) { card.removeAttribute('data-narin-cat-hidden'); return; }
             var name = normalize(nameEl.textContent);
             var tags = tagMap[name];
-            var visible = matchesTab(tags) && matchesFilters(tags);
+            var visible = matchesTab(tags) && matchesFilters(tags) && !unsourceableNames.has(name);
             if (visible) {
                 card.removeAttribute('data-narin-cat-hidden');
                 visibleCards.push(card);
@@ -355,8 +391,8 @@
         return nav;
     }
 
-    function init() {
-        fetch(SUPABASE_URL + '/rest/v1/rpc/get_product_tags', {
+    function rpc(name) {
+        return fetch(SUPABASE_URL + '/rest/v1/rpc/' + name, {
             method: 'POST',
             headers: {
                 'apikey': SUPABASE_ANON_KEY,
@@ -364,12 +400,16 @@
                 'Content-Type': 'application/json',
             },
             body: '{}',
-        })
-            .then(function (r) { return r.ok ? r.json() : []; })
-            .then(function (rows) {
-                (rows || []).forEach(function (row) {
+        }).then(function (r) { return r.ok ? r.json() : []; });
+    }
+
+    function init() {
+        Promise.all([rpc('get_product_tags'), rpc('get_unsourceable_products')])
+            .then(function (results) {
+                (results[0] || []).forEach(function (row) {
                     tagMap[normalize(row.product_name)] = row;
                 });
+                unsourceableNames = new Set((results[1] || []).map(function (row) { return normalize(row.product_name); }));
 
                 grid = document.querySelector('.js-store-grid-cont');
                 if (grid && grid.parentElement && !document.querySelector('.narin-cat-nav')) {
