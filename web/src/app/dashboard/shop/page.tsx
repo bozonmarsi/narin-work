@@ -190,16 +190,23 @@ function ProductCard({
   const isHiddenFromSite =
     p.category === "ohapka" && !p.special_order && (p.quantity ?? 0) <= 0 && p.vanvliet_in_stock !== true;
 
+  // Тот же приоритет, что и бейдж на самом сайте (catalog-availability-
+  // badges.html): скрыто > под заказ (красный, как "Doručíme <дата>") >
+  // в наличии сегодня (зелёный, "Doručíme dnes") > по умолчанию (синий,
+  // "Doručíme zítra"). Цвета карточки в Каталоге — не просто оформление,
+  // это прямое отражение того, что увидит клиент на сайте.
+  const cardTone = p.archived
+    ? "opacity-60 border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900"
+    : isHiddenFromSite
+      ? "border-zinc-300 dark:border-zinc-600 bg-zinc-100 dark:bg-zinc-800"
+      : p.special_order
+        ? "border-red-300 dark:border-red-500/40 bg-red-50 dark:bg-red-500/10 ring-1 ring-red-200 dark:ring-red-500/30"
+        : isAvailable
+          ? "border-green-300 dark:border-green-500/40 bg-green-50 dark:bg-green-500/10 ring-1 ring-green-200 dark:ring-green-500/30"
+          : "border-blue-200 dark:border-blue-500/30 bg-blue-50/60 dark:bg-blue-500/10";
+
   return (
-    <div
-      className={`flex flex-col gap-1.5 rounded-lg border p-2 ${
-        p.archived
-          ? "opacity-60 border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900"
-          : isAvailable
-            ? "border-green-300 dark:border-green-500/40 bg-green-50 dark:bg-green-500/10 ring-1 ring-green-200 dark:ring-green-500/30"
-            : "border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900"
-      }`}
-    >
+    <div className={`flex flex-col gap-1.5 rounded-lg border p-2 ${cardTone}`}>
       <div className="flex gap-2">
         <div className="relative h-20 w-14 shrink-0 overflow-hidden rounded-md bg-zinc-100 dark:bg-zinc-800">
           {p.image_url ? (
