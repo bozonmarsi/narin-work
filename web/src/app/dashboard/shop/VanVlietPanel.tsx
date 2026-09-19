@@ -85,7 +85,8 @@ type StickerLite = { id: string; product_name: string; category: string | null; 
 type RecipeLite = { bouquet_sticker_id: string; ingredient_sticker_id: string; quantity_needed: number };
 type QueueOrder = OrderLite & { delivery_date: string | null; status: string | null };
 
-type ShortfallRow = { materialId: string; neededDate: string; shortfall: number };
+type OrderContribution = { orderId: string; label: string; qty: number };
+type ShortfallRow = { materialId: string; neededDate: string; shortfall: number; orders: OrderContribution[] };
 
 // Заказы в этих статусах ещё не собраны — их стебли ещё не списаны из
 // batches/product_stickers.quantity (списание происходит только при
@@ -122,16 +123,40 @@ function computeShortfalls(orders: QueueOrder[], stickers: StickerLite[], recipe
   const rows: ShortfallRow[] = [];
   for (const date of dates) {
     const needMap = new Map<string, number>();
+    // Кто именно заказал этот цветок на эту дату — чтобы список "К
+    // заказу" читался как "нужно докупить X, его ждут заказы №..., №...",
+    // а не голая цифра без причины.
+    const contribByMaterial = new Map<string, Map<string, OrderContribution>>();
+    function addContribution(materialId: string, order: QueueOrder, qty: number) {
+      let byOrder = contribByMaterial.get(materialId);
+      if (!byOrder) {
+        byOrder = new Map();
+        contribByMaterial.set(materialId, byOrder);
+      }
+      const existing = byOrder.get(order.id);
+      if (existing) existing.qty += qty;
+      else
+        byOrder.set(order.id, {
+          orderId: order.order_id || "—",
+          label: decodeHtmlEntities(order.recipient_name || order.customer_name || "—"),
+          qty,
+        });
+    }
+
     for (const order of ordersByDate.get(date) ?? []) {
       for (const item of parseLineItems(order)) {
         const sticker = findSticker(item.rawName, item.name);
         if (!sticker) continue;
         if (sticker.category === "ohapka") {
-          needMap.set(sticker.id, (needMap.get(sticker.id) ?? 0) + item.quantity * sticker.order_unit_size);
+          const qty = item.quantity * sticker.order_unit_size;
+          needMap.set(sticker.id, (needMap.get(sticker.id) ?? 0) + qty);
+          addContribution(sticker.id, order, qty);
           continue;
         }
         for (const r of recipes.filter((r) => r.bouquet_sticker_id === sticker.id)) {
-          needMap.set(r.ingredient_sticker_id, (needMap.get(r.ingredient_sticker_id) ?? 0) + r.quantity_needed * item.quantity);
+          const qty = r.quantity_needed * item.quantity;
+          needMap.set(r.ingredient_sticker_id, (needMap.get(r.ingredient_sticker_id) ?? 0) + qty);
+          addContribution(r.ingredient_sticker_id, order, qty);
         }
       }
     }
@@ -140,7 +165,10 @@ function computeShortfalls(orders: QueueOrder[], stickers: StickerLite[], recipe
       const used = Math.min(available, needed);
       availableByMaterial.set(materialId, available - used);
       const shortfall = needed - used;
-      if (shortfall > 0) rows.push({ materialId, neededDate: date, shortfall });
+      if (shortfall > 0) {
+        const orders = Array.from(contribByMaterial.get(materialId)?.values() ?? []).sort((a, b) => b.qty - a.qty);
+        rows.push({ materialId, neededDate: date, shortfall, orders });
+      }
     }
   }
   return rows;
@@ -255,6 +283,7 @@ export function VanVlietPanel() {
   // забрано, отдельно от самого факта заказа — забранное больше не
   // должно маячить среди "ещё надо забрать".
   const [pickupModalOpen, setPickupModalOpen] = useState(false);
+  const [supplyModalOpen, setSupplyModalOpen] = useState(false);
   const [markingPickedUp, setMarkingPickedUp] = useState<string | null>(null);
   const pendingPickup = purchases.filter((p) => !p.picked_up);
 
@@ -644,6 +673,12 @@ export function VanVlietPanel() {
     }
   }
 
+  const supplyRows = materials.map((m) => {
+    const materialAliases = aliases.filter((a) => a.product_sticker_id === m.id);
+    return { m, status: supplyStatusFor(m, materialAliases.length), aliasNames: materialAliases.map((a) => a.alias) };
+  });
+  const supplyAttentionCount = supplyRows.filter((r) => r.status === "unmatched" || r.status === "unavailable").length;
+
   return (
     <>
     <div className="grid items-start gap-4 lg:grid-cols-2">
@@ -658,46 +693,13 @@ export function VanVlietPanel() {
             📦 Забрать со склада{pendingPickup.length > 0 ? ` (${pendingPickup.length})` : ""}
           </button>
           <button
-            onClick={refreshAliases}
-            disabled={refreshingAliases}
-            className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-500 hover:border-accent hover:text-accent disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-400"
+            onClick={() => setSupplyModalOpen(true)}
+            className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-500 hover:border-accent hover:text-accent dark:border-zinc-600 dark:text-zinc-400"
           >
-            {refreshingAliases ? "Обновляю соответствия (может занять минуту)…" : "🔄 Обновить соответствия (AI)"}
-          </button>
-          <button
-            onClick={scanStock}
-            disabled={scanningStock}
-            className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-500 hover:border-accent hover:text-accent disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-400"
-          >
-            {scanningStock ? "Проверяю остаток…" : "📡 Проверить остаток у Van Vliet"}
+            📊 Наличие у поставщика{supplyAttentionCount > 0 ? ` (${supplyAttentionCount})` : ""}
           </button>
         </div>
       </div>
-
-      {stockScanError && <p className="text-xs text-red-500">{stockScanError}</p>}
-
-      {refreshResult && (
-        <div className="rounded-md border border-zinc-200 p-2 text-xs dark:border-zinc-700">
-          <p>
-            Обновлено: {refreshResult.updatedMaterials} цветов, {refreshResult.totalAliases} соответствий.
-            {refreshResult.prunedMaterials > 0 && (
-              <> Убрано устаревших/неточных: {refreshResult.prunedMaterials} (сейчас нет уверенного совпадения — честно пусто, а не старое неверное).</>
-            )}
-            {refreshResult.genusRejected > 0 && (
-              <> Отклонено защитой от неверного рода: {refreshResult.genusRejected}.</>
-            )}
-          </p>
-          {refreshResult.report.length > 0 && (
-            <ul className="mt-1 space-y-0.5 text-zinc-500 dark:text-zinc-400">
-              {refreshResult.report.map((r) => (
-                <li key={r.name}>
-                  {decodeHtmlEntities(r.name)}: {r.aliases.join(", ")}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
 
       <div className="flex flex-wrap gap-1.5">
         {DATE_OPTIONS.map((opt) => (
@@ -785,61 +787,6 @@ export function VanVlietPanel() {
       </div>
 
       <div className="space-y-1.5 border-t border-zinc-200 pt-3 dark:border-zinc-700">
-        <p className="text-sm font-medium">Наличие у поставщика</p>
-        <p className="text-xs text-zinc-400">
-          Как это работает: раз в 2 недели (или кнопкой «🔄 Обновить соответствия» выше) ИИ подбирает, под каким
-          названием наш цветок продаётся у Van Vliet. Дважды в день (07:00 и 17:00) бот проверяет остаток у
-          поставщика именно по этому названию. Точность зависит от качества подбора — <b>серый «?»</b> не значит
-          «нет цветка», это значит «нет надёжного названия для проверки».
-        </p>
-        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-zinc-400">
-          <span>✓ есть у поставщика</span>
-          <span>✗ нет у поставщика</span>
-          <span>… алиас есть, ждём первой проверки</span>
-          <span>? не сопоставлено</span>
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {materials
-            .map((m) => {
-              const materialAliases = aliases.filter((a) => a.product_sticker_id === m.id);
-              const status = supplyStatusFor(m, materialAliases.length);
-              return { m, status, aliasNames: materialAliases.map((a) => a.alias) };
-            })
-            .sort((a, b) => {
-              const order: Record<SupplyStatus, number> = { unmatched: 0, unavailable: 1, pending: 2, available: 3 };
-              if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
-              return a.m.product_name.localeCompare(b.m.product_name);
-            })
-            .map(({ m, status, aliasNames }) => (
-              <span
-                key={m.id}
-                title={
-                  aliasNames.length > 0
-                    ? `Ищем как: ${aliasNames.join(", ")}${
-                        m.vanvliet_stock_checked_at ? ` · проверено: ${new Date(m.vanvliet_stock_checked_at).toLocaleString("ru-RU")}` : ""
-                      }`
-                    : "Нет сохранённого названия у поставщика для этого цветка"
-                }
-                className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${SUPPLY_STATUS_STYLE[status]}`}
-              >
-                {SUPPLY_STATUS_ICON[status]} {decodeHtmlEntities(m.product_name)}
-                {status !== "unmatched" && m.vanvliet_stock_checked_at && (
-                  <span className="text-[10px] opacity-70">· {relativeTime(m.vanvliet_stock_checked_at)}</span>
-                )}
-                {status === "unmatched" && (
-                  <button
-                    onClick={() => searchForMaterial(m.id)}
-                    className="ml-0.5 underline decoration-dotted hover:text-accent"
-                  >
-                    Искать →
-                  </button>
-                )}
-              </span>
-            ))}
-        </div>
-      </div>
-
-      <div className="space-y-1.5 border-t border-zinc-200 pt-3 dark:border-zinc-700">
         <p className="text-sm font-medium">К заказу (по ещё не собранным заказам)</p>
         {queueLoading ? (
           <p className="text-xs text-zinc-400">Считаю…</p>
@@ -850,21 +797,28 @@ export function VanVlietPanel() {
             const material = materials.find((m) => m.id === row.materialId);
             const key = `${row.materialId}:${row.neededDate}`;
             return (
-              <div
-                key={key}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-zinc-200 px-2 py-1.5 text-xs dark:border-zinc-700"
-              >
-                <span>
-                  <span className="font-medium">{material ? decodeHtmlEntities(material.product_name) : "—"}</span> — не хватает{" "}
-                  {row.shortfall} на {row.neededDate}
-                </span>
-                <button
-                  onClick={() => searchForShortfall(row)}
-                  disabled={searchingQueueKey === key}
-                  className="rounded-md border border-zinc-300 px-2 py-1 text-zinc-500 hover:border-accent hover:text-accent disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-400"
-                >
-                  {searchingQueueKey === key ? "…" : "Искать у Van Vliet"}
-                </button>
+              <div key={key} className="rounded-md border border-zinc-200 px-2 py-1.5 text-xs dark:border-zinc-700">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span>
+                    <span className="font-medium">{material ? decodeHtmlEntities(material.product_name) : "—"}</span> — не хватает{" "}
+                    {row.shortfall} на {row.neededDate}
+                  </span>
+                  <button
+                    onClick={() => searchForShortfall(row)}
+                    disabled={searchingQueueKey === key}
+                    className="rounded-md border border-zinc-300 px-2 py-1 text-zinc-500 hover:border-accent hover:text-accent disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-400"
+                  >
+                    {searchingQueueKey === key ? "…" : "Искать у Van Vliet"}
+                  </button>
+                </div>
+                {row.orders.length > 0 && (
+                  <p className="mt-1 text-[11px] text-zinc-400">
+                    Нужно для:{" "}
+                    {row.orders
+                      .map((o) => `№${o.orderId} (${o.label}${o.qty !== row.shortfall ? `, ${o.qty} шт` : ""})`)
+                      .join(", ")}
+                  </p>
+                )}
               </div>
             );
           })
@@ -1042,6 +996,105 @@ export function VanVlietPanel() {
               ))}
           </div>
         )}
+      </Modal>
+    )}
+
+    {supplyModalOpen && (
+      <Modal title="Наличие у поставщика" onClose={() => setSupplyModalOpen(false)} wide>
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              onClick={refreshAliases}
+              disabled={refreshingAliases}
+              className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-500 hover:border-accent hover:text-accent disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-400"
+            >
+              {refreshingAliases ? "Обновляю соответствия (может занять минуту)…" : "🔄 Обновить соответствия (AI)"}
+            </button>
+            <button
+              onClick={scanStock}
+              disabled={scanningStock}
+              className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-500 hover:border-accent hover:text-accent disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-400"
+            >
+              {scanningStock ? "Проверяю остаток…" : "📡 Проверить остаток у Van Vliet"}
+            </button>
+          </div>
+
+          {stockScanError && <p className="text-xs text-red-500">{stockScanError}</p>}
+
+          <p className="text-xs text-zinc-400">
+            Как это работает: раз в 2 недели (или кнопкой «🔄 Обновить соответствия» выше) ИИ подбирает, под каким
+            названием наш цветок продаётся у Van Vliet. Дважды в день (07:00 и 17:00) бот проверяет остаток у
+            поставщика именно по этому названию. Точность зависит от качества подбора — <b>серый «?»</b> не значит
+            «нет цветка», это значит «нет надёжного названия для проверки».
+          </p>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-zinc-400">
+            <span>✓ есть у поставщика</span>
+            <span>✗ нет у поставщика</span>
+            <span>… алиас есть, ждём первой проверки</span>
+            <span>? не сопоставлено</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {supplyRows
+              .slice()
+              .sort((a, b) => {
+                const order: Record<SupplyStatus, number> = { unmatched: 0, unavailable: 1, pending: 2, available: 3 };
+                if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
+                return a.m.product_name.localeCompare(b.m.product_name);
+              })
+              .map(({ m, status, aliasNames }) => (
+                <span
+                  key={m.id}
+                  title={
+                    aliasNames.length > 0
+                      ? `Ищем как: ${aliasNames.join(", ")}${
+                          m.vanvliet_stock_checked_at ? ` · проверено: ${new Date(m.vanvliet_stock_checked_at).toLocaleString("ru-RU")}` : ""
+                        }`
+                      : "Нет сохранённого названия у поставщика для этого цветка"
+                  }
+                  className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${SUPPLY_STATUS_STYLE[status]}`}
+                >
+                  {SUPPLY_STATUS_ICON[status]} {decodeHtmlEntities(m.product_name)}
+                  {status !== "unmatched" && m.vanvliet_stock_checked_at && (
+                    <span className="text-[10px] opacity-70">· {relativeTime(m.vanvliet_stock_checked_at)}</span>
+                  )}
+                  {status === "unmatched" && (
+                    <button
+                      onClick={() => {
+                        setSupplyModalOpen(false);
+                        searchForMaterial(m.id);
+                      }}
+                      className="ml-0.5 underline decoration-dotted hover:text-accent"
+                    >
+                      Искать →
+                    </button>
+                  )}
+                </span>
+              ))}
+          </div>
+
+          {refreshResult && (
+            <div className="rounded-md border border-zinc-200 p-2 text-xs dark:border-zinc-700">
+              <p>
+                Обновлено: {refreshResult.updatedMaterials} цветов, {refreshResult.totalAliases} соответствий.
+                {refreshResult.prunedMaterials > 0 && (
+                  <> Убрано устаревших/неточных: {refreshResult.prunedMaterials} (сейчас нет уверенного совпадения — честно пусто, а не старое неверное).</>
+                )}
+                {refreshResult.genusRejected > 0 && (
+                  <> Отклонено защитой от неверного рода: {refreshResult.genusRejected}.</>
+                )}
+              </p>
+              {refreshResult.report.length > 0 && (
+                <ul className="mt-1 space-y-0.5 text-zinc-500 dark:text-zinc-400">
+                  {refreshResult.report.map((r) => (
+                    <li key={r.name}>
+                      {decodeHtmlEntities(r.name)}: {r.aliases.join(", ")}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
       </Modal>
     )}
     </>
