@@ -87,7 +87,13 @@
         var dot = document.createElement('span');
         dot.className = 'narin-avail-dot';
         var label = document.createElement('span');
-        label.textContent = type === 'today' ? 'Doručíme dnes' : type === 'special' ? 'Doručíme ' + dateLabel : 'Doručíme zítra';
+        // Чешские буквы č/í собраны через код символа (String.fromCharCode),
+        // а не написаны буквами — эти самые буквы уже дважды ломались при
+        // копипасте в редактор Tilda (превращались в мусорные байты типа
+        // "DorufH..."). Число 268/237 испортить копипастом невозможно —
+        // это просто цифры.
+        var DORUCIME = 'Doru' + String.fromCharCode(269) + String.fromCharCode(237) + 'me';
+        label.textContent = type === 'today' ? DORUCIME + ' dnes' : type === 'special' ? DORUCIME + ' ' + dateLabel : DORUCIME + ' z' + String.fromCharCode(237) + 'tra';
         badge.appendChild(dot);
         badge.appendChild(label);
         textWrapper.insertBefore(badge, textWrapper.firstChild);
