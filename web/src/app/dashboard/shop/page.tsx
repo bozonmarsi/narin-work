@@ -26,6 +26,7 @@ type Product = {
   quantity: number | null;
   order_unit_size: number;
   default_vase_life_days: number | null;
+  vanvliet_in_stock: boolean | null;
 };
 
 // Ниже этого остатка на сайте сама встаёт плашка "Zbývá N ks" — если
@@ -182,6 +183,12 @@ function ProductCard({
   const tagSummary = [...p.flower_type, ...p.color, p.height, p.fragrant ? "Voňavé" : null]
     .filter(Boolean)
     .join(", ");
+  // Ровно то же условие, что и в get_unsourceable_products(): нет ни
+  // своего остатка, ни подтверждения от Van Vliet, и товар не поставлен
+  // под заказ вручную — карточка реально скрыта с сайта клиента прямо
+  // сейчас.
+  const isHiddenFromSite =
+    p.category === "ohapka" && !p.special_order && (p.quantity ?? 0) <= 0 && p.vanvliet_in_stock !== true;
 
   return (
     <div
@@ -538,20 +545,31 @@ function ProductCard({
             🚚 Всегда под заказ (+2 дня)
           </p>
         ) : p.category === "ohapka" ? (
-          // Наличие охапок считается само по остатку со склада (см.
-          // tg_sync_ohapka_availability) — ручной тоггл тут только мешал
-          // бы: секунду спустя следующее движение по складу снова
-          // перезапишет product_availability поверх ручного клика.
-          <span
-            title="Считается само по остатку на складе — меняется после приёмки/списания у флориста"
-            className={`rounded-md px-2 py-1 text-xs font-medium ${
-              isAvailable
-                ? "bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-200 dark:ring-green-500/30"
-                : "border border-zinc-300 dark:border-zinc-600 text-zinc-500 dark:text-zinc-400"
-            }`}
-          >
-            {isAvailable ? "✓ В наличии" : "Нет в наличии"}
-          </span>
+          <>
+            {isHiddenFromSite && (
+              <p
+                title="Нет своего остатка и нет подтверждения от Van Vliet — карточка не показывается покупателям. Поставь «Под заказ» ниже, если реально можешь привезти."
+                className="rounded-md bg-red-50 dark:bg-red-500/10 px-2 py-1 text-[11px] font-medium text-red-600 dark:text-red-400 ring-1 ring-inset ring-red-200 dark:ring-red-500/30"
+              >
+                🚫 Скрыто с сайта
+              </p>
+            )}
+            {/* Наличие охапок считается само по остатку со склада (см.
+                tg_sync_ohapka_availability) — ручной тоггл тут только
+                мешал бы: секунду спустя следующее движение по складу
+                снова перезапишет product_availability поверх ручного
+                клика. */}
+            <span
+              title="Считается само по остатку на складе — меняется после приёмки/списания у флориста"
+              className={`rounded-md px-2 py-1 text-xs font-medium ${
+                isAvailable
+                  ? "bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-200 dark:ring-green-500/30"
+                  : "border border-zinc-300 dark:border-zinc-600 text-zinc-500 dark:text-zinc-400"
+              }`}
+            >
+              {isAvailable ? "✓ В наличии" : "Нет в наличии"}
+            </span>
+          </>
         ) : (
           <button
             onClick={() => onToggleAvailable(p.name)}
@@ -567,7 +585,9 @@ function ProductCard({
         <div className="flex items-center justify-between">
           <button
             onClick={() => onToggleSpecialOrder(p.id, p.special_order)}
-            className="text-[10px] text-zinc-400 dark:text-zinc-500 hover:text-orange-600 dark:hover:text-orange-400"
+            className={`text-[10px] hover:text-orange-600 dark:hover:text-orange-400 ${
+              isHiddenFromSite ? "font-semibold text-orange-600 dark:text-orange-400" : "text-zinc-400 dark:text-zinc-500"
+            }`}
           >
             {p.special_order ? "Убрать «под заказ»" : "🚚 Под заказ"}
           </button>
@@ -628,7 +648,7 @@ export default function ShopPage() {
       supabase
         .from("product_stickers")
         .select(
-          "id, product_name, image_url, category, archived, special_order, flower_type, color, height, fragrant, badge_text, badge_color, quantity, order_unit_size, default_vase_life_days",
+          "id, product_name, image_url, category, archived, special_order, flower_type, color, height, fragrant, badge_text, badge_color, quantity, order_unit_size, default_vase_life_days, vanvliet_in_stock",
         )
         .order("product_name", { ascending: true }),
       supabase.from("product_availability").select("product_name"),
@@ -653,6 +673,7 @@ export default function ShopPage() {
           quantity: p.quantity ?? null,
           order_unit_size: p.order_unit_size ?? 1,
           default_vase_life_days: p.default_vase_life_days ?? null,
+          vanvliet_in_stock: p.vanvliet_in_stock ?? null,
         })),
     );
     setAvailableToday(new Set((availabilityRes.data ?? []).map((r) => r.product_name)));
@@ -688,6 +709,9 @@ export default function ShopPage() {
   }
 
   useRealtimeRefresh("product_availability", loadAvailability);
+  // Остаток у Van Vliet проставляет сканер дважды в день — бейдж "Скрыто
+  // с сайта" должен обновиться сам, без перезагрузки страницы.
+  useRealtimeRefresh("product_stickers", loadAvailability);
 
   // Keyed by the decoded display name (not the raw product_stickers.product_name,
   // which sometimes has literal HTML entities baked in, e.g. "b&iacute;l&aacute;")
