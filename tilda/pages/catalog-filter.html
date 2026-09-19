@@ -53,17 +53,24 @@
     var SUPABASE_URL = 'https://wqburlamuipxmenqsjnx.supabase.co';
     var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxYnVybGFtdWlweG1lbnFzam54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTY2MTIsImV4cCI6MjA4ODgzMjYxMn0.NYnQoorm3z5gkjr954JdYhzDNmYfCjefzK1ddq3cflw';
 
+    // Строки с чешскими диакритическими знаками записаны как числовые
+    // HTML-сущности (чистый ASCII в исходнике) и раскодированы через
+    // decodeEntities() ниже — буквы вроде š/í/ě/ř уже дважды ломались
+    // при копипасте этого файла в редактор Tilda (превращались в мусор
+    // вроде "v≈°e"), а голые цифры испортить копипастом невозможно.
+    function cz(s) { return decodeEntities(s); }
+
     var TABS = [
-        { key: 'all', label: 'Vše', category: 'ohapka', caption: null },
-        { key: 'set', label: 'Sety', category: 'set', caption: 'Sestavte si vlastní kompozici nebo rozmístěte květiny do různých váz.' },
-        { key: 'kolekce', label: 'Kolekce', category: 'kolekce', caption: 'Promyšlené kolekce pro výjimečné chvíle.' },
-        { key: 'banky', label: 'Bánky', category: 'banky', caption: 'Květiny naaranžované přímo ve váze, připravené k předání.' },
-        { key: 'ohapka', label: 'Náruče', category: 'ohapka', caption: null },
+        { key: 'all', label: cz('V&#353;e'), category: 'ohapka', caption: null },
+        { key: 'set', label: 'Sety', category: 'set', caption: cz('Sestavte si vlastn&#237; kompozici nebo rozm&#237;st&#283;te kv&#283;tiny do r&#367;zn&#253;ch v&#225;z.') },
+        { key: 'kolekce', label: 'Kolekce', category: 'kolekce', caption: cz('Promy&#353;len&#233; kolekce pro v&#253;jime&#269;n&#233; chv&#237;le.') },
+        { key: 'banky', label: cz('B&#225;nky'), category: 'banky', caption: cz('Kv&#283;tiny naaran&#382;ovan&#233; p&#345;&#237;mo ve v&#225;ze, p&#345;ipraven&#233; k p&#345;ed&#225;n&#237;.') },
+        { key: 'ohapka', label: cz('N&#225;ru&#269;e'), category: 'ohapka', caption: null },
     ];
 
-    var FLOWER_TYPES = ["Tulipán", "Karafiát", "Pivoňka", "Ranunkulus", "Kala", "Hortenzie", "Hyacint", "Fialka", "Exotika", "Vytrvalé"];
-    var COLORS = ["Bílá", "Růžová", "Červená", "Žlutá", "Fialová", "Modrá"];
-    var HEIGHTS = ["Nízké", "Vysoké"];
+    var FLOWER_TYPES = [cz('Tulip&#225;n'), cz('Karafi&#225;t'), cz('Pivo&#328;ka'), "Ranunkulus", "Kala", "Hortenzie", "Hyacint", "Fialka", "Exotika", cz('Vytrval&#233;')];
+    var COLORS = [cz('B&#237;l&#225;'), cz('R&#367;&#382;ov&#225;'), cz('&#268;erven&#225;'), cz('&#381;lut&#225;'), cz('Fialov&#225;'), cz('Modr&#225;')];
+    var HEIGHTS = [cz('N&#237;zk&#233;'), cz('Vysok&#233;')];
 
     var state = {
         activeTab: 'all',
@@ -181,7 +188,7 @@
         name.textContent = tab.label;
         var cta = document.createElement('div');
         cta.className = 'narin-cat-promo-cta';
-        cta.textContent = 'Zobrazit vše →';
+        cta.textContent = cz('Zobrazit v&#353;e &#8594;');
         bindTap(cta, function () {
             switchTab(tab.key);
             section.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -280,7 +287,7 @@
             if (!emptyMsg) {
                 emptyMsg = document.createElement('p');
                 emptyMsg.className = 'narin-cat-empty';
-                emptyMsg.textContent = 'Podle vybraných filtrů jsme nic nenašli — zkuste jinou kombinaci.';
+                emptyMsg.textContent = cz('Podle vybran&#253;ch filtr&#367; jsme nic nena&#353;li &#8212; zkuste jinou kombinaci.');
                 var bar = document.querySelector('.narin-cat-nav');
                 if (bar) bar.insertAdjacentElement('afterend', emptyMsg);
             }
@@ -289,7 +296,7 @@
         }
 
         var countEl = document.querySelector('.narin-cat-count');
-        if (countEl) countEl.textContent = visibleCards.length + (visibleCards.length === 1 ? ' produkt' : ' produktů');
+        if (countEl) countEl.textContent = visibleCards.length + (visibleCards.length === 1 ? ' produkt' : cz(' produkt&#367;'));
 
         if (grid && observer) observer.observe(grid, { childList: true, subtree: true });
     }
@@ -359,7 +366,7 @@
         var allBtn = document.createElement('button');
         allBtn.type = 'button';
         allBtn.className = 'narin-cat-pill' + (!anyActive ? ' active' : '');
-        allBtn.textContent = 'Všechny květiny';
+        allBtn.textContent = cz('V&#353;echny kv&#283;tiny');
         bindTap(allBtn, function () {
             state.filters.flower_type.clear();
             state.filters.color.clear();
@@ -373,7 +380,7 @@
         FLOWER_TYPES.filter(function (t) { return presentTypes.has(t); }).forEach(function (t) { makePill(bar, t, 'flower_type', t); });
         COLORS.filter(function (c) { return presentColors.has(c); }).forEach(function (c) { makePill(bar, c, 'color', c); });
         HEIGHTS.filter(function (h) { return presentHeights.has(h); }).forEach(function (h) { makePill(bar, h, 'height', h); });
-        if (anyFragrant) makePill(bar, '🌸 Voňavé', 'fragrant', true);
+        if (anyFragrant) makePill(bar, cz('&#127800; Vo&#328;av&#233;'), 'fragrant', true);
     }
 
     function buildNav() {
