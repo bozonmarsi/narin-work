@@ -322,6 +322,47 @@ export function VanVlietPanel() {
   const [scanningStock, setScanningStock] = useState(false);
   const [stockScanError, setStockScanError] = useState<string | null>(null);
 
+  // Ручное добавление соответствия менеджером — с подсказками из ЖИВОГО
+  // каталога Van Vliet (не голый текст), чтобы не вписать несуществующее
+  // название. Каталог грузится один раз, когда открывается попап.
+  const [vvCatalogNames, setVvCatalogNames] = useState<string[]>([]);
+  const [loadingVvCatalog, setLoadingVvCatalog] = useState(false);
+  const [manualProductId, setManualProductId] = useState("");
+  const [manualAliasText, setManualAliasText] = useState("");
+  const [removingAliasId, setRemovingAliasId] = useState<string | null>(null);
+
+  async function loadVvCatalogNames() {
+    setLoadingVvCatalog(true);
+    try {
+      const supabase = createClient();
+      const { data } = await supabase.functions.invoke("vanvliet-search", {
+        body: { fullCatalog: true, targetDate: pragueDate(0) },
+      });
+      const names: string[] = (data?.catalog ?? []).map((c: { product: string }) => c.product);
+      setVvCatalogNames(Array.from(new Set(names)).sort());
+    } finally {
+      setLoadingVvCatalog(false);
+    }
+  }
+
+  async function removeAlias(id: string) {
+    setRemovingAliasId(id);
+    try {
+      const supabase = createClient();
+      await supabase.from("product_name_aliases").delete().eq("id", id);
+      setAliases((prev) => prev.filter((a) => a.id !== id));
+    } finally {
+      setRemovingAliasId(null);
+    }
+  }
+
+  async function addManualAlias() {
+    const text = manualAliasText.trim();
+    if (!manualProductId || !text) return;
+    await rememberAlias(manualProductId, text);
+    setManualAliasText("");
+  }
+
   // Авто-расчёт "что закончится под ещё не собранные заказы" — считается
   // на лету при каждом изменении заказов/остатков, не хранится (иначе
   // протухнет так же, как раньше протухали алиасы).
@@ -353,6 +394,15 @@ export function VanVlietPanel() {
   useRealtimeRefresh("tilda_orders", loadShortfalls);
   useRealtimeRefresh("product_stickers", loadShortfalls);
 
+  // Каталог для подсказок в ручной форме — грузим только когда попап
+  // реально открыт, не при каждой загрузке страницы.
+  useEffect(() => {
+    if (supplyModalOpen && vvCatalogNames.length === 0 && !loadingVvCatalog) {
+      loadVvCatalogNames();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supplyModalOpen]);
+
   async function loadMaterials() {
     const supabase = createClient();
     const [supplierRes, materialsRes] = await Promise.all([
@@ -382,6 +432,9 @@ export function VanVlietPanel() {
   // Остаток у Van Vliet проставляет сканер (vanvliet-stock-scan) дважды в
   // день — бейдж в панели должен обновиться сам, без перезагрузки.
   useRealtimeRefresh("product_stickers", loadMaterials);
+  // Соответствие добавили руками, через ИИ или "Запомнить" в поиске —
+  // бейджи и списки должны обновиться сами, без перезагрузки страницы.
+  useRealtimeRefresh("product_name_aliases", loadMaterials);
 
   function aliasFor(materialId: string): string | undefined {
     return aliases.find((a) => a.product_sticker_id === materialId)?.alias;
@@ -1021,6 +1074,47 @@ export function VanVlietPanel() {
 
           {stockScanError && <p className="text-xs text-red-500">{stockScanError}</p>}
 
+          <div className="space-y-1.5 rounded-md border border-zinc-200 p-2 dark:border-zinc-700">
+            <p className="text-xs font-medium">Добавить соответствие вручную</p>
+            <div className="flex flex-wrap gap-1.5">
+              <select
+                value={manualProductId}
+                onChange={(e) => setManualProductId(e.target.value)}
+                className="min-w-0 flex-1 rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-xs outline-none focus:border-accent dark:border-zinc-600"
+              >
+                <option value="">Наш товар…</option>
+                {materials.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {decodeHtmlEntities(m.product_name)}
+                  </option>
+                ))}
+              </select>
+              <input
+                value={manualAliasText}
+                onChange={(e) => setManualAliasText(e.target.value)}
+                list="vv-catalog-names"
+                placeholder={loadingVvCatalog ? "Загружаю каталог поставщика…" : "Начни вводить — подскажет реальные названия"}
+                className="min-w-0 flex-[2] rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-xs outline-none focus:border-accent dark:border-zinc-600"
+              />
+              <datalist id="vv-catalog-names">
+                {vvCatalogNames.map((n) => (
+                  <option key={n} value={n} />
+                ))}
+              </datalist>
+              <button
+                onClick={addManualAlias}
+                disabled={!manualProductId || !manualAliasText.trim() || savingAlias === `${manualProductId}:${manualAliasText.trim()}`}
+                className="rounded-md bg-accent px-2 py-1 text-xs font-medium text-white disabled:opacity-50"
+              >
+                Сохранить
+              </button>
+            </div>
+            <p className="text-[11px] text-zinc-400">
+              Список подсказок — реальные товары из сегодняшнего каталога Van Vliet ({vvCatalogNames.length || "…"}).
+              Можно вписать и своё название, если его там нет.
+            </p>
+          </div>
+
           <p className="text-xs text-zinc-400">
             Как это работает: раз в 2 недели (или кнопкой «🔄 Обновить соответствия» выше) ИИ подбирает, под каким
             названием наш цветок продаётся у Van Vliet. Дважды в день (07:00 и 17:00) бот проверяет остаток у
@@ -1070,6 +1164,44 @@ export function VanVlietPanel() {
                   )}
                 </span>
               ))}
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-xs font-medium">Все соответствия ({aliases.length})</p>
+            {aliases.length === 0 ? (
+              <p className="text-xs text-zinc-400">Пока ничего не сохранено.</p>
+            ) : (
+              <div className="max-h-48 space-y-1 overflow-y-auto">
+                {aliases
+                  .slice()
+                  .sort((a, b) => {
+                    const nameA = materials.find((m) => m.id === a.product_sticker_id)?.product_name ?? "";
+                    const nameB = materials.find((m) => m.id === b.product_sticker_id)?.product_name ?? "";
+                    return nameA.localeCompare(nameB);
+                  })
+                  .map((a) => {
+                    const material = materials.find((m) => m.id === a.product_sticker_id);
+                    return (
+                      <div
+                        key={a.id}
+                        className="flex items-center justify-between gap-2 rounded-md border border-zinc-200 px-2 py-1 text-xs dark:border-zinc-700"
+                      >
+                        <span className="truncate">
+                          <span className="font-medium">{material ? decodeHtmlEntities(material.product_name) : "—"}</span>
+                          <span className="text-zinc-400"> → «{a.alias}»</span>
+                        </span>
+                        <button
+                          onClick={() => removeAlias(a.id)}
+                          disabled={removingAliasId === a.id}
+                          className="shrink-0 text-zinc-400 hover:text-red-500 disabled:opacity-50"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
           </div>
 
           {refreshResult && (
