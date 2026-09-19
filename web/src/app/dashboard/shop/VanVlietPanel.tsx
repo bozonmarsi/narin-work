@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { decodeHtmlEntities } from "@/lib/format";
 import { useRealtimeRefresh } from "@/lib/useRealtimeRefresh";
@@ -19,7 +19,7 @@ import { FloristRequestsPanel } from "./FloristRequestsPanel";
 type SearchRow = { keyword: string; color: string; maxPrice: string; quantity: string; materialId: string };
 
 type RawMaterial = { id: string; product_name: string; vanvliet_in_stock: boolean | null; vanvliet_stock_checked_at: string | null };
-type Alias = { id: string; alias: string; product_sticker_id: string };
+type Alias = { id: string; alias: string; product_sticker_id: string; is_manual?: boolean };
 type Purchase = {
   id: string;
   product_name: string;
@@ -329,6 +329,7 @@ export function VanVlietPanel() {
   const [loadingVvCatalog, setLoadingVvCatalog] = useState(false);
   const [manualProductId, setManualProductId] = useState("");
   const [manualAliasText, setManualAliasText] = useState("");
+  const manualAliasInputRef = useRef<HTMLInputElement>(null);
   const [removingAliasId, setRemovingAliasId] = useState<string | null>(null);
 
   async function loadVvCatalogNames() {
@@ -361,6 +362,9 @@ export function VanVlietPanel() {
     if (!manualProductId || !text) return;
     await rememberAlias(manualProductId, text);
     setManualAliasText("");
+    // Товар остаётся выбранным — сразу можно вписывать следующее
+    // название для того же цветка, не выбирая его заново.
+    manualAliasInputRef.current?.focus();
   }
 
   // Авто-расчёт "что закончится под ещё не собранные заказы" — считается
@@ -419,7 +423,7 @@ export function VanVlietPanel() {
     if (supplierId) {
       const { data } = await supabase
         .from("product_name_aliases")
-        .select("id, alias, product_sticker_id")
+        .select("id, alias, product_sticker_id, is_manual")
         .eq("supplier_id", supplierId);
       setAliases(data ?? []);
     }
@@ -451,6 +455,9 @@ export function VanVlietPanel() {
         supplier_id: vanVlietSupplierId,
         alias,
         product_sticker_id: materialId,
+        // Подтверждено человеком (клик "Запомнить" в поиске или ручная
+        // форма) — автопрогон ИИ такое больше не трогает и не стирает.
+        is_manual: true,
       });
       if (!insertErr) {
         setAliases((prev) => [...prev, { id: key, alias, product_sticker_id: materialId }]);
@@ -507,7 +514,7 @@ export function VanVlietPanel() {
       if (vanVlietSupplierId) {
         const { data: refreshed } = await supabase
           .from("product_name_aliases")
-          .select("id, alias, product_sticker_id")
+          .select("id, alias, product_sticker_id, is_manual")
           .eq("supplier_id", vanVlietSupplierId);
         setAliases(refreshed ?? []);
       }
@@ -1090,10 +1097,17 @@ export function VanVlietPanel() {
                 ))}
               </select>
               <input
+                ref={manualAliasInputRef}
                 value={manualAliasText}
                 onChange={(e) => setManualAliasText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addManualAlias();
+                  }
+                }}
                 list="vv-catalog-names"
-                placeholder={loadingVvCatalog ? "Загружаю каталог поставщика…" : "Начни вводить — подскажет реальные названия"}
+                placeholder={loadingVvCatalog ? "Загружаю каталог поставщика…" : "Начни вводить — подскажет реальные названия, Enter — добавить"}
                 className="min-w-0 flex-[2] rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-xs outline-none focus:border-accent dark:border-zinc-600"
               />
               <datalist id="vv-catalog-names">
@@ -1189,6 +1203,11 @@ export function VanVlietPanel() {
                         <span className="truncate">
                           <span className="font-medium">{material ? decodeHtmlEntities(material.product_name) : "—"}</span>
                           <span className="text-zinc-400"> → «{a.alias}»</span>
+                          {a.is_manual && (
+                            <span title="Подтверждено человеком — ИИ это больше не тронет" className="ml-1 text-emerald-500">
+                              ✋
+                            </span>
+                          )}
                         </span>
                         <button
                           onClick={() => removeAlias(a.id)}

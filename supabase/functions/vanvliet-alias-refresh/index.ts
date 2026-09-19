@@ -289,7 +289,30 @@ Deno.serve(async (req) => {
     const materialLines = (materials ?? []).map((m) => `${m.id}: ${m.product_name}`).join('\n')
     const catalogLines = catalog.map((c) => `${c.product} | ${c.color}`).join('\n')
 
-    const prompt = `Ты работаешь в цветочном интернет-магазине и сверяешь прайс-лист поставщика с нашим ассортиментом, чтобы найти, под каким торговым названием у поставщика продаётся тот же товар, что и у нас.
+    // Подтверждённые человеком соответствия (вписаны вручную или
+    // "Запомнить соответствие" в поиске) — единственная форма "обучения"
+    // на этой архитектуре: тонкой настройки модели тут нет, но реальные
+    // проверенные примеры в промпте задают ей верную планку для похожих
+    // неочевидных случаев (как с Heřmánek → Chamomile).
+    const { data: manualAliases } = await supabase
+      .from('product_name_aliases')
+      .select('product_sticker_id, alias')
+      .eq('supplier_id', supplier.id)
+      .eq('is_manual', true)
+    const materialNameByIdForExamples = new Map((materials ?? []).map((m) => [m.id, m.product_name]))
+    const manualExampleLines = (manualAliases ?? [])
+      .map((a) => {
+        const name = materialNameByIdForExamples.get(a.product_sticker_id)
+        return name ? `${name} = ${a.alias}` : null
+      })
+      .filter((l): l is string => Boolean(l))
+      .slice(0, 40)
+    const examplesBlock =
+      manualExampleLines.length > 0
+        ? `\n\nУже подтверждённые человеком примеры сопоставления (реальные, проверенные — ориентируйся на них при похожих неочевидных случаях):\n${manualExampleLines.join('\n')}\n`
+        : ''
+
+    const prompt = `Ты работаешь в цветочном интернет-магазине и сверяешь прайс-лист поставщика с нашим ассортиментом, чтобы найти, под каким торговым названием у поставщика продаётся тот же товар, что и у нас.${examplesBlock}
 
 Наш ассортимент (разговорные чешские названия товаров, формат "id: название"):
 ${materialLines}
@@ -378,6 +401,8 @@ ${catalogLines}
     // навсегда, пока модель случайно не найдёт для этого же цветка что-то
     // новое. Пустой список соответствий — честное "не знаем", а не старое
     // неверное значение.
+    const materialsWithManualAlias = new Set((manualAliases ?? []).map((a) => a.product_sticker_id))
+
     let genusRejected = 0
     for (const m of materials ?? []) {
       const rawNames = Array.isArray(mapping[m.id]) ? mapping[m.id] : []
@@ -385,22 +410,33 @@ ${catalogLines}
       genusRejected += rawNames.length - genusChecked.length
       const cores = Array.from(new Set(genusChecked.map((p) => coreName(p.split(' | ')[0])).filter(Boolean)))
 
-      await supabase.from('product_name_aliases').delete().eq('supplier_id', supplier.id).eq('product_sticker_id', m.id)
+      // Стираем и переписываем только то, что сама модель когда-то
+      // предложила (is_manual = false) — подтверждённое человеком
+      // никогда не трогаем здесь, иначе ручная правка держалась бы
+      // ровно до следующего прогона.
+      await supabase
+        .from('product_name_aliases')
+        .delete()
+        .eq('supplier_id', supplier.id)
+        .eq('product_sticker_id', m.id)
+        .eq('is_manual', false)
 
       if (cores.length === 0) {
         prunedMaterials++
-        // Без алиасов сканеру (vanvliet-stock-scan) больше нечего
-        // проверять для этого цветка — старое "есть"/"нет в наличии"
-        // иначе так и висело бы неактуальным навсегда, вводя в
-        // заблуждение (выглядит как подтверждённый факт, а на деле
-        // просто нет данных). Явно сбрасываем в "не проверено".
-        await supabase
-          .from('product_stickers')
-          .update({ vanvliet_in_stock: null, vanvliet_stock_checked_at: null })
-          .eq('id', m.id)
+        // Сбрасываем "есть/нет у поставщика" в "не проверено" только
+        // если для цветка вообще не осталось НИ ОДНОГО алиаса (ни
+        // ИИ-шного, ни ручного) — если человек уже подтвердил своё
+        // соответствие, сканеру по-прежнему есть что проверять, статус
+        // трогать не нужно.
+        if (!materialsWithManualAlias.has(m.id)) {
+          await supabase
+            .from('product_stickers')
+            .update({ vanvliet_in_stock: null, vanvliet_stock_checked_at: null })
+            .eq('id', m.id)
+        }
         continue
       }
-      const rows = cores.map((alias) => ({ supplier_id: supplier.id, alias, product_sticker_id: m.id }))
+      const rows = cores.map((alias) => ({ supplier_id: supplier.id, alias, product_sticker_id: m.id, is_manual: false }))
       const { error } = await supabase.from('product_name_aliases').insert(rows)
       if (!error) {
         updatedMaterials++
