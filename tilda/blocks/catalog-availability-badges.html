@@ -102,11 +102,16 @@
             // Нет ни у нас, ни у поставщика одновременно — "Doručíme
             // zítra" по умолчанию было бы пустым обещанием, поэтому
             // карточка прячется целиком, а не просто меняет бейдж.
+            // !important обязателен: у Tilda в родных стилях каталога
+            // .t-store__card сама имеет display с !important (часть
+            // flex-сетки) — обычный card.style.display = 'none' без
+            // !important тихо проигрывает этому правилу, инлайн-стиль
+            // реально проставляется, но визуально ничего не меняется.
             if (unsourceableNames.has(name)) {
-                card.style.display = 'none';
+                card.style.setProperty('display', 'none', 'important');
                 return;
             }
-            card.style.display = '';
+            card.style.removeProperty('display');
             var type = specialNames.has(name) ? 'special' : availableNames.has(name) ? 'today' : 'tomorrow';
             addBadge(card, type, specialDateLabel);
         });
