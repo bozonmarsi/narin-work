@@ -129,6 +129,24 @@ function guessHeight(name: string): string | null {
   return cm >= HEIGHT_THRESHOLD_CM ? "Vysoké" : "Nízké";
 }
 
+// Ровно то же условие, что и в get_unsourceable_products(): нет ни своего
+// остатка, ни подтверждения от Van Vliet, и товар не поставлен под заказ
+// вручную — карточка реально скрыта с сайта клиента прямо сейчас.
+function isHiddenFromSite(p: Product): boolean {
+  return p.category === "ohapka" && !p.special_order && (p.quantity ?? 0) <= 0 && p.vanvliet_in_stock !== true;
+}
+
+// Порядок карточек в Каталоге у менеджера: зелёные (в наличии) → синие
+// (по умолчанию, "привезём завтра") → красные (под заказ) → серые (скрыто
+// с сайта / архив) — тот же приоритет цветов, что и cardTone ниже, просто
+// как сортировка вместо оформления.
+function toneRank(p: Product, isAvailable: boolean): number {
+  if (p.archived || isHiddenFromSite(p)) return 3;
+  if (p.special_order) return 2;
+  if (isAvailable) return 0;
+  return 1;
+}
+
 function ProductCard({
   product: p,
   isAvailable,
@@ -183,12 +201,7 @@ function ProductCard({
   const tagSummary = [...p.flower_type, ...p.color, p.height, p.fragrant ? "Voňavé" : null]
     .filter(Boolean)
     .join(", ");
-  // Ровно то же условие, что и в get_unsourceable_products(): нет ни
-  // своего остатка, ни подтверждения от Van Vliet, и товар не поставлен
-  // под заказ вручную — карточка реально скрыта с сайта клиента прямо
-  // сейчас.
-  const isHiddenFromSite =
-    p.category === "ohapka" && !p.special_order && (p.quantity ?? 0) <= 0 && p.vanvliet_in_stock !== true;
+  const hiddenFromSite = isHiddenFromSite(p);
 
   // Тот же приоритет, что и бейдж на самом сайте (catalog-availability-
   // badges.html): скрыто > под заказ (красный, как "Doručíme <дата>") >
@@ -197,7 +210,7 @@ function ProductCard({
   // это прямое отражение того, что увидит клиент на сайте.
   const cardTone = p.archived
     ? "opacity-60 border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900"
-    : isHiddenFromSite
+    : hiddenFromSite
       ? "border-zinc-300 dark:border-zinc-600 bg-zinc-100 dark:bg-zinc-800"
       : p.special_order
         ? "border-red-300 dark:border-red-500/40 bg-red-50 dark:bg-red-500/10 ring-1 ring-red-200 dark:ring-red-500/30"
@@ -553,7 +566,7 @@ function ProductCard({
           </p>
         ) : p.category === "ohapka" ? (
           <>
-            {isHiddenFromSite && (
+            {hiddenFromSite && (
               <p
                 title="Нет своего остатка и нет подтверждения от Van Vliet — карточка не показывается покупателям. Поставь «Под заказ» ниже, если реально можешь привезти."
                 className="rounded-md bg-red-50 dark:bg-red-500/10 px-2 py-1 text-[11px] font-medium text-red-600 dark:text-red-400 ring-1 ring-inset ring-red-200 dark:ring-red-500/30"
@@ -593,7 +606,7 @@ function ProductCard({
           <button
             onClick={() => onToggleSpecialOrder(p.id, p.special_order)}
             className={`text-[10px] hover:text-orange-600 dark:hover:text-orange-400 ${
-              isHiddenFromSite ? "font-semibold text-orange-600 dark:text-orange-400" : "text-zinc-400 dark:text-zinc-500"
+              hiddenFromSite ? "font-semibold text-orange-600 dark:text-orange-400" : "text-zinc-400 dark:text-zinc-500"
             }`}
           >
             {p.special_order ? "Убрать «под заказ»" : "🚚 Под заказ"}
@@ -960,15 +973,20 @@ export default function ShopPage() {
     return base.filter((p) => p.name.toLowerCase().includes(q));
   }, [products, activeProducts, availabilitySearch, activeTab]);
 
-  // В наличии — сначала, а среди охапок в наличии — у кого меньше
-  // остаток, тот выше: то, что заканчивается, сразу бросается в глаза.
-  // Порядок такой же, как у флориста на складе (CatalogTab).
+  // Сначала зелёные (в наличии), потом синие (по умолчанию), потом
+  // красные (под заказ), потом серые (скрыто с сайта / архив) — тот же
+  // порядок, что и цвета карточки (toneRank), чтобы список сразу читался
+  // по важности. Внутри зелёных, как и раньше: у кого меньше остаток
+  // среди охапок, тот выше — то, что заканчивается, сразу бросается в
+  // глаза (порядок такой же, как у флориста на складе, CatalogTab).
   const sortedProducts = useMemo(() => {
     return [...filteredProducts].sort((a, b) => {
-      const aIn = availableToday.has(a.name);
-      const bIn = availableToday.has(b.name);
-      if (aIn !== bIn) return aIn ? -1 : 1;
-      if (aIn && a.category === "ohapka" && b.category === "ohapka") {
+      const aAvail = availableToday.has(a.name);
+      const bAvail = availableToday.has(b.name);
+      const aRank = toneRank(a, aAvail);
+      const bRank = toneRank(b, bAvail);
+      if (aRank !== bRank) return aRank - bRank;
+      if (aRank === 0 && a.category === "ohapka" && b.category === "ohapka") {
         return (a.quantity ?? 0) - (b.quantity ?? 0);
       }
       return a.name.localeCompare(b.name);
