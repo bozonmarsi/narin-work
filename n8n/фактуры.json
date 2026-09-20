@@ -444,7 +444,7 @@
   "active": false,
   "settings": {
     "executionOrder": "v1",
-    "timezone": "Europe/Prague"
+    "timezone": "UTC"
   },
   "versionId": "0cb9e00d-6a66-4a7e-8081-b56be06cea33",
   "meta": {
