@@ -15,6 +15,7 @@ type Expense = {
   counterparty: string | null;
   document_ref: string | null;
   description: string | null;
+  receipt_url: string | null;
 };
 
 type CashOrder = {
@@ -58,11 +59,15 @@ export default function ExpensesPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
+  const [receiptUploading, setReceiptUploading] = useState(false);
+  const [receiptError, setReceiptError] = useState<string | null>(null);
+
   async function load() {
     const supabase = createClient();
     const { data } = await supabase
       .from("business_expenses")
-      .select("id, occurred_at, amount, category, subcategory, counterparty, document_ref, description")
+      .select("id, occurred_at, amount, category, subcategory, counterparty, document_ref, description, receipt_url")
       .order("occurred_at", { ascending: false })
       .limit(100);
     setExpenses(data ?? []);
@@ -99,6 +104,7 @@ export default function ExpensesPage() {
     setCounterparty("");
     setDocumentRef("");
     setDescription("");
+    setReceiptUrl(null);
   }
 
   async function addExpense() {
@@ -119,6 +125,7 @@ export default function ExpensesPage() {
       counterparty: counterparty.trim() || null,
       document_ref: documentRef.trim() || null,
       description: description.trim(),
+      receipt_url: receiptUrl,
       created_by: user?.id,
     });
 
@@ -129,6 +136,60 @@ export default function ExpensesPage() {
     }
     resetForm();
     load();
+  }
+
+  function fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(",")[1] ?? "");
+      reader.onerror = () => reject(reader.error ?? new Error("Не удалось прочитать файл"));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Фото/скан чека (аренда, реклама, бензин — что угодно, не цветы) —
+  // Claude разбирает его тем же путём, что и фактуры в Приёмке, но
+  // здесь ничего не пишется в базу сама функция: просто подставляет
+  // сумму/дату/контрагента/описание в форму ниже, а сохраняет расход
+  // сам менеджер явным кликом "Добавить расход", как обычно.
+  async function handleReceiptUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null;
+    e.target.value = "";
+    if (!file) return;
+    setReceiptUploading(true);
+    setReceiptError(null);
+    const supabase = createClient();
+    try {
+      const ext = file.name.split(".").pop() ?? (file.type === "application/pdf" ? "pdf" : "jpg");
+      const path = `expenses/${crypto.randomUUID()}.${ext}`;
+      const { error: uploadErr } = await supabase.storage.from("warehouse-photos").upload(path, file, { contentType: file.type });
+      if (uploadErr) throw new Error(uploadErr.message);
+      const uploadedUrl = supabase.storage.from("warehouse-photos").getPublicUrl(path).data.publicUrl;
+
+      const fileBase64 = await fileToBase64(file);
+      const { data, error: fnErr } = await supabase.functions.invoke("invoice-ingest", {
+        body: { file_base64: fileBase64, mime_type: file.type, mode: "extract" },
+      });
+      if (fnErr) throw new Error(fnErr.message);
+      if (data?.ok === false) throw new Error(data.error ?? "Не удалось разобрать чек");
+
+      const parsed = data?.parsed as
+        | { invoice_date: string | null; vendor: string | null; total_amount: number | null; invoice_number: string | null; items: { name: string }[] }
+        | undefined;
+      if (parsed) {
+        if (parsed.invoice_date) setOccurredAt(parsed.invoice_date);
+        if (parsed.total_amount != null) setAmount(String(parsed.total_amount));
+        if (parsed.vendor) setCounterparty(parsed.vendor);
+        if (parsed.invoice_number) setDocumentRef(parsed.invoice_number);
+        const itemNames = (parsed.items ?? []).map((it) => it.name).join(", ");
+        setDescription(itemNames || parsed.vendor || "");
+      }
+      setReceiptUrl(uploadedUrl);
+    } catch (err) {
+      setReceiptError(err instanceof Error ? err.message : "Ошибка загрузки");
+    } finally {
+      setReceiptUploading(false);
+    }
   }
 
   async function removeExpense(id: string) {
@@ -183,7 +244,26 @@ export default function ExpensesPage() {
       </div>
 
       <div className="space-y-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 p-4">
-        <p className="text-sm font-semibold">Новый расход</p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm font-semibold">Новый расход</p>
+          <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-xl border border-dashed border-accent/40 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/5">
+            {receiptUploading ? "Распознаём…" : "📷 Загрузить чек / фото"}
+            <input
+              type="file"
+              accept="image/*,application/pdf"
+              capture="environment"
+              onChange={handleReceiptUpload}
+              disabled={receiptUploading}
+              className="hidden"
+            />
+          </label>
+        </div>
+        {receiptError && <p className="text-xs text-red-600 dark:text-red-400">{receiptError}</p>}
+        {receiptUrl && (
+          <a href={receiptUrl} target="_blank" rel="noreferrer" className="block text-xs text-accent underline">
+            Открыть загруженный чек →
+          </a>
+        )}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div>
             <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Дата</label>
@@ -293,6 +373,14 @@ export default function ExpensesPage() {
                   {formatDate(e.occurred_at)} · {e.category}
                   {e.subcategory ? ` / ${e.subcategory}` : ""}
                   {e.document_ref ? ` · №${e.document_ref}` : ""}
+                  {e.receipt_url && (
+                    <>
+                      {" · "}
+                      <a href={e.receipt_url} target="_blank" rel="noreferrer" className="text-accent underline">
+                        чек
+                      </a>
+                    </>
+                  )}
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-3">

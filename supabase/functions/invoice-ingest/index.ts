@@ -23,6 +23,13 @@
 // нет — supplier_id остаётся пустым, флорист выбирает поставщика сам в
 // форме подтверждения, как и раньше для несопоставленных писем.
 //
+// Два режима (body.mode): "draft" (по умолчанию) — товарная фактура,
+// заводится черновик в invoice_drafts для Приёмки, со сопоставлением
+// поставщика/каталога. "extract" — общий расход менеджера (аренда,
+// реклама, бензин и т.п.) в разделе "Расходы": ничего не пишем в базу,
+// просто возвращаем разобранные данные (сумма/дата/контрагент), чтобы
+// заполнить готовую форму — сохраняет её сам менеджер явным кликом.
+//
 // Авторизация — ЛИБО секрет n8n (CRON_SECRET в заголовке Authorization,
 // у n8n нет настоящей сессии Supabase), ЛИБО настоящая сессия
 // менеджера/складского сотрудника (ручная загрузка из приложения).
@@ -55,20 +62,28 @@ const MAX_TEXT_CHARS = 40000
 const MAX_FILE_BASE64_CHARS = 15_000_000
 
 type ParsedItem = { name: string; quantity: number; unit_price: number | null }
-type ParsedInvoice = { invoice_number: string | null; invoice_date: string | null; items: ParsedItem[] }
+type ParsedInvoice = {
+  invoice_number: string | null
+  invoice_date: string | null
+  vendor: string | null
+  total_amount: number | null
+  items: ParsedItem[]
+}
 
 const PROMPT_INSTRUCTIONS = `Найди:
 - номер документа (обычно рядом со словами "Faktura", "Daňový doklad", "Invoice number" и т.п.)
 - дату выставления документа
+- контрагента — кто выставил документ (название компании/продавца)
+- итоговую сумму документа целиком (с учётом НДС, как в самом низу чека/фактуры)
 - позиции: список товаров/услуг с количеством и ценой за единицу (без НДС, если можно различить)
 
 Верни СТРОГО валидный JSON без markdown-разметки и пояснений, ровно такой формы:
-{"invoice_number": string|null, "invoice_date": "YYYY-MM-DD"|null, "items": [{"name": string, "quantity": number, "unit_price": number|null}]}
+{"invoice_number": string|null, "invoice_date": "YYYY-MM-DD"|null, "vendor": string|null, "total_amount": number|null, "items": [{"name": string, "quantity": number, "unit_price": number|null}]}
 
 Числа — обычными точечными float, без валюты и пробелов. Если что-то не удаётся определить уверенно — ставь null, не придумывай значения. Если позиций нет вообще, документ нечитаем или это не фактура/чек — верни "items": [].`
 
 async function callClaude(anthropicKey: string, content: unknown): Promise<{ parsed: ParsedInvoice; error: string | null }> {
-  const empty: ParsedInvoice = { invoice_number: null, invoice_date: null, items: [] }
+  const empty: ParsedInvoice = { invoice_number: null, invoice_date: null, vendor: null, total_amount: null, items: [] }
 
   let aiData: any
   try {
@@ -103,6 +118,8 @@ async function callClaude(anthropicKey: string, content: unknown): Promise<{ par
       parsed: {
         invoice_number: parsed.invoice_number ?? null,
         invoice_date: parsed.invoice_date ?? null,
+        vendor: typeof parsed.vendor === 'string' && parsed.vendor.trim() ? parsed.vendor.trim() : null,
+        total_amount: parsed.total_amount != null && Number.isFinite(Number(parsed.total_amount)) ? Number(parsed.total_amount) : null,
         items: Array.isArray(parsed.items)
           ? parsed.items
               .filter((it: any) => it && typeof it.name === 'string' && it.name.trim() && Number.isFinite(Number(it.quantity)))
@@ -178,6 +195,13 @@ Deno.serve(async (req) => {
     const subject: string = (body?.subject ?? '').toString()
     const fileBase64: string = (body?.file_base64 ?? '').toString()
     const mimeType: string = (body?.mime_type ?? '').toString()
+    // "draft" (по умолчанию) — как раньше, письмо/скан фактуры товара,
+    // заводится черновик в invoice_drafts для Приёмки. "extract" — общий
+    // расход менеджера (аренда, реклама, бензин и т.п.) в разделе
+    // "Расходы": туда не нужен ни поставщик из каталога, ни черновик на
+    // складе — просто разобрать чек и вернуть данные, чтобы заполнить
+    // готовую форму, а сохраняет её сам менеджер явным кликом "Добавить".
+    const mode: 'draft' | 'extract' = body?.mode === 'extract' ? 'extract' : 'draft'
 
     if (!senderEmailRaw && !driveUrl && !pdfText && !fileBase64) {
       return json({ error: 'empty_payload' }, 400)
@@ -188,7 +212,23 @@ Deno.serve(async (req) => {
 
     const senderEmail = senderEmailRaw.toLowerCase()
 
-    // 1. Кто прислал — по адресу, не по имени из текста письма. Для
+    // 1. Разбор — текстом (письмо) или файлом (ручная загрузка/фото).
+    const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY')
+    let parsed: ParsedInvoice = { invoice_number: null, invoice_date: null, vendor: null, total_amount: null, items: [] }
+    let parseError: string | null = 'no_anthropic_key'
+    if (anthropicKey) {
+      const result = fileBase64
+        ? await parseInvoiceFromFile(anthropicKey, fileBase64, mimeType || 'image/jpeg')
+        : await parseInvoiceFromText(anthropicKey, pdfText)
+      parsed = result.parsed
+      parseError = result.error
+    }
+
+    if (mode === 'extract') {
+      return json({ ok: true, parsed, parseError })
+    }
+
+    // 2. Кто прислал — по адресу, не по имени из текста письма. Для
     // ручной загрузки адреса нет — supplier остаётся null, дальше это
     // просто "не сопоставлено" в форме, как и для незнакомых писем.
     const { data: supplier } = senderEmail
@@ -198,18 +238,6 @@ Deno.serve(async (req) => {
           .contains('invoice_sender_emails', [senderEmail])
           .maybeSingle()
       : { data: null }
-
-    // 2. Разбор — текстом (письмо) или файлом (ручная загрузка/фото).
-    const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY')
-    let parsed: ParsedInvoice = { invoice_number: null, invoice_date: null, items: [] }
-    let parseError: string | null = 'no_anthropic_key'
-    if (anthropicKey) {
-      const result = fileBase64
-        ? await parseInvoiceFromFile(anthropicKey, fileBase64, mimeType || 'image/jpeg')
-        : await parseInvoiceFromText(anthropicKey, pdfText)
-      parsed = result.parsed
-      parseError = result.error
-    }
 
     // 3. Сопоставление позиций с нашим каталогом по уже накопленному
     // словарю алиасов — тому же самому, что учится от ручных
