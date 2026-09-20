@@ -48,6 +48,9 @@ export function ReceiveTab({ onOpenCatalog }: { onOpenCatalog: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  const [uploadingInvoice, setUploadingInvoice] = useState(false);
+  const [invoiceUploadError, setInvoiceUploadError] = useState<string | null>(null);
+
   const rowRefs = useRef<Record<string, HTMLSelectElement | null>>({});
 
   async function loadRefs() {
@@ -122,6 +125,47 @@ export function ReceiveTab({ onOpenCatalog }: { onOpenCatalog: () => void }) {
     const file = e.target.files?.[0] ?? null;
     setPhotoFile(file);
     setPhotoPreview(file ? URL.createObjectURL(file) : null);
+  }
+
+  function fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(",")[1] ?? "");
+      reader.onerror = () => reject(reader.error ?? new Error("Не удалось прочитать файл"));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Для случаев, когда бумажную фактуру просто дают в руки, а не
+  // присылают на почту — фотографируешь/выбираешь файл, а Claude
+  // разбирает его точно так же, как и письма из n8n (тот же
+  // invoice-ingest, только вместо текста письма — фото/скан целиком).
+  async function handleInvoiceUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null;
+    e.target.value = "";
+    if (!file) return;
+    setUploadingInvoice(true);
+    setInvoiceUploadError(null);
+    const supabase = createClient();
+    try {
+      const ext = file.name.split(".").pop() ?? (file.type === "application/pdf" ? "pdf" : "jpg");
+      const path = `invoices/${crypto.randomUUID()}.${ext}`;
+      const { error: uploadErr } = await supabase.storage.from("warehouse-photos").upload(path, file, { contentType: file.type });
+      if (uploadErr) throw new Error(uploadErr.message);
+      const driveUrl = supabase.storage.from("warehouse-photos").getPublicUrl(path).data.publicUrl;
+
+      const fileBase64 = await fileToBase64(file);
+      const { data, error: fnErr } = await supabase.functions.invoke("invoice-ingest", {
+        body: { file_base64: fileBase64, mime_type: file.type, drive_url: driveUrl },
+      });
+      if (fnErr) throw new Error(fnErr.message);
+      if (data?.ok === false) throw new Error(data.error ?? "Не удалось разобрать фактуру");
+      // Новый черновик появится в списке сам — realtime уже подписан на invoice_drafts.
+    } catch (err) {
+      setInvoiceUploadError(err instanceof Error ? err.message : "Ошибка загрузки");
+    } finally {
+      setUploadingInvoice(false);
+    }
   }
 
   const validRows = rows.filter((r) => r.productStickerId && parseFloat(r.quantity) > 0);
@@ -219,6 +263,23 @@ export function ReceiveTab({ onOpenCatalog }: { onOpenCatalog: () => void }) {
           История
         </button>
       </div>
+
+      {view === "form" && (
+        <div className="flex flex-col gap-1.5">
+          <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-xl border border-dashed border-accent/40 px-3 py-2 text-sm font-medium text-accent hover:bg-accent/5">
+            {uploadingInvoice ? "Распознаём…" : "📷 Загрузить фактуру / фото"}
+            <input
+              type="file"
+              accept="image/*,application/pdf"
+              capture="environment"
+              onChange={handleInvoiceUpload}
+              disabled={uploadingInvoice}
+              className="hidden"
+            />
+          </label>
+          {invoiceUploadError && <p className="text-xs text-red-600 dark:text-red-400">{invoiceUploadError}</p>}
+        </div>
+      )}
 
       {view === "form" && drafts.length > 0 && (
         <div className="space-y-2 rounded-xl border border-accent/30 bg-accent/5 p-3">

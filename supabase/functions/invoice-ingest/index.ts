@@ -1,28 +1,34 @@
-// Единая точка входа для ЛЮБОЙ фактуры/чека с почты — n8n тут не
-// разбирает содержимое сам (раньше для каждого поставщика был свой
-// Code-нод с ручным regex под конкретный формат письма — работало
-// только для Van Vliet и Storge, для любого нового поставщика нужно
-// было бы писать новый regex руками). Теперь n8n — просто сантехника:
-// письмо -> PDF в Drive -> текст из PDF -> один POST сюда. Разбор текста
-// в позиции делает Claude, одинаково для ЛЮБОГО поставщика и формата.
+// Единая точка входа для ЛЮБОЙ фактуры/чека — с почты (через n8n) ИЛИ
+// напрямую из приложения, когда флорист просто фоткает бумажный счёт
+// (кнопка "Загрузить фактуру" в Приёмке). Раньше для каждого поставщика
+// с почты был свой Code-нод в n8n с ручным regex под конкретный формат
+// письма — работало только для Van Vliet и Storge, для любого нового
+// поставщика нужно было бы писать новый regex руками. Теперь n8n —
+// просто сантехника: письмо -> PDF в Drive -> текст из PDF -> один POST
+// сюда. Разбор — текста ИЛИ прямо фото/скана (Claude Vision) — в
+// позиции делает Claude, одинаково для ЛЮБОГО поставщика и формата.
 //
 // Гарантия "фактура не потеряется" важнее гарантии "распозналась
 // правильно": INSERT в invoice_drafts происходит ВСЕГДА, даже если
 // Claude вернул отказ/мусор/пустой список позиций — тогда просто
 // сохраняется черновик с items: [], а флорист дозаполняет позиции
 // вручную в форме подтверждения (см. InvoiceDraftModal), глядя на
-// drive_url. Ошибка распознавания и так ничем не рискует: партия на
-// склад заводится только явным кликом "Принять на склад", не отсюда.
+// drive_url/фото. Ошибка распознавания и так ничем не рискует: партия
+// на склад заводится только явным кликом "Принять на склад", не отсюда.
 //
 // supplier_id находим по адресу отправителя (suppliers.invoice_sender_
 // emails), а не по строке "поставщик" из текста письма — та почти
 // никогда не совпадает дословно с нашим suppliers.name ("Van Vliet CZ
-// sro" в письме vs "Van Vliet" у нас).
+// sro" в письме vs "Van Vliet" у нас). При ручной загрузке фото адреса
+// нет — supplier_id остаётся пустым, флорист выбирает поставщика сам в
+// форме подтверждения, как и раньше для несопоставленных писем.
 //
-// Вызывается из n8n с секретом в заголовке Authorization (тот же
-// CRON_SECRET, что и у остальных фоновых функций — платформенная
-// проверка JWT для этой функции должна быть отключена в Dashboard,
-// у n8n нет настоящей сессии Supabase).
+// Авторизация — ЛИБО секрет n8n (CRON_SECRET в заголовке Authorization,
+// у n8n нет настоящей сессии Supabase), ЛИБО настоящая сессия
+// менеджера/складского сотрудника (ручная загрузка из приложения).
+// Платформенная проверка JWT для этой функции должна быть отключена в
+// Dashboard — оба случая проверяем сами ниже (тот же паттерн, что и у
+// vanvliet-alias-refresh).
 //
 // Секреты: ANTHROPIC_API_KEY, CRON_SECRET.
 
@@ -41,25 +47,17 @@ function json(body: unknown, status = 200) {
 }
 
 // Защита от аномально большого вложения (много-страничный PDF с
-// таблицами) — Claude такое всё равно осилит, но незачем гонять и
-// хранить сотни КБ текста ради счёта из десяти строк.
+// таблицами, или огромное фото с телефона без сжатия) — Claude такое
+// всё равно осилит, но незачем гонять и хранить лишнее ради счёта из
+// десяти строк. 15 МБ в base64 — с запасом покрывает обычное фото
+// счёта или скан-PDF на несколько страниц.
 const MAX_TEXT_CHARS = 40000
+const MAX_FILE_BASE64_CHARS = 15_000_000
 
 type ParsedItem = { name: string; quantity: number; unit_price: number | null }
 type ParsedInvoice = { invoice_number: string | null; invoice_date: string | null; items: ParsedItem[] }
 
-async function parseInvoiceText(anthropicKey: string, text: string): Promise<{ parsed: ParsedInvoice; error: string | null }> {
-  const empty: ParsedInvoice = { invoice_number: null, invoice_date: null, items: [] }
-  if (!text.trim()) return { parsed: empty, error: 'empty_text' }
-
-  const prompt = `Ты разбираешь текст, извлечённый из PDF-фактуры или чека (любой поставщик — цветы, упаковка, транспорт, услуги, что угодно) для внутренней бухгалтерии небольшого цветочного магазина в Праге. Текст может быть на чешском, английском или голландском, числа могут быть с запятой вместо точки как разделителем.
-
-Текст документа:
-"""
-${text}
-"""
-
-Найди:
+const PROMPT_INSTRUCTIONS = `Найди:
 - номер документа (обычно рядом со словами "Faktura", "Daňový doklad", "Invoice number" и т.п.)
 - дату выставления документа
 - позиции: список товаров/услуг с количеством и ценой за единицу (без НДС, если можно различить)
@@ -67,7 +65,10 @@ ${text}
 Верни СТРОГО валидный JSON без markdown-разметки и пояснений, ровно такой формы:
 {"invoice_number": string|null, "invoice_date": "YYYY-MM-DD"|null, "items": [{"name": string, "quantity": number, "unit_price": number|null}]}
 
-Числа — обычными точечными float, без валюты и пробелов. Если что-то не удаётся определить уверенно — ставь null, не придумывай значения. Если позиций в тексте нет вообще или текст нечитаем/обрезан — верни "items": [].`
+Числа — обычными точечными float, без валюты и пробелов. Если что-то не удаётся определить уверенно — ставь null, не придумывай значения. Если позиций нет вообще, документ нечитаем или это не фактура/чек — верни "items": [].`
+
+async function callClaude(anthropicKey: string, content: unknown): Promise<{ parsed: ParsedInvoice; error: string | null }> {
+  const empty: ParsedInvoice = { invoice_number: null, invoice_date: null, items: [] }
 
   let aiData: any
   try {
@@ -81,11 +82,11 @@ ${text}
       body: JSON.stringify({
         model: 'claude-sonnet-5',
         max_tokens: 4000,
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{ role: 'user', content }],
       }),
     })
     aiData = await aiRes.json()
-    if (!aiRes.ok) return { parsed: empty, error: `anthropic_http_${aiRes.status}` }
+    if (!aiRes.ok) return { parsed: empty, error: `anthropic_http_${aiRes.status}: ${JSON.stringify(aiData)}` }
   } catch (e) {
     return { parsed: empty, error: `anthropic_request_failed: ${String(e)}` }
   }
@@ -119,6 +120,33 @@ ${text}
   }
 }
 
+// Текстовый путь — n8n уже прислал текст, извлечённый из PDF письма.
+function parseInvoiceFromText(anthropicKey: string, text: string) {
+  const prompt = `Ты разбираешь текст, извлечённый из PDF-фактуры или чека (любой поставщик — цветы, упаковка, транспорт, услуги, что угодно) для внутренней бухгалтерии небольшого цветочного магазина в Праге. Текст может быть на чешском, английском или голландском, числа могут быть с запятой вместо точки как разделителем.
+
+Текст документа:
+"""
+${text}
+"""
+
+${PROMPT_INSTRUCTIONS}`
+  return callClaude(anthropicKey, prompt)
+}
+
+// Путь с файлом — фото или PDF-скан загружен прямо из приложения,
+// текста для распознавания ещё нет. Claude читает изображение/документ
+// сам (Vision), без промежуточного OCR-шага.
+function parseInvoiceFromFile(anthropicKey: string, fileBase64: string, mimeType: string) {
+  const isPdf = mimeType === 'application/pdf'
+  const fileBlock = isPdf
+    ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: fileBase64 } }
+    : { type: 'image', source: { type: 'base64', media_type: mimeType, data: fileBase64 } }
+  const prompt = `Это ${isPdf ? 'скан (PDF)' : 'фото'} фактуры или чека (любой поставщик — цветы, упаковка, транспорт, услуги, что угодно) для внутренней бухгалтерии небольшого цветочного магазина в Праге. Документ может быть на чешском, английском или голландском, числа могут быть с запятой вместо точки как разделителем.
+
+${PROMPT_INSTRUCTIONS}`
+  return callClaude(anthropicKey, [fileBlock, { type: 'text', text: prompt }])
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -130,21 +158,39 @@ Deno.serve(async (req) => {
     const cronSecret = Deno.env.get('CRON_SECRET')
     const authHeader = req.headers.get('authorization') || ''
     const token = authHeader.replace(/^Bearer\s+/i, '')
-    if (!cronSecret || token !== cronSecret) return json({ error: 'unauthorized' }, 401)
+
+    let authorized = Boolean(cronSecret) && token === cronSecret
+    if (!authorized && token) {
+      // Ручная загрузка фото из приложения — приходит настоящая сессия
+      // менеджера/складского сотрудника.
+      const { data: userData } = await supabase.auth.getUser(token)
+      if (userData?.user) {
+        const { data: profile } = await supabase.from('users').select('role').eq('id', userData.user.id).maybeSingle()
+        authorized = profile?.role === 'manager' || profile?.role === 'warehouse'
+      }
+    }
+    if (!authorized) return json({ error: 'unauthorized' }, 401)
 
     const body = await req.json().catch(() => null)
     const senderEmailRaw: string = (body?.sender_email ?? '').toString().trim()
     const driveUrl: string | null = body?.drive_url ? String(body.drive_url) : null
     const pdfText: string = (body?.pdf_text ?? '').toString().slice(0, MAX_TEXT_CHARS)
     const subject: string = (body?.subject ?? '').toString()
+    const fileBase64: string = (body?.file_base64 ?? '').toString()
+    const mimeType: string = (body?.mime_type ?? '').toString()
 
-    if (!senderEmailRaw && !driveUrl && !pdfText) {
+    if (!senderEmailRaw && !driveUrl && !pdfText && !fileBase64) {
       return json({ error: 'empty_payload' }, 400)
+    }
+    if (fileBase64.length > MAX_FILE_BASE64_CHARS) {
+      return json({ error: 'file_too_large' }, 400)
     }
 
     const senderEmail = senderEmailRaw.toLowerCase()
 
-    // 1. Кто прислал — по адресу, не по имени из текста письма.
+    // 1. Кто прислал — по адресу, не по имени из текста письма. Для
+    // ручной загрузки адреса нет — supplier остаётся null, дальше это
+    // просто "не сопоставлено" в форме, как и для незнакомых писем.
     const { data: supplier } = senderEmail
       ? await supabase
           .from('suppliers')
@@ -153,12 +199,14 @@ Deno.serve(async (req) => {
           .maybeSingle()
       : { data: null }
 
-    // 2. Разбор текста в позиции — одинаково для любого поставщика.
+    // 2. Разбор — текстом (письмо) или файлом (ручная загрузка/фото).
     const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY')
     let parsed: ParsedInvoice = { invoice_number: null, invoice_date: null, items: [] }
     let parseError: string | null = 'no_anthropic_key'
     if (anthropicKey) {
-      const result = await parseInvoiceText(anthropicKey, pdfText)
+      const result = fileBase64
+        ? await parseInvoiceFromFile(anthropicKey, fileBase64, mimeType || 'image/jpeg')
+        : await parseInvoiceFromText(anthropicKey, pdfText)
       parsed = result.parsed
       parseError = result.error
     }
