@@ -32,13 +32,23 @@
     },
     {
       "parameters": {
+        "jsCode": "// \"simple: false\" у Gmail Trigger отдаёт сырой формат Gmail API — нет\n// плоских полей from/subject/date, они лежат внутри payload.headers.\n// Достаём их тут один раз и дальше везде используем чистые поля.\nconst headers = ($json.payload && $json.payload.headers) || [];\nfunction h(name) {\n  const found = headers.find(function (x) { return (x.name || '').toLowerCase() === name.toLowerCase(); });\n  return found ? found.value : '';\n}\nconst fromRaw = h('From');\nconst match = fromRaw.match(/<([^>]+)>/);\nconst senderEmail = (match ? match[1] : fromRaw).trim().toLowerCase();\nreturn [{\n  json: {\n    sender_email: senderEmail,\n    subject: h('Subject'),\n    date: h('Date'),\n  },\n  binary: $binary,\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [200, 0],
+      "id": "69c780d9-91af-4c7c-9406-9f9da54a3f71",
+      "name": "Normalize Email"
+    },
+    {
+      "parameters": {
         "operation": "pdf",
         "binaryPropertyName": "attachment_0",
         "options": {}
       },
       "type": "n8n-nodes-base.extractFromFile",
       "typeVersion": 1.1,
-      "position": [208, 0],
+      "position": [400, 0],
       "id": "ea8cc43a-9fff-4e17-86f5-6caf9a6a1f7d",
       "name": "Extract from File"
     },
@@ -61,19 +71,19 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ sender_email: ($('Gmail Trigger').first().json.from || '').match(/<(.+)>/)?.[1] ?? $('Gmail Trigger').first().json.from, subject: $('Gmail Trigger').first().json.subject, pdf_text: $json.text, drive_url: $('Upload file').first().json.webViewLink, received_at: $('Gmail Trigger').first().json.date }) }}",
+        "jsonBody": "={{ JSON.stringify({ sender_email: $('Normalize Email').first().json.sender_email, subject: $('Normalize Email').first().json.subject, pdf_text: $json.text, drive_url: $('Upload file').first().json.webViewLink, received_at: $('Normalize Email').first().json.date }) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
-      "position": [800, 0],
+      "position": [950, 0],
       "id": "7cef99ba-62ac-4cf8-a758-a5b27b507e6d",
       "name": "HTTP Request1"
     },
     {
       "parameters": {
         "inputDataFieldName": "attachment_0",
-        "name": "=={{ ($('Gmail Trigger').first().json.subject || 'invoice') + '-' + $now.toFormat('yyyyMMddHHmmss') }}.pdf",
+        "name": "=={{ ($('Normalize Email').first().json.subject || 'invoice') + '-' + $now.toFormat('yyyyMMddHHmmss') }}.pdf",
         "driveId": {
           "__rl": true,
           "mode": "list",
@@ -90,7 +100,7 @@
       },
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
-      "position": [208, 160],
+      "position": [400, 160],
       "id": "c420d6ce-2df3-4c8c-86e9-817b67c6d724",
       "name": "Upload file",
       "credentials": {
@@ -118,7 +128,7 @@
       },
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
-      "position": [336, 160],
+      "position": [600, 160],
       "id": "c650a7b2-1267-43c4-b05c-60500d050692",
       "name": "Share file",
       "credentials": {
@@ -134,7 +144,7 @@
       },
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
-      "position": [480, 16],
+      "position": [750, 80],
       "id": "836dd382-c8b7-4f4c-89a3-bb5e1c91904c",
       "name": "Merge"
     },
@@ -157,7 +167,7 @@
       },
       "type": "n8n-nodes-base.gmailTrigger",
       "typeVersion": 1.3,
-      "position": [0, 368],
+      "position": [0, 400],
       "id": "d0863767-3352-4542-bedf-7b00ccba8392",
       "name": "Gmail Trigger1",
       "credentials": {
@@ -169,13 +179,23 @@
     },
     {
       "parameters": {
+        "jsCode": "// \"simple: false\" у Gmail Trigger отдаёт сырой формат Gmail API — нет\n// плоских полей from/subject/date, они лежат внутри payload.headers.\n// Достаём их тут один раз и дальше везде используем чистые поля.\nconst headers = ($json.payload && $json.payload.headers) || [];\nfunction h(name) {\n  const found = headers.find(function (x) { return (x.name || '').toLowerCase() === name.toLowerCase(); });\n  return found ? found.value : '';\n}\nconst fromRaw = h('From');\nconst match = fromRaw.match(/<([^>]+)>/);\nconst senderEmail = (match ? match[1] : fromRaw).trim().toLowerCase();\nreturn [{\n  json: {\n    sender_email: senderEmail,\n    subject: h('Subject'),\n    date: h('Date'),\n  },\n  binary: $binary,\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [200, 400],
+      "id": "64574e70-7ab8-4a18-8734-d74a3633523d",
+      "name": "Normalize Email1"
+    },
+    {
+      "parameters": {
         "operation": "pdf",
         "binaryPropertyName": "attachment_0",
         "options": {}
       },
       "type": "n8n-nodes-base.extractFromFile",
       "typeVersion": 1.1,
-      "position": [208, 368],
+      "position": [400, 400],
       "id": "64cc77a4-5233-4fcd-8b20-5285bb3d7819",
       "name": "Extract from File1"
     },
@@ -198,19 +218,19 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ sender_email: ($('Gmail Trigger1').first().json.from || '').match(/<(.+)>/)?.[1] ?? $('Gmail Trigger1').first().json.from, subject: $('Gmail Trigger1').first().json.subject, pdf_text: $json.text, drive_url: $('Upload file1').first().json.webViewLink, received_at: $('Gmail Trigger1').first().json.date }) }}",
+        "jsonBody": "={{ JSON.stringify({ sender_email: $('Normalize Email1').first().json.sender_email, subject: $('Normalize Email1').first().json.subject, pdf_text: $json.text, drive_url: $('Upload file1').first().json.webViewLink, received_at: $('Normalize Email1').first().json.date }) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
-      "position": [832, 384],
+      "position": [950, 400],
       "id": "08923b74-0a79-4877-91e6-c72e37d80a29",
       "name": "HTTP Request"
     },
     {
       "parameters": {
         "inputDataFieldName": "attachment_0",
-        "name": "=={{ ($('Gmail Trigger1').first().json.subject || 'invoice') + '-' + $now.toFormat('yyyyMMddHHmmss') }}.pdf",
+        "name": "=={{ ($('Normalize Email1').first().json.subject || 'invoice') + '-' + $now.toFormat('yyyyMMddHHmmss') }}.pdf",
         "driveId": {
           "__rl": true,
           "mode": "list",
@@ -227,7 +247,7 @@
       },
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
-      "position": [208, 528],
+      "position": [400, 560],
       "id": "4db0f42c-e7b0-4af6-9e8d-550fcbf005d8",
       "name": "Upload file1",
       "credentials": {
@@ -255,7 +275,7 @@
       },
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
-      "position": [336, 528],
+      "position": [600, 560],
       "id": "a70b0ca0-b2cb-450a-a5a5-b582a0ff5680",
       "name": "Share file1",
       "credentials": {
@@ -271,7 +291,7 @@
       },
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
-      "position": [480, 384],
+      "position": [750, 480],
       "id": "9964ba06-02a6-4cc2-987d-214a230b82d2",
       "name": "Merge1"
     }
@@ -279,6 +299,17 @@
   "pinData": {},
   "connections": {
     "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Email": {
       "main": [
         [
           {
@@ -339,6 +370,17 @@
       ]
     },
     "Gmail Trigger1": {
+      "main": [
+        [
+          {
+            "node": "Normalize Email1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Email1": {
       "main": [
         [
           {

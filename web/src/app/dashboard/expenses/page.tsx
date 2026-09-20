@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useDashboard } from "../layout";
 import { formatDate } from "@/lib/format";
 import { isPickupOrder } from "@/lib/order-status";
+import { useRealtimeRefresh } from "@/lib/useRealtimeRefresh";
 
 type Expense = {
   id: string;
@@ -22,6 +23,18 @@ type CashOrder = {
   order_id: string | null;
   order_total: number | null;
   delivery_type: string | null;
+};
+
+type SupplierRow = { id: string; name: string };
+
+type PendingSenderDraft = {
+  id: string;
+  supplier_name: string | null;
+  sender_email: string | null;
+  invoice_number: string | null;
+  invoice_date: string | null;
+  drive_url: string | null;
+  items: { supplier_item_name: string }[];
 };
 
 function todayBoundsISO() {
@@ -63,6 +76,13 @@ export default function ExpensesPage() {
   const [receiptUploading, setReceiptUploading] = useState(false);
   const [receiptError, setReceiptError] = useState<string | null>(null);
 
+  const [suppliers, setSuppliers] = useState<SupplierRow[]>([]);
+  const [pendingSenders, setPendingSenders] = useState<PendingSenderDraft[]>([]);
+  const [senderChoice, setSenderChoice] = useState<Record<string, string>>({});
+  const [senderNewName, setSenderNewName] = useState<Record<string, string>>({});
+  const [senderBusy, setSenderBusy] = useState<string | null>(null);
+  const [senderError, setSenderError] = useState<string | null>(null);
+
   async function load() {
     const supabase = createClient();
     const { data } = await supabase
@@ -72,6 +92,25 @@ export default function ExpensesPage() {
       .limit(100);
     setExpenses(data ?? []);
     setLoading(false);
+  }
+
+  // Письма, похожие на фактуру (прошли фильтр в n8n по ключевым словам),
+  // но с адреса, который не зарегистрирован ни за одним поставщиком —
+  // например биллинг Google Cloud. Не идут флористу в Приёмку молча,
+  // менеджер сам решает: разрешить (адрес привязывается к поставщику,
+  // черновик становится обычной фактурой) или отклонить.
+  async function loadPendingSenders() {
+    const supabase = createClient();
+    const [suppliersRes, draftsRes] = await Promise.all([
+      supabase.from("suppliers").select("id, name").order("name"),
+      supabase
+        .from("invoice_drafts")
+        .select("id, supplier_name, sender_email, invoice_number, invoice_date, drive_url, items")
+        .eq("status", "needs_sender_review")
+        .order("created_at", { ascending: false }),
+    ]);
+    setSuppliers(suppliersRes.data ?? []);
+    setPendingSenders(draftsRes.data ?? []);
   }
 
   // Наличные, которые сейчас реально должны лежать у флориста: заказы,
@@ -94,7 +133,70 @@ export default function ExpensesPage() {
   useEffect(() => {
     load();
     loadCashToday();
+    loadPendingSenders();
   }, []);
+
+  useRealtimeRefresh("invoice_drafts", loadPendingSenders);
+
+  async function approveSender(draft: PendingSenderDraft) {
+    if (!draft.sender_email) return;
+    const chosenId = senderChoice[draft.id] ?? "";
+    const newName = (senderNewName[draft.id] ?? "").trim();
+    if (!chosenId && !newName) return;
+    setSenderBusy(draft.id);
+    setSenderError(null);
+    const supabase = createClient();
+    try {
+      let supplierId = chosenId;
+      let supplierName = suppliers.find((s) => s.id === chosenId)?.name ?? null;
+
+      if (!chosenId) {
+        const { data: created, error: createErr } = await supabase
+          .from("suppliers")
+          .insert({ name: newName, invoice_sender_emails: [draft.sender_email] })
+          .select("id, name")
+          .single();
+        if (createErr || !created) throw new Error(createErr?.message ?? "Не удалось создать поставщика");
+        supplierId = created.id;
+        supplierName = created.name;
+      } else {
+        const { data: existing } = await supabase
+          .from("suppliers")
+          .select("invoice_sender_emails")
+          .eq("id", chosenId)
+          .single();
+        const current = (existing?.invoice_sender_emails as string[] | null) ?? [];
+        const merged = Array.from(new Set([...current, draft.sender_email]));
+        const { error: updErr } = await supabase.from("suppliers").update({ invoice_sender_emails: merged }).eq("id", chosenId);
+        if (updErr) throw new Error(updErr.message);
+      }
+
+      const { error: draftErr } = await supabase
+        .from("invoice_drafts")
+        .update({ status: "pending", supplier_id: supplierId, supplier_name: supplierName })
+        .eq("id", draft.id);
+      if (draftErr) throw new Error(draftErr.message);
+
+      setPendingSenders((prev) => prev.filter((d) => d.id !== draft.id));
+    } catch (err) {
+      setSenderError(err instanceof Error ? err.message : "Ошибка");
+    } finally {
+      setSenderBusy(null);
+    }
+  }
+
+  async function rejectSender(draftId: string) {
+    setSenderBusy(draftId);
+    setSenderError(null);
+    const supabase = createClient();
+    const { error: rejectErr } = await supabase.from("invoice_drafts").update({ status: "rejected" }).eq("id", draftId);
+    setSenderBusy(null);
+    if (rejectErr) {
+      setSenderError(rejectErr.message);
+      return;
+    }
+    setPendingSenders((prev) => prev.filter((d) => d.id !== draftId));
+  }
 
   function resetForm() {
     setOccurredAt(todayStr());
@@ -214,6 +316,75 @@ export default function ExpensesPage() {
         Общие траты бизнеса — аренда, зарплата, упаковка, реклама, офис. Закупка цветов сюда не пишется — она уже
         учитывается через Приёмку на складе.
       </p>
+
+      {pendingSenders.length > 0 && (
+        <div className="space-y-2 rounded-2xl border border-amber-300 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-500/10 p-4">
+          <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+            📬 Новые отправители на проверку: {pendingSenders.length}
+          </p>
+          <p className="text-xs text-amber-700/80 dark:text-amber-400/80">
+            Письмо похоже на фактуру, но этот адрес ни за одним поставщиком не числится — реши, пропускать его
+            дальше или нет.
+          </p>
+          {senderError && <p className="text-xs text-red-600 dark:text-red-400">{senderError}</p>}
+          <div className="space-y-2">
+            {pendingSenders.map((d) => {
+              const itemNames = (d.items ?? []).map((it) => it.supplier_item_name).join(", ");
+              const busy = senderBusy === d.id;
+              return (
+                <div key={d.id} className="rounded-xl border border-amber-200 dark:border-amber-500/30 bg-white dark:bg-zinc-900 p-3">
+                  <p className="text-sm font-medium">{d.sender_email}</p>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    {d.invoice_number ? `№${d.invoice_number} · ` : ""}
+                    {d.invoice_date ? `${d.invoice_date} · ` : ""}
+                    {itemNames || d.supplier_name || "без позиций"}
+                  </p>
+                  {d.drive_url && (
+                    <a href={d.drive_url} target="_blank" rel="noreferrer" className="text-xs text-accent underline">
+                      Открыть документ →
+                    </a>
+                  )}
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <select
+                      value={senderChoice[d.id] ?? ""}
+                      onChange={(e) => setSenderChoice((prev) => ({ ...prev, [d.id]: e.target.value }))}
+                      className="rounded-lg border border-zinc-300 dark:border-zinc-600 bg-transparent px-2 py-1.5 text-xs outline-none focus:border-accent"
+                    >
+                      <option value="">— выбери поставщика —</option>
+                      {suppliers.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="text-xs text-zinc-400">или</span>
+                    <input
+                      value={senderNewName[d.id] ?? ""}
+                      onChange={(e) => setSenderNewName((prev) => ({ ...prev, [d.id]: e.target.value }))}
+                      placeholder="новый поставщик"
+                      className="w-36 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-transparent px-2 py-1.5 text-xs outline-none focus:border-accent"
+                    />
+                    <button
+                      onClick={() => approveSender(d)}
+                      disabled={busy || (!senderChoice[d.id] && !(senderNewName[d.id] ?? "").trim())}
+                      className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+                    >
+                      ✅ Разрешить
+                    </button>
+                    <button
+                      onClick={() => rejectSender(d.id)}
+                      disabled={busy}
+                      className="rounded-lg border border-zinc-300 dark:border-zinc-600 px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 disabled:opacity-40"
+                    >
+                      🚫 Отклонить
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
         <p className="text-sm font-semibold">Касса сегодня</p>
