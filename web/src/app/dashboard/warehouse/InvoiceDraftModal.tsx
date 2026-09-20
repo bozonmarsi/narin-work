@@ -39,6 +39,19 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function newRow(): Row {
+  return {
+    key: crypto.randomUUID(),
+    supplierItemName: "",
+    productStickerId: "",
+    quantity: "",
+    price: "",
+    skip: false,
+    wasUnmatched: false,
+    rememberAlias: false,
+  };
+}
+
 // Флорист подтверждает то, что распознал n8n/Claude из письма с
 // фактурой — партия на склад заводится тем же путём, что и в обычной
 // Приёмке (батч + stock_movement), только после явного клика "Принять",
@@ -199,6 +212,11 @@ export function InvoiceDraftModal({
 
         <div className="space-y-2">
           <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Позиции — то, что распознала фактура, поправь при необходимости</p>
+          {rows.length === 0 && (
+            <p className="rounded-lg border border-dashed border-zinc-300 dark:border-zinc-600 px-3 py-2 text-xs text-zinc-500 dark:text-zinc-400">
+              Не удалось разобрать позиции автоматически — открой скан фактуры выше и добавь их вручную.
+            </p>
+          )}
           {rows.map((row) => (
             <div key={row.key} className={`flex items-center gap-2 ${row.skip ? "opacity-40" : ""}`}>
               <div className="min-w-0 flex-1">
@@ -215,7 +233,7 @@ export function InvoiceDraftModal({
                   ))}
                 </select>
                 <div className="mt-0.5 flex items-center justify-between gap-2">
-                  <p className="truncate text-[11px] text-zinc-400">в фактуре: {row.supplierItemName}</p>
+                  {row.supplierItemName && <p className="truncate text-[11px] text-zinc-400">в фактуре: {row.supplierItemName}</p>}
                   {row.wasUnmatched && row.productStickerId && (
                     <label className="flex shrink-0 items-center gap-1 text-[11px] text-zinc-400">
                       <input
@@ -253,6 +271,12 @@ export function InvoiceDraftModal({
               </button>
             </div>
           ))}
+          <button
+            onClick={() => setRows((prev) => [...prev, newRow()])}
+            className="text-xs font-medium text-accent hover:underline"
+          >
+            + Добавить позицию
+          </button>
         </div>
 
         {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
