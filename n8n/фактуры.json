@@ -12,7 +12,7 @@
         },
         "simple": false,
         "filters": {
-          "q": "has:attachment filename:pdf"
+          "q": "has:attachment filename:pdf (faktura OR invoice OR \"daňový doklad\" OR účtenka OR \"tax invoice\" OR receipt)"
         },
         "options": {
           "downloadAttachments": true
@@ -149,7 +149,7 @@
         },
         "simple": false,
         "filters": {
-          "q": "has:attachment filename:pdf"
+          "q": "has:attachment filename:pdf (faktura OR invoice OR \"daňový doklad\" OR účtenka OR \"tax invoice\" OR receipt)"
         },
         "options": {
           "downloadAttachments": true
