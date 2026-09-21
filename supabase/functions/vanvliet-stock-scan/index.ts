@@ -1,10 +1,11 @@
 // Дважды в день (см. миграцию с pg_cron) проверяет, что из наших
-// товаров-охапок сейчас реально есть в каталоге Van Vliet, и
-// проставляет product_stickers.vanvliet_in_stock — дальше это уже
+// товаров-охапок есть в каталоге Van Vliet НА ЗАВТРА (не на сегодня —
+// заказ сегодня всё равно не успеет повлиять на сегодняшнюю доставку),
+// и проставляет product_stickers.vanvliet_in_stock — дальше это уже
 // подхватывает существующий триггер tg_sync_ohapka_availability и сам
 // решает, показывать товар клиенту на сайте или нет (правило: наш
-// остаток > 0 ИЛИ у поставщика есть — прячем только то, чего нет
-// нигде).
+// остаток > 0 ИЛИ у поставщика есть на завтра — прячем только то, чего
+// нет нигде).
 //
 // ТОЛЬКО ЧТЕНИЕ каталога поставщика — вызывает уже существующую
 // vanvliet-search с fullCatalog:true (та же функция, что использует
@@ -101,7 +102,14 @@ Deno.serve(async (req) => {
       return json({ ok: true, checked: 0, note: 'no materials with vanvliet aliases yet' })
     }
 
-    const targetDate = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Prague' })
+    // Завтра, не сегодня — на сегодняшний остаток заказ уже не повлияет
+    // (доставка +1 день), проверять имеет смысл дату, на которую реально
+    // можно успеть довезти. Полдень как опорная точка — подальше от
+    // границ перехода на летнее/зимнее время при прибавлении дня.
+    const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Prague' })
+    const tomorrow = new Date(`${todayStr}T12:00:00`)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const targetDate = tomorrow.toLocaleDateString('sv-SE', { timeZone: 'Europe/Prague' })
     const searchRes = await fetch(`${supabaseUrl}/functions/v1/vanvliet-search`, {
       method: 'POST',
       headers: {
