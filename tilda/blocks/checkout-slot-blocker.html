@@ -1,0 +1,150 @@
+<style>
+/* Закрытый интервал доставки — полупрозрачный и некликабельный, как
+   заблокированная дата в checkout-date-blocker.html, только точечно на
+   одном из радио "Vyberte dobu doručení" вместо целого дня. */
+.narin-slot-blocked {
+    opacity: 0.4 !important;
+    cursor: not-allowed !important;
+}
+
+.narin-slot-block-tip {
+    position: fixed;
+    z-index: 100000;
+    max-width: 240px;
+    background: rgba(22,24,29,0.94);
+    color: #fff;
+    font-family: 'Rubik', sans-serif;
+    font-size: 12.5px;
+    line-height: 1.4;
+    padding: 10px 14px;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    transform: translate(-50%, calc(-100% - 10px)) translateY(4px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    text-align: center;
+}
+.narin-slot-block-tip.active {
+    opacity: 1;
+    transform: translate(-50%, calc(-100% - 10px)) translateY(0);
+}
+.narin-slot-block-tip::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: rgba(22,24,29,0.94);
+}
+</style>
+<script>
+(function () {
+    'use strict';
+
+    var SUPABASE_URL = "https://wqburlamuipxmenqsjnx.supabase.co";
+    var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxYnVybGFtdWlweG1lbnFzam54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTY2MTIsImV4cCI6MjA4ODgzMjYxMn0.NYnQoorm3z5gkjr954JdYhzDNmYfCjefzK1ddq3cflw";
+
+    // closedSlots["2026-9-25"] = { "12-15": "Omlouváme se, tento čas je již obsazený." }
+    var closedSlots = {};
+    var selectedDateKey = null; // ve stejném formátu jako [data-picker] — "2026-9-25"
+
+    function pickerToIso(pickerStr) {
+        var p = pickerStr.split('-');
+        var mm = String(parseInt(p[1], 10)).padStart(2, '0');
+        var dd = String(parseInt(p[2], 10)).padStart(2, '0');
+        return p[0] + '-' + mm + '-' + dd;
+    }
+
+    function fetchClosedSlots() {
+        return fetch(SUPABASE_URL + "/rest/v1/shop_closed_slots?select=closed_date,slot_label,reason", {
+            headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer " + SUPABASE_ANON_KEY }
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (rows) {
+                var byIso = {};
+                (rows || []).forEach(function (row) {
+                    if (!byIso[row.closed_date]) byIso[row.closed_date] = {};
+                    byIso[row.closed_date][row.slot_label] = row.reason || 'Omlouváme se, tento čas je již obsazený.';
+                });
+                closedSlots = byIso;
+                applyBlockedSlots();
+            })
+            .catch(function (err) {
+                console.error('Nepodařilo se načíst zavřené intervaly ze Supabase', err);
+            });
+    }
+
+    function reasonFor(slotValue) {
+        if (!selectedDateKey) return null;
+        var iso = pickerToIso(selectedDateKey);
+        return (closedSlots[iso] && closedSlots[iso][slotValue]) || null;
+    }
+
+    function applyBlockedSlots() {
+        document.querySelectorAll('input[name="delivery-time"]').forEach(function (input) {
+            var label = input.closest('.t-radio__control') || input.closest('label') || input.parentElement;
+            if (!label) return;
+            label.classList.toggle('narin-slot-blocked', !!reasonFor(input.value));
+        });
+    }
+
+    // Sledujeme, kterou datum si zákazník vybral — stejný zdroj (kliknutí na
+    // [data-picker] buňku), jaký používá checkout-date-blocker.html, jen
+    // bez blokování samotného kliku (to řeší ten druhý skript).
+    document.addEventListener('mousedown', function (e) {
+        var cell = e.target.closest('[data-picker]');
+        if (!cell) return;
+        selectedDateKey = cell.getAttribute('data-picker');
+        setTimeout(applyBlockedSlots, 50);
+    }, true);
+
+    var tipTimer = null;
+    function hideBlockTip() {
+        var existing = document.querySelector('.narin-slot-block-tip');
+        if (existing) existing.remove();
+    }
+    function showBlockTip(el, message) {
+        hideBlockTip();
+        var tip = document.createElement('div');
+        tip.className = 'narin-slot-block-tip';
+        tip.textContent = message;
+        document.body.appendChild(tip);
+        var rect = el.getBoundingClientRect();
+        tip.style.left = (rect.left + rect.width / 2) + 'px';
+        tip.style.top = rect.top + 'px';
+        requestAnimationFrame(function () { tip.classList.add('active'); });
+        clearTimeout(tipTimer);
+        tipTimer = setTimeout(hideBlockTip, 3500);
+    }
+    document.addEventListener('mousedown', function (e) {
+        if (!e.target.closest('.narin-slot-block-tip') && !e.target.closest('input[name="delivery-time"]') && !e.target.closest('.t-radio__control')) hideBlockTip();
+    }, true);
+
+    // Zablokovat klik na zavřený interval — capture fáze, dřív než Tildin
+    // vlastní handler stihne radio zaškrtnout.
+    document.addEventListener('mousedown', function (e) {
+        var control = e.target.closest('.t-radio__control');
+        var input = control ? control.querySelector('input[name="delivery-time"]') : e.target.closest('input[name="delivery-time"]');
+        if (!input) return;
+        var reason = reasonFor(input.value);
+        if (reason) {
+            e.stopImmediatePropagation();
+            e.preventDefault();
+            showBlockTip(control || input, reason);
+        }
+    }, true);
+
+    fetchClosedSlots();
+
+    // Belt-and-suspenders: znovu aplikovat po pár sekundách, kdyby se
+    // radia vykreslila později, nebo se otevřel jiný krok formuláře.
+    var attempts = 0;
+    var poll = setInterval(function () {
+        attempts++;
+        applyBlockedSlots();
+        if (attempts >= 10) clearInterval(poll);
+    }, 500);
+})();
+</script>

@@ -8,6 +8,7 @@ import { useRealtimeRefresh } from "@/lib/useRealtimeRefresh";
 import { VanVlietPanel } from "./VanVlietPanel";
 
 type ClosedDate = { closed_date: string; reason: string | null };
+type ClosedSlot = { id: string; closed_date: string; slot_label: string; reason: string | null };
 type RecipeRow = { id: string; bouquet_sticker_id: string; ingredient_sticker_id: string; quantity_needed: number };
 type Product = {
   id: string;
@@ -44,6 +45,11 @@ const BADGE_COLOR_OPTIONS = [
 ];
 
 const WEEKDAY_LABELS = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
+
+// Значения строго совпадают с value радиокнопок "Vyberte dobu doručení"
+// на странице оплаты (name="delivery-time") — checkout-slot-blocker.html
+// сверяет закрытые слоты именно по этим строкам.
+const SLOT_LABELS = ["9-12", "12-15", "15-18", "18-20"];
 
 const CATEGORY_OPTIONS = [
   { value: "buket", label: "Букеты", color: "bg-pink-50 dark:bg-pink-500/10 text-pink-700 dark:text-pink-400 ring-pink-200 dark:ring-pink-500/30" },
@@ -635,6 +641,9 @@ export default function ShopPage() {
   const [loading, setLoading] = useState(true);
   const [newClosedDate, setNewClosedDate] = useState({ date: "", reason: "" });
   const [closedDateError, setClosedDateError] = useState<string | null>(null);
+  const [closedSlots, setClosedSlots] = useState<ClosedSlot[]>([]);
+  const [newClosedSlot, setNewClosedSlot] = useState({ date: "", slot: SLOT_LABELS[0], reason: "" });
+  const [closedSlotError, setClosedSlotError] = useState<string | null>(null);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [availableToday, setAvailableToday] = useState<Set<string>>(new Set());
@@ -653,12 +662,14 @@ export default function ShopPage() {
 
   const load = useCallback(async () => {
     const supabase = createClient();
-    const [weeklyRes, datesRes] = await Promise.all([
+    const [weeklyRes, datesRes, slotsRes] = await Promise.all([
       supabase.from("shop_weekly_closed_days").select("weekday"),
       supabase.from("shop_closed_dates").select("closed_date, reason").order("closed_date"),
+      supabase.from("shop_closed_slots").select("id, closed_date, slot_label, reason").order("closed_date"),
     ]);
     setWeeklyClosed(new Set((weeklyRes.data ?? []).map((r) => r.weekday)));
     setClosedDates(datesRes.data ?? []);
+    setClosedSlots(slotsRes.data ?? []);
     setLoading(false);
   }, []);
 
@@ -1033,6 +1044,29 @@ export default function ShopPage() {
     load();
   }
 
+  async function addClosedSlot() {
+    if (!newClosedSlot.date) return;
+    const supabase = createClient();
+    const { error } = await supabase.from("shop_closed_slots").insert({
+      closed_date: newClosedSlot.date,
+      slot_label: newClosedSlot.slot,
+      reason: newClosedSlot.reason.trim() || null,
+    });
+    if (error) {
+      setClosedSlotError(error.code === "23505" ? "Этот слот на эту дату уже закрыт." : error.message);
+      return;
+    }
+    setClosedSlotError(null);
+    setNewClosedSlot({ date: "", slot: SLOT_LABELS[0], reason: "" });
+    load();
+  }
+
+  async function removeClosedSlot(id: string) {
+    const supabase = createClient();
+    await supabase.from("shop_closed_slots").delete().eq("id", id);
+    load();
+  }
+
   if (profile?.role !== "manager" && profile?.role !== "warehouse") return null;
   if (loading) return <p className="text-zinc-500 dark:text-zinc-400">Загрузка…</p>;
 
@@ -1122,6 +1156,55 @@ export default function ShopPage() {
                   {d.closed_date}
                   {d.reason ? ` — ${d.reason}` : ""}
                   <button onClick={() => removeClosedDate(d.closed_date)} className="text-zinc-400 dark:text-zinc-500 hover:text-red-600 dark:hover:text-red-400">✕</button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
+          <p className="mb-1 font-medium">Закрытые интервалы доставки</p>
+          <p className="mb-3 text-xs text-zinc-400 dark:text-zinc-500">
+            Закрывает конкретный интервал времени на конкретную дату (например, курьеры на завтра уже заняты
+            на 12-15) — на странице оплаты этот слот станет полупрозрачным и недоступным для выбора,
+            остальные слоты и остальные даты продолжают работать как обычно.
+          </p>
+          <div className="mb-3 flex flex-wrap gap-2">
+            <input
+              type="date"
+              value={newClosedSlot.date}
+              onChange={(e) => setNewClosedSlot((s) => ({ ...s, date: e.target.value }))}
+              className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
+            />
+            <select
+              value={newClosedSlot.slot}
+              onChange={(e) => setNewClosedSlot((s) => ({ ...s, slot: e.target.value }))}
+              className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
+            >
+              {SLOT_LABELS.map((slot) => (
+                <option key={slot} value={slot}>{slot}</option>
+              ))}
+            </select>
+            <input
+              value={newClosedSlot.reason}
+              onChange={(e) => setNewClosedSlot((s) => ({ ...s, reason: e.target.value }))}
+              placeholder="Причина"
+              className="flex-1 rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
+            />
+            <button onClick={addClosedSlot} className="rounded-md border border-zinc-300 dark:border-zinc-600 px-3 py-1.5 text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+              + Добавить
+            </button>
+          </div>
+          {closedSlotError && <p className="mb-3 text-xs text-red-500">{closedSlotError}</p>}
+          {closedSlots.length === 0 ? (
+            <p className="text-sm text-zinc-400 dark:text-zinc-500">Закрытых интервалов пока нет.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {closedSlots.map((s) => (
+                <span key={s.id} className="flex items-center gap-2 rounded-md bg-zinc-100 dark:bg-zinc-800 px-2 py-1 text-xs text-zinc-700 dark:text-zinc-200">
+                  {s.closed_date} · {s.slot_label}
+                  {s.reason ? ` — ${s.reason}` : ""}
+                  <button onClick={() => removeClosedSlot(s.id)} className="text-zinc-400 dark:text-zinc-500 hover:text-red-600 dark:hover:text-red-400">✕</button>
                 </span>
               ))}
             </div>
