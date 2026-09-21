@@ -227,6 +227,16 @@ const SUPPLY_STATUS_ICON: Record<SupplyStatus, string> = {
 // supabase-js only gives a generic "non-2xx status code" message by default —
 // the actual error body (which step failed, what the supplier's API said) is
 // on error.context (a Response). Without this we're debugging blind.
+// Известные "step" из наших vanvliet-* функций — своя человеческая
+// фраза вместо сырого дампа ответа Anthropic/upstream API, который
+// пользователю ничего не говорит и просто пугает на экране.
+const FUNCTION_STEP_MESSAGES: Record<string, string> = {
+  anthropic_refusal:
+    "Модель отказалась разбирать сегодняшний прайс-лист (ложное срабатывание защиты на список названий цветов) — соответствия не обновились. Обычно помогает попробовать ещё раз через пару минут.",
+  anthropic: "Не получилось обратиться к модели распознавания — попробуй ещё раз через пару минут.",
+  parse: "Модель прислала ответ, который не удалось разобрать — попробуй обновить ещё раз.",
+};
+
 async function describeFunctionError(err: unknown): Promise<string> {
   const context = (err as { context?: Response })?.context;
   if (context && typeof context.text === "function") {
@@ -234,7 +244,11 @@ async function describeFunctionError(err: unknown): Promise<string> {
       const text = await context.text();
       try {
         const parsed = JSON.parse(text);
+        if (typeof parsed?.step === "string" && FUNCTION_STEP_MESSAGES[parsed.step]) {
+          return FUNCTION_STEP_MESSAGES[parsed.step];
+        }
         if (typeof parsed?.message === "string") return parsed.message;
+        if (typeof parsed?.error === "string") return parsed.error;
         return JSON.stringify(parsed);
       } catch {
         return text || String(err);
