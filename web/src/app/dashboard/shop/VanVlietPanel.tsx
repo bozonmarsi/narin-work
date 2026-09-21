@@ -262,7 +262,10 @@ async function describeFunctionError(err: unknown): Promise<string> {
 
 export function VanVlietPanel() {
   const [rows, setRows] = useState<SearchRow[]>([emptyRow()]);
-  const [targetDate, setTargetDate] = useState(DATE_OPTIONS[0].value);
+  // По умолчанию "Завтра", не "Сегодня" — заказ у поставщика имеет смысл
+  // на дату, на которую реально будем собирать/доставлять, а не на
+  // сегодня (сегодняшний остаток уже либо есть у нас, либо взять негде).
+  const [targetDate, setTargetDate] = useState(DATE_OPTIONS[1].value);
   const [results, setResults] = useState<ResultGroup[] | null>(null);
   // Параллельно results — для какой позиции (какой materialId) был этот
   // результат, чтобы знать, куда сохранять "Запомнить соответствие".
