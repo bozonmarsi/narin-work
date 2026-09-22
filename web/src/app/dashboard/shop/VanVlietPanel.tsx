@@ -303,7 +303,7 @@ export function VanVlietPanel() {
   // Раньше "Наличие у поставщика" было отдельным попапом поверх экрана —
   // неудобно листать длинный список и одновременно работать с корзиной.
   // Теперь это вторая вкладка той же правой колонки, что и "Корзина".
-  const [rightTab, setRightTab] = useState<"cart" | "supply">("cart");
+  const [rightTab, setRightTab] = useState<"cart" | "supply" | "aliases">("cart");
   const [markingPickedUp, setMarkingPickedUp] = useState<string | null>(null);
   const pendingPickup = purchases.filter((p) => !p.picked_up);
 
@@ -421,7 +421,7 @@ export function VanVlietPanel() {
   // Каталог для подсказок в ручной форме — грузим только когда попап
   // реально открыт, не при каждой загрузке страницы.
   useEffect(() => {
-    if (rightTab === "supply" && vvCatalogNames.length === 0 && !loadingVvCatalog) {
+    if (rightTab === "aliases" && vvCatalogNames.length === 0 && !loadingVvCatalog) {
       loadVvCatalogNames();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -933,6 +933,16 @@ export function VanVlietPanel() {
           >
             📊 Наличие{supplyAttentionCount > 0 ? ` (${supplyAttentionCount})` : ""}
           </button>
+          <button
+            onClick={() => setRightTab("aliases")}
+            className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+              rightTab === "aliases"
+                ? "bg-white text-accent shadow-sm dark:bg-zinc-700 dark:text-accent"
+                : "text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+            }`}
+          >
+            🔗 Соответствия
+          </button>
         </div>
       </div>
       {rightTab === "cart" ? (
@@ -1047,26 +1057,77 @@ export function VanVlietPanel() {
         )}
       </div>
       </>
-      ) : (
+      ) : rightTab === "supply" ? (
       <div className="space-y-3">
-        <div className="flex flex-wrap gap-1.5">
-          <button
-            onClick={refreshAliases}
-            disabled={refreshingAliases}
-            className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-500 hover:border-accent hover:text-accent disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-400"
-          >
-            {refreshingAliases ? "Обновляю соответствия (может занять минуту)…" : "🔄 Обновить соответствия (AI)"}
-          </button>
-          <button
-            onClick={scanStock}
-            disabled={scanningStock}
-            className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-500 hover:border-accent hover:text-accent disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-400"
-          >
-            {scanningStock ? "Проверяю остаток…" : "📡 Проверить остаток у Van Vliet"}
-          </button>
-        </div>
+        <button
+          onClick={scanStock}
+          disabled={scanningStock}
+          className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-500 hover:border-accent hover:text-accent disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-400"
+        >
+          {scanningStock ? "Проверяю остаток…" : "📡 Проверить остаток у Van Vliet"}
+        </button>
 
         {stockScanError && <p className="text-xs text-red-500">{stockScanError}</p>}
+
+        <p className="text-xs text-zinc-400">
+          Дважды в день бот сам проверяет остаток у поставщика по уже сохранённым названиям (вкладка
+          «Соответствия»). Точность зависит от качества подбора — <b>серый «?»</b> не значит «нет цветка», это
+          значит «нет надёжного названия для проверки».
+        </p>
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-zinc-400">
+          <span>✓ есть у поставщика</span>
+          <span>✗ нет у поставщика</span>
+          <span>… алиас есть, ждём первой проверки</span>
+          <span>? не сопоставлено</span>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {supplyRows
+            .slice()
+            .sort((a, b) => {
+              const order: Record<SupplyStatus, number> = { unmatched: 0, unavailable: 1, pending: 2, available: 3 };
+              if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
+              return a.m.product_name.localeCompare(b.m.product_name);
+            })
+            .map(({ m, status, aliasNames }) => (
+              <span
+                key={m.id}
+                title={
+                  aliasNames.length > 0
+                    ? `Ищем как: ${aliasNames.join(", ")}${
+                        m.vanvliet_stock_checked_at ? ` · проверено: ${new Date(m.vanvliet_stock_checked_at).toLocaleString("ru-RU")}` : ""
+                      }`
+                    : "Нет сохранённого названия у поставщика для этого цветка"
+                }
+                className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${SUPPLY_STATUS_STYLE[status]}`}
+              >
+                {SUPPLY_STATUS_ICON[status]} {decodeHtmlEntities(m.product_name)}
+                {status !== "unmatched" && m.vanvliet_stock_checked_at && (
+                  <span className="text-[10px] opacity-70">· {relativeTime(m.vanvliet_stock_checked_at)}</span>
+                )}
+                {status === "unmatched" && (
+                  <button
+                    onClick={() => {
+                      setRightTab("cart");
+                      searchForMaterial(m.id);
+                    }}
+                    className="ml-0.5 underline decoration-dotted hover:text-accent"
+                  >
+                    Искать →
+                  </button>
+                )}
+              </span>
+            ))}
+        </div>
+      </div>
+      ) : (
+      <div className="space-y-3">
+        <button
+          onClick={refreshAliases}
+          disabled={refreshingAliases}
+          className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-500 hover:border-accent hover:text-accent disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-400"
+        >
+          {refreshingAliases ? "Обновляю соответствия (может занять минуту)…" : "🔄 Обновить соответствия (AI)"}
+        </button>
 
         <div className="space-y-1.5 rounded-md border border-zinc-200 p-2 dark:border-zinc-700">
           <p className="text-xs font-medium">Добавить соответствие вручную</p>
@@ -1117,62 +1178,17 @@ export function VanVlietPanel() {
         </div>
 
         <p className="text-xs text-zinc-400">
-          Как это работает: раз в 2 недели (или кнопкой «🔄 Обновить соответствия» выше) ИИ подбирает, под каким
-          названием наш цветок продаётся у Van Vliet. Дважды в день (07:00 и 17:00) бот проверяет остаток у
-          поставщика именно по этому названию. Точность зависит от качества подбора — <b>серый «?»</b> не значит
-          «нет цветка», это значит «нет надёжного названия для проверки».
+          Как это работает: раз в неделю по вторникам (или кнопкой «🔄 Обновить соответствия» выше) ИИ подбирает,
+          под каким названием наш цветок продаётся у Van Vliet — вручную вписанное или подтверждённое (✋) он
+          больше не трогает.
         </p>
-        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-zinc-400">
-          <span>✓ есть у поставщика</span>
-          <span>✗ нет у поставщика</span>
-          <span>… алиас есть, ждём первой проверки</span>
-          <span>? не сопоставлено</span>
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {supplyRows
-            .slice()
-            .sort((a, b) => {
-              const order: Record<SupplyStatus, number> = { unmatched: 0, unavailable: 1, pending: 2, available: 3 };
-              if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
-              return a.m.product_name.localeCompare(b.m.product_name);
-            })
-            .map(({ m, status, aliasNames }) => (
-              <span
-                key={m.id}
-                title={
-                  aliasNames.length > 0
-                    ? `Ищем как: ${aliasNames.join(", ")}${
-                        m.vanvliet_stock_checked_at ? ` · проверено: ${new Date(m.vanvliet_stock_checked_at).toLocaleString("ru-RU")}` : ""
-                      }`
-                    : "Нет сохранённого названия у поставщика для этого цветка"
-                }
-                className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${SUPPLY_STATUS_STYLE[status]}`}
-              >
-                {SUPPLY_STATUS_ICON[status]} {decodeHtmlEntities(m.product_name)}
-                {status !== "unmatched" && m.vanvliet_stock_checked_at && (
-                  <span className="text-[10px] opacity-70">· {relativeTime(m.vanvliet_stock_checked_at)}</span>
-                )}
-                {status === "unmatched" && (
-                  <button
-                    onClick={() => {
-                      setRightTab("cart");
-                      searchForMaterial(m.id);
-                    }}
-                    className="ml-0.5 underline decoration-dotted hover:text-accent"
-                  >
-                    Искать →
-                  </button>
-                )}
-              </span>
-            ))}
-        </div>
 
         <div className="space-y-1">
           <p className="text-xs font-medium">Все соответствия ({aliases.length})</p>
           {aliases.length === 0 ? (
             <p className="text-xs text-zinc-400">Пока ничего не сохранено.</p>
           ) : (
-            <div className="max-h-48 space-y-1 overflow-y-auto">
+            <div className="max-h-64 space-y-1 overflow-y-auto">
               {aliases
                 .slice()
                 .sort((a, b) => {
