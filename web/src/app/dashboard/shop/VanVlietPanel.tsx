@@ -191,6 +191,15 @@ const DATE_OPTIONS = [
 
 // "3 ч назад" / "вчера" — чтобы устаревшую проверку было видно сразу в
 // списке, а не только по наведению на каждый бейдж отдельно.
+// Для фильтра по списку соответствий — без диакритики и регистра, чтобы
+// "ruzova" находило "Růžová".
+function normalizeForMatch(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
+}
+
 function relativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const minutes = Math.round(diffMs / 60000);
@@ -351,6 +360,12 @@ export function VanVlietPanel() {
   const [manualAliasText, setManualAliasText] = useState("");
   const manualAliasInputRef = useRef<HTMLInputElement>(null);
   const [removingAliasId, setRemovingAliasId] = useState<string | null>(null);
+
+  // "Мини-mind-map": список наших цветов, у каждого может быть
+  // несколько названий у Van Vliet — клик разворачивает ветки вместо
+  // плоского списка "наше → ихнее" по одной строке на каждый алиас.
+  const [expandedAliasMaterialId, setExpandedAliasMaterialId] = useState<string | null>(null);
+  const [aliasSearch, setAliasSearch] = useState("");
 
   async function loadVvCatalogNames() {
     setLoadingVvCatalog(true);
@@ -1183,46 +1198,100 @@ export function VanVlietPanel() {
           больше не трогает.
         </p>
 
-        <div className="space-y-1">
-          <p className="text-xs font-medium">Все соответствия ({aliases.length})</p>
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-medium">Все соответствия ({aliases.length})</p>
+            {aliases.length > 6 && (
+              <input
+                value={aliasSearch}
+                onChange={(e) => setAliasSearch(e.target.value)}
+                placeholder="Фильтр по названию…"
+                className="w-32 rounded-md border border-zinc-300 bg-transparent px-2 py-0.5 text-[11px] outline-none focus:border-accent dark:border-zinc-600"
+              />
+            )}
+          </div>
           {aliases.length === 0 ? (
             <p className="text-xs text-zinc-400">Пока ничего не сохранено.</p>
           ) : (
-            <div className="max-h-64 space-y-1 overflow-y-auto">
-              {aliases
-                .slice()
-                .sort((a, b) => {
-                  const nameA = materials.find((m) => m.id === a.product_sticker_id)?.product_name ?? "";
-                  const nameB = materials.find((m) => m.id === b.product_sticker_id)?.product_name ?? "";
-                  return nameA.localeCompare(nameB);
+            (() => {
+              const groups = new Map<string, Alias[]>();
+              for (const a of aliases) {
+                const list = groups.get(a.product_sticker_id) ?? [];
+                list.push(a);
+                groups.set(a.product_sticker_id, list);
+              }
+              const q = normalizeForMatch(aliasSearch);
+              const rows = Array.from(groups.entries())
+                .map(([materialId, group]) => ({
+                  materialId,
+                  material: materials.find((m) => m.id === materialId),
+                  group,
+                }))
+                .filter(({ material, group }) => {
+                  if (!q) return true;
+                  const name = material ? normalizeForMatch(decodeHtmlEntities(material.product_name)) : "";
+                  return name.includes(q) || group.some((a) => normalizeForMatch(a.alias).includes(q));
                 })
-                .map((a) => {
-                  const material = materials.find((m) => m.id === a.product_sticker_id);
-                  return (
-                    <div
-                      key={a.id}
-                      className="flex items-center justify-between gap-2 rounded-md border border-zinc-200 px-2 py-1 text-xs dark:border-zinc-700"
-                    >
-                      <span className="truncate">
-                        <span className="font-medium">{material ? decodeHtmlEntities(material.product_name) : "—"}</span>
-                        <span className="text-zinc-400"> → «{a.alias}»</span>
-                        {a.is_manual && (
-                          <span title="Подтверждено человеком — ИИ это больше не тронет" className="ml-1 text-emerald-500">
-                            ✋
+                .sort((a, b) => (a.material?.product_name ?? "").localeCompare(b.material?.product_name ?? ""));
+
+              if (rows.length === 0) {
+                return <p className="text-xs text-zinc-400">Ничего не нашлось.</p>;
+              }
+
+              return (
+                <div className="max-h-72 space-y-1 overflow-y-auto pr-0.5">
+                  {rows.map(({ materialId, material, group }) => {
+                    const expanded = expandedAliasMaterialId === materialId;
+                    return (
+                      <div key={materialId}>
+                        <button
+                          onClick={() => setExpandedAliasMaterialId(expanded ? null : materialId)}
+                          className={`flex w-full items-center justify-between gap-2 rounded-md border px-2 py-1.5 text-left text-xs transition-colors ${
+                            expanded
+                              ? "border-accent bg-accent/5 dark:bg-accent/10"
+                              : "border-zinc-200 hover:border-accent/60 dark:border-zinc-700"
+                          }`}
+                        >
+                          <span className="truncate font-medium">
+                            {material ? decodeHtmlEntities(material.product_name) : "—"}
                           </span>
+                          <span className="flex shrink-0 items-center gap-1 text-zinc-400">
+                            {group.length} {group.length === 1 ? "название" : "названия"}
+                            <span className={`transition-transform ${expanded ? "rotate-90" : ""}`}>›</span>
+                          </span>
+                        </button>
+                        {expanded && (
+                          <div className="ml-3 mt-1 space-y-1 border-l-2 border-accent/30 pl-3 dark:border-accent/20">
+                            {group.map((a) => (
+                              <div
+                                key={a.id}
+                                className="relative flex items-center justify-between gap-2 rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs before:absolute before:-left-3 before:top-1/2 before:h-px before:w-3 before:bg-accent/30 dark:border-zinc-700 dark:bg-zinc-900 dark:before:bg-accent/20"
+                              >
+                                <span className="truncate">
+                                  «{a.alias}»
+                                  {a.is_manual && (
+                                    <span title="Подтверждено человеком — ИИ это больше не тронет" className="ml-1 text-emerald-500">
+                                      ✋
+                                    </span>
+                                  )}
+                                </span>
+                                <button
+                                  onClick={() => removeAlias(a.id)}
+                                  disabled={removingAliasId === a.id}
+                                  className="shrink-0 text-zinc-400 hover:text-red-500 disabled:opacity-50"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ))}
+                          </div>
                         )}
-                      </span>
-                      <button
-                        onClick={() => removeAlias(a.id)}
-                        disabled={removingAliasId === a.id}
-                        className="shrink-0 text-zinc-400 hover:text-red-500 disabled:opacity-50"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  );
-                })}
-            </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()
           )}
         </div>
 
