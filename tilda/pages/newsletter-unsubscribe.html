@@ -1,0 +1,192 @@
+<style>
+.lk-unsub-page { font-family: 'Rubik', sans-serif; min-height: 640px; padding: 50px 20px 60px; box-sizing: border-box; background: radial-gradient(120% 100% at 50% 0%, #fff6f0 0%, #fdeef2 45%, #f3f0fb 100%); }
+.lk-unsub-wrap { max-width: 420px; margin: 0 auto; text-align: center; }
+.lk-unsub-logo { max-width: 130px; width: 100%; height: auto; margin-bottom: 6px; opacity: .92; }
+
+.lk-unsub-dots { display: flex; justify-content: center; gap: 7px; margin: 22px 0 28px; }
+.lk-unsub-dot { width: 7px; height: 7px; border-radius: 50%; background: #ddd3e0; transition: background .3s ease, transform .3s ease; }
+.lk-unsub-dot.on { background: #186ce0; transform: scale(1.25); }
+
+.lk-flower { width: 130px; height: 130px; margin: 0 auto 18px; position: relative; }
+.lk-flower svg { width: 100%; height: 100%; overflow: visible; }
+.lk-petal { transform-origin: 60px 60px; transition: transform .55s cubic-bezier(.34,1.56,.64,1), opacity .5s ease; }
+.lk-flower.sway .lk-petal { animation: lkSway 4.5s ease-in-out infinite; }
+.lk-petal:nth-child(2) { animation-delay: -0.9s !important; }
+.lk-petal:nth-child(3) { animation-delay: -1.8s !important; }
+.lk-petal:nth-child(4) { animation-delay: -2.7s !important; }
+.lk-petal:nth-child(5) { animation-delay: -3.6s !important; }
+@keyframes lkSway { 0%, 100% { transform: rotate(var(--r)) translateY(0); } 50% { transform: rotate(var(--r)) translateY(-3px); } }
+.lk-flower.dropped .lk-petal { opacity: 0; transform: rotate(var(--r)) translate(0, 46px) rotate(50deg) scale(.6); animation: none !important; }
+.lk-flower.dropped .lk-center { transform: scale(.82); }
+.lk-flower.dropped .lk-stem { stroke-dasharray: 60; stroke-dashoffset: 34; }
+
+.lk-unsub-card { background: rgba(255,255,255,.72); backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,.9); border-radius: 22px; padding: 30px 26px 28px; box-shadow: 0 18px 40px -22px rgba(120,60,90,.35); }
+
+.lk-step { display: none; animation: lkStepIn .45s cubic-bezier(.22,1,.36,1); }
+.lk-step.active { display: block; }
+@keyframes lkStepIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+.lk-unsub-title { font-size: 19px; font-weight: 600; color: #16181d; margin: 0 0 10px; letter-spacing: -.01em; }
+.lk-unsub-text { font-size: 13.5px; line-height: 1.65; color: #7d818c; margin: 0 0 24px; }
+.lk-unsub-email { font-weight: 600; color: #16181d; }
+
+.lk-btn-primary { display: block; width: 100%; padding: 13px; border-radius: 14px; background: #186ce0; color: #fff; font-size: 14px; font-weight: 600; border: none; cursor: pointer; font-family: 'Rubik', sans-serif; box-sizing: border-box; transition: transform .15s ease, opacity .15s ease; }
+.lk-btn-primary:active { transform: scale(.97); }
+.lk-btn-primary:disabled { opacity: .55; cursor: default; }
+.lk-btn-ghost { display: inline-block; margin-top: 14px; color: #9a9ea8; text-decoration: none; font-size: 13px; font-weight: 500; background: none; border: none; cursor: pointer; font-family: 'Rubik', sans-serif; }
+.lk-btn-ghost:hover { color: #186ce0; }
+
+.lk-reason-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px; }
+.lk-reason-chip { padding: 12px 10px; border-radius: 13px; border: 1px solid #edeef1; background: #fff; color: #16181d; font-size: 12.5px; font-weight: 500; cursor: pointer; font-family: 'Rubik', sans-serif; transition: border-color .15s ease, background .15s ease, transform .1s ease; line-height: 1.35; }
+.lk-reason-chip:hover { border-color: #186ce0; }
+.lk-reason-chip:active { transform: scale(.97); }
+.lk-reason-chip.picked { background: #e5f0fd; border-color: #186ce0; color: #186ce0; }
+
+.lk-unsub-home { display: inline-block; margin-top: 22px; color: #186ce0; text-decoration: none; font-size: 13px; font-weight: 500; }
+.lk-unsub-badge-mini { width: 46px; height: 46px; border-radius: 50%; background: #e5f0fd; margin: 0 auto 14px; display: flex; align-items: center; justify-content: center; font-size: 21px; }
+</style>
+
+<div class="lk-unsub-page">
+  <div class="lk-unsub-wrap">
+    <img class="lk-unsub-logo" src="https://static.tildacdn.com/tild3131-3033-4536-a130-623830646536/Photoroom_20260804_1.PNG" alt="NARIN — květinový atelier">
+
+    <div class="lk-unsub-dots" id="lkDots">
+      <div class="lk-unsub-dot on" data-dot="1"></div>
+      <div class="lk-unsub-dot" data-dot="2"></div>
+      <div class="lk-unsub-dot" data-dot="3"></div>
+    </div>
+
+    <div class="lk-flower sway" id="lkFlower">
+      <svg viewBox="0 0 120 150">
+        <path class="lk-stem" d="M60 78 C 58 100, 62 118, 60 140" fill="none" stroke="#8fc9a0" stroke-width="4" stroke-linecap="round"/>
+        <path d="M60 108 C 46 106, 38 114, 34 126" fill="none" stroke="#8fc9a0" stroke-width="4" stroke-linecap="round"/>
+        <path d="M60 118 C 74 117, 82 126, 86 136" fill="none" stroke="#8fc9a0" stroke-width="4" stroke-linecap="round"/>
+        <g class="lk-petal" style="--r:0deg; transform:rotate(0deg)"><ellipse cx="60" cy="34" rx="15" ry="26" fill="#f28aa0"/></g>
+        <g class="lk-petal" style="--r:72deg; transform:rotate(72deg)"><ellipse cx="60" cy="34" rx="15" ry="26" fill="#f6a5b6"/></g>
+        <g class="lk-petal" style="--r:144deg; transform:rotate(144deg)"><ellipse cx="60" cy="34" rx="15" ry="26" fill="#f28aa0"/></g>
+        <g class="lk-petal" style="--r:216deg; transform:rotate(216deg)"><ellipse cx="60" cy="34" rx="15" ry="26" fill="#f6a5b6"/></g>
+        <g class="lk-petal" style="--r:288deg; transform:rotate(288deg)"><ellipse cx="60" cy="34" rx="15" ry="26" fill="#f28aa0"/></g>
+        <circle class="lk-center" cx="60" cy="60" r="12" fill="#f6c453" style="transition:transform .5s ease"/>
+      </svg>
+    </div>
+
+    <div class="lk-unsub-card">
+
+      <div class="lk-step active" data-step="1">
+        <div class="lk-unsub-title">Než se rozloučíme…</div>
+        <p class="lk-unsub-text">Opravdu chcete přestat dostávat novinky a nabídky od NARIN na tento e-mail?</p>
+        <button class="lk-btn-primary" id="lkConfirmBtn">Ano, odhlásit se</button>
+        <a class="lk-btn-ghost" href="/">Ne, zůstávám</a>
+      </div>
+
+      <div class="lk-step" data-step="2">
+        <div class="lk-unsub-title">Hotovo — jste odhlášeni</div>
+        <p class="lk-unsub-text" id="lkReasonIntro">Smíme se zeptat, proč jste odešli? Pomůže nám to psát lépe.</p>
+        <div class="lk-reason-grid">
+          <button class="lk-reason-chip" data-reason="Chodilo mi toho moc">Chodilo mi toho moc</button>
+          <button class="lk-reason-chip" data-reason="Obsah mě nezajímal">Obsah mě nezajímal</button>
+          <button class="lk-reason-chip" data-reason="Už u vás nenakupuji">Už u vás nenakupuji</button>
+          <button class="lk-reason-chip" data-reason="Jiný důvod">Jiný důvod</button>
+        </div>
+        <a class="lk-btn-ghost" id="lkSkipReason" href="#">Přeskočit</a>
+      </div>
+
+      <div class="lk-step" data-step="3">
+        <div class="lk-unsub-badge-mini">🌱</div>
+        <div class="lk-unsub-title">Děkujeme, mrzí nás to</div>
+        <p class="lk-unsub-text">E-mail <span class="lk-unsub-email" id="lkFinalEmail"></span> už od nás nebude dostávat novinky ani nabídky. Zprávy o vašich objednávkách (potvrzení, doručení apod.) tím nejsou dotčené — ty jsou samostatné. Dveře zůstávají otevřené, kdykoliv se můžete vrátit.</p>
+      </div>
+
+      <div class="lk-step" data-step="error">
+        <div class="lk-unsub-badge-mini">🌷</div>
+        <div class="lk-unsub-title" id="lkErrorTitle">Odkaz je neplatný</div>
+        <p class="lk-unsub-text" id="lkErrorText">Chybí token pro odhlášení. Zkuste odkaz z e-mailu znovu, nebo nám napište na support@vezminarin.cz.</p>
+      </div>
+
+    </div>
+
+    <a class="lk-unsub-home" href="/">Zpět na vezminarin.cz</a>
+  </div>
+</div>
+
+<script>
+(function () {
+  const SUPABASE_URL = "https://wqburlamuipxmenqsjnx.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_ORMmBYvVjH6i2GanWa2JyA_mWm3fTCZ";
+
+  const steps = document.querySelectorAll(".lk-step");
+  const dots = document.querySelectorAll(".lk-unsub-dot");
+  const flower = document.getElementById("lkFlower");
+  const dotsWrap = document.getElementById("lkDots");
+
+  function showStep(name) {
+    steps.forEach((s) => s.classList.toggle("active", s.dataset.step === name));
+    if (name === "error") { dotsWrap.style.display = "none"; return; }
+    dots.forEach((d) => d.classList.toggle("on", Number(d.dataset.dot) <= Number(name)));
+  }
+
+  function showError(title, text) {
+    document.getElementById("lkErrorTitle").textContent = title;
+    document.getElementById("lkErrorText").textContent = text;
+    showStep("error");
+  }
+
+  const token = new URLSearchParams(location.search).get("token");
+  if (!token) {
+    showError("Odkaz je neplatný", "Chybí token pro odhlášení. Zkuste odkaz z e-mailu znovu, nebo nám napište na support@vezminarin.cz.");
+    return;
+  }
+
+  let subscriberEmail = "";
+
+  async function callUnsubscribe() {
+    const btn = document.getElementById("lkConfirmBtn");
+    btn.disabled = true;
+    btn.textContent = "Odhlašujeme…";
+    try {
+      const res = await fetch(SUPABASE_URL + "/rest/v1/rpc/unsubscribe_newsletter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+        body: JSON.stringify({ p_token: token }),
+      });
+      const rows = await res.json();
+      const row = Array.isArray(rows) ? rows[0] : null;
+
+      if (!row || !row.ok) {
+        showError("Odkaz nefunguje", "Tento odkaz na odhlášení jsme nenašli. Napište nám na support@vezminarin.cz, odhlásíme vás ručně.");
+        return;
+      }
+
+      subscriberEmail = row.email;
+      flower.classList.remove("sway");
+      flower.classList.add("dropped");
+      document.getElementById("lkFinalEmail").textContent = subscriberEmail;
+      setTimeout(() => showStep("2"), 350);
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = "Ano, odhlásit se";
+      showError("Něco se nepovedlo", "Zkuste to prosím znovu, nebo napište na support@vezminarin.cz.");
+    }
+  }
+
+  document.getElementById("lkConfirmBtn").addEventListener("click", callUnsubscribe);
+
+  document.getElementById("lkSkipReason").addEventListener("click", function (e) {
+    e.preventDefault();
+    showStep("3");
+  });
+
+  document.querySelectorAll(".lk-reason-chip").forEach((chip) => {
+    chip.addEventListener("click", function () {
+      document.querySelectorAll(".lk-reason-chip").forEach((c) => c.classList.remove("picked"));
+      chip.classList.add("picked");
+      fetch(SUPABASE_URL + "/rest/v1/rpc/record_unsubscribe_reason", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+        body: JSON.stringify({ p_token: token, p_reason: chip.dataset.reason }),
+      }).catch(function () {});
+      setTimeout(() => showStep("3"), 450);
+    });
+  });
+})();
+</script>

@@ -273,7 +273,7 @@ export async function POST(request: Request) {
 
     case "arriving_sms":
       if (phone) {
-        await sendBrevoSms(phone, `Narin: Kurýr s vaší kyticí dorazí přibližně za 10 minut. Těšíme se, až vám udělá radost! 🌷`);
+        await sendBrevoSms(phone, `Kurýr už je za rohem — vaše květiny dorazí do 10 minut! Připravte se!!! 🌷`);
       }
       break;
   }
