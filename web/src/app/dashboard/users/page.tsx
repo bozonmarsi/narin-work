@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useDashboard } from "../layout";
 import { formatDate, formatDateTime } from "@/lib/format";
+import { NewsletterPanel } from "./NewsletterPanel";
 
 type CustomerRow = {
   email: string;
@@ -79,6 +80,7 @@ const RECURRENCE_OPTIONS = [
 
 export default function UsersPage() {
   const { profile, user } = useDashboard();
+  const [view, setView] = useState<"clients" | "newsletter">("clients");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"balance" | "orders" | "recent">("recent");
   const [loading, setLoading] = useState(true);
@@ -517,16 +519,42 @@ export default function UsersPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">Клиенты</h1>
-        <a
-          href="https://vezminarin.cz/members/login"
-          target="_blank"
-          rel="noreferrer"
-          className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-hover"
-        >
-          + Зарегистрировать нового клиента
-        </a>
+        <div className="flex items-center gap-3">
+          <h1 className="text-lg font-semibold">Клиенты</h1>
+          <div className="flex gap-1 rounded-md border border-zinc-200 dark:border-zinc-700 p-0.5">
+            <button
+              onClick={() => setView("clients")}
+              className={`rounded px-2.5 py-1 text-sm font-medium ${
+                view === "clients" ? "bg-accent text-white" : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              }`}
+            >
+              Список
+            </button>
+            <button
+              onClick={() => setView("newsletter")}
+              className={`rounded px-2.5 py-1 text-sm font-medium ${
+                view === "newsletter" ? "bg-accent text-white" : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              }`}
+            >
+              Рассылка
+            </button>
+          </div>
+        </div>
+        {view === "clients" && (
+          <a
+            href="https://vezminarin.cz/members/login"
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-hover"
+          >
+            + Зарегистрировать нового клиента
+          </a>
+        )}
       </div>
+
+      {view === "newsletter" && <NewsletterPanel />}
+
+      {view === "clients" && <>
 
       {recentReviews.length > 0 && (
         <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
@@ -980,6 +1008,8 @@ export default function UsersPage() {
           </div>
         )}
       </div>
+
+      </>}
     </div>
   );
 }

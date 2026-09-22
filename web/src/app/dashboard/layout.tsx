@@ -258,14 +258,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 Бизнес
               </Link>
               <Link
-                href="/dashboard/newsletter"
-                className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-                  pathname.startsWith("/dashboard/newsletter") ? "bg-accent text-white" : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                }`}
-              >
-                Рассылка
-              </Link>
-              <Link
                 href="/dashboard/expenses"
                 className={`rounded-md px-3 py-1.5 text-sm font-medium ${
                   pathname.startsWith("/dashboard/expenses") ? "bg-accent text-white" : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"

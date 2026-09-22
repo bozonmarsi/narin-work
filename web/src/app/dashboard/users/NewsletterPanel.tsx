@@ -17,7 +17,7 @@ const SOURCE_LABELS: Record<string, string> = {
   manual: "Вручную",
 };
 
-export default function NewsletterPage() {
+export function NewsletterPanel() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [emailsText, setEmailsText] = useState("");
@@ -108,15 +108,12 @@ export default function NewsletterPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Рассылка</h1>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-          Список согласий для маркетинговых писем (не транзакционных — те приходят всегда, независимо от этого
-          списка). Сами письма и их дизайн — не здесь: собирайте и отправляйте кампанию в Brevo (Campaigns), там же
-          будет видно, кому дошло, кто открыл и кто кликнул. Эта страница — только источник правды по адресам и
-          согласиям: кто подписан, кто отписался через нашу страницу /odhlaseni.
-        </p>
-      </div>
+      <p className="text-sm text-zinc-500 dark:text-zinc-400">
+        Список согласий для маркетинговых писем (не транзакционных — те приходят всегда, независимо от этого списка).
+        Сами письма и их дизайн — не здесь: собирайте и отправляйте кампанию в Brevo (Campaigns), там же будет видно,
+        кому дошло, кто открыл и кто кликнул. Эта страница — только источник правды по адресам и согласиям: кто
+        подписан, кто отписался через нашу страницу /odhlaseni.
+      </p>
 
       {stats && (
         <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
