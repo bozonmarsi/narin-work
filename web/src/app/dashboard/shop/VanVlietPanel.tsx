@@ -300,7 +300,10 @@ export function VanVlietPanel() {
   // забрано, отдельно от самого факта заказа — забранное больше не
   // должно маячить среди "ещё надо забрать".
   const [pickupModalOpen, setPickupModalOpen] = useState(false);
-  const [supplyModalOpen, setSupplyModalOpen] = useState(false);
+  // Раньше "Наличие у поставщика" было отдельным попапом поверх экрана —
+  // неудобно листать длинный список и одновременно работать с корзиной.
+  // Теперь это вторая вкладка той же правой колонки, что и "Корзина".
+  const [rightTab, setRightTab] = useState<"cart" | "supply">("cart");
   const [markingPickedUp, setMarkingPickedUp] = useState<string | null>(null);
   const pendingPickup = purchases.filter((p) => !p.picked_up);
 
@@ -418,11 +421,11 @@ export function VanVlietPanel() {
   // Каталог для подсказок в ручной форме — грузим только когда попап
   // реально открыт, не при каждой загрузке страницы.
   useEffect(() => {
-    if (supplyModalOpen && vvCatalogNames.length === 0 && !loadingVvCatalog) {
+    if (rightTab === "supply" && vvCatalogNames.length === 0 && !loadingVvCatalog) {
       loadVvCatalogNames();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supplyModalOpen]);
+  }, [rightTab]);
 
   async function loadMaterials() {
     const supabase = createClient();
@@ -432,6 +435,7 @@ export function VanVlietPanel() {
         .from("product_stickers")
         .select("id, product_name, vanvliet_in_stock, vanvliet_stock_checked_at")
         .eq("category", "ohapka")
+        .eq("archived", false)
         .order("product_name"),
     ]);
     const supplierId = supplierRes.data?.id ?? null;
@@ -770,7 +774,7 @@ export function VanVlietPanel() {
             📦 Забрать со склада{pendingPickup.length > 0 ? ` (${pendingPickup.length})` : ""}
           </button>
           <button
-            onClick={() => setSupplyModalOpen(true)}
+            onClick={() => setRightTab("supply")}
             className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-500 hover:border-accent hover:text-accent dark:border-zinc-600 dark:text-zinc-400"
           >
             📊 Наличие у поставщика{supplyAttentionCount > 0 ? ` (${supplyAttentionCount})` : ""}
@@ -913,9 +917,26 @@ export function VanVlietPanel() {
     </div>
 
     <div className="space-y-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
-      <p className="sticky top-0 -mt-3 -mx-3 border-b border-zinc-200 bg-white px-3 pb-2 pt-3 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-900">
-        🛒 Корзина
-      </p>
+      <div className="sticky top-0 -mt-3 -mx-3 flex border-b border-zinc-200 bg-white px-3 pt-3 dark:border-zinc-700 dark:bg-zinc-900">
+        <button
+          onClick={() => setRightTab("cart")}
+          className={`border-b-2 px-2 pb-2 text-sm font-medium ${
+            rightTab === "cart" ? "border-accent text-accent" : "border-transparent text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+          }`}
+        >
+          🛒 Корзина
+        </button>
+        <button
+          onClick={() => setRightTab("supply")}
+          className={`border-b-2 px-2 pb-2 text-sm font-medium ${
+            rightTab === "supply" ? "border-accent text-accent" : "border-transparent text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+          }`}
+        >
+          📊 Наличие у поставщика{supplyAttentionCount > 0 ? ` (${supplyAttentionCount})` : ""}
+        </button>
+      </div>
+      {rightTab === "cart" ? (
+      <>
       {!results || results.length === 0 ? (
         <p className="text-xs text-zinc-400">
           Пусто — найди что-нибудь слева (вручную или кнопкой «Искать у Van Vliet» из списка «К заказу»).
@@ -1025,6 +1046,194 @@ export function VanVlietPanel() {
           ))
         )}
       </div>
+      </>
+      ) : (
+      <div className="space-y-3">
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            onClick={refreshAliases}
+            disabled={refreshingAliases}
+            className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-500 hover:border-accent hover:text-accent disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-400"
+          >
+            {refreshingAliases ? "Обновляю соответствия (может занять минуту)…" : "🔄 Обновить соответствия (AI)"}
+          </button>
+          <button
+            onClick={scanStock}
+            disabled={scanningStock}
+            className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-500 hover:border-accent hover:text-accent disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-400"
+          >
+            {scanningStock ? "Проверяю остаток…" : "📡 Проверить остаток у Van Vliet"}
+          </button>
+        </div>
+
+        {stockScanError && <p className="text-xs text-red-500">{stockScanError}</p>}
+
+        <div className="space-y-1.5 rounded-md border border-zinc-200 p-2 dark:border-zinc-700">
+          <p className="text-xs font-medium">Добавить соответствие вручную</p>
+          <div className="flex flex-wrap gap-1.5">
+            <select
+              value={manualProductId}
+              onChange={(e) => setManualProductId(e.target.value)}
+              className="min-w-0 flex-1 rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-xs outline-none focus:border-accent dark:border-zinc-600"
+            >
+              <option value="">Наш товар…</option>
+              {materials.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {decodeHtmlEntities(m.product_name)}
+                </option>
+              ))}
+            </select>
+            <input
+              ref={manualAliasInputRef}
+              value={manualAliasText}
+              onChange={(e) => setManualAliasText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addManualAlias();
+                }
+              }}
+              list="vv-catalog-names"
+              placeholder={loadingVvCatalog ? "Загружаю каталог поставщика…" : "Начни вводить — подскажет реальные названия, Enter — добавить"}
+              className="min-w-0 flex-[2] rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-xs outline-none focus:border-accent dark:border-zinc-600"
+            />
+            <datalist id="vv-catalog-names">
+              {vvCatalogNames.map((n) => (
+                <option key={n} value={n} />
+              ))}
+            </datalist>
+            <button
+              onClick={addManualAlias}
+              disabled={!manualProductId || !manualAliasText.trim() || savingAlias === `${manualProductId}:${manualAliasText.trim()}`}
+              className="rounded-md bg-accent px-2 py-1 text-xs font-medium text-white disabled:opacity-50"
+            >
+              Сохранить
+            </button>
+          </div>
+          <p className="text-[11px] text-zinc-400">
+            Список подсказок — реальные товары из сегодняшнего каталога Van Vliet ({vvCatalogNames.length || "…"}).
+            Можно вписать и своё название, если его там нет.
+          </p>
+        </div>
+
+        <p className="text-xs text-zinc-400">
+          Как это работает: раз в 2 недели (или кнопкой «🔄 Обновить соответствия» выше) ИИ подбирает, под каким
+          названием наш цветок продаётся у Van Vliet. Дважды в день (07:00 и 17:00) бот проверяет остаток у
+          поставщика именно по этому названию. Точность зависит от качества подбора — <b>серый «?»</b> не значит
+          «нет цветка», это значит «нет надёжного названия для проверки».
+        </p>
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-zinc-400">
+          <span>✓ есть у поставщика</span>
+          <span>✗ нет у поставщика</span>
+          <span>… алиас есть, ждём первой проверки</span>
+          <span>? не сопоставлено</span>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {supplyRows
+            .slice()
+            .sort((a, b) => {
+              const order: Record<SupplyStatus, number> = { unmatched: 0, unavailable: 1, pending: 2, available: 3 };
+              if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
+              return a.m.product_name.localeCompare(b.m.product_name);
+            })
+            .map(({ m, status, aliasNames }) => (
+              <span
+                key={m.id}
+                title={
+                  aliasNames.length > 0
+                    ? `Ищем как: ${aliasNames.join(", ")}${
+                        m.vanvliet_stock_checked_at ? ` · проверено: ${new Date(m.vanvliet_stock_checked_at).toLocaleString("ru-RU")}` : ""
+                      }`
+                    : "Нет сохранённого названия у поставщика для этого цветка"
+                }
+                className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${SUPPLY_STATUS_STYLE[status]}`}
+              >
+                {SUPPLY_STATUS_ICON[status]} {decodeHtmlEntities(m.product_name)}
+                {status !== "unmatched" && m.vanvliet_stock_checked_at && (
+                  <span className="text-[10px] opacity-70">· {relativeTime(m.vanvliet_stock_checked_at)}</span>
+                )}
+                {status === "unmatched" && (
+                  <button
+                    onClick={() => {
+                      setRightTab("cart");
+                      searchForMaterial(m.id);
+                    }}
+                    className="ml-0.5 underline decoration-dotted hover:text-accent"
+                  >
+                    Искать →
+                  </button>
+                )}
+              </span>
+            ))}
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-xs font-medium">Все соответствия ({aliases.length})</p>
+          {aliases.length === 0 ? (
+            <p className="text-xs text-zinc-400">Пока ничего не сохранено.</p>
+          ) : (
+            <div className="max-h-48 space-y-1 overflow-y-auto">
+              {aliases
+                .slice()
+                .sort((a, b) => {
+                  const nameA = materials.find((m) => m.id === a.product_sticker_id)?.product_name ?? "";
+                  const nameB = materials.find((m) => m.id === b.product_sticker_id)?.product_name ?? "";
+                  return nameA.localeCompare(nameB);
+                })
+                .map((a) => {
+                  const material = materials.find((m) => m.id === a.product_sticker_id);
+                  return (
+                    <div
+                      key={a.id}
+                      className="flex items-center justify-between gap-2 rounded-md border border-zinc-200 px-2 py-1 text-xs dark:border-zinc-700"
+                    >
+                      <span className="truncate">
+                        <span className="font-medium">{material ? decodeHtmlEntities(material.product_name) : "—"}</span>
+                        <span className="text-zinc-400"> → «{a.alias}»</span>
+                        {a.is_manual && (
+                          <span title="Подтверждено человеком — ИИ это больше не тронет" className="ml-1 text-emerald-500">
+                            ✋
+                          </span>
+                        )}
+                      </span>
+                      <button
+                        onClick={() => removeAlias(a.id)}
+                        disabled={removingAliasId === a.id}
+                        className="shrink-0 text-zinc-400 hover:text-red-500 disabled:opacity-50"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
+        </div>
+
+        {refreshResult && (
+          <div className="rounded-md border border-zinc-200 p-2 text-xs dark:border-zinc-700">
+            <p>
+              Обновлено: {refreshResult.updatedMaterials} цветов, {refreshResult.totalAliases} соответствий.
+              {refreshResult.prunedMaterials > 0 && (
+                <> Убрано устаревших/неточных: {refreshResult.prunedMaterials} (сейчас нет уверенного совпадения — честно пусто, а не старое неверное).</>
+              )}
+              {refreshResult.genusRejected > 0 && (
+                <> Отклонено защитой от неверного рода: {refreshResult.genusRejected}.</>
+              )}
+            </p>
+            {refreshResult.report.length > 0 && (
+              <ul className="mt-1 space-y-0.5 text-zinc-500 dark:text-zinc-400">
+                {refreshResult.report.map((r) => (
+                  <li key={r.name}>
+                    {decodeHtmlEntities(r.name)}: {r.aliases.join(", ")}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
+      )}
     </div>
     </div>
 
@@ -1076,195 +1285,6 @@ export function VanVlietPanel() {
       </Modal>
     )}
 
-    {supplyModalOpen && (
-      <Modal title="Наличие у поставщика" onClose={() => setSupplyModalOpen(false)} wide>
-        <div className="space-y-3">
-          <div className="flex flex-wrap gap-1.5">
-            <button
-              onClick={refreshAliases}
-              disabled={refreshingAliases}
-              className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-500 hover:border-accent hover:text-accent disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-400"
-            >
-              {refreshingAliases ? "Обновляю соответствия (может занять минуту)…" : "🔄 Обновить соответствия (AI)"}
-            </button>
-            <button
-              onClick={scanStock}
-              disabled={scanningStock}
-              className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-500 hover:border-accent hover:text-accent disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-400"
-            >
-              {scanningStock ? "Проверяю остаток…" : "📡 Проверить остаток у Van Vliet"}
-            </button>
-          </div>
-
-          {stockScanError && <p className="text-xs text-red-500">{stockScanError}</p>}
-
-          <div className="space-y-1.5 rounded-md border border-zinc-200 p-2 dark:border-zinc-700">
-            <p className="text-xs font-medium">Добавить соответствие вручную</p>
-            <div className="flex flex-wrap gap-1.5">
-              <select
-                value={manualProductId}
-                onChange={(e) => setManualProductId(e.target.value)}
-                className="min-w-0 flex-1 rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-xs outline-none focus:border-accent dark:border-zinc-600"
-              >
-                <option value="">Наш товар…</option>
-                {materials.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {decodeHtmlEntities(m.product_name)}
-                  </option>
-                ))}
-              </select>
-              <input
-                ref={manualAliasInputRef}
-                value={manualAliasText}
-                onChange={(e) => setManualAliasText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addManualAlias();
-                  }
-                }}
-                list="vv-catalog-names"
-                placeholder={loadingVvCatalog ? "Загружаю каталог поставщика…" : "Начни вводить — подскажет реальные названия, Enter — добавить"}
-                className="min-w-0 flex-[2] rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-xs outline-none focus:border-accent dark:border-zinc-600"
-              />
-              <datalist id="vv-catalog-names">
-                {vvCatalogNames.map((n) => (
-                  <option key={n} value={n} />
-                ))}
-              </datalist>
-              <button
-                onClick={addManualAlias}
-                disabled={!manualProductId || !manualAliasText.trim() || savingAlias === `${manualProductId}:${manualAliasText.trim()}`}
-                className="rounded-md bg-accent px-2 py-1 text-xs font-medium text-white disabled:opacity-50"
-              >
-                Сохранить
-              </button>
-            </div>
-            <p className="text-[11px] text-zinc-400">
-              Список подсказок — реальные товары из сегодняшнего каталога Van Vliet ({vvCatalogNames.length || "…"}).
-              Можно вписать и своё название, если его там нет.
-            </p>
-          </div>
-
-          <p className="text-xs text-zinc-400">
-            Как это работает: раз в 2 недели (или кнопкой «🔄 Обновить соответствия» выше) ИИ подбирает, под каким
-            названием наш цветок продаётся у Van Vliet. Дважды в день (07:00 и 17:00) бот проверяет остаток у
-            поставщика именно по этому названию. Точность зависит от качества подбора — <b>серый «?»</b> не значит
-            «нет цветка», это значит «нет надёжного названия для проверки».
-          </p>
-          <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-zinc-400">
-            <span>✓ есть у поставщика</span>
-            <span>✗ нет у поставщика</span>
-            <span>… алиас есть, ждём первой проверки</span>
-            <span>? не сопоставлено</span>
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {supplyRows
-              .slice()
-              .sort((a, b) => {
-                const order: Record<SupplyStatus, number> = { unmatched: 0, unavailable: 1, pending: 2, available: 3 };
-                if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
-                return a.m.product_name.localeCompare(b.m.product_name);
-              })
-              .map(({ m, status, aliasNames }) => (
-                <span
-                  key={m.id}
-                  title={
-                    aliasNames.length > 0
-                      ? `Ищем как: ${aliasNames.join(", ")}${
-                          m.vanvliet_stock_checked_at ? ` · проверено: ${new Date(m.vanvliet_stock_checked_at).toLocaleString("ru-RU")}` : ""
-                        }`
-                      : "Нет сохранённого названия у поставщика для этого цветка"
-                  }
-                  className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${SUPPLY_STATUS_STYLE[status]}`}
-                >
-                  {SUPPLY_STATUS_ICON[status]} {decodeHtmlEntities(m.product_name)}
-                  {status !== "unmatched" && m.vanvliet_stock_checked_at && (
-                    <span className="text-[10px] opacity-70">· {relativeTime(m.vanvliet_stock_checked_at)}</span>
-                  )}
-                  {status === "unmatched" && (
-                    <button
-                      onClick={() => {
-                        setSupplyModalOpen(false);
-                        searchForMaterial(m.id);
-                      }}
-                      className="ml-0.5 underline decoration-dotted hover:text-accent"
-                    >
-                      Искать →
-                    </button>
-                  )}
-                </span>
-              ))}
-          </div>
-
-          <div className="space-y-1">
-            <p className="text-xs font-medium">Все соответствия ({aliases.length})</p>
-            {aliases.length === 0 ? (
-              <p className="text-xs text-zinc-400">Пока ничего не сохранено.</p>
-            ) : (
-              <div className="max-h-48 space-y-1 overflow-y-auto">
-                {aliases
-                  .slice()
-                  .sort((a, b) => {
-                    const nameA = materials.find((m) => m.id === a.product_sticker_id)?.product_name ?? "";
-                    const nameB = materials.find((m) => m.id === b.product_sticker_id)?.product_name ?? "";
-                    return nameA.localeCompare(nameB);
-                  })
-                  .map((a) => {
-                    const material = materials.find((m) => m.id === a.product_sticker_id);
-                    return (
-                      <div
-                        key={a.id}
-                        className="flex items-center justify-between gap-2 rounded-md border border-zinc-200 px-2 py-1 text-xs dark:border-zinc-700"
-                      >
-                        <span className="truncate">
-                          <span className="font-medium">{material ? decodeHtmlEntities(material.product_name) : "—"}</span>
-                          <span className="text-zinc-400"> → «{a.alias}»</span>
-                          {a.is_manual && (
-                            <span title="Подтверждено человеком — ИИ это больше не тронет" className="ml-1 text-emerald-500">
-                              ✋
-                            </span>
-                          )}
-                        </span>
-                        <button
-                          onClick={() => removeAlias(a.id)}
-                          disabled={removingAliasId === a.id}
-                          className="shrink-0 text-zinc-400 hover:text-red-500 disabled:opacity-50"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    );
-                  })}
-              </div>
-            )}
-          </div>
-
-          {refreshResult && (
-            <div className="rounded-md border border-zinc-200 p-2 text-xs dark:border-zinc-700">
-              <p>
-                Обновлено: {refreshResult.updatedMaterials} цветов, {refreshResult.totalAliases} соответствий.
-                {refreshResult.prunedMaterials > 0 && (
-                  <> Убрано устаревших/неточных: {refreshResult.prunedMaterials} (сейчас нет уверенного совпадения — честно пусто, а не старое неверное).</>
-                )}
-                {refreshResult.genusRejected > 0 && (
-                  <> Отклонено защитой от неверного рода: {refreshResult.genusRejected}.</>
-                )}
-              </p>
-              {refreshResult.report.length > 0 && (
-                <ul className="mt-1 space-y-0.5 text-zinc-500 dark:text-zinc-400">
-                  {refreshResult.report.map((r) => (
-                    <li key={r.name}>
-                      {decodeHtmlEntities(r.name)}: {r.aliases.join(", ")}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-        </div>
-      </Modal>
-    )}
     </>
   );
 }

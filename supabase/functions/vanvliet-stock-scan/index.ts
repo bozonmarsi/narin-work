@@ -82,8 +82,10 @@ Deno.serve(async (req) => {
     const { data: supplier } = await supabase.from('suppliers').select('id').eq('name', 'Van Vliet').maybeSingle()
     if (!supplier) return json({ error: 'van_vliet_supplier_not_found' }, 500)
 
+    // Архивные позиции больше не продаются — незачем тратить проверку на
+    // то, есть ли они у поставщика.
     const [{ data: materials }, { data: aliases }] = await Promise.all([
-      supabase.from('product_stickers').select('id, product_name').eq('category', 'ohapka'),
+      supabase.from('product_stickers').select('id, product_name').eq('category', 'ohapka').eq('archived', false),
       supabase.from('product_name_aliases').select('alias, product_sticker_id').eq('supplier_id', supplier.id),
     ])
 

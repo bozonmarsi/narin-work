@@ -278,10 +278,16 @@ Deno.serve(async (req) => {
     const { data: supplier } = await supabase.from('suppliers').select('id').eq('name', 'Van Vliet').maybeSingle()
     if (!supplier) return json({ error: 'van_vliet_supplier_not_found' }, 500)
 
+    // Архивные позиции (старые названия/дубли, которые менеджер уже
+    // отправил в архив в Каталоге) не должны участвовать в подборе
+    // соответствий — они не продаются, а только засоряют словарь
+    // (лишние вызовы Claude на мёртвые товары, лишние строки в "Наличие
+    // у поставщика").
     const { data: materials } = await supabase
       .from('product_stickers')
       .select('id, product_name')
       .eq('category', 'ohapka')
+      .eq('archived', false)
 
     const targetDate = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Prague' })
     const catalog = await loadCatalog(username, password, targetDate)
