@@ -28,6 +28,7 @@ type Product = {
   order_unit_size: number;
   default_vase_life_days: number | null;
   vanvliet_in_stock: boolean | null;
+  manually_hidden: boolean;
 };
 
 // Ниже этого остатка на сайте сама встаёт плашка "Zbývá N ks" — если
@@ -135,10 +136,13 @@ function guessHeight(name: string): string | null {
   return cm >= HEIGHT_THRESHOLD_CM ? "Vysoké" : "Nízké";
 }
 
-// Ровно то же условие, что и в get_unsourceable_products(): нет ни своего
-// остатка, ни подтверждения от Van Vliet, и товар не поставлен под заказ
-// вручную — карточка реально скрыта с сайта клиента прямо сейчас.
+// Ровно то же условие, что и в get_unsourceable_products(): либо
+// менеджер скрыл товар вручную (любая категория, приоритет над всем
+// остальным), либо это охапка без своего остатка и без подтверждения
+// от Van Vliet и не поставленная под заказ вручную — в обоих случаях
+// карточка реально скрыта с сайта клиента прямо сейчас.
 function isHiddenFromSite(p: Product): boolean {
+  if (p.manually_hidden) return true;
   return p.category === "ohapka" && !p.special_order && (p.quantity ?? 0) <= 0 && p.vanvliet_in_stock !== true;
 }
 
@@ -167,6 +171,7 @@ function ProductCard({
   onToggleFragrant,
   onUploadImage,
   onToggleSpecialOrder,
+  onToggleManualHide,
   onToggleArchived,
   onSetBadge,
   onAddDelivery,
@@ -188,6 +193,7 @@ function ProductCard({
   onToggleFragrant: (id: string, current: boolean) => void;
   onUploadImage: (id: string, file: File) => void;
   onToggleSpecialOrder: (id: string, current: boolean) => void;
+  onToggleManualHide: (id: string, current: boolean) => void;
   onToggleArchived: (id: string, current: boolean) => void;
   onSetBadge: (id: string, text: string | null, color: string | null) => void;
   onAddDelivery: (id: string, delta: number) => void;
@@ -566,20 +572,24 @@ function ProductCard({
         </div>
 
       <div className="mt-auto flex flex-col gap-1 pt-0.5">
+        {hiddenFromSite && (
+          <p
+            title={
+              p.manually_hidden
+                ? "Скрыто вручную — нажми «Показать на сайте» ниже, чтобы вернуть."
+                : "Нет своего остатка и нет подтверждения от Van Vliet — карточка не показывается покупателям. Поставь «Под заказ» ниже, если реально можешь привезти."
+            }
+            className="rounded-md bg-red-50 dark:bg-red-500/10 px-2 py-1 text-[11px] font-medium text-red-600 dark:text-red-400 ring-1 ring-inset ring-red-200 dark:ring-red-500/30"
+          >
+            🚫 {p.manually_hidden ? "Скрыто вручную" : "Скрыто с сайта"}
+          </p>
+        )}
         {p.special_order ? (
           <p className="rounded-md bg-orange-50 dark:bg-orange-500/10 px-2 py-1 text-[11px] font-medium text-orange-600 dark:text-orange-400 ring-1 ring-inset ring-orange-200 dark:ring-orange-500/30">
             🚚 Всегда под заказ (+2 дня)
           </p>
         ) : p.category === "ohapka" ? (
           <>
-            {hiddenFromSite && (
-              <p
-                title="Нет своего остатка и нет подтверждения от Van Vliet — карточка не показывается покупателям. Поставь «Под заказ» ниже, если реально можешь привезти."
-                className="rounded-md bg-red-50 dark:bg-red-500/10 px-2 py-1 text-[11px] font-medium text-red-600 dark:text-red-400 ring-1 ring-inset ring-red-200 dark:ring-red-500/30"
-              >
-                🚫 Скрыто с сайта
-              </p>
-            )}
             {/* Наличие охапок считается само по остатку со склада (см.
                 tg_sync_ohapka_availability) — ручной тоггл тут только
                 мешал бы: секунду спустя следующее движение по складу
@@ -608,7 +618,7 @@ function ProductCard({
             {isAvailable ? "✓ В наличии" : "Нет сегодня"}
           </button>
         )}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <button
             onClick={() => onToggleSpecialOrder(p.id, p.special_order)}
             className={`text-[10px] hover:text-orange-600 dark:hover:text-orange-400 ${
@@ -616,6 +626,15 @@ function ProductCard({
             }`}
           >
             {p.special_order ? "Убрать «под заказ»" : "🚚 Под заказ"}
+          </button>
+          <button
+            onClick={() => onToggleManualHide(p.id, p.manually_hidden)}
+            title="Скрыть карточку с клиентского сайта вручную, независимо от остатка"
+            className={`text-[10px] hover:text-red-600 dark:hover:text-red-400 ${
+              p.manually_hidden ? "font-semibold text-red-600 dark:text-red-400" : "text-zinc-400 dark:text-zinc-500"
+            }`}
+          >
+            {p.manually_hidden ? "👁 Показать на сайте" : "🙈 Скрыть с сайта"}
           </button>
           <button
             onClick={() => onToggleArchived(p.id, p.archived)}
@@ -679,7 +698,7 @@ export default function ShopPage() {
       supabase
         .from("product_stickers")
         .select(
-          "id, product_name, image_url, category, archived, special_order, flower_type, color, height, fragrant, badge_text, badge_color, quantity, order_unit_size, default_vase_life_days, vanvliet_in_stock",
+          "id, product_name, image_url, category, archived, special_order, flower_type, color, height, fragrant, badge_text, badge_color, quantity, order_unit_size, default_vase_life_days, vanvliet_in_stock, manually_hidden",
         )
         .order("product_name", { ascending: true }),
       supabase.from("product_availability").select("product_name"),
@@ -705,6 +724,7 @@ export default function ShopPage() {
           order_unit_size: p.order_unit_size ?? 1,
           default_vase_life_days: p.default_vase_life_days ?? null,
           vanvliet_in_stock: p.vanvliet_in_stock ?? null,
+          manually_hidden: p.manually_hidden ?? false,
         })),
     );
     setAvailableToday(new Set((availabilityRes.data ?? []).map((r) => r.product_name)));
@@ -959,6 +979,12 @@ export default function ShopPage() {
   async function toggleSpecialOrder(productId: string, specialOrder: boolean) {
     const supabase = createClient();
     await supabase.from("product_stickers").update({ special_order: !specialOrder }).eq("id", productId);
+    loadAvailability();
+  }
+
+  async function toggleManualHide(productId: string, manuallyHidden: boolean) {
+    const supabase = createClient();
+    await supabase.from("product_stickers").update({ manually_hidden: !manuallyHidden }).eq("id", productId);
     loadAvailability();
   }
 
@@ -1351,6 +1377,7 @@ export default function ShopPage() {
                 onToggleFragrant={toggleFragrant}
                 onUploadImage={uploadStickerImage}
                 onToggleSpecialOrder={toggleSpecialOrder}
+                onToggleManualHide={toggleManualHide}
                 onToggleArchived={toggleArchived}
                 onSetBadge={setBadge}
                 onAddDelivery={addDelivery}
