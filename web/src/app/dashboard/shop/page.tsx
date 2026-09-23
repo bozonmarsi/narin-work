@@ -59,7 +59,7 @@ const CATEGORY_OPTIONS = [
   { value: "atelier", label: "Atelier", color: "bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 ring-blue-200 dark:ring-blue-500/30" },
   { value: "darky", label: "Dárky", color: "bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-400 ring-teal-200 dark:ring-teal-500/30" },
   { value: "kolekce", label: "Kolekce", color: "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-emerald-200 dark:ring-emerald-500/30" },
-  { value: "banky", label: "Banky", color: "bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400 ring-sky-200 dark:ring-sky-500/30" },
+  { value: "banky", label: "Kovka", color: "bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400 ring-sky-200 dark:ring-sky-500/30" },
 ];
 
 // Составом (рецептом) из сырья набираются только собранные букеты/сеты.

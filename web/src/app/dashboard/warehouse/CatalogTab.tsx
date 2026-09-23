@@ -32,7 +32,7 @@ const CATEGORY_OPTIONS = [
   { value: "atelier", label: "Atelier" },
   { value: "darky", label: "Dárky" },
   { value: "kolekce", label: "Kolekce" },
-  { value: "banky", label: "Banky" },
+  { value: "banky", label: "Kovka" },
 ];
 
 // Составом набираются только собранные букеты/сеты — охапки сами сырьё,
