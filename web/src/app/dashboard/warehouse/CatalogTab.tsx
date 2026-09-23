@@ -31,7 +31,6 @@ const CATEGORY_OPTIONS = [
   { value: "ohapka", label: "Náruče" },
   { value: "atelier", label: "Atelier" },
   { value: "darky", label: "Dárky" },
-  { value: "kolekce", label: "Kolekce" },
   { value: "banky", label: "Kovky" },
 ];
 
