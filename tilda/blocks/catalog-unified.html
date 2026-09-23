@@ -1,0 +1,581 @@
+<style>
+/* Заменяет собой catalog-filter.html + catalog-availability-badges.html +
+   catalog-custom-badges.html. Раньше это были три независимых Zero
+   Block'а, у каждого свой MutationObserver на весь document.body —
+   один переставлял карточки (пересортировка по наличию), это будило
+   наблюдателя другого, тот перерисовывал бейджи, это будило третьего —
+   отсюда "то работает, то нет" и подтормаживания. Теперь один источник
+   данных (get_catalog_page_data — один запрос вместо семи, один из
+   которых раньше дублировался), один проход рендера на карточку, один
+   наблюдатель, только за самой сеткой товаров, а не всей страницей.
+
+   Скрытие — ТОЛЬКО через атрибут data-narin-hidden + это правило ниже,
+   никогда через инлайн-стиль. Так было в catalog-filter.html и это
+   единственный способ, который не ломает сама Tilda: она периодически
+   перезаписывает style-атрибут карточки целиком (подтверждено вживую),
+   но НЕ трогает произвольные data-атрибуты и никак не может обойти
+   правило из <style> — оно всегда снова выигрывает. Старая версия
+   бейджей хранила решение "скрыть" прямо в style с !important и была
+   вынуждена перебивать Tilda через setInterval раз в секунду — с этим
+   способом такой костыль просто не нужен. */
+#rec1915290073 .t-store__card-list { row-gap: 20px !important; }
+#rec1915290073 .t-store__card__price-wrapper { margin-top: 4px !important; }
+#rec1915290073 .t-store__card__price-value, #rec1915290073 .t-store__card__price { font-size: 20px !important; font-weight: 500 !important; }
+#rec1915290073 .t1002__addBtn { top: auto !important; bottom: 10px !important; right: 10px !important; }
+
+.narin-cat-nav { margin: 16px 0; font-family: 'Rubik', sans-serif; }
+.narin-cat-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 0 4px 6px 8px; margin: 0 -4px 10px; -webkit-overflow-scrolling: touch; }
+.narin-cat-tabs::-webkit-scrollbar { display: none; }
+.narin-cat-tab { flex: 0 0 auto; padding: 10px 20px; border-radius: 24px; border: 1px solid #e0e2e6; background: #fff; font-size: 14px; font-weight: 600; white-space: nowrap; cursor: pointer; color: #16181d; }
+.narin-cat-tab.active { background: #186ce0; border-color: #186ce0; color: #fff; }
+.narin-cat-count { font-size: 12px; color: #8a8f98; margin: -4px 0 10px; }
+.narin-cat-subbar { display: flex; gap: 6px; overflow-x: auto; padding: 0 4px 4px 8px; margin: 0 -4px 12px; -webkit-overflow-scrolling: touch; }
+.narin-cat-subbar::-webkit-scrollbar { display: none; }
+.narin-cat-pill { flex: 0 0 auto; padding: 6px 14px; border-radius: 20px; border: 1px solid #e0e2e6; background: #fff; font-size: 12px; cursor: pointer; color: #16181d; white-space: nowrap; }
+.narin-cat-pill.active { background: #02e590; border-color: #02e590; color: #fff; }
+.narin-cat-empty { font-family: 'Rubik', sans-serif; font-size: 13px; color: #8a8f98; padding: 20px 0; }
+
+.narin-cat-promo-section { flex: 1 0 100%; width: 100%; box-sizing: border-box; background: #186ce0; border-radius: 0; padding: 20px 16px; margin: 10px -5px; }
+@media screen and (min-width: 961px) {
+    .narin-cat-promo-section { margin: 10px -25px; }
+}
+.narin-cat-promo-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+.narin-cat-promo-name { color: #fff; font-family: 'Rubik', sans-serif; font-size: 20px; font-weight: 700; }
+.narin-cat-promo-cta { color: #fff; font-family: 'Rubik', sans-serif; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+.narin-cat-promo-caption { color: #fff; opacity: 0.9; font-family: 'Rubik', sans-serif; font-size: 13px; font-style: italic; margin: 0 0 14px; max-width: 520px; }
+.narin-cat-promo-strip { display: flex; gap: 10px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.narin-cat-promo-strip::-webkit-scrollbar { display: none; }
+.narin-cat-promo-strip .t-store__card { flex: 0 0 auto !important; width: 190px !important; background: #fff; border-radius: 10px; overflow: hidden; padding-bottom: 3px !important; }
+
+/* Единственное место, где решается видимость карточки — по одному
+   атрибуту, независимо от причины (не та категория/фильтр ИЛИ нет
+   своего остатка и нет Van Vliet). */
+.js-store-grid-cont [data-narin-hidden="1"] { display: none !important; }
+.js-store-grid-cont .t-clear { display: none !important; }
+
+.narin-avail-badge { display: inline-flex; align-items: center; gap: 5px; margin-bottom: 3px; font-family: 'Rubik', sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 0.2px; white-space: nowrap; }
+.narin-avail-badge .narin-avail-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.narin-avail-badge.today { color: #0a8a3a; }
+.narin-avail-badge.today .narin-avail-dot { background: #00cc00; }
+.narin-avail-badge.tomorrow { color: #196fe3; }
+.narin-avail-badge.tomorrow .narin-avail-dot { background: #196fe3; }
+.narin-avail-badge.special { color: #ff2a20; }
+.narin-avail-badge.special .narin-avail-dot { background: #ff2a20; }
+
+.narin-custom-badge {
+    position: absolute;
+    top: 11px;
+    left: 8px;
+    z-index: 6;
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-family: 'Rubik', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(20,30,50,0.18);
+    pointer-events: none;
+    white-space: nowrap;
+    max-width: calc(100% - 16px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+</style>
+<script>
+(function () {
+    var SUPABASE_URL = 'https://wqburlamuipxmenqsjnx.supabase.co';
+    var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxYnVybGFtdWlweG1lbnFzam54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTY2MTIsImV4cCI6MjA4ODgzMjYxMn0.NYnQoorm3z5gkjr954JdYhzDNmYfCjefzK1ddq3cflw';
+
+    // Чешские строки с диакритикой записаны как числовые HTML-сущности
+    // (чистый ASCII в исходнике) и раскодированы через decodeEntities()
+    // ниже — буквы вроде š/í/ě/ř уже не раз ломались при копипасте в
+    // редактор Tilda. Голые цифры испортить копипастом невозможно.
+    function cz(s) { return decodeEntities(s); }
+
+    var TABS = [
+        { key: 'all', label: cz('V&#353;e'), category: 'ohapka', caption: null },
+        { key: 'set', label: 'Sety', category: 'set', caption: cz('Sestavte si vlastn&#237; kompozici nebo rozm&#237;st&#283;te kv&#283;tiny do r&#367;zn&#253;ch v&#225;z.') },
+        { key: 'kolekce', label: 'Kolekce', category: 'kolekce', caption: cz('Promy&#353;len&#233; kolekce pro v&#253;jime&#269;n&#233; chv&#237;le.') },
+        { key: 'banky', label: cz('B&#225;nky'), category: 'banky', caption: cz('Kv&#283;tiny naaran&#382;ovan&#233; p&#345;&#237;mo ve v&#225;ze, p&#345;ipraven&#233; k p&#345;ed&#225;n&#237;.') },
+        { key: 'ohapka', label: cz('N&#225;ru&#269;e'), category: 'ohapka', caption: null },
+    ];
+
+    var FLOWER_TYPES = [cz('Tulip&#225;n'), cz('Karafi&#225;t'), cz('Pivo&#328;ka'), "Ranunkulus", "Kala", "Hortenzie", "Hyacint", "Fialka", "Exotika", cz('Vytrval&#233;')];
+    var COLORS = [cz('B&#237;l&#225;'), cz('R&#367;&#382;ov&#225;'), cz('&#268;erven&#225;'), cz('&#381;lut&#225;'), cz('Fialov&#225;'), cz('Modr&#225;')];
+    var HEIGHTS = [cz('N&#237;zk&#233;'), cz('Vysok&#233;')];
+    var LOW_STOCK_THRESHOLD = 3;
+
+    var state = {
+        activeTab: 'all',
+        filters: { flower_type: new Set(), color: new Set(), height: new Set(), fragrant: false },
+    };
+
+    // Всё, что приходит одним запросом из get_catalog_page_data().
+    var tagMap = {};
+    var unsourceableNames = new Set();
+    var availableNames = new Set();
+    var specialNames = new Set();
+    var badgeMap = {};
+    var specialDateLabel = '';
+
+    var grid = null;
+    var observer = null;
+
+    var TAP_MOVE_THRESHOLD = 10;
+    function bindTap(el, handler) {
+        var lastTime = 0;
+        var startX = 0, startY = 0, moved = false;
+        function fire(e) {
+            var now = Date.now();
+            if (now - lastTime < 500) return;
+            lastTime = now;
+            handler(e);
+        }
+        el.addEventListener('touchstart', function (e) {
+            var t = e.touches[0];
+            startX = t.clientX;
+            startY = t.clientY;
+            moved = false;
+        }, { passive: true });
+        el.addEventListener('touchmove', function (e) {
+            var t = e.touches[0];
+            if (Math.abs(t.clientX - startX) > TAP_MOVE_THRESHOLD || Math.abs(t.clientY - startY) > TAP_MOVE_THRESHOLD) {
+                moved = true;
+            }
+        }, { passive: true });
+        el.addEventListener('touchend', function (e) {
+            if (moved) return;
+            e.preventDefault();
+            fire(e);
+        });
+        el.addEventListener('click', fire);
+    }
+
+    function decodeEntities(text) {
+        var el = document.createElement('textarea');
+        el.innerHTML = text;
+        return el.value;
+    }
+    function normalize(text) {
+        return decodeEntities(text || '').replace(/\s+/g, ' ').trim();
+    }
+
+    function activeTabDef() {
+        for (var i = 0; i < TABS.length; i++) if (TABS[i].key === state.activeTab) return TABS[i];
+        return TABS[0];
+    }
+
+    function matchesTab(tags) {
+        var tab = activeTabDef();
+        return !!tags && tags.category === tab.category;
+    }
+
+    function matchesFilters(tags) {
+        var f = state.filters;
+        var any = f.flower_type.size || f.color.size || f.height.size || f.fragrant;
+        if (!any) return true;
+        if (!tags) return false;
+        if (f.flower_type.size && !(tags.flower_type || []).some(function (t) { return f.flower_type.has(t); })) return false;
+        if (f.color.size && !(tags.color || []).some(function (c) { return f.color.has(c); })) return false;
+        if (f.height.size && !f.height.has(tags.height)) return false;
+        if (f.fragrant && !tags.fragrant) return false;
+        return true;
+    }
+
+    function availTier(card) {
+        var badge = card.querySelector('.narin-avail-badge');
+        if (!badge) return 99;
+        if (badge.classList.contains('today')) return 0;
+        if (badge.classList.contains('tomorrow')) return 1;
+        if (badge.classList.contains('special')) return 2;
+        return 99;
+    }
+
+    function addAvailBadge(card, type) {
+        if (card.querySelector('.narin-avail-badge')) return;
+        var textWrapper = card.querySelector('.t-store__card__textwrapper');
+        if (!textWrapper) return;
+        var badge = document.createElement('div');
+        badge.className = 'narin-avail-badge ' + type;
+        var dot = document.createElement('span');
+        dot.className = 'narin-avail-dot';
+        var label = document.createElement('span');
+        // Собрано через код символа (String.fromCharCode) — буквы č/í уже
+        // не раз ломались при копипасте этого файла в редактор Tilda.
+        var DORUCIME = 'Doru' + String.fromCharCode(269) + String.fromCharCode(237) + 'me';
+        label.textContent = type === 'today' ? DORUCIME + ' dnes' : type === 'special' ? DORUCIME + ' ' + specialDateLabel : DORUCIME + ' z' + String.fromCharCode(237) + 'tra';
+        badge.appendChild(dot);
+        badge.appendChild(label);
+        textWrapper.insertBefore(badge, textWrapper.firstChild);
+    }
+
+    function addCustomBadge(card, text, color) {
+        if (card.querySelector('.narin-custom-badge')) return;
+        if (window.getComputedStyle(card).position === 'static') {
+            card.style.position = 'relative';
+        }
+        var badge = document.createElement('div');
+        badge.className = 'narin-custom-badge';
+        badge.textContent = text;
+        badge.style.background = color || '#186ce0';
+        card.appendChild(badge);
+    }
+
+    function resolveCustomBadge(row) {
+        if (row.badge_text) return { text: row.badge_text, color: row.badge_color || '#186ce0' };
+        // quantity === 0 не получает "Vyprodáno" — об этом уже говорит
+        // сама плашка "Doručíme zítra" (переключается через
+        // get_available_products). Две плашки с одной и той же мыслью
+        // (одна спокойная, одна тревожная красная "Vyprodáno") только
+        // путали.
+        if (row.quantity === null || row.quantity === undefined || row.quantity === 0) return null;
+        if (row.quantity < LOW_STOCK_THRESHOLD) return { text: cz('Zb&#253;v&#225;') + ' ' + row.quantity + ' ks', color: '#ff7c76' };
+        return null;
+    }
+
+    function findRealCandidates(tab, allCards, usedNames, limit) {
+        var found = [];
+        for (var i = 0; i < allCards.length && found.length < limit; i++) {
+            var card = allCards[i];
+            var nameEl = card.querySelector('.js-product-name');
+            if (!nameEl) continue;
+            var name = normalize(nameEl.textContent);
+            if (usedNames.has(name)) continue;
+            var tags = tagMap[name];
+            if (tags && tags.category === tab.category && !unsourceableNames.has(name)) {
+                usedNames.add(name);
+                found.push(card);
+            }
+        }
+        return found;
+    }
+
+    function buildPromoSection(tab, sourceCards) {
+        var section = document.createElement('div');
+        section.className = 'narin-cat-promo-section';
+
+        var head = document.createElement('div');
+        head.className = 'narin-cat-promo-head';
+        var name = document.createElement('div');
+        name.className = 'narin-cat-promo-name';
+        name.textContent = tab.label;
+        var cta = document.createElement('div');
+        cta.className = 'narin-cat-promo-cta';
+        cta.textContent = cz('Zobrazit v&#353;e &#8594;');
+        bindTap(cta, function () {
+            switchTab(tab.key);
+            section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+        head.appendChild(name);
+        head.appendChild(cta);
+        section.appendChild(head);
+
+        if (tab.caption) {
+            var caption = document.createElement('div');
+            caption.className = 'narin-cat-promo-caption';
+            caption.textContent = tab.caption;
+            section.appendChild(caption);
+        }
+
+        var strip = document.createElement('div');
+        strip.className = 'narin-cat-promo-strip';
+        sourceCards.forEach(function (source) {
+            var clone = source.cloneNode(true);
+            clone.removeAttribute('data-narin-hidden');
+
+            // Если исходная карточка ещё не попадала в область видимости,
+            // родной lazy-load Tilda ни разу её не тронул — картинка так
+            // и осталась плейсхолдером (настоящий src лежит в
+            // data-original). Клон унаследует этот плейсхолдер навсегда,
+            // его тоже никто не зарегистрировал у того наблюдателя.
+            clone.querySelectorAll('.t-bgimg:not(.loaded)').forEach(function (bg) {
+                var full = bg.getAttribute('data-original');
+                if (full) {
+                    bg.style.backgroundImage = 'url(\'' + full + '\')';
+                    bg.classList.add('loaded');
+                }
+            });
+
+            if (clone.id) clone.removeAttribute('id');
+            clone.querySelectorAll('[id]').forEach(function (el) { el.removeAttribute('id'); });
+
+            strip.appendChild(clone);
+        });
+
+        section.appendChild(strip);
+        return section;
+    }
+
+    function insertPromoSections(visibleCards, allCards) {
+        if (state.activeTab !== 'all') return;
+        var otherTabs = TABS.filter(function (t) { return t.category !== 'ohapka'; });
+        if (!otherTabs.length) return;
+        var usedNames = new Set();
+        var tabCursor = 0;
+        for (var i = 3; i < visibleCards.length; i += 4) {
+            var cards = [], tab = null, attempts = 0;
+            while (attempts < otherTabs.length) {
+                tab = otherTabs[tabCursor % otherTabs.length];
+                tabCursor++;
+                attempts++;
+                cards = findRealCandidates(tab, allCards, usedNames, 3);
+                if (cards.length) break;
+            }
+            if (!cards.length) continue;
+            visibleCards[i].insertAdjacentElement('afterend', buildPromoSection(tab, cards));
+        }
+    }
+
+    // Единственный проход по карточкам — решает видимость (фильтр
+    // категории/подфильтров ИЛИ нет своего остатка и нет Van Vliet),
+    // ставит бейдж наличия и кастомную плашку. Раньше это были три
+    // отдельных прохода из трёх разных скриптов.
+    function renderPass() {
+        if (!grid) return;
+        if (observer) observer.disconnect();
+
+        var existingPromos = grid.querySelectorAll('.narin-cat-promo-section');
+        for (var p = 0; p < existingPromos.length; p++) existingPromos[p].remove();
+
+        var cards = grid.querySelectorAll('.t-store__card');
+        var visibleCards = [];
+        cards.forEach(function (card) {
+            var nameEl = card.querySelector('.js-product-name');
+            if (!nameEl) { card.removeAttribute('data-narin-hidden'); return; }
+            var name = normalize(nameEl.textContent);
+            var tags = tagMap[name];
+            var visible = matchesTab(tags) && matchesFilters(tags) && !unsourceableNames.has(name);
+
+            if (visible) {
+                card.removeAttribute('data-narin-hidden');
+                visibleCards.push(card);
+                var type = specialNames.has(name) ? 'special' : availableNames.has(name) ? 'today' : 'tomorrow';
+                addAvailBadge(card, type);
+            } else {
+                card.setAttribute('data-narin-hidden', '1');
+            }
+
+            var badgeRow = badgeMap[name];
+            if (badgeRow) {
+                var resolved = resolveCustomBadge(badgeRow);
+                if (resolved) addCustomBadge(card, resolved.text, resolved.color);
+            }
+        });
+
+        visibleCards.sort(function (a, b) { return availTier(a) - availTier(b); });
+        visibleCards.forEach(function (card) { card.parentElement.appendChild(card); });
+
+        insertPromoSections(visibleCards, cards);
+
+        var emptyMsg = document.querySelector('.narin-cat-empty');
+        if (visibleCards.length === 0) {
+            if (!emptyMsg) {
+                emptyMsg = document.createElement('p');
+                emptyMsg.className = 'narin-cat-empty';
+                emptyMsg.textContent = cz('Podle vybran&#253;ch filtr&#367; jsme nic nena&#353;li &#8212; zkuste jinou kombinaci.');
+                var bar = document.querySelector('.narin-cat-nav');
+                if (bar) bar.insertAdjacentElement('afterend', emptyMsg);
+            }
+        } else if (emptyMsg) {
+            emptyMsg.remove();
+        }
+
+        var countEl = document.querySelector('.narin-cat-count');
+        if (countEl) countEl.textContent = visibleCards.length + (visibleCards.length === 1 ? ' produkt' : cz(' produkt&#367;'));
+
+        if (grid && observer) observer.observe(grid, { childList: true, subtree: true });
+    }
+
+    function switchTab(key) {
+        state.activeTab = key;
+        state.filters = { flower_type: new Set(), color: new Set(), height: new Set(), fragrant: false };
+        renderTabBar();
+        renderSubBar();
+        renderPass();
+    }
+
+    function renderTabBar() {
+        var bar = document.querySelector('.narin-cat-tabs');
+        if (!bar) return;
+        bar.innerHTML = '';
+        TABS.forEach(function (tab) {
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'narin-cat-tab' + (tab.key === state.activeTab ? ' active' : '');
+            btn.textContent = tab.label;
+            bindTap(btn, function () { switchTab(tab.key); });
+            bar.appendChild(btn);
+        });
+    }
+
+    function makePill(bar, label, group, value) {
+        var isActive = group === 'fragrant' ? state.filters.fragrant : state.filters[group].has(value);
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'narin-cat-pill' + (isActive ? ' active' : '');
+        btn.textContent = label;
+        bindTap(btn, function () {
+            if (group === 'fragrant') {
+                state.filters.fragrant = !state.filters.fragrant;
+            } else {
+                var set = state.filters[group];
+                if (set.has(value)) set.delete(value); else set.add(value);
+            }
+            renderSubBar();
+            renderPass();
+        });
+        bar.appendChild(btn);
+    }
+
+    function renderSubBar() {
+        var bar = document.querySelector('.narin-cat-subbar');
+        if (!bar) return;
+        bar.innerHTML = '';
+
+        var tab = activeTabDef();
+        var presentTypes = new Set(), presentColors = new Set(), presentHeights = new Set(), anyFragrant = false;
+        Object.keys(tagMap).forEach(function (name) {
+            var tags = tagMap[name];
+            if (tab.category && tags.category !== tab.category) return;
+            (tags.flower_type || []).forEach(function (t) { presentTypes.add(t); });
+            (tags.color || []).forEach(function (c) { presentColors.add(c); });
+            if (tags.height) presentHeights.add(tags.height);
+            if (tags.fragrant) anyFragrant = true;
+        });
+
+        var hasAnyPills = presentTypes.size || presentColors.size || presentHeights.size || anyFragrant;
+        if (!hasAnyPills) return;
+
+        var anyActive = state.filters.flower_type.size || state.filters.color.size || state.filters.height.size || state.filters.fragrant;
+
+        var allBtn = document.createElement('button');
+        allBtn.type = 'button';
+        allBtn.className = 'narin-cat-pill' + (!anyActive ? ' active' : '');
+        allBtn.textContent = cz('V&#353;echny kv&#283;tiny');
+        bindTap(allBtn, function () {
+            state.filters.flower_type.clear();
+            state.filters.color.clear();
+            state.filters.height.clear();
+            state.filters.fragrant = false;
+            renderSubBar();
+            renderPass();
+        });
+        bar.appendChild(allBtn);
+
+        FLOWER_TYPES.filter(function (t) { return presentTypes.has(t); }).forEach(function (t) { makePill(bar, t, 'flower_type', t); });
+        COLORS.filter(function (c) { return presentColors.has(c); }).forEach(function (c) { makePill(bar, c, 'color', c); });
+        HEIGHTS.filter(function (h) { return presentHeights.has(h); }).forEach(function (h) { makePill(bar, h, 'height', h); });
+        if (anyFragrant) makePill(bar, cz('&#127800; Vo&#328;av&#233;'), 'fragrant', true);
+    }
+
+    function buildNav() {
+        var nav = document.createElement('div');
+        nav.className = 'narin-cat-nav';
+        var tabBar = document.createElement('div');
+        tabBar.className = 'narin-cat-tabs';
+        var count = document.createElement('div');
+        count.className = 'narin-cat-count';
+        var subBar = document.createElement('div');
+        subBar.className = 'narin-cat-subbar';
+        nav.appendChild(tabBar);
+        nav.appendChild(count);
+        nav.appendChild(subBar);
+        return nav;
+    }
+
+    function addUtcDays(date, days) {
+        return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + days));
+    }
+    function dateKey(date) {
+        return date.toISOString().slice(0, 10);
+    }
+    function computeSpecialOrderDate(closedWeekdays, closedDates) {
+        var d = new Date();
+        var remaining = 2;
+        while (remaining > 0) {
+            d = addUtcDays(d, 1);
+            var closed = closedWeekdays.has(d.getUTCDay()) || closedDates.has(dateKey(d));
+            if (!closed) remaining--;
+        }
+        return d.getUTCDate() + '. ' + (d.getUTCMonth() + 1) + '.';
+    }
+
+    // Запрос к базе стартует СРАЗУ, как только браузер дошёл до этого
+    // тега <script> при разборе страницы — не дожидаясь события
+    // DOMContentLoaded (та часть страницы, что выше этого блока, к тому
+    // моменту уже может грузиться секунду-другую сама по себе: фото,
+    // остальные скрипты). Пока сеть едет, это всё равно параллельно
+    // остальной загрузке страницы — просто раньше стартует. Применение
+    // к карточкам (ниже, в init) по-прежнему ждёт готовности DOM, сеть
+    // здесь ни при чём не тормозит.
+    var dataPromise = fetch(SUPABASE_URL + '/rest/v1/rpc/get_catalog_page_data', {
+        method: 'POST',
+        headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json',
+        },
+        body: '{}',
+    }).then(function (r) { return r.ok ? r.json() : null; });
+
+    function init() {
+        dataPromise
+            .then(function (data) {
+                if (!data) throw new Error('empty response');
+
+                (data.tags || []).forEach(function (row) {
+                    tagMap[normalize(row.product_name)] = row;
+                });
+                unsourceableNames = new Set((data.unsourceable || []).map(normalize));
+                availableNames = new Set((data.available || []).map(normalize));
+                specialNames = new Set((data.special || []).map(normalize));
+                (data.badges || []).forEach(function (row) {
+                    badgeMap[normalize(row.product_name)] = row;
+                });
+                var closedWeekdays = new Set(data.closed_weekdays || []);
+                var closedDates = new Set(data.closed_dates || []);
+                specialDateLabel = computeSpecialOrderDate(closedWeekdays, closedDates);
+
+                grid = document.querySelector('.js-store-grid-cont');
+                if (grid && grid.parentElement && !document.querySelector('.narin-cat-nav')) {
+                    grid.parentElement.insertBefore(buildNav(), grid);
+                }
+
+                renderTabBar();
+                renderSubBar();
+                renderPass();
+
+                // Tilda сама дорисовывает/переотрисовывает карточки товаров
+                // отдельным, более поздним проходом (обнаружено вживую).
+                // Раньше это лечили setInterval раз в секунду НАВСЕГДА —
+                // больше не нужно, потому что скрытие теперь идёт через
+                // атрибут+CSS, а не инлайн-стиль, и Tilda его не трогает.
+                // Эти несколько отложенных перерасчётов нужны только на
+                // случай, если тот поздний проход Tilda всё-таки унесёт с
+                // собой наш бейдж (вставленный DOM-узел, а не атрибут) —
+                // renderPass идемпотентен, просто добавит его заново.
+                [1200, 3000, 6000].forEach(function (delay) {
+                    setTimeout(renderPass, delay);
+                });
+
+                if (grid) {
+                    var pending = null;
+                    observer = new MutationObserver(function () {
+                        if (pending) clearTimeout(pending);
+                        pending = setTimeout(renderPass, 150);
+                    });
+                    observer.observe(grid, { childList: true, subtree: true });
+                }
+            })
+            .catch(function (err) { console.error('narin catalog engine', err); });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>
