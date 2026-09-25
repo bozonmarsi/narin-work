@@ -32,6 +32,7 @@ type Product = {
   manually_hidden: boolean;
   added_to_tilda: boolean;
   price: number | null;
+  pending_review: boolean;
 };
 
 // Ниже этого остатка на сайте сама встаёт плашка "Zbývá N ks" — если
@@ -367,6 +368,8 @@ function ProductCard({
   onRemoveRecipeItem,
   onSetOrderUnitSize,
   onSetVaseLife,
+  onApprovePending,
+  onRejectPending,
 }: {
   product: Product;
   isAvailable: boolean;
@@ -393,6 +396,8 @@ function ProductCard({
   onRemoveRecipeItem: (recipeId: string) => void;
   onSetOrderUnitSize: (id: string, size: number) => void;
   onSetVaseLife: (id: string, days: number) => void;
+  onApprovePending?: (id: string) => void;
+  onRejectPending?: (id: string, name: string) => void;
 }) {
   const [tagsOpen, setTagsOpen] = useState(false);
   const [recipeOpen, setRecipeOpen] = useState(false);
@@ -764,6 +769,29 @@ function ProductCard({
         </div>
 
       <div className="mt-auto flex flex-col gap-1 pt-0.5">
+        {p.pending_review ? (
+          <>
+            <p className="rounded-md bg-violet-50 dark:bg-violet-500/10 px-2 py-1 text-[11px] font-medium text-violet-700 dark:text-violet-400 ring-1 ring-inset ring-violet-200 dark:ring-violet-500/30">
+              ⏳ Заявка от флориста — проверьте перед публикацией
+            </p>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => onApprovePending?.(p.id)}
+                className="flex-1 rounded-md bg-violet-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-violet-700"
+              >
+                ✅ Опубликовать
+              </button>
+              <button
+                onClick={() => onRejectPending?.(p.id, p.name)}
+                title="Удалить заявку без возможности восстановить"
+                className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1 text-[11px] text-zinc-500 dark:text-zinc-400 hover:border-red-300 hover:text-red-600 dark:hover:text-red-400"
+              >
+                🗑 Отклонить
+              </button>
+            </div>
+          </>
+        ) : (
+        <>
         {!p.added_to_tilda && !p.archived && (
           <div className="flex items-center gap-1">
             <input
@@ -860,6 +888,8 @@ function ProductCard({
             {p.archived ? "↩ Вернуть" : "🗄 Архив"}
           </button>
         </div>
+        </>
+        )}
       </div>
     </div>
   );
@@ -1001,7 +1031,7 @@ export default function ShopPage() {
       supabase
         .from("product_stickers")
         .select(
-          "id, product_name, image_url, category, archived, special_order, flower_type, color, height, fragrant, badge_text, badge_color, quantity, order_unit_size, default_vase_life_days, vanvliet_in_stock, manually_hidden, added_to_tilda, price",
+          "id, product_name, image_url, category, archived, special_order, flower_type, color, height, fragrant, badge_text, badge_color, quantity, order_unit_size, default_vase_life_days, vanvliet_in_stock, manually_hidden, added_to_tilda, price, pending_review",
         )
         .order("product_name", { ascending: true }),
       supabase.from("product_availability").select("product_name"),
@@ -1030,6 +1060,7 @@ export default function ShopPage() {
           manually_hidden: p.manually_hidden ?? false,
           added_to_tilda: p.added_to_tilda ?? false,
           price: p.price ?? null,
+          pending_review: p.pending_review ?? false,
         })),
     );
     setAvailableToday(new Set((availabilityRes.data ?? []).map((r) => r.product_name)));
@@ -1301,7 +1332,26 @@ export default function ShopPage() {
     loadAvailability();
   }
 
-  const activeProducts = useMemo(() => products.filter((p) => !p.archived), [products]);
+  // Снять pending_review может только менеджер — флорист (warehouse) не
+  // может себе это подтвердить сам, см. триггер enforce_pending_review_guard.
+  async function approvePending(productId: string) {
+    const supabase = createClient();
+    await supabase.from("product_stickers").update({ pending_review: false }).eq("id", productId);
+    loadAvailability();
+  }
+
+  async function rejectPending(productId: string, name: string) {
+    if (!confirm(`Удалить заявку «${name}» от флориста без возможности восстановить?`)) return;
+    const supabase = createClient();
+    await supabase.from("product_stickers").delete().eq("id", productId);
+    loadAvailability();
+  }
+
+  // Заявки от флориста (pending_review) — отдельная очередь на одобрение
+  // менеджером, из общего каталога они скрыты, пока не подтверждены (см.
+  // approvePending/rejectPending и триггер enforce_pending_review_guard).
+  const activeProducts = useMemo(() => products.filter((p) => !p.archived && !p.pending_review), [products]);
+  const pendingProducts = useMemo(() => products.filter((p) => p.pending_review), [products]);
 
   // Кандидаты для массового CSV — те же товары, что показывают чекбокс
   // на карточке (не в архиве и ещё не отмечены как добавленные в Tilda).
@@ -1558,6 +1608,51 @@ export default function ShopPage() {
 
       {mainTab === "catalog" && (
       <section className="space-y-3">
+        {profile?.role === "manager" && pendingProducts.length > 0 && (
+          <div className="rounded-lg border border-violet-200 dark:border-violet-500/30 bg-violet-50/60 dark:bg-violet-500/10 p-4">
+            <p className="mb-1 font-medium text-violet-800 dark:text-violet-300">
+              ⏳ Заявки от флориста на новый товар ({pendingProducts.length})
+            </p>
+            <p className="mb-3 text-xs text-violet-600 dark:text-violet-400">
+              Флорист завёл товар, но он ещё не появится в обычном каталоге и не попадёт в наличие/CSV, пока вы не
+              проверите и не нажмёте «Опубликовать» — можно поправить категорию/метки/фото прямо здесь.
+            </p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+              {pendingProducts.map((p) => (
+                <ProductCard
+                  key={p.id}
+                  product={p}
+                  isAvailable={false}
+                  uploadingId={uploadingId}
+                  recipe={recipes.filter((r) => r.bouquet_sticker_id === p.id)}
+                  rawMaterials={rawMaterialOptions}
+                  onAddRecipeItem={addRecipeItem}
+                  onRemoveRecipeItem={removeRecipeItem}
+                  onSetOrderUnitSize={setOrderUnitSize}
+                  onSetVaseLife={setVaseLife}
+                  onToggleAvailable={toggleAvailable}
+                  onSetCategory={setCategory}
+                  onToggleFlowerType={toggleFlowerType}
+                  onToggleColor={toggleColor}
+                  onSetHeight={setHeight}
+                  onToggleFragrant={toggleFragrant}
+                  onUploadImage={uploadStickerImage}
+                  onToggleSpecialOrder={toggleSpecialOrder}
+                  onToggleManualHide={toggleManualHide}
+                  onSetAddedToTilda={setAddedToTilda}
+                  onOpenCsvDraft={openCsvDraft}
+                  csvSelected={false}
+                  onToggleCsvSelected={() => {}}
+                  onToggleArchived={toggleArchived}
+                  onSetBadge={setBadge}
+                  onAddDelivery={addDelivery}
+                  onApprovePending={approvePending}
+                  onRejectPending={rejectPending}
+                />
+              ))}
+            </div>
+          </div>
+        )}
         <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
           <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
             <div>
@@ -1611,7 +1706,7 @@ export default function ShopPage() {
                   activeTab === c.value ? c.color : "text-zinc-500 dark:text-zinc-400 ring-zinc-200 dark:ring-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 }`}
               >
-                {c.label} ({products.filter((p) => !p.archived && p.category === c.value).length})
+                {c.label} ({products.filter((p) => !p.archived && !p.pending_review && p.category === c.value).length})
               </button>
             ))}
             <button
@@ -1706,7 +1801,20 @@ export default function ShopPage() {
               </div>
             )}
 
-            {justAddedProduct && (
+            {justAddedProduct && (products.find((pr) => pr.id === justAddedProduct.id)?.pending_review ? (
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-violet-300 bg-violet-50 px-3 py-2 text-xs dark:border-violet-500/40 dark:bg-violet-500/10">
+                <span className="text-violet-800 dark:text-violet-300">
+                  ⏳ Заявка «{justAddedProduct.name}» отправлена менеджеру на проверку — появится в общем каталоге
+                  после того, как он её одобрит.
+                </span>
+                <button
+                  onClick={() => setJustAddedProduct(null)}
+                  className="shrink-0 rounded-md border border-violet-300 px-2 py-1 font-medium text-violet-700 hover:bg-violet-100 dark:border-violet-500/40 dark:text-violet-300 dark:hover:bg-violet-500/10"
+                >
+                  Понятно
+                </button>
+              </div>
+            ) : (
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs dark:border-amber-500/40 dark:bg-amber-500/10">
                 <span className="text-amber-800 dark:text-amber-300">
                   ⚠️ Товар «{justAddedProduct.name}» создан здесь, но каталог на сайте — это отдельная Tilda, сюда он
@@ -1740,7 +1848,7 @@ export default function ShopPage() {
                   </button>
                 </div>
               </div>
-            )}
+            ))}
 
             {sortedProducts.map((p) => (
               <ProductCard
