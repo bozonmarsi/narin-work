@@ -942,7 +942,10 @@ export default function ShopPage() {
     setCsvDraftError(null);
     setCsvDraftLoading(true);
     const supabase = createClient();
-    const { data, error } = await supabase.functions.invoke("generate-product-copy", {
+    // Имя функции в Supabase реально создано как "generate-product-copy-"
+    // (с лишним дефисом на конце) — вызываем как есть, чтобы не заставлять
+    // пересоздавать функцию в Dashboard.
+    const { data, error } = await supabase.functions.invoke("generate-product-copy-", {
       body: {
         product_name: p.name,
         flower_type: p.flower_type,
