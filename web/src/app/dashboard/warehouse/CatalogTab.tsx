@@ -16,6 +16,7 @@ type Product = {
   quantity: number | null;
   price: number | null;
   order_unit_size: number;
+  added_to_tilda: boolean;
 };
 
 type BatchLite = { id: string; product_sticker_id: string; remaining: number; purchase_date: string; estimated_wilt_date: string | null };
@@ -64,6 +65,10 @@ export function CatalogTab() {
   const [newFile, setNewFile] = useState<File | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
   const [addingBusy, setAddingBusy] = useState(false);
+  // Каталог на сайте — отдельная Tilda, этот insert карточку там не
+  // создаёт, её всё равно заводить руками. Напоминаем сразу, с точным
+  // названием (важно один-в-один, уже дважды ловили баги на опечатках).
+  const [justAddedProduct, setJustAddedProduct] = useState<{ id: string; name: string } | null>(null);
 
   const [openRecipeId, setOpenRecipeId] = useState<string | null>(null);
   const [newIngredientId, setNewIngredientId] = useState("");
@@ -74,7 +79,10 @@ export function CatalogTab() {
   async function load() {
     const supabase = createClient();
     const [productsRes, availabilityRes, batchesRes, recipesRes] = await Promise.all([
-      supabase.from("product_stickers").select("id, product_name, image_url, category, archived, quantity, price, order_unit_size").order("product_name"),
+      supabase
+        .from("product_stickers")
+        .select("id, product_name, image_url, category, archived, quantity, price, order_unit_size, added_to_tilda")
+        .order("product_name"),
       supabase.from("product_availability").select("product_name"),
       supabase.from("batches").select("id, product_sticker_id, remaining, purchase_date, estimated_wilt_date").gt("remaining", 0),
       supabase.from("product_recipes").select("id, bouquet_sticker_id, ingredient_sticker_id, quantity_needed"),
@@ -112,6 +120,13 @@ export function CatalogTab() {
     load();
   }
 
+  async function setAddedToTilda(id: string, value: boolean) {
+    const supabase = createClient();
+    await supabase.from("product_stickers").update({ added_to_tilda: value }).eq("id", id);
+    if (justAddedProduct?.id === id) setJustAddedProduct(null);
+    load();
+  }
+
   async function addProduct() {
     const name = newName.trim();
     if (!name) return;
@@ -144,6 +159,7 @@ export function CatalogTab() {
     if (category === "ohapka") {
       supabase.functions.invoke("vanvliet-alias-refresh", { body: {} }).catch(() => {});
     }
+    setJustAddedProduct({ id, name });
     setNewName("");
     setNewCategory("");
     setNewFile(null);
@@ -245,6 +261,29 @@ export function CatalogTab() {
         </div>
       )}
 
+      {justAddedProduct && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs dark:border-amber-500/40 dark:bg-amber-500/10">
+          <span className="text-amber-800 dark:text-amber-300">
+            ⚠️ Товар «{justAddedProduct.name}» создан здесь, но каталог на сайте — это отдельная Tilda, сюда он сам
+            не попадёт. Заведи карточку в Tilda с названием один-в-один: <b>{justAddedProduct.name}</b>.
+          </span>
+          <div className="flex shrink-0 gap-2">
+            <button
+              onClick={() => setAddedToTilda(justAddedProduct.id, true)}
+              className="rounded-md bg-amber-600 px-2 py-1 font-medium text-white hover:bg-amber-700"
+            >
+              ✅ Добавил(а) в Tilda
+            </button>
+            <button
+              onClick={() => setJustAddedProduct(null)}
+              className="rounded-md border border-amber-300 px-2 py-1 text-amber-700 hover:bg-amber-100 dark:border-amber-500/40 dark:text-amber-300 dark:hover:bg-amber-500/10"
+            >
+              Позже
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {sorted.map((p) => {
           const name = decodeHtmlEntities(p.product_name);
@@ -289,6 +328,16 @@ export function CatalogTab() {
                   <span>Kč{isOhapka && p.order_unit_size > 1 ? `/${p.order_unit_size} шт` : ""}</span>
                 </span>
               </div>
+
+              {!p.added_to_tilda && (
+                <button
+                  onClick={() => setAddedToTilda(p.id, true)}
+                  title="Каталог на сайте — отдельная Tilda, карточку туда нужно завести руками. Нажми, когда заведёшь."
+                  className="mt-2 w-full rounded-md bg-amber-50 px-2 py-1 text-left text-[11px] font-medium text-amber-700 ring-1 ring-inset ring-amber-200 hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/30 dark:hover:bg-amber-500/20"
+                >
+                  ⚠️ Нет в Tilda — отметить как добавлено
+                </button>
+              )}
 
               <div className="mt-2 flex items-center justify-between gap-2">
                 {isOhapka ? (

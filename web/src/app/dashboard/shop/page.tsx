@@ -29,6 +29,7 @@ type Product = {
   default_vase_life_days: number | null;
   vanvliet_in_stock: boolean | null;
   manually_hidden: boolean;
+  added_to_tilda: boolean;
 };
 
 // Ниже этого остатка на сайте сама встаёт плашка "Zbývá N ks" — если
@@ -171,6 +172,7 @@ function ProductCard({
   onUploadImage,
   onToggleSpecialOrder,
   onToggleManualHide,
+  onSetAddedToTilda,
   onToggleArchived,
   onSetBadge,
   onAddDelivery,
@@ -193,6 +195,7 @@ function ProductCard({
   onUploadImage: (id: string, file: File) => void;
   onToggleSpecialOrder: (id: string, current: boolean) => void;
   onToggleManualHide: (id: string, current: boolean) => void;
+  onSetAddedToTilda: (id: string, value: boolean) => void;
   onToggleArchived: (id: string, current: boolean) => void;
   onSetBadge: (id: string, text: string | null, color: string | null) => void;
   onAddDelivery: (id: string, delta: number) => void;
@@ -571,6 +574,15 @@ function ProductCard({
         </div>
 
       <div className="mt-auto flex flex-col gap-1 pt-0.5">
+        {!p.added_to_tilda && !p.archived && (
+          <button
+            onClick={() => onSetAddedToTilda(p.id, true)}
+            title="Каталог на сайте — отдельная Tilda, карточку туда нужно завести руками. Нажми, когда заведёшь."
+            className="rounded-md bg-amber-50 px-2 py-1 text-left text-[11px] font-medium text-amber-700 ring-1 ring-inset ring-amber-200 hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/30 dark:hover:bg-amber-500/20"
+          >
+            ⚠️ Нет в Tilda — отметить как добавлено
+          </button>
+        )}
         {hiddenFromSite && (
           <p
             title={
@@ -673,6 +685,11 @@ export default function ShopPage() {
   const [newProductFile, setNewProductFile] = useState<File | null>(null);
   const [addingProduct, setAddingProduct] = useState(false);
   const [addProductError, setAddProductError] = useState<string | null>(null);
+  // Каталог на сайте живёт в самой Tilda — этот товар тут не создаёт
+  // карточку на сайте, её всё равно нужно завести руками. Показываем
+  // явное напоминание сразу после создания, с точным названием (важно
+  // один-в-один — на этом уже дважды ловили баги).
+  const [justAddedProduct, setJustAddedProduct] = useState<{ id: string; name: string } | null>(null);
   const [activeTab, setActiveTab] = useState<string>("all");
   const [autoFilling, setAutoFilling] = useState(false);
   const [autoFillResult, setAutoFillResult] = useState<string | null>(null);
@@ -697,7 +714,7 @@ export default function ShopPage() {
       supabase
         .from("product_stickers")
         .select(
-          "id, product_name, image_url, category, archived, special_order, flower_type, color, height, fragrant, badge_text, badge_color, quantity, order_unit_size, default_vase_life_days, vanvliet_in_stock, manually_hidden",
+          "id, product_name, image_url, category, archived, special_order, flower_type, color, height, fragrant, badge_text, badge_color, quantity, order_unit_size, default_vase_life_days, vanvliet_in_stock, manually_hidden, added_to_tilda",
         )
         .order("product_name", { ascending: true }),
       supabase.from("product_availability").select("product_name"),
@@ -724,6 +741,7 @@ export default function ShopPage() {
           default_vase_life_days: p.default_vase_life_days ?? null,
           vanvliet_in_stock: p.vanvliet_in_stock ?? null,
           manually_hidden: p.manually_hidden ?? false,
+          added_to_tilda: p.added_to_tilda ?? false,
         })),
     );
     setAvailableToday(new Set((availabilityRes.data ?? []).map((r) => r.product_name)));
@@ -851,6 +869,7 @@ export default function ShopPage() {
       supabase.functions.invoke("vanvliet-alias-refresh", { body: {} }).catch(() => {});
     }
 
+    setJustAddedProduct({ id, name });
     setNewProductName("");
     setNewProductCategory("");
     setNewProductFile(null);
@@ -984,6 +1003,13 @@ export default function ShopPage() {
   async function toggleManualHide(productId: string, manuallyHidden: boolean) {
     const supabase = createClient();
     await supabase.from("product_stickers").update({ manually_hidden: !manuallyHidden }).eq("id", productId);
+    loadAvailability();
+  }
+
+  async function setAddedToTilda(productId: string, value: boolean) {
+    const supabase = createClient();
+    await supabase.from("product_stickers").update({ added_to_tilda: value }).eq("id", productId);
+    if (justAddedProduct?.id === productId) setJustAddedProduct(null);
     loadAvailability();
   }
 
@@ -1356,6 +1382,29 @@ export default function ShopPage() {
               </div>
             )}
 
+            {justAddedProduct && (
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs dark:border-amber-500/40 dark:bg-amber-500/10">
+                <span className="text-amber-800 dark:text-amber-300">
+                  ⚠️ Товар «{justAddedProduct.name}» создан здесь, но каталог на сайте — это отдельная Tilda, сюда он
+                  сам не попадёт. Заведи карточку в Tilda с названием один-в-один: <b>{justAddedProduct.name}</b>.
+                </span>
+                <div className="flex shrink-0 gap-2">
+                  <button
+                    onClick={() => setAddedToTilda(justAddedProduct.id, true)}
+                    className="rounded-md bg-amber-600 px-2 py-1 font-medium text-white hover:bg-amber-700"
+                  >
+                    ✅ Добавил(а) в Tilda
+                  </button>
+                  <button
+                    onClick={() => setJustAddedProduct(null)}
+                    className="rounded-md border border-amber-300 px-2 py-1 text-amber-700 hover:bg-amber-100 dark:border-amber-500/40 dark:text-amber-300 dark:hover:bg-amber-500/10"
+                  >
+                    Позже
+                  </button>
+                </div>
+              </div>
+            )}
+
             {sortedProducts.map((p) => (
               <ProductCard
                 key={p.id}
@@ -1377,6 +1426,7 @@ export default function ShopPage() {
                 onUploadImage={uploadStickerImage}
                 onToggleSpecialOrder={toggleSpecialOrder}
                 onToggleManualHide={toggleManualHide}
+                onSetAddedToTilda={setAddedToTilda}
                 onToggleArchived={toggleArchived}
                 onSetBadge={setBadge}
                 onAddDelivery={addDelivery}
