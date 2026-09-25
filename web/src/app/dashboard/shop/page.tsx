@@ -30,6 +30,7 @@ type Product = {
   vanvliet_in_stock: boolean | null;
   manually_hidden: boolean;
   added_to_tilda: boolean;
+  price: number | null;
 };
 
 // Ниже этого остатка на сайте сама встаёт плашка "Zbývá N ks" — если
@@ -126,6 +127,125 @@ function guessColor(name: string): string | null {
 
 const HEIGHT_OPTIONS = ["Nízké", "Vysoké"];
 const HEIGHT_THRESHOLD_CM = 45;
+
+// Ниже — построение строки для импорта в Tilda (Настройки каталога →
+// Синхронизации → "Импорт товаров из CSV"). Название/фото/теги летят
+// туда напрямую из того, что уже введено тут — руками их больше не
+// перепечатывают, а значит и не рассинхронизируют (см. живые баги
+// Kala picasso / Lilie růžová mix — оба ровно от разного текста в двух
+// местах). Формат и точные значения тегов подобраны по РЕАЛЬНОМУ
+// экспорту каталога (56 товаров, 25.09.2026) — это лучшее приближение,
+// не гарантия: в самой Tilda теги проставлены не всегда единообразно
+// (например "Hyacint modrý" там почему-то помечен "Fialové", а не
+// "Modré") — сгенерированную строку нужно проверить глазами в Tilda
+// перед импортом, а не грузить не глядя.
+const TILDA_FLOWER_TYPE_TAG: Record<string, string> = {
+  Tulipán: "Tulipy",
+  Karafiát: "Karafiáty",
+  Pivoňka: "Pivoňky",
+  Ranunkulus: "Ranunculusy",
+  Kala: "Kaly",
+  Hortenzie: "Hortenzií",
+  Hyacint: "Hyacinty",
+  Fialka: "Fialky",
+  Exotika: "Exotika",
+  Vytrvalé: "Vytrvalé",
+};
+
+const TILDA_COLOR_TAG: Record<string, string> = {
+  Bílá: "Bílé",
+  Růžová: "Růžové",
+  Červená: "Červené",
+  Žlutá: "Žluté",
+  Fialová: "Fialové",
+  Modrá: "Modré",
+};
+
+// Раздел Tilda, который соответствует нашей категории — только для тех,
+// что реально встретились в экспорте; для остальных (Atelier/Dárky/
+// Kovky) раздел в Tilda менеджер выбирает сам, тут не гадаем.
+const TILDA_SECTION_TAG: Record<string, string> = {
+  ohapka: "Náruče květin",
+  set: "Sety",
+};
+
+const TILDA_CSV_HEADER = [
+  "Tilda UID",
+  "Brand",
+  "SKU",
+  "Mark",
+  "Category",
+  "Title",
+  "Description",
+  "Text",
+  "Photo",
+  "Price",
+  "Quantity",
+  "Price Old",
+  "Editions",
+  "Modifications",
+  "External ID",
+  "Parent UID",
+  "Characteristics:Výška",
+  "Characteristics:Aroma",
+  "Characteristics:Výdrž",
+  "Characteristics:Pro domácí mazlíčky",
+  "Characteristics:Typ řezu",
+  "Characteristics:Úroveň vody",
+  "Characteristics:Formát",
+  "Characteristics:Hustý matný papír",
+  "Weight",
+  "Length",
+  "Width",
+  "Height",
+  "Unit",
+  "Portion",
+  "SEO title",
+  "SEO descr",
+  "SEO keywords",
+  "FB title",
+  "FB descr",
+];
+
+function csvCell(value: string): string {
+  if (/[";\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`;
+  return value;
+}
+
+function buildTildaCsvRow(p: Product): string {
+  const tags: string[] = [];
+  const section = TILDA_SECTION_TAG[p.category ?? ""];
+  if (section) tags.push(section);
+  for (const t of p.flower_type) tags.push(TILDA_FLOWER_TYPE_TAG[t] ?? t);
+  for (const c of p.color) tags.push(TILDA_COLOR_TAG[c] ?? c);
+  if (p.height) tags.push(p.height);
+  if (p.fragrant) tags.push("Voňavé");
+
+  const values: Record<string, string> = {
+    Category: tags.join(";"),
+    Title: p.name,
+    Photo: p.image_url ?? "",
+    Price: p.price != null ? String(p.price) : "",
+    Unit: "PCE",
+    Portion: p.order_unit_size > 1 ? String(p.order_unit_size) : "",
+  };
+
+  const row = TILDA_CSV_HEADER.map((col) => csvCell(values[col] ?? ""));
+  return TILDA_CSV_HEADER.map(csvCell).join(";") + "\n" + row.join(";");
+}
+
+function downloadTildaCsv(p: Product) {
+  const csv = buildTildaCsvRow(p);
+  // BOM — иначе Excel/Tilda могут принять UTF-8 с чешскими буквами за
+  // другую кодировку и показать кракозябры при первом открытии.
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `tilda-import-${p.rawName.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 // Угадывается только если в названии реально есть см ("Vrba 60cm") — для
 // остальных товаров без числа в названии останется пустым, руками.
@@ -575,13 +695,22 @@ function ProductCard({
 
       <div className="mt-auto flex flex-col gap-1 pt-0.5">
         {!p.added_to_tilda && !p.archived && (
-          <button
-            onClick={() => onSetAddedToTilda(p.id, true)}
-            title="Каталог на сайте — отдельная Tilda, карточку туда нужно завести руками. Нажми, когда заведёшь."
-            className="rounded-md bg-amber-50 px-2 py-1 text-left text-[11px] font-medium text-amber-700 ring-1 ring-inset ring-amber-200 hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/30 dark:hover:bg-amber-500/20"
-          >
-            ⚠️ Нет в Tilda — отметить как добавлено
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => downloadTildaCsv(p)}
+              title="Готовая строка для Настройки каталога → Синхронизации → Импорт товаров из CSV в Tilda — проверь теги глазами перед загрузкой"
+              className="rounded-md bg-sky-50 px-2 py-1 text-[11px] font-medium text-sky-700 ring-1 ring-inset ring-sky-200 hover:bg-sky-100 dark:bg-sky-500/10 dark:text-sky-400 dark:ring-sky-500/30 dark:hover:bg-sky-500/20"
+            >
+              ⬇️ CSV
+            </button>
+            <button
+              onClick={() => onSetAddedToTilda(p.id, true)}
+              title="Каталог на сайте — отдельная Tilda, карточку туда нужно завести руками. Нажми, когда заведёшь."
+              className="flex-1 rounded-md bg-amber-50 px-2 py-1 text-left text-[11px] font-medium text-amber-700 ring-1 ring-inset ring-amber-200 hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/30 dark:hover:bg-amber-500/20"
+            >
+              ⚠️ Нет в Tilda — отметить как добавлено
+            </button>
+          </div>
         )}
         {hiddenFromSite && (
           <p
@@ -714,7 +843,7 @@ export default function ShopPage() {
       supabase
         .from("product_stickers")
         .select(
-          "id, product_name, image_url, category, archived, special_order, flower_type, color, height, fragrant, badge_text, badge_color, quantity, order_unit_size, default_vase_life_days, vanvliet_in_stock, manually_hidden, added_to_tilda",
+          "id, product_name, image_url, category, archived, special_order, flower_type, color, height, fragrant, badge_text, badge_color, quantity, order_unit_size, default_vase_life_days, vanvliet_in_stock, manually_hidden, added_to_tilda, price",
         )
         .order("product_name", { ascending: true }),
       supabase.from("product_availability").select("product_name"),
@@ -742,6 +871,7 @@ export default function ShopPage() {
           vanvliet_in_stock: p.vanvliet_in_stock ?? null,
           manually_hidden: p.manually_hidden ?? false,
           added_to_tilda: p.added_to_tilda ?? false,
+          price: p.price ?? null,
         })),
     );
     setAvailableToday(new Set((availabilityRes.data ?? []).map((r) => r.product_name)));
@@ -1389,6 +1519,19 @@ export default function ShopPage() {
                   сам не попадёт. Заведи карточку в Tilda с названием один-в-один: <b>{justAddedProduct.name}</b>.
                 </span>
                 <div className="flex shrink-0 gap-2">
+                  {(() => {
+                    const created = products.find((pr) => pr.id === justAddedProduct.id);
+                    return (
+                      created && (
+                        <button
+                          onClick={() => downloadTildaCsv(created)}
+                          className="rounded-md border border-sky-300 bg-white px-2 py-1 font-medium text-sky-700 hover:bg-sky-50 dark:border-sky-500/40 dark:bg-transparent dark:text-sky-400 dark:hover:bg-sky-500/10"
+                        >
+                          ⬇️ CSV для Tilda
+                        </button>
+                      )
+                    );
+                  })()}
                   <button
                     onClick={() => setAddedToTilda(justAddedProduct.id, true)}
                     className="rounded-md bg-amber-600 px-2 py-1 font-medium text-white hover:bg-amber-700"
