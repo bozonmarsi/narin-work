@@ -228,6 +228,10 @@ function buildTildaCsvRow(p: Product): string {
     Price: p.price != null ? String(p.price) : "",
     Unit: "PCE",
     Portion: p.order_unit_size > 1 ? String(p.order_unit_size) : "",
+    // Только число дней из наших собственных данных — не выдумываем
+    // остальной текст характеристики (аромат/токсичность и т.п.), это
+    // авторский текст под конкретный вид, врать в нём рискованно.
+    "Characteristics:Výdrž": p.default_vase_life_days != null ? `${p.default_vase_life_days} dní` : "",
   };
 
   const row = TILDA_CSV_HEADER.map((col) => csvCell(values[col] ?? ""));
