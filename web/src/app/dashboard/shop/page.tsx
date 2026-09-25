@@ -6,6 +6,7 @@ import { useDashboard } from "../layout";
 import { decodeHtmlEntities } from "@/lib/format";
 import { useRealtimeRefresh } from "@/lib/useRealtimeRefresh";
 import { VanVlietPanel } from "./VanVlietPanel";
+import { Modal } from "../warehouse/Modal";
 
 type ClosedDate = { closed_date: string; reason: string | null };
 type ClosedSlot = { id: string; closed_date: string; slot_label: string; reason: string | null };
@@ -212,7 +213,26 @@ function csvCell(value: string): string {
   return value;
 }
 
-function buildTildaCsvRow(p: Product): string {
+type TildaCopyDraft = {
+  text: string;
+  vyska: string;
+  aroma: string;
+  vydrz: string;
+  pets: string;
+  cutType: string;
+  waterLevel: string;
+};
+
+const EMPTY_TILDA_COPY: TildaCopyDraft = { text: "", vyska: "", aroma: "", vydrz: "", pets: "", cutType: "", waterLevel: "" };
+
+// draft — черновик от ИИ (см. generate-product-copy), всегда сперва
+// показанный менеджеру в редактируемом виде и подтверждённый ею, а не
+// вставленный в файл вслепую (см. договорённость про "Pro domácí
+// mazlíčky" — там ошибка ИИ не опечатка, а риск для чьего-то питомца).
+// Для массового экспорта (много товаров сразу) черновик текста не
+// делаем вообще — двадцать ответов ИИ разом никто построчно не
+// проверит, поэтому туда идут только механические поля.
+function buildTildaCsvDataRow(p: Product, draft: TildaCopyDraft): string {
   const tags: string[] = [];
   const section = TILDA_SECTION_TAG[p.category ?? ""];
   if (section) tags.push(section);
@@ -221,34 +241,74 @@ function buildTildaCsvRow(p: Product): string {
   if (p.height) tags.push(p.height);
   if (p.fragrant) tags.push("Voňavé");
 
+  // "#" в тексте — это плейн-текстовый маркер Tilda, где кончается
+  // вступительный абзац и начинается маркированный список ухода (см.
+  // реальный экспорт: "...svěží jarní energii.<br />#<br /><ul>...").
+  const textHtml = draft.text
+    ? draft.text
+        .split(/\n#\n/)
+        .map((part, i) =>
+          i === 0
+            ? part.trim()
+            : "<ul>" +
+              part
+                .split("\n")
+                .map((line) => line.replace(/^[-•]\s*/, "").trim())
+                .filter(Boolean)
+                .map((line) => `<li data-list="bullet">${line}</li>`)
+                .join("") +
+              "</ul>"
+        )
+        .join("<br />#<br />")
+    : "";
+
   const values: Record<string, string> = {
     Category: tags.join(";"),
     Title: p.name,
+    Text: textHtml,
     Photo: p.image_url ?? "",
     Price: p.price != null ? String(p.price) : "",
     Unit: "PCE",
     Portion: p.order_unit_size > 1 ? String(p.order_unit_size) : "",
-    // Только число дней из наших собственных данных — не выдумываем
-    // остальной текст характеристики (аромат/токсичность и т.п.), это
-    // авторский текст под конкретный вид, врать в нём рискованно.
-    "Characteristics:Výdrž": p.default_vase_life_days != null ? `${p.default_vase_life_days} dní` : "",
+    "Characteristics:Výška": draft.vyska,
+    "Characteristics:Aroma": draft.aroma,
+    "Characteristics:Výdrž": draft.vydrz,
+    "Characteristics:Pro domácí mazlíčky": draft.pets,
+    "Characteristics:Typ řezu": draft.cutType,
+    "Characteristics:Úroveň vody": draft.waterLevel,
   };
 
-  const row = TILDA_CSV_HEADER.map((col) => csvCell(values[col] ?? ""));
-  return TILDA_CSV_HEADER.map(csvCell).join(";") + "\n" + row.join(";");
+  return TILDA_CSV_HEADER.map((col) => csvCell(values[col] ?? "")).join(";");
 }
 
-function downloadTildaCsv(p: Product) {
-  const csv = buildTildaCsvRow(p);
+function downloadCsvFile(csv: string, filename: string) {
   // BOM — иначе Excel/Tilda могут принять UTF-8 с чешскими буквами за
   // другую кодировку и показать кракозябры при первом открытии.
   const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `tilda-import-${p.rawName.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.csv`;
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function downloadTildaCsv(p: Product, draft: TildaCopyDraft) {
+  const csv = TILDA_CSV_HEADER.map(csvCell).join(";") + "\n" + buildTildaCsvDataRow(p, draft);
+  downloadCsvFile(csv, `tilda-import-${p.rawName.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.csv`);
+}
+
+// Массовый экспорт — один файл, одна строка на товар, без текста ухода
+// (см. комментарий у buildTildaCsvDataRow). Порядок сохраняем как в
+// списке, чтобы результат был предсказуем при повторном скачивании.
+function downloadTildaCsvBulk(list: Product[]) {
+  const rows = list.map((p) => buildTildaCsvDataRow(p, { ...EMPTY_TILDA_COPY, vydrz: p.default_vase_life_days != null ? `${p.default_vase_life_days} dní` : "" }));
+  const csv = TILDA_CSV_HEADER.map(csvCell).join(";") + "\n" + rows.join("\n");
+  downloadCsvFile(csv, `tilda-import-${list.length}-products-${todayStr()}.csv`);
+}
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
 }
 
 // Угадывается только если в названии реально есть см ("Vrba 60cm") — для
@@ -297,6 +357,9 @@ function ProductCard({
   onToggleSpecialOrder,
   onToggleManualHide,
   onSetAddedToTilda,
+  onOpenCsvDraft,
+  csvSelected,
+  onToggleCsvSelected,
   onToggleArchived,
   onSetBadge,
   onAddDelivery,
@@ -320,6 +383,9 @@ function ProductCard({
   onToggleSpecialOrder: (id: string, current: boolean) => void;
   onToggleManualHide: (id: string, current: boolean) => void;
   onSetAddedToTilda: (id: string, value: boolean) => void;
+  onOpenCsvDraft: (product: Product) => void;
+  csvSelected: boolean;
+  onToggleCsvSelected: (id: string) => void;
   onToggleArchived: (id: string, current: boolean) => void;
   onSetBadge: (id: string, text: string | null, color: string | null) => void;
   onAddDelivery: (id: string, delta: number) => void;
@@ -700,9 +766,16 @@ function ProductCard({
       <div className="mt-auto flex flex-col gap-1 pt-0.5">
         {!p.added_to_tilda && !p.archived && (
           <div className="flex items-center gap-1">
+            <input
+              type="checkbox"
+              checked={csvSelected}
+              onChange={() => onToggleCsvSelected(p.id)}
+              title="Выбрать для массового скачивания CSV (без черновика ИИ, см. кнопку ниже списка)"
+              className="h-3.5 w-3.5 shrink-0 accent-sky-600"
+            />
             <button
-              onClick={() => downloadTildaCsv(p)}
-              title="Готовая строка для Настройки каталога → Синхронизации → Импорт товаров из CSV в Tilda — проверь теги глазами перед загрузкой"
+              onClick={() => onOpenCsvDraft(p)}
+              title="Черновик текста/характеристик от ИИ на проверку, потом готовая строка для Импорта товаров из CSV в Tilda"
               className="rounded-md bg-sky-50 px-2 py-1 text-[11px] font-medium text-sky-700 ring-1 ring-inset ring-sky-200 hover:bg-sky-100 dark:bg-sky-500/10 dark:text-sky-400 dark:ring-sky-500/30 dark:hover:bg-sky-500/20"
             >
               ⬇️ CSV
@@ -823,6 +896,84 @@ export default function ShopPage() {
   // явное напоминание сразу после создания, с точным названием (важно
   // один-в-один — на этом уже дважды ловили баги).
   const [justAddedProduct, setJustAddedProduct] = useState<{ id: string; name: string } | null>(null);
+
+  // Черновик карточки для Tilda (текст ухода + характеристики) — ИИ
+  // предлагает, менеджер правит и подтверждает здесь, только после
+  // этого можно скачать CSV.
+  const [csvDraftProduct, setCsvDraftProduct] = useState<Product | null>(null);
+  const [csvDraft, setCsvDraft] = useState<TildaCopyDraft>(EMPTY_TILDA_COPY);
+  const [csvDraftLoading, setCsvDraftLoading] = useState(false);
+  const [csvDraftError, setCsvDraftError] = useState<string | null>(null);
+
+  // Массовое скачивание — отмечаешь несколько товаров (или все разом) и
+  // получаешь один CSV-файл на все, без черновика ИИ для каждого (см.
+  // buildTildaCsvDataRow).
+  const [selectedForCsv, setSelectedForCsv] = useState<Set<string>>(new Set());
+
+  function toggleSelectedForCsv(id: string) {
+    setSelectedForCsv((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function selectAllForCsv() {
+    setSelectedForCsv(new Set(notInTildaProducts.map((p) => p.id)));
+  }
+
+  function clearCsvSelection() {
+    setSelectedForCsv(new Set());
+  }
+
+  function downloadSelectedCsv() {
+    const list = products.filter((p) => selectedForCsv.has(p.id));
+    if (list.length === 0) return;
+    downloadTildaCsvBulk(list);
+  }
+
+  async function openCsvDraft(p: Product) {
+    setCsvDraftProduct(p);
+    setCsvDraft({
+      ...EMPTY_TILDA_COPY,
+      vydrz: p.default_vase_life_days != null ? `${p.default_vase_life_days} dní` : "",
+    });
+    setCsvDraftError(null);
+    setCsvDraftLoading(true);
+    const supabase = createClient();
+    const { data, error } = await supabase.functions.invoke("generate-product-copy", {
+      body: {
+        product_name: p.name,
+        flower_type: p.flower_type,
+        color: p.color,
+        height: p.height,
+        fragrant: p.fragrant,
+        vase_life_days: p.default_vase_life_days,
+      },
+    });
+    setCsvDraftLoading(false);
+    if (error) {
+      setCsvDraftError(error.message);
+      return;
+    }
+    if (data?.ok === false) {
+      setCsvDraftError("Не удалось получить черновик от ИИ (" + (data.error ?? "?") + ") — заполни поля вручную.");
+      return;
+    }
+    const parsed = data?.parsed;
+    if (parsed) {
+      setCsvDraft({
+        text: parsed.text ?? "",
+        vyska: parsed.characteristics?.vyska ?? "",
+        aroma: parsed.characteristics?.aroma ?? "",
+        vydrz: parsed.characteristics?.vydrz ?? (p.default_vase_life_days != null ? `${p.default_vase_life_days} dní` : ""),
+        pets: parsed.characteristics?.pets ?? "",
+        cutType: parsed.characteristics?.cut_type ?? "",
+        waterLevel: parsed.characteristics?.water_level ?? "",
+      });
+    }
+  }
   const [activeTab, setActiveTab] = useState<string>("all");
   const [autoFilling, setAutoFilling] = useState(false);
   const [autoFillResult, setAutoFillResult] = useState<string | null>(null);
@@ -1149,6 +1300,10 @@ export default function ShopPage() {
 
   const activeProducts = useMemo(() => products.filter((p) => !p.archived), [products]);
 
+  // Кандидаты для массового CSV — те же товары, что показывают чекбокс
+  // на карточке (не в архиве и ещё не отмечены как добавленные в Tilda).
+  const notInTildaProducts = useMemo(() => activeProducts.filter((p) => !p.added_to_tilda), [activeProducts]);
+
   // Ингредиенты для рецептов — те же product_stickers с категорией
   // "ohapka" (продаются поштучно одним видом), больше ничего искать не
   // нужно, это уже загружено в `products`.
@@ -1473,6 +1628,38 @@ export default function ShopPage() {
             className="mb-3 w-full rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
           />
 
+          {notInTildaProducts.length > 0 && (
+            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs dark:border-sky-500/30 dark:bg-sky-500/10">
+              <span className="text-sky-800 dark:text-sky-300">
+                Массовый CSV для Tilda: отмечено {selectedForCsv.size} из {notInTildaProducts.length} товаров без карточки в
+                Tilda. Без черновика от ИИ — только название/фото/цена/теги/порция.
+              </span>
+              <div className="ml-auto flex shrink-0 gap-2">
+                <button
+                  onClick={selectAllForCsv}
+                  className="rounded-md border border-sky-300 bg-white px-2 py-1 font-medium text-sky-700 hover:bg-sky-100 dark:border-sky-500/40 dark:bg-transparent dark:text-sky-400 dark:hover:bg-sky-500/20"
+                >
+                  Выбрать все
+                </button>
+                {selectedForCsv.size > 0 && (
+                  <button
+                    onClick={clearCsvSelection}
+                    className="rounded-md border border-zinc-300 px-2 py-1 font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  >
+                    Снять выбор
+                  </button>
+                )}
+                <button
+                  onClick={downloadSelectedCsv}
+                  disabled={selectedForCsv.size === 0}
+                  className="rounded-md bg-sky-600 px-2 py-1 font-medium text-white hover:bg-sky-700 disabled:opacity-40"
+                >
+                  ⬇️ Скачать CSV ({selectedForCsv.size})
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
             {activeTab !== "archive" && (
               <div className="flex flex-col gap-1.5 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-600 p-2">
@@ -1528,7 +1715,7 @@ export default function ShopPage() {
                     return (
                       created && (
                         <button
-                          onClick={() => downloadTildaCsv(created)}
+                          onClick={() => openCsvDraft(created)}
                           className="rounded-md border border-sky-300 bg-white px-2 py-1 font-medium text-sky-700 hover:bg-sky-50 dark:border-sky-500/40 dark:bg-transparent dark:text-sky-400 dark:hover:bg-sky-500/10"
                         >
                           ⬇️ CSV для Tilda
@@ -1574,6 +1761,9 @@ export default function ShopPage() {
                 onToggleSpecialOrder={toggleSpecialOrder}
                 onToggleManualHide={toggleManualHide}
                 onSetAddedToTilda={setAddedToTilda}
+                onOpenCsvDraft={openCsvDraft}
+                csvSelected={selectedForCsv.has(p.id)}
+                onToggleCsvSelected={toggleSelectedForCsv}
                 onToggleArchived={toggleArchived}
                 onSetBadge={setBadge}
                 onAddDelivery={addDelivery}
@@ -1586,6 +1776,109 @@ export default function ShopPage() {
           )}
         </div>
       </section>
+      )}
+
+      {csvDraftProduct && (
+        <Modal title={`Черновик карточки для Tilda — ${csvDraftProduct.name}`} onClose={() => setCsvDraftProduct(null)} wide>
+          <div className="space-y-3">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Текст и характеристики предложены ИИ по названию/тегам — проверь и поправь перед скачиванием,
+              особенно поле «Pro domácí mazlíčky» (токсичность для питомцев): если сомневаешься, лучше
+              осторожная общая формулировка, чем неверное «нетоксické».
+            </p>
+            {csvDraftLoading && <p className="text-sm text-zinc-500 dark:text-zinc-400">Генерирую черновик…</p>}
+            {csvDraftError && (
+              <p className="rounded-md bg-red-50 dark:bg-red-500/10 px-2 py-1.5 text-xs text-red-600 dark:text-red-400">
+                {csvDraftError}
+              </p>
+            )}
+            {!csvDraftLoading && (
+              <>
+                <label className="block text-xs">
+                  <span className="mb-1 block font-medium text-zinc-600 dark:text-zinc-300">
+                    Text (вступление, потом строка "#", потом уход построчно с "- ")
+                  </span>
+                  <textarea
+                    value={csvDraft.text}
+                    onChange={(e) => setCsvDraft((d) => ({ ...d, text: e.target.value }))}
+                    rows={8}
+                    className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 bg-transparent px-2 py-1.5 text-xs"
+                  />
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="block text-xs">
+                    <span className="mb-1 block font-medium text-zinc-600 dark:text-zinc-300">Výška</span>
+                    <input
+                      value={csvDraft.vyska}
+                      onChange={(e) => setCsvDraft((d) => ({ ...d, vyska: e.target.value }))}
+                      className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 bg-transparent px-2 py-1 text-xs"
+                    />
+                  </label>
+                  <label className="block text-xs">
+                    <span className="mb-1 block font-medium text-zinc-600 dark:text-zinc-300">Aroma</span>
+                    <input
+                      value={csvDraft.aroma}
+                      onChange={(e) => setCsvDraft((d) => ({ ...d, aroma: e.target.value }))}
+                      className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 bg-transparent px-2 py-1 text-xs"
+                    />
+                  </label>
+                  <label className="block text-xs">
+                    <span className="mb-1 block font-medium text-zinc-600 dark:text-zinc-300">Výdrž</span>
+                    <input
+                      value={csvDraft.vydrz}
+                      onChange={(e) => setCsvDraft((d) => ({ ...d, vydrz: e.target.value }))}
+                      className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 bg-transparent px-2 py-1 text-xs"
+                    />
+                  </label>
+                  <label className="block text-xs">
+                    <span className="mb-1 block font-medium text-zinc-600 dark:text-zinc-300">Typ řezu</span>
+                    <input
+                      value={csvDraft.cutType}
+                      onChange={(e) => setCsvDraft((d) => ({ ...d, cutType: e.target.value }))}
+                      className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 bg-transparent px-2 py-1 text-xs"
+                    />
+                  </label>
+                  <label className="block text-xs">
+                    <span className="mb-1 block font-medium text-zinc-600 dark:text-zinc-300">Úroveň vody</span>
+                    <input
+                      value={csvDraft.waterLevel}
+                      onChange={(e) => setCsvDraft((d) => ({ ...d, waterLevel: e.target.value }))}
+                      className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 bg-transparent px-2 py-1 text-xs"
+                    />
+                  </label>
+                </div>
+                <label className="block text-xs">
+                  <span className="mb-1 block font-medium text-red-600 dark:text-red-400">
+                    Pro domácí mazlíčky (проверь особенно внимательно)
+                  </span>
+                  <textarea
+                    value={csvDraft.pets}
+                    onChange={(e) => setCsvDraft((d) => ({ ...d, pets: e.target.value }))}
+                    rows={2}
+                    className="w-full rounded-md border border-red-300 dark:border-red-500/40 bg-transparent px-2 py-1.5 text-xs"
+                  />
+                </label>
+                <div className="flex justify-end gap-2 pt-1">
+                  <button
+                    onClick={() => setCsvDraftProduct(null)}
+                    className="rounded-md border border-zinc-300 dark:border-zinc-600 px-3 py-1.5 text-xs text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                  >
+                    Отмена
+                  </button>
+                  <button
+                    onClick={() => {
+                      downloadTildaCsv(csvDraftProduct, csvDraft);
+                      setCsvDraftProduct(null);
+                    }}
+                    className="rounded-md bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-700"
+                  >
+                    ⬇️ Скачать CSV
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </Modal>
       )}
     </div>
   );
