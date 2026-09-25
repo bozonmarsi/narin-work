@@ -772,22 +772,28 @@ function ProductCard({
         {p.pending_review ? (
           <>
             <p className="rounded-md bg-violet-50 dark:bg-violet-500/10 px-2 py-1 text-[11px] font-medium text-violet-700 dark:text-violet-400 ring-1 ring-inset ring-violet-200 dark:ring-violet-500/30">
-              ⏳ Заявка от флориста — проверьте перед публикацией
+              {onApprovePending
+                ? "⏳ Заявка от флориста — проверьте перед публикацией"
+                : "⏳ На проверке у менеджера — можно дополнить состав/количество/фото, пока не опубликовано"}
             </p>
             <div className="flex items-center gap-1">
-              <button
-                onClick={() => onApprovePending?.(p.id)}
-                className="flex-1 rounded-md bg-violet-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-violet-700"
-              >
-                ✅ Опубликовать
-              </button>
-              <button
-                onClick={() => onRejectPending?.(p.id, p.name)}
-                title="Удалить заявку без возможности восстановить"
-                className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1 text-[11px] text-zinc-500 dark:text-zinc-400 hover:border-red-300 hover:text-red-600 dark:hover:text-red-400"
-              >
-                🗑 Отклонить
-              </button>
+              {onApprovePending && (
+                <button
+                  onClick={() => onApprovePending(p.id)}
+                  className="flex-1 rounded-md bg-violet-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-violet-700"
+                >
+                  ✅ Опубликовать
+                </button>
+              )}
+              {onRejectPending && (
+                <button
+                  onClick={() => onRejectPending(p.id, p.name)}
+                  title="Удалить заявку без возможности восстановить"
+                  className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1 text-[11px] text-zinc-500 dark:text-zinc-400 hover:border-red-300 hover:text-red-600 dark:hover:text-red-400"
+                >
+                  🗑 {onApprovePending ? "Отклонить" : "Удалить заявку"}
+                </button>
+              )}
             </div>
           </>
         ) : (
@@ -1608,14 +1614,15 @@ export default function ShopPage() {
 
       {mainTab === "catalog" && (
       <section className="space-y-3">
-        {profile?.role === "manager" && pendingProducts.length > 0 && (
+        {pendingProducts.length > 0 && (
           <div className="rounded-lg border border-violet-200 dark:border-violet-500/30 bg-violet-50/60 dark:bg-violet-500/10 p-4">
             <p className="mb-1 font-medium text-violet-800 dark:text-violet-300">
-              ⏳ Заявки от флориста на новый товар ({pendingProducts.length})
+              ⏳ Заявки на новый товар ({pendingProducts.length})
             </p>
             <p className="mb-3 text-xs text-violet-600 dark:text-violet-400">
-              Флорист завёл товар, но он ещё не появится в обычном каталоге и не попадёт в наличие/CSV, пока вы не
-              проверите и не нажмёте «Опубликовать» — можно поправить категорию/метки/фото прямо здесь.
+              {profile?.role === "manager"
+                ? "Флорист завёл товар, но он ещё не появится в обычном каталоге и не попадёт в наличие/CSV, пока вы не проверите и не нажмёте «Опубликовать» — можно поправить категорию/метки/состав/фото прямо здесь."
+                : "Пока менеджер не опубликует — товар не появится в обычном каталоге. Можно дополнить категорию, метки, состав (для букетов/сетов) и количество прямо здесь."}
             </p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
               {pendingProducts.map((p) => (
@@ -1646,7 +1653,7 @@ export default function ShopPage() {
                   onToggleArchived={toggleArchived}
                   onSetBadge={setBadge}
                   onAddDelivery={addDelivery}
-                  onApprovePending={approvePending}
+                  onApprovePending={profile?.role === "manager" ? approvePending : undefined}
                   onRejectPending={rejectPending}
                 />
               ))}
