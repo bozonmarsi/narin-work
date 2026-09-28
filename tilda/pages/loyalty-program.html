@@ -108,6 +108,11 @@
 .nlp-mc-inner { position:relative; width:100%; height:100%; transition:transform .8s cubic-bezier(.4,.2,.2,1); transform-style:preserve-3d; cursor:pointer; outline:none; }
 .nlp-mc-inner:focus-visible { box-shadow:0 0 0 3px #fff, 0 0 0 5px var(--blue); border-radius:16px; }
 .nlp-mc-inner.is-flipped { transform:rotateY(180deg); }
+/* Safari (iOS) ignoruje backface-visibility u animovaných potomků, proto strany přepínáme i přes visibility v polovině otočky */
+.nlp-mc-front { visibility:visible; transition:visibility 0s linear .4s; }
+.nlp-mc-back { visibility:hidden; transition:visibility 0s linear .4s; }
+.nlp-mc-inner.is-flipped .nlp-mc-front { visibility:hidden; }
+.nlp-mc-inner.is-flipped .nlp-mc-back { visibility:visible; }
 .nlp-mc-face { position:absolute; inset:0; border-radius:16px; overflow:hidden; backface-visibility:hidden; -webkit-backface-visibility:hidden; box-shadow:0 24px 48px -14px rgba(18,52,110,.35); }
 .nlp-mc-front { background:#1f5fa8 center/cover no-repeat; }
 .nlp-mc-front::before { content:''; position:absolute; inset:0; background:rgba(0,0,0,.15); }
@@ -172,35 +177,35 @@
 .nlp-compare .ti-check { color:var(--blue); font-size:18px; }
 .nlp-compare .nlp-no { color:#c3c9d4; }
 
-/* ---------- CALCULATOR ---------- */
-.nlp-calc { display:grid; grid-template-columns:320px 1fr; gap:48px; margin-top:48px; align-items:start; }
-.nlp-range + .nlp-range { margin-top:32px; }
-.nlp-range label { display:flex; justify-content:space-between; font-size:15px; color:var(--ink-2); margin-bottom:14px; }
-.nlp-range label b { color:var(--ink); font-size:17px; font-weight:600; }
+/* ---------- MONEY BACK ---------- */
+.nlp-back { display:grid; grid-template-columns:5fr 7fr; gap:64px; margin-top:48px; align-items:center; }
+.nlp-range label { display:flex; justify-content:space-between; gap:12px; font-size:15px; color:var(--ink-2); margin-bottom:14px; }
+.nlp-range label b { color:var(--ink); font-size:17px; font-weight:600; white-space:nowrap; }
 .nlp-range input { -webkit-appearance:none; appearance:none; width:100%; height:4px; border-radius:999px; background:linear-gradient(90deg,var(--blue) var(--p,50%),#dde3eb var(--p,50%)); outline:none; margin:0; }
-.nlp-range input::-webkit-slider-thumb { -webkit-appearance:none; width:22px; height:22px; border-radius:50%; background:#fff; border:2px solid var(--blue); cursor:pointer; box-shadow:0 2px 6px rgba(24,108,224,.25); }
-.nlp-range input::-moz-range-thumb { width:18px; height:18px; border-radius:50%; background:#fff; border:2px solid var(--blue); cursor:pointer; }
-.nlp-calc-res { margin-top:40px; padding-top:28px; border-top:1px solid var(--line); }
-.nlp-calc-res span { display:block; font-size:14px; color:var(--muted); }
-.nlp-calc-res b { display:block; font-size:44px; font-weight:600; letter-spacing:-.02em; margin:4px 0 20px; }
-.nlp-calc-res em { font-style:normal; font-size:22px; font-weight:600; }
-.nlp-chart { position:relative; }
-.nlp-chart svg { display:block; width:100%; height:auto; overflow:visible; }
-.nlp-chart .ax { font-size:11px; fill:var(--muted); font-family:'Rubik',sans-serif; }
-.nlp-chart .tl { font-size:11px; font-weight:600; font-family:'Rubik',sans-serif; fill:var(--ink-2); }
-.nlp-tip { position:absolute; pointer-events:none; background:var(--ink); color:#fff; font-size:12px; line-height:1.45; padding:8px 10px; border-radius:10px; opacity:0; transition:opacity .15s; white-space:nowrap; transform:translate(-50%,-112%); }
-.nlp-ms { display:flex; gap:24px; flex-wrap:wrap; margin-top:16px; font-size:14px; color:var(--ink-2); }
-.nlp-ms b { color:var(--ink); font-weight:600; }
-.nlp-ms span::before { content:''; display:inline-block; width:10px; height:3px; border-radius:2px; background:var(--c); margin-right:8px; vertical-align:middle; }
-.nlp-calc-note { font-size:13px; color:var(--muted); margin-top:12px; line-height:1.5; }
+.nlp-range input::-webkit-slider-thumb { -webkit-appearance:none; width:24px; height:24px; border-radius:50%; background:#fff; border:2px solid var(--blue); cursor:pointer; box-shadow:0 2px 6px rgba(24,108,224,.25); }
+.nlp-range input::-moz-range-thumb { width:20px; height:20px; border-radius:50%; background:#fff; border:2px solid var(--blue); cursor:pointer; }
+.nlp-back-res { margin-top:40px; }
+.nlp-back-res > span { display:block; font-size:15px; color:var(--ink-2); }
+.nlp-back-res > b { display:block; font-size:64px; font-weight:600; letter-spacing:-.03em; line-height:1.05; color:var(--blue); margin:6px 0 10px; font-variant-numeric:tabular-nums; }
+.nlp-back-res > small { display:block; font-size:14px; color:var(--muted); line-height:1.5; }
+.nlp-bars { background:var(--tint); border-radius:var(--r-lg); padding:32px; }
+.nlp-bars-t { font-size:15px; font-weight:600; margin-bottom:22px; }
+.nlp-bar { display:grid; grid-template-columns:120px 1fr auto; gap:16px; align-items:center; padding:10px 0; transition:opacity .3s ease; }
+.nlp-bar-n { display:flex; align-items:center; gap:8px; font-size:15px; font-weight:500; }
+.nlp-bar-n small { color:var(--muted); font-weight:400; font-size:13px; }
+.nlp-bar-track { height:12px; }
+.nlp-bar-fill { height:100%; border-radius:999px; background:var(--c); width:0; transition:width .6s cubic-bezier(.16,1,.3,1); }
+.nlp-bar-v { font-size:16px; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; min-width:92px; text-align:right; }
+.nlp-bar.is-dim { opacity:.45; }
+.nlp-back-note { font-size:13px; color:var(--muted); margin-top:18px; line-height:1.5; }
 
 /* ---------- STICKERS ---------- */
 .nlp-stk { display:grid; grid-template-columns:6fr 5fr; gap:64px; align-items:center; }
 .nlp-sheet { background:linear-gradient(165deg,#eaf2fd,#d9e8fa); border-radius:var(--r-lg); padding:40px 32px 32px; min-height:420px; display:flex; flex-direction:column; }
 .nlp-sheet-top { display:flex; justify-content:space-between; align-items:center; font-size:15px; font-weight:600; }
 .nlp-sheet-top span { font-weight:500; font-size:14px; background:#fff; border-radius:999px; padding:5px 12px; color:var(--ink-2); }
-.nlp-stickers { flex:1; display:grid; grid-template-columns:repeat(5,1fr); justify-items:center; align-content:center; gap:14px 8px; padding:28px 0; }
-.nlp-stk-img { width:86px; height:86px; object-fit:contain; filter:drop-shadow(0 6px 10px rgba(18,52,110,.22)); transform:scale(0) rotate(var(--rot)); transition:transform .5s cubic-bezier(.34,1.56,.64,1); }
+.nlp-stickers { flex:1; display:grid; grid-template-columns:repeat(6,1fr); justify-items:center; align-content:center; gap:14px 8px; padding:28px 0; }
+.nlp-stk-img { width:100%; max-width:84px; aspect-ratio:1; height:auto; object-fit:contain; filter:drop-shadow(0 6px 10px rgba(18,52,110,.22)); transform:scale(0) rotate(var(--rot)); transition:transform .5s cubic-bezier(.34,1.56,.64,1); }
 .nlp-stk-img.is-on { transform:scale(1) rotate(var(--rot)); }
 .nlp-daisy { display:inline-block; vertical-align:middle; }
 .nlp-tier-cap b { display:inline-flex; align-items:center; gap:8px; }
@@ -217,54 +222,22 @@
 .nlp-stk-list .ti { font-size:24px; color:var(--blue); }
 .nlp-stk-list b { display:block; font-size:17px; font-weight:600; margin-bottom:3px; }
 .nlp-stk-list p { font-size:15px; line-height:1.55; color:var(--ink-2); }
-.nlp-styles { margin-top:72px; }
-.nlp-styles-top { display:flex; justify-content:space-between; align-items:flex-end; gap:24px; flex-wrap:wrap; }
-.nlp-styles-top h3 { font-size:24px; font-weight:600; }
-.nlp-styles-top p { font-size:15px; color:var(--ink-2); margin-top:6px; }
-.nlp-style-sw { display:flex; gap:6px; flex-wrap:wrap; }
-.nlp-style-row { display:grid; grid-template-columns:repeat(7,1fr); gap:12px; margin-top:28px; }
-.nlp-style-box { aspect-ratio:1; border-radius:var(--r-md); background:var(--tint); display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; transition:transform .3s cubic-bezier(.16,1,.3,1); }
-.nlp-style:not(.is-locked) .nlp-style-box:hover { transform:translateY(-4px); }
-.nlp-style-box img { width:78%; height:78%; object-fit:contain; }
-.nlp-style-box img { width:70%; height:70%; filter:drop-shadow(0 4px 8px rgba(18,52,110,.2)); }
-.nlp-style.is-locked .nlp-style-box > *:first-child { filter:grayscale(1); opacity:.35; }
-.nlp-lock { position:absolute; right:8px; bottom:8px; width:28px; height:28px; border-radius:50%; background:#fff; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:15px; }
-.nlp-style-n { font-size:14px; font-weight:600; margin-top:10px; }
-.nlp-style-s { font-size:13px; color:var(--muted); margin-top:2px; }
-/* styl samolepek (placeholder vzhledy, nahradit fotkami v CONFIG.stickerStyles) */
-.st-0 { background:#fdeef2; }
-.st-1 { background:linear-gradient(135deg,#fde2e8,#e3e8fd); }
-.st-2 { background:#fff; box-shadow:inset 0 0 0 2px var(--ink); }
-.st-3 { background:linear-gradient(120deg,#c9f0ff,#f6d2ff,#fff3c4); }
-.st-4 { background:#fff4d6; }
-.st-5 { background:linear-gradient(135deg,#f6e6a8,#e2b93b,#f3dc8a); }
-.st-6 { background:#e4efd9; }
 
 /* ---------- GIFTS ---------- */
-.nlp-gifts { display:grid; grid-template-columns:5fr 7fr; gap:16px; margin-top:48px; }
-.nlp-gift-a { background:var(--tint); }
-.nlp-gift-items { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:28px; }
-.nlp-gift-item { background:#fff; border-radius:var(--r-md); padding:16px; display:flex; align-items:center; gap:12px; font-size:15px; font-weight:500; }
-.nlp-gift-item .ti { font-size:24px; color:var(--blue); }
-.nlp-gift-item img { width:40px; height:40px; object-fit:contain; }
-.nlp-gift-a .nlp-note { margin-top:20px; font-size:14px; line-height:1.5; color:var(--ink-2); }
-.nlp-gift-b { background:var(--blue); color:#fff; }
-.nlp-gift-b p { color:rgba(255,255,255,.85); }
-.nlp-flow { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-top:32px; position:relative; }
-.nlp-flow::before { content:''; position:absolute; left:18px; right:18px; top:17px; height:2px; background:rgba(255,255,255,.28); }
-.nlp-flow li { position:relative; }
-.nlp-flow-n { width:36px; height:36px; border-radius:50%; background:#fff; color:var(--blue); font-weight:600; display:flex; align-items:center; justify-content:center; font-size:14px; margin-bottom:14px; position:relative; }
-.nlp-flow b { display:block; font-size:15px; font-weight:600; line-height:1.3; }
-.nlp-flow span { display:block; font-size:13px; line-height:1.45; color:rgba(255,255,255,.8); margin-top:6px; }
-.nlp-flow-foot { margin-top:28px; padding-top:20px; border-top:1px solid rgba(255,255,255,.2); font-size:14px; line-height:1.6; color:rgba(255,255,255,.85); }
-.nlp-gift-b .nlp-soon { background:#fff; }
-
-/* ---------- BASE ---------- */
-.nlp-base { display:grid; grid-template-columns:4fr 7fr; gap:64px; }
-.nlp-base-grid { display:grid; grid-template-columns:1fr 1fr; gap:40px 48px; }
-.nlp-base-grid .ti { font-size:28px; color:var(--blue); display:block; margin-bottom:14px; }
-.nlp-base-grid b { display:block; font-size:18px; font-weight:600; margin-bottom:6px; }
-.nlp-base-grid p { font-size:15px; line-height:1.55; color:var(--ink-2); }
+.nlp-gift-steps { display:flex; flex-wrap:wrap; gap:8px 28px; margin-top:28px; font-size:15px; color:var(--ink-2); }
+.nlp-gift-steps span { display:inline-flex; align-items:center; gap:10px; }
+.nlp-gift-steps i { font-style:normal; width:26px; height:26px; border-radius:50%; background:var(--tint-2); color:var(--blue); font-weight:600; font-size:13px; display:inline-flex; align-items:center; justify-content:center; }
+.nlp-brands { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:40px; }
+.nlp-brand { display:grid; grid-template-columns:auto 1fr; gap:24px; align-items:center; text-decoration:none; color:var(--ink); background:var(--tint); border-radius:var(--r-lg); padding:24px; transition:transform .35s cubic-bezier(.16,1,.3,1), box-shadow .35s ease; }
+.nlp-brand:hover { transform:translateY(-4px); box-shadow:0 20px 36px -18px rgba(18,52,110,.35); }
+.nlp-brand img { width:132px; height:132px; object-fit:contain; border-radius:var(--r-md); background:#fff; display:block; }
+.nlp-brand h3 { font-size:22px; font-weight:600; }
+.nlp-brand p { font-size:15px; line-height:1.55; color:var(--ink-2); margin-top:6px; }
+.nlp-brand-go { display:inline-flex; align-items:center; gap:6px; margin-top:14px; font-size:15px; font-weight:500; color:var(--blue); }
+.nlp-brand-go .ti { font-size:16px; transition:transform .3s ease; }
+.nlp-brand:hover .nlp-brand-go .ti { transform:translateX(4px); }
+.nlp-partners { display:flex; align-items:center; gap:14px; margin-top:16px; padding:20px 24px; border-radius:var(--r-lg); border:1px solid var(--line); font-size:15px; line-height:1.5; color:var(--ink-2); }
+.nlp-partners b { color:var(--ink); font-weight:600; }
 
 /* ---------- FAQ ---------- */
 .nlp-faq-wrap { display:grid; grid-template-columns:4fr 7fr; gap:64px; }
@@ -292,18 +265,17 @@
 /* ---------- RESPONSIVE ---------- */
 @media (max-width:1024px) {
   .nlp-sec { padding:72px 0; }
-  .nlp-hero-grid, .nlp-how, .nlp-calc, .nlp-stk, .nlp-base, .nlp-faq-wrap, .nlp-gifts { grid-template-columns:1fr; gap:40px; }
+  .nlp-hero-grid, .nlp-how, .nlp-back, .nlp-stk, .nlp-faq-wrap, .nlp-brands { grid-template-columns:1fr; gap:40px; }
+  .nlp-brands { gap:16px; }
   .nlp-hero h1 { font-size:48px; }
   .nlp-ex { position:static; }
   .nlp-bento { grid-template-columns:1fr; }
   .nlp-tile--stage { grid-row:auto; }
   .nlp-tier-panel { grid-template-columns:1fr; gap:32px; }
-  .nlp-style-row { grid-template-columns:repeat(4,1fr); }
   .nlp-final-box { grid-template-columns:1fr; }
 }
 @media (max-width:767px) {
-  .nlp-stk-img { width:58px; height:58px; }
-  .nlp-stickers { gap:10px 4px; }
+  .nlp-stickers { grid-template-columns:repeat(4,1fr); gap:10px 6px; }
   .nlp-final-mark { width:220px; height:auto; right:-60px; bottom:-70px; }
   .nlp-wrap { padding:0 16px; }
   .nlp-sec { padding:56px 0; }
@@ -335,18 +307,13 @@
   .nlp-tier-rate { font-size:56px; }
   .nlp-bens { grid-template-columns:1fr; }
   .nlp-tier-rules { grid-template-columns:1fr; gap:20px; }
-  .nlp-calc-res b { font-size:36px; }
+  .nlp-back-res > b { font-size:48px; }
+  .nlp-bars { padding:22px 18px; }
+  .nlp-bar { grid-template-columns:96px 1fr auto; gap:10px; }
+  .nlp-bar-v { min-width:0; font-size:15px; }
+  .nlp-brand { grid-template-columns:1fr; gap:16px; padding:20px; }
+  .nlp-brand img { width:100%; height:auto; aspect-ratio:16/10; }
   .nlp-sheet { min-height:0; }
-  .nlp-style-row { grid-template-columns:repeat(7,112px); gap:10px; overflow-x:auto; margin:24px -16px 0; padding:4px 16px; scroll-snap-type:x mandatory; scrollbar-width:none; }
-  .nlp-style-row::-webkit-scrollbar { display:none; }
-  .nlp-style { scroll-snap-align:start; }
-  .nlp-flow { grid-template-columns:1fr; gap:18px; }
-  .nlp-flow::before { left:17px; right:auto; top:18px; bottom:18px; width:2px; height:auto; }
-  .nlp-flow li { display:grid; grid-template-columns:36px 1fr; gap:14px; }
-  .nlp-flow-n { margin:0; }
-  .nlp-flow span { margin-top:3px; }
-  .nlp-gift-items { grid-template-columns:1fr 1fr; }
-  .nlp-base-grid { grid-template-columns:1fr; gap:28px; }
   .nlp-final-box { padding:36px 24px; }
   .nlp-final-box h2 { font-size:28px; }
   .nlp-final-cta .nlp-btn { flex:1 1 100%; }
@@ -366,7 +333,7 @@
     <div class="nlp-wrap nlp-hero-grid">
       <div class="nlp-r">
         <div class="nlp-label">Věrnostní program NARIN</div>
-        <h1>Každá kytice se vám vrátí</h1>
+        <h1>Každá květina se vám vrátí</h1>
         <p class="nlp-lead">Sbírejte body z každé objednávky, plaťte jimi další květiny a odemykejte výhody.</p>
         <div class="nlp-hero-cta">
           <a class="nlp-btn nlp-btn--primary" href="https://vezminarin.cz/members/login">Získat 150 bodů</a>
@@ -403,10 +370,10 @@
       <div class="nlp-ex nlp-r" id="nlpEx">
         <div class="nlp-ex-title">Příklad pro úroveň Gold</div>
         <div class="nlp-ex-step">
-          <div class="nlp-ex-h">Objednávka kytice</div>
+          <div class="nlp-ex-h">Objednávka květin</div>
           <div class="nlp-ex-box">
             <div class="nlp-ex-row"><span>Hodnota objednávky</span><b>1 500 Kč</b></div>
-            <div class="nlp-ex-row"><span>Kešbek Gold</span><b>1,5 %</b></div>
+            <div class="nlp-ex-row"><span>Cashback Gold</span><b>1,5 %</b></div>
           </div>
         </div>
         <div class="nlp-ex-step">
@@ -510,33 +477,29 @@
     </div>
   </section>
 
-  <!-- CALCULATOR -->
+  <!-- MONEY BACK -->
   <section class="nlp-sec">
     <div class="nlp-wrap">
       <div class="nlp-r">
-        <h2 class="nlp-h2">Kolik získáte za rok</h2>
-        <p class="nlp-lead">Nastavte, jak často a za kolik objednáváte. Graf ukáže, kdy dosáhnete které úrovně.</p>
+        <h2 class="nlp-h2">Kolik se vám vrátí</h2>
+        <p class="nlp-lead">Nastavte, kolik měsíčně utratíte za květiny. Spočítáme, kolik korun se vám za rok vrátí.</p>
       </div>
-      <div class="nlp-calc nlp-r">
+      <div class="nlp-back nlp-r">
         <div>
           <div class="nlp-range">
-            <label for="nlpAvg">Průměrná objednávka <b id="nlpAvgV"></b></label>
-            <input type="range" id="nlpAvg" min="500" max="4000" step="100" value="1500">
+            <label for="nlpSpend">Měsíčně za květiny <b id="nlpSpendV"></b></label>
+            <input type="range" id="nlpSpend" min="500" max="10000" step="100" value="3000">
           </div>
-          <div class="nlp-range">
-            <label for="nlpFreq">Objednávek za měsíc <b id="nlpFreqV"></b></label>
-            <input type="range" id="nlpFreq" min="1" max="8" step="1" value="4">
-          </div>
-          <div class="nlp-calc-res">
-            <span>Body za 12 měsíců</span><b id="nlpOutPts">0</b>
-            <span>Úroveň po roce</span><em id="nlpOutTier"></em>
+          <div class="nlp-back-res">
+            <span>Za první rok se vám vrátí</span>
+            <b id="nlpBackTotal">0 Kč</b>
+            <small id="nlpBackSub"></small>
           </div>
         </div>
-        <div class="nlp-chart">
-          <svg id="nlpChart" viewBox="0 0 640 280" role="img" aria-label="Graf růstu získaných bodů za 12 měsíců"></svg>
-          <div class="nlp-tip" id="nlpTip"></div>
-          <div class="nlp-ms" id="nlpMs"></div>
-          <p class="nlp-calc-note">Orientační výpočet včetně 150 uvítacích bodů. Body se zaokrouhlují dolů podle sazby úrovně v okamžiku nákupu.</p>
+        <div class="nlp-bars">
+          <div class="nlp-bars-t">Kolik vrátí každá úroveň za rok</div>
+          <div id="nlpBars"></div>
+          <p class="nlp-back-note">Orientační výpočet. 1 bod = 1 Kč, body se připisují z každé zaplacené objednávky podle úrovně v okamžiku nákupu.</p>
         </div>
       </div>
     </div>
@@ -547,27 +510,21 @@
     <div class="nlp-wrap">
       <div class="nlp-stk">
         <div class="nlp-sheet nlp-r" id="nlpSheet">
-          <div class="nlp-sheet-top">Vaše sbírka <span id="nlpSheetCount">0 z 10 nových</span></div>
+          <div class="nlp-sheet-top">Vaše sbírka <span id="nlpSheetCount">0 nových</span></div>
           <div class="nlp-stickers" id="nlpStickers"></div>
           <button class="nlp-btn nlp-btn--primary nlp-print" id="nlpPrint" type="button" tabindex="-1"><i class="ti ti-printer" aria-hidden="true"></i>Nechat vytisknout</button>
         </div>
         <div class="nlp-r">
           <div class="nlp-label">NARIN Stickers</div>
-          <h2 class="nlp-h2">Samolepky z vašich kytic</h2>
-          <p class="nlp-lead">Za každou zakoupenou květinu přibude do sbírky její samolepka. Deset nových vám pošleme vytištěných, zdarma.</p>
+          <h2 class="nlp-h2">Samolepky z vašich květin</h2>
+          <p class="nlp-lead">Za každou zakoupenou květinu přibude do sbírky její samolepka. Od deseti nových vám je pošleme vytištěné, zdarma.</p>
           <ul class="nlp-stk-list">
-            <li><i class="ti ti-flower" aria-hidden="true"></i><div><b>Co koupíte, to máte</b><p>Tři kytice pivoněk znamenají tři samolepky pivoňky.</p></div></li>
+            <li><i class="ti ti-flower" aria-hidden="true"></i><div><b>Co koupíte, to máte</b><p>Tři náruče pivoněk znamenají tři samolepky pivoňky.</p></div></li>
             <li><i class="ti ti-printer" aria-hidden="true"></i><div><b>Tisk na vyžádání</b><p>Od 10 nových samolepek se v účtu objeví tlačítko „Nechat vytisknout“. Přiložíme je k další objednávce.</p></div></li>
+            <li><i class="ti ti-palette" aria-hidden="true"></i><div><b>Styly tisku</b><p>Na Sapphire máte 1 styl, s každou další úrovní přibudou 2 nové. Celkem jich je 7.</p></div></li>
             <li><i class="ti ti-share" aria-hidden="true"></i><div><b>Sdílení sbírky</b><p>Obrázek za letošní rok nebo za celou dobu. Bez jména a bez veřejného odkazu.</p></div></li>
           </ul>
         </div>
-      </div>
-      <div class="nlp-styles nlp-r">
-        <div class="nlp-styles-top">
-          <div><h3>Sedm stylů tisku</h3><p>Vyšší úroveň odemyká další styly a ponechává i ty předchozí.</p></div>
-          <div class="nlp-style-sw" id="nlpStyleSw"></div>
-        </div>
-        <div class="nlp-style-row" id="nlpStyles"></div>
       </div>
     </div>
   </section>
@@ -575,42 +532,34 @@
   <!-- GIFTS -->
   <section class="nlp-sec" style="padding-top:24px;">
     <div class="nlp-wrap">
-      <div class="nlp-r"><h2 class="nlp-h2">Dárky</h2></div>
-      <div class="nlp-gifts">
-        <div class="nlp-tile nlp-gift-a nlp-r">
-          <h3>Dárek za novou úroveň</h3>
-          <p>Když postoupíte výš, připravíme pro vás kousek z naší Ateliér kolekce nebo drobnost NARIN.</p>
-          <div class="nlp-gift-items" id="nlpGiftItems"></div>
-          <p class="nlp-note">V účtu uvidíte „Dárek na vás čeká“ a my ho přibalíme k vaší další objednávce.</p>
-        </div>
-        <div class="nlp-tile nlp-gift-b nlp-r">
-          <h3>Dárek bez adresy<span class="nlp-soon" data-soon="gift">Již brzy</span></h3>
-          <p>Stačí telefon příjemce. Adresu a čas doručení si zvolí sám.</p>
-          <ol class="nlp-flow">
-            <li><div class="nlp-flow-n">1</div><div><b>Zadáte telefon a zaplatíte</b><span>Režim překvapení skryje vaše jméno.</span></div></li>
-            <li><div class="nlp-flow-n">2</div><div><b>Příjemce dostane odkaz</b><span>Vybere adresu a čas, který se mu hodí.</span></div></li>
-            <li><div class="nlp-flow-n">3</div><div><b>Kytici svážeme až potom</b><span>Aby dorazila úplně čerstvá.</span></div></li>
-            <li><div class="nlp-flow-n">4</div><div><b>QR kód na krabici</b><span>Příjemce si může založit sbírku se 150 body.</span></div></li>
-          </ol>
-          <p class="nlp-flow-foot">Doručujeme nejdříve další den. Když příjemce do 48 hodin nepotvrdí adresu, vrátíme vám peníze. Jeho telefon uchováme jen do doručení.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- BASE -->
-  <section class="nlp-sec" style="padding-top:24px;">
-    <div class="nlp-wrap nlp-base">
       <div class="nlp-r">
-        <h2 class="nlp-h2">Pro všechny zákazníky</h2>
-        <p class="nlp-lead">Tohle máte od první objednávky, bez ohledu na úroveň.</p>
+        <h2 class="nlp-h2">Dárek za každou novou úroveň</h2>
+        <p class="nlp-lead">Když postoupíte na Silver, Gold nebo Platinum, přibalíme vám k další objednávce dárek. Vybíráme ho v NARIN Dárky, v NARIN Atelier a u partnerů, které máme rádi.</p>
+        <div class="nlp-gift-steps">
+          <span><i>1</i>Postoupíte na vyšší úroveň</span>
+          <span><i>2</i>V účtu uvidíte „Dárek na vás čeká“</span>
+          <span><i>3</i>Přibalíme ho k další objednávce</span>
+        </div>
       </div>
-      <div class="nlp-base-grid nlp-r">
-        <div><i class="ti ti-calendar-heart" aria-hidden="true"></i><b>Připomínka dat</b><p>Uložte si příjemce a jejich svátky. Ozveme se 5 dní předem.</p></div>
-        <div><i class="ti ti-camera" aria-hidden="true"></i><b>Foto z předání</b><p>Kurýr vyfotí kytici u příjemce, abyste viděli, že dorazila.</p></div>
-        <div><i class="ti ti-message-2" aria-hidden="true"></i><b>SMS 10 minut předem</b><p>Příjemce ví, že kurýr bude za chvíli u dveří.</p></div>
-        <div><i class="ti ti-cat" aria-hidden="true"></i><b>Cat-safe a alergeny</b><p>U květin označujeme, co je bezpečné pro kočky a co může vadit alergikům.</p></div>
+      <div class="nlp-brands">
+        <a class="nlp-brand nlp-r" href="https://vezminarin.cz/darky">
+          <img src="https://static.tildacdn.com/tild6663-6565-4865-a434-656133616161/Blue_Pink_Flat_Illus.webp" alt="NARIN Dárky" loading="lazy">
+          <div>
+            <h3>NARIN Dárky</h3>
+            <p>Plyšáci, sladkosti, bonbony, přáníčka a další radosti, které se hodí ke květinám.</p>
+            <span class="nlp-brand-go">Prohlédnout Dárky<i class="ti ti-arrow-right" aria-hidden="true"></i></span>
+          </div>
+        </a>
+        <a class="nlp-brand nlp-r" href="https://vezminarin.cz/atelier">
+          <img src="https://static.tildacdn.com/tild3235-3366-4238-b966-323132643632/Blue_Pink_Flat_Illus.webp" alt="NARIN Atelier" loading="lazy">
+          <div>
+            <h3>NARIN Atelier</h3>
+            <p>Kenzany, vázy, nůžky na květiny, čističe kenzanů a vše, co potřebujete k péči o květiny.</p>
+            <span class="nlp-brand-go">Prohlédnout Atelier<i class="ti ti-arrow-right" aria-hidden="true"></i></span>
+          </div>
+        </a>
       </div>
+      <div class="nlp-partners nlp-r"><span id="nlpPartnerMark"></span><p><b>A od našich partnerů.</b> Čas od času přibalíme i něco od značek, se kterými rádi spolupracujeme.</p></div>
     </div>
   </section>
 
@@ -629,7 +578,7 @@
         <span class="nlp-final-mark" id="nlpFinalMark" aria-hidden="true"></span>
         <div>
           <h2>Začněte se 150 body</h2>
-          <p>Registrace je zdarma a body použijete hned na první kytici.</p>
+          <p>Registrace je zdarma a body použijete hned na první objednávku.</p>
         </div>
         <div class="nlp-final-cta">
           <a class="nlp-btn nlp-btn--primary" href="https://vezminarin.cz/members/login">Získat 150 bodů</a>
@@ -647,8 +596,8 @@
     welcome: 150,
     // Minimální částka pro dopravu zdarma na Gold. TODO: potvrdit.
     freeDeliveryFrom: 1500,
-    // Funkce, které ještě neběží, dostanou štítek "Již brzy". Klíče: 'gift', 'care'.
-    comingSoon: ['gift', 'care'],
+    // Funkce, které ještě neběží, dostanou štítek "Již brzy". Klíč: 'care'.
+    comingSoon: ['care'],
     tiers: [
       { name: 'Sapphire', from: 0, rate: 0.5, color: '#186ce0',
         img: 'https://static.tildacdn.com/tild6237-3062-4338-b234-373762313165/E3941E6E-7AD6-4B84-B.webp',
@@ -661,7 +610,7 @@
       { name: 'Silver', from: 300, rate: 1, color: '#8d97a3',
         img: 'https://static.tildacdn.com/tild6136-3638-4164-b931-313537363164/21443537-178F-45E1-B.webp',
         bens: [
-          ['ti-message-circle', 'Chat s floristou', 'poradí s výběrem i s péčí o kytici'],
+          ['ti-message-circle', 'Chat s floristou', 'poradí s výběrem i s péčí o květiny'],
           ['ti-calendar-star', 'Sváteční sloty dřív', 'zápis na doručení se vám otevře dřív než ostatním'],
           ['ti-heart-handshake', 'Asistent, který si vás pamatuje', 'příjemce, oblíbené odrůdy a minulé objednávky'],
           ['ti-printer', '+2 styly tištěných samolepek'],
@@ -686,7 +635,7 @@
           ['ti-gift', 'Dárek za dosažení úrovně']
         ] }
     ],
-    // Samolepky (fotky z katalogu). List ukazuje 10 kusů, první dvě se opakují: stejná květina = další stejná samolepka.
+    // Samolepky (fotky z katalogu).
     stickers: [
       'https://static.tildacdn.com/tild6535-6239-4465-b336-343231393235/___-_26.webp',
       'https://static.tildacdn.com/tild3733-3635-4661-b964-646332616636/___-_24.webp',
@@ -695,32 +644,20 @@
       'https://static.tildacdn.com/tild3336-3164-4365-a333-326332393437/___-_21.webp',
       'https://static.tildacdn.com/tild6236-3832-4033-a465-383130623662/___-_17.webp',
       'https://static.tildacdn.com/tild6162-3965-4766-b037-333539343363/___-_15.webp',
-      'https://static.tildacdn.com/tild6537-6564-4164-b265-343732666333/___-_16.webp'
+      'https://static.tildacdn.com/tild6537-6564-4164-b265-343732666333/___-_16.webp',
+      'https://static.tildacdn.com/tild3339-3439-4235-b637-623634646139/___-_35.PNG',
+      'https://static.tildacdn.com/tild6237-3830-4263-b436-623864343934/___-_34.PNG',
+      'https://static.tildacdn.com/tild3066-3939-4366-b638-393035373533/___-_36.PNG'
     ],
-    sheetOrder: [0, 1, 2, 0, 3, 4, 5, 1, 6, 7],
-    // 7 stylů tisku. img: URL náhledu stylu, až budou fotky. Bez img se ukáže samolepka na zástupném pozadí.
-    stickerStyles: [
-      { name: 'Klasik', tier: 0, img: '' },
-      { name: 'Akvarel', tier: 1, img: '' },
-      { name: 'Linka', tier: 1, img: '' },
-      { name: 'Hologram', tier: 2, img: '' },
-      { name: 'Retro', tier: 2, img: '' },
-      { name: 'Zlatá ražba', tier: 3, img: '' },
-      { name: 'Herbář', tier: 3, img: '' }
-    ],
-    giftItems: [
-      { name: 'Nůžky', icon: 'ti-scissors', img: '' },
-      { name: 'Váza', icon: 'ti-flower', img: '' },
-      { name: 'Kenzan', icon: 'ti-plant-2', img: '' },
-      { name: 'Karty NARIN', icon: 'ti-cards', img: '' }
-    ],
+    // Pořadí na listu: všech 11 samolepek + jedna opakovaná (stejná květina = další stejná samolepka).
+    sheetOrder: [0, 8, 1, 2, 9, 0, 3, 4, 10, 5, 6, 7],
     faq: [
       ['Propadají body?', 'Ne. Body nemají datum expirace a zůstávají na vašem účtu.'],
       ['Kdy mi přijdou body za objednávku?', 'Hned jak je objednávka zaplacená. Uvidíte je na své kartě v účtu.'],
       ['Kolik mohu zaplatit body?', 'Body uplatníte v košíku až do výše 30 % hodnoty objednávky.'],
       ['Sníží se mi úroveň, když body utratím?', 'Ne. Úroveň se počítá ze součtu všech bodů, které jste kdy získali, ne z aktuálního zůstatku. Jednou dosažená úroveň už neklesá.'],
       ['Počítá se do úrovně i 150 uvítacích bodů?', 'Ano. Po registraci tak máte polovinu cesty k úrovni Silver.'],
-      ['Podle jaké sazby se počítá objednávka, se kterou postoupím výš?', 'Ještě podle dosavadní. Vyšší kešbek platí od další objednávky.'],
+      ['Podle jaké sazby se počítá objednávka, se kterou postoupím výš?', 'Ještě podle dosavadní. Vyšší cashback platí od další objednávky.'],
       ['Jak funguje tisk samolepek?', 'Za každou zakoupenou položku dostanete samolepku do digitální sbírky. Od 10 nových se v účtu objeví tlačítko „Nechat vytisknout“. Vyberete styl a samolepky zdarma přiložíme k další objednávce.'],
       ['Můžu dostat samolepku květiny, kterou jsem nekoupil(a)?', 'Ne. Sbírka obsahuje přesně to, co jste si u nás objednali.'],
       ['Jak použiju kartu na prodejně?', 'Otevřete svůj účet, klepněte na kartu a ukažte čárový kód na druhé straně. Načteme ho, body za nákup se připíšou a můžete jimi i zaplatit, stejně jako na webu až 30 % hodnoty nákupu.']
@@ -767,7 +704,7 @@
     c.style.zIndex = i + 1;
     c.innerHTML = (i === T.length - 1 ? '<span class="nlp-sheen"></span>' : '') +
       '<span class="nlp-badge" style="background:' + t.color + '">' + t.name + '</span>' +
-      '<span class="nlp-fan-rate">kešbek<b>' + pct(t.rate) + '</b></span>';
+      '<span class="nlp-fan-rate">cashback<b>' + pct(t.rate) + '</b></span>';
     fan.appendChild(c);
   });
 
@@ -800,10 +737,10 @@
     if (mcSeen) mcAnimateBal(total);
     if (next) {
       $('nlpMcProgMain').innerHTML = '<span style="color:' + t.color + '">' + fmt(total) + ' b.</span> <span style="color:#a9b0bb">→</span> <span style="color:' + next.color + '">do ' + next.name + ': ' + fmt(next.from - total) + ' b.</span>';
-      $('nlpMcProgSub').textContent = pct(next.rate) + ' kešbek po dosažení úrovně ' + next.name;
+      $('nlpMcProgSub').textContent = pct(next.rate) + ' cashback po dosažení úrovně ' + next.name;
     } else {
       $('nlpMcProgMain').innerHTML = '<span style="color:' + t.color + '">' + fmt(total) + ' b., nejvyšší úroveň ' + t.name + '</span>';
-      $('nlpMcProgSub').textContent = 'Aktuální kešbek ' + pct(t.rate) + ' z každé objednávky';
+      $('nlpMcProgSub').textContent = 'Aktuální cashback ' + pct(t.rate) + ' z každé objednávky';
     }
     $('nlpMcSegs').innerHTML = T.slice(1).map(function (nt, k) {
       var a = T[k].from, w = Math.max(0, Math.min(100, (total - a) / (nt.from - a) * 100));
@@ -883,7 +820,7 @@
   selectTier(0);
 
   var rows = [
-    ['Kešbek', T.map(function (t) { return pct(t.rate); })],
+    ['Cashback', T.map(function (t) { return pct(t.rate); })],
     ['Příjemci a připomínky dat', [1, 1, 1, 1]],
     ['Digitální sbírka samolepek', [1, 1, 1, 1]],
     ['Styly tištěných samolepek', ['1', '3', '5', '7']],
@@ -911,99 +848,32 @@
     this.innerHTML = (open ? 'Skrýt porovnání' : 'Porovnat úrovně') + '<i class="ti ti-chevron-' + (open ? 'up' : 'down') + '" aria-hidden="true"></i>';
   });
 
-  // ---------- CALCULATOR ----------
+  // ---------- MONEY BACK ----------
   function tierAt(total) { var k = 0; T.forEach(function (t, i) { if (total >= t.from) k = i; }); return k; }
-  function simulate(avg, perMonth) {
-    var total = CONFIG.welcome, pts = [{ m: 0, v: total }], reached = {};
-    for (var m = 1; m <= 12; m++) {
-      for (var o = 0; o < perMonth; o++) {
-        var before = tierAt(total);
-        total += Math.floor(avg * T[before].rate / 100);
-        var after = tierAt(total);
-        if (after > before && reached[after] === undefined) reached[after] = { m: m, n: (m - 1) * perMonth + o + 1 };
-      }
-      pts.push({ m: m, v: total });
-    }
-    return { pts: pts, total: total, reached: reached };
-  }
-  var svg = $('nlpChart'), tip = $('nlpTip');
-  var W = 640, H = 280, PL = 40, PR = 8, PT = 12, PB = 28, maxY = 1000, lastSim = null;
-  function sizeChart() { var narrow = svg.parentNode.clientWidth < 520; W = narrow ? 340 : 640; H = narrow ? 240 : 280; PL = narrow ? 34 : 40; svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); }
-  function sx(m) { return PL + (m / 12) * (W - PL - PR); }
-  function sy(v) { return PT + (1 - v / maxY) * (H - PT - PB); }
-  function drawChart(sim) {
-    sizeChart();
-    maxY = Math.max(1000, Math.ceil(sim.total / 250) * 250 + 100);
-    var s = '';
-    T.forEach(function (t, i) {
-      var top = i < T.length - 1 ? T[i + 1].from : maxY;
-      s += '<rect x="' + PL + '" y="' + sy(top) + '" width="' + (W - PL - PR) + '" height="' + (sy(t.from) - sy(top)) + '" fill="' + t.color + '" opacity="0.06"/>';
-      if (i > 0) s += '<line x1="' + PL + '" x2="' + (W - PR) + '" y1="' + sy(t.from) + '" y2="' + sy(t.from) + '" stroke="' + t.color + '" stroke-width="1" stroke-dasharray="3 4" opacity=".7"/>';
-      s += '<text class="tl" x="' + (PL + 8) + '" y="' + (sy(t.from) - 7) + '">' + t.name + '</text>';
-      s += '<text class="ax" x="' + (PL - 8) + '" y="' + (sy(t.from) + 4) + '" text-anchor="end">' + t.from + '</text>';
-    });
-    (W < 500 ? [0, 6, 12] : [0, 3, 6, 9, 12]).forEach(function (m) {
-      s += '<text class="ax" x="' + sx(m) + '" y="' + (H - 8) + '" text-anchor="' + (m === 0 ? 'start' : m === 12 ? 'end' : 'middle') + '">' + (m === 0 ? 'start' : m + '. měs.') + '</text>';
-    });
-    var d = sim.pts.map(function (p, i) { return (i ? 'L' : 'M') + sx(p.m).toFixed(1) + ' ' + sy(p.v).toFixed(1); }).join(' ');
-    s += '<defs><linearGradient id="nlpG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#186ce0" stop-opacity=".16"/><stop offset="1" stop-color="#186ce0" stop-opacity="0"/></linearGradient></defs>';
-    s += '<path d="' + d + ' L' + sx(12) + ' ' + sy(0) + ' L' + sx(0) + ' ' + sy(0) + ' Z" fill="url(#nlpG)"/>';
-    s += '<path id="nlpLine" d="' + d + '" fill="none" stroke="#186ce0" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
-    Object.keys(sim.reached).forEach(function (k) {
-      var r = sim.reached[k];
-      s += '<circle cx="' + sx(r.m) + '" cy="' + sy(sim.pts[r.m].v) + '" r="6" fill="' + T[k].color + '" stroke="#fff" stroke-width="2"/>';
-    });
-    s += '<line id="nlpCross" x1="0" x2="0" y1="' + PT + '" y2="' + sy(0) + '" stroke="#16181d" stroke-width="1" opacity="0"/>';
-    s += '<circle id="nlpDot" r="5" fill="#fff" stroke="#186ce0" stroke-width="2.5" opacity="0"/>';
-    s += '<rect id="nlpHit" x="' + PL + '" y="0" width="' + (W - PL - PR) + '" height="' + H + '" fill="transparent"/>';
-    svg.innerHTML = s;
-    if (!reduced) {
-      var line = $('nlpLine'), len = line.getTotalLength();
-      line.style.strokeDasharray = len; line.style.strokeDashoffset = len;
-      line.getBoundingClientRect();
-      line.style.transition = 'stroke-dashoffset .9s cubic-bezier(.16,1,.3,1)';
-      line.style.strokeDashoffset = 0;
-    }
-    $('nlpHit').addEventListener('mousemove', hover);
-    $('nlpHit').addEventListener('touchmove', function (e) { hover(e.touches[0]); }, { passive: true });
-    $('nlpHit').addEventListener('mouseleave', hideTip);
-    $('nlpHit').addEventListener('touchend', hideTip);
-  }
-  function hover(e) {
-    var r = svg.getBoundingClientRect(), x = (e.clientX - r.left) * (W / r.width);
-    var m = Math.max(0, Math.min(12, Math.round((x - PL) / (W - PL - PR) * 12)));
-    var p = lastSim.pts[m], cx = sx(m), cy = sy(p.v);
-    $('nlpCross').setAttribute('x1', cx); $('nlpCross').setAttribute('x2', cx); $('nlpCross').setAttribute('opacity', '.2');
-    $('nlpDot').setAttribute('cx', cx); $('nlpDot').setAttribute('cy', cy); $('nlpDot').setAttribute('opacity', '1');
-    var box = svg.parentNode.getBoundingClientRect();
-    tip.style.left = (r.left - box.left + cx * r.width / W) + 'px';
-    tip.style.top = (r.top - box.top + cy * r.height / H - 8) + 'px';
-    tip.innerHTML = (m === 0 ? 'Po registraci' : m + '. měsíc') + '<br><b>' + fmt(p.v) + ' b.</b>, ' + T[tierAt(p.v)].name;
-    tip.style.opacity = 1;
-  }
-  function hideTip() { tip.style.opacity = 0; $('nlpCross').setAttribute('opacity', '0'); $('nlpDot').setAttribute('opacity', '0'); }
-  var avg = $('nlpAvg'), freq = $('nlpFreq'), calcTimer;
-  function setFill(inp) { inp.style.setProperty('--p', ((inp.value - inp.min) / (inp.max - inp.min) * 100) + '%'); }
+  var spend = $('nlpSpend'), bars = $('nlpBars');
+  bars.innerHTML = T.map(function (t) {
+    return '<div class="nlp-bar" style="--c:' + t.color + '"><div class="nlp-bar-n">' + daisy(t.color, 18) + '<span>' + t.name + ' <small>' + pct(t.rate) + '</small></span></div>' +
+      '<div class="nlp-bar-track"><div class="nlp-bar-fill"></div></div><div class="nlp-bar-v"></div></div>';
+  }).join('');
   function updateCalc() {
-    setFill(avg); setFill(freq);
-    $('nlpAvgV').textContent = fmt(+avg.value) + ' Kč';
-    $('nlpFreqV').textContent = freq.value;
-    var sim = simulate(+avg.value, +freq.value);
-    lastSim = sim;
-    $('nlpOutPts').textContent = fmt(sim.total - CONFIG.welcome) + ' b.';
-    var ft = T[tierAt(sim.total)];
-    $('nlpOutTier').innerHTML = daisy(ft.color, 22) + ' ' + ft.name;
-    $('nlpOutTier').style.color = ft.color;
-    $('nlpMs').innerHTML = T.slice(1).map(function (t, j) {
-      var r = sim.reached[j + 1];
-      return '<span style="--c:' + t.color + '">' + t.name + ' ' + (r ? '<b>' + r.m + '. měsíc</b>' : 'déle než rok') + '</span>';
-    }).join('');
-    clearTimeout(calcTimer);
-    calcTimer = setTimeout(function () { drawChart(sim); }, 60);
+    var m = +spend.value;
+    spend.style.setProperty('--p', ((m - spend.min) / (spend.max - spend.min) * 100) + '%');
+    $('nlpSpendV').textContent = fmt(m) + ' Kč';
+    // první rok: 150 za registraci + měsíční cashback podle úrovně, které klient právě dosáhl
+    var total = CONFIG.welcome;
+    for (var i = 0; i < 12; i++) total += Math.floor(m * T[tierAt(total)].rate / 100);
+    var reached = tierAt(total);
+    $('nlpBackTotal').textContent = fmt(total) + ' Kč';
+    $('nlpBackSub').innerHTML = 'Včetně ' + CONFIG.welcome + ' Kč za registraci. Po roce budete na úrovni <b style="color:' + T[reached].color + '">' + T[reached].name + '</b>.';
+    var max = m * 12 * T[T.length - 1].rate / 100;
+    bars.querySelectorAll('.nlp-bar').forEach(function (row, k) {
+      var v = Math.floor(m * 12 * T[k].rate / 100);
+      row.querySelector('.nlp-bar-fill').style.width = (v / max * 100) + '%';
+      row.querySelector('.nlp-bar-v').textContent = fmt(v) + ' Kč';
+      row.classList.toggle('is-dim', k > reached);
+    });
   }
-  avg.addEventListener('input', updateCalc);
-  freq.addEventListener('input', updateCalc);
-  window.addEventListener('resize', function () { clearTimeout(calcTimer); calcTimer = setTimeout(function () { drawChart(lastSim); }, 150); });
+  spend.addEventListener('input', updateCalc);
 
   // ---------- STICKERS ----------
   var stk = $('nlpStickers');
@@ -1020,36 +890,16 @@
     if (stkPlayed) return; stkPlayed = true;
     var ch = stk.children, n = 0;
     (function next() {
-      if (n >= ch.length) { $('nlpPrint').classList.add('is-ready'); $('nlpPrint').removeAttribute('tabindex'); return; }
+      if (n >= ch.length) return;
       ch[n].classList.add('is-on'); n++;
-      $('nlpSheetCount').textContent = n + ' z 10 nových';
+      $('nlpSheetCount').textContent = n + ' nových';
+      if (n >= 10) { $('nlpPrint').classList.add('is-ready'); $('nlpPrint').removeAttribute('tabindex'); }
       setTimeout(next, reduced ? 0 : 170);
     })();
   }
   $('nlpPrint').addEventListener('click', function () { location.href = 'https://vezminarin.cz/members/login'; });
 
-  var styleRow = $('nlpStyles'), sw = $('nlpStyleSw');
-  function renderStyles(level) {
-    styleRow.innerHTML = CONFIG.stickerStyles.map(function (s, i) {
-      var locked = s.tier > level, t = T[s.tier];
-      var pic = '<img src="' + (s.img || CONFIG.stickers[i % CONFIG.stickers.length]) + '" alt="' + s.name + '" loading="lazy" draggable="false">';
-      return '<div class="nlp-style' + (locked ? ' is-locked' : '') + '"><div class="nlp-style-box' + (s.img ? '' : ' st-' + i) + '">' + pic + (locked ? '<span class="nlp-lock"><i class="ti ti-lock" aria-hidden="true"></i></span>' : '') + '</div>' +
-        '<div class="nlp-style-n">' + s.name + '</div><div class="nlp-style-s">' + (locked ? 'odemkne se na ' + t.name : t.name) + '</div></div>';
-    }).join('');
-    sw.querySelectorAll('.nlp-pill').forEach(function (p, k) { p.classList.toggle('is-active', k === level); });
-  }
-  T.forEach(function (t, i) {
-    var p = document.createElement('button');
-    p.type = 'button'; p.className = 'nlp-pill'; p.textContent = t.name;
-    p.addEventListener('click', function () { renderStyles(i); });
-    sw.appendChild(p);
-  });
-  renderStyles(0);
 
-  // ---------- GIFTS ----------
-  $('nlpGiftItems').innerHTML = CONFIG.giftItems.map(function (g) {
-    return '<div class="nlp-gift-item">' + (g.img ? '<img src="' + g.img + '" alt="" loading="lazy">' : '<i class="ti ' + g.icon + '" aria-hidden="true"></i>') + g.name + '</div>';
-  }).join('');
 
   // ---------- FAQ ----------
   $('nlpFaq').innerHTML = CONFIG.faq.map(function (q) {
@@ -1088,6 +938,7 @@
   });
   setTimeout(function () { fan.classList.add('is-in'); }, 120);
   $('nlpFinalMark').innerHTML = daisy('#fff', 320);
+  $('nlpPartnerMark').innerHTML = daisy('#186ce0', 28);
   updateCalc();
 })();
 </script>
