@@ -228,14 +228,25 @@
 .nlp-gift-steps span { display:inline-flex; align-items:center; gap:10px; }
 .nlp-gift-steps i { font-style:normal; width:26px; height:26px; border-radius:50%; background:var(--tint-2); color:var(--blue); font-weight:600; font-size:13px; display:inline-flex; align-items:center; justify-content:center; }
 .nlp-brands { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:40px; }
-.nlp-brand { display:grid; grid-template-columns:auto 1fr; gap:24px; align-items:center; text-decoration:none; color:var(--ink); background:var(--tint); border-radius:var(--r-lg); padding:24px; transition:transform .35s cubic-bezier(.16,1,.3,1), box-shadow .35s ease; }
-.nlp-brand:hover { transform:translateY(-4px); box-shadow:0 20px 36px -18px rgba(18,52,110,.35); }
-.nlp-brand img { width:132px; height:132px; object-fit:contain; border-radius:var(--r-md); background:#fff; display:block; }
-.nlp-brand h3 { font-size:22px; font-weight:600; }
-.nlp-brand p { font-size:15px; line-height:1.55; color:var(--ink-2); margin-top:6px; }
-.nlp-brand-go { display:inline-flex; align-items:center; gap:6px; margin-top:14px; font-size:15px; font-weight:500; color:var(--blue); }
+.nlp-brand { display:flex; flex-direction:column; text-decoration:none; color:var(--ink); background:#fff; border:1px solid var(--line); border-radius:var(--r-lg); overflow:hidden; transition:transform .4s cubic-bezier(.16,1,.3,1), box-shadow .4s ease; }
+.nlp-brand:hover { transform:translateY(-6px); box-shadow:0 28px 48px -24px rgba(18,52,110,.4); }
+.nlp-brand-art { position:relative; aspect-ratio:16/9; display:flex; align-items:center; justify-content:center; overflow:hidden; background:var(--art); }
+.nlp-brand-art::before, .nlp-brand-art::after { content:''; position:absolute; border-radius:50%; background:rgba(255,255,255,.35); }
+.nlp-brand-art::before { width:260px; height:260px; left:-70px; bottom:-120px; }
+.nlp-brand-art::after { width:160px; height:160px; right:-40px; top:-50px; }
+.nlp-brand-art img { position:relative; z-index:1; height:78%; width:auto; max-width:80%; object-fit:contain; border-radius:var(--r-md); box-shadow:0 18px 36px -18px rgba(18,52,110,.45); transition:transform .6s cubic-bezier(.16,1,.3,1); }
+.nlp-brand:hover .nlp-brand-art img { transform:scale(1.04) rotate(-1.5deg); }
+.nlp-brand-tag { align-self:flex-start; font-size:12px; font-weight:600; letter-spacing:.02em; color:var(--tag); margin-bottom:8px; }
+.nlp-brand-body { padding:24px 26px 26px; display:flex; flex-direction:column; flex:1; }
+.nlp-brand h3 { font-size:24px; font-weight:600; letter-spacing:-.01em; }
+.nlp-brand p { font-size:15px; line-height:1.55; color:var(--ink-2); margin-top:8px; }
+.nlp-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:16px; }
+.nlp-chips span { font-size:13px; font-weight:500; padding:6px 12px; border-radius:999px; background:var(--chip); color:var(--tag); }
+.nlp-brand-go { display:inline-flex; align-items:center; gap:6px; margin-top:auto; padding-top:20px; font-size:15px; font-weight:500; color:var(--blue); }
 .nlp-brand-go .ti { font-size:16px; transition:transform .3s ease; }
 .nlp-brand:hover .nlp-brand-go .ti { transform:translateX(4px); }
+.nlp-brand--darky { --art:linear-gradient(150deg,#fde9f0,#f8cfdd); --chip:#fdecf2; --tag:#b3264a; }
+.nlp-brand--atelier { --art:linear-gradient(150deg,#e8f1fd,#cfe0f8); --chip:#eaf2fd; --tag:#1257b8; }
 .nlp-partners { display:flex; align-items:center; gap:14px; margin-top:16px; padding:20px 24px; border-radius:var(--r-lg); border:1px solid var(--line); font-size:15px; line-height:1.5; color:var(--ink-2); }
 .nlp-partners b { color:var(--ink); font-weight:600; }
 
@@ -265,8 +276,7 @@
 /* ---------- RESPONSIVE ---------- */
 @media (max-width:1024px) {
   .nlp-sec { padding:72px 0; }
-  .nlp-hero-grid, .nlp-how, .nlp-back, .nlp-stk, .nlp-faq-wrap, .nlp-brands { grid-template-columns:1fr; gap:40px; }
-  .nlp-brands { gap:16px; }
+  .nlp-hero-grid, .nlp-how, .nlp-back, .nlp-stk, .nlp-faq-wrap { grid-template-columns:1fr; gap:40px; }
   .nlp-hero h1 { font-size:48px; }
   .nlp-ex { position:static; }
   .nlp-bento { grid-template-columns:1fr; }
@@ -301,7 +311,7 @@
   .nlp-ex, .nlp-tile, .nlp-tier-panel, .nlp-sheet { padding:24px 20px; }
   .nlp-tile--stage { padding:36px 16px 24px; }
   .nlp-tile--code { grid-template-columns:1fr; }
-  .nlp-tier-tabs { grid-template-columns:repeat(4,160px); overflow-x:auto; gap:12px; margin:36px -16px 0; padding:8px 16px 4px; scroll-snap-type:x mandatory; scrollbar-width:none; }
+  .nlp-tier-tabs { grid-template-columns:repeat(4,160px); overflow-x:auto; gap:12px; margin:36px -16px 0; padding:8px 16px 4px; scroll-snap-type:x mandatory; scroll-padding-inline:16px; scrollbar-width:none; }
   .nlp-tier-tabs::-webkit-scrollbar { display:none; }
   .nlp-tier-tab { scroll-snap-align:start; }
   .nlp-tier-rate { font-size:56px; }
@@ -311,8 +321,12 @@
   .nlp-bars { padding:22px 18px; }
   .nlp-bar { grid-template-columns:96px 1fr auto; gap:10px; }
   .nlp-bar-v { min-width:0; font-size:15px; }
-  .nlp-brand { grid-template-columns:1fr; gap:16px; padding:20px; }
-  .nlp-brand img { width:100%; height:auto; aspect-ratio:16/10; }
+  .nlp-brands { grid-template-columns:none; grid-auto-flow:column; grid-auto-columns:84%; overflow-x:auto; margin:32px -16px 0; padding:4px 16px 12px; scroll-snap-type:x mandatory; scroll-padding-inline:16px; scrollbar-width:none; }
+  .nlp-brands::-webkit-scrollbar { display:none; }
+  .nlp-brand { scroll-snap-align:start; }
+  .nlp-brand:hover { transform:none; }
+  .nlp-brand-body { padding:20px; }
+  .nlp-brand h3 { font-size:21px; }
   .nlp-sheet { min-height:0; }
   .nlp-final-box { padding:36px 24px; }
   .nlp-final-box h2 { font-size:28px; }
@@ -542,19 +556,23 @@
         </div>
       </div>
       <div class="nlp-brands">
-        <a class="nlp-brand nlp-r" href="https://vezminarin.cz/darky">
-          <img src="https://static.tildacdn.com/tild6663-6565-4865-a434-656133616161/Blue_Pink_Flat_Illus.webp" alt="NARIN Dárky" loading="lazy">
-          <div>
+        <a class="nlp-brand nlp-brand--darky nlp-r" href="https://vezminarin.cz/darky">
+          <div class="nlp-brand-art"><img src="https://static.tildacdn.com/tild6663-6565-4865-a434-656133616161/Blue_Pink_Flat_Illus.webp" alt="NARIN Dárky" loading="lazy"></div>
+          <div class="nlp-brand-body">
+            <span class="nlp-brand-tag">K květinám</span>
             <h3>NARIN Dárky</h3>
-            <p>Plyšáci, sladkosti, bonbony, přáníčka a další radosti, které se hodí ke květinám.</p>
+            <p>Všechno, co udělá radost spolu s květinami.</p>
+            <div class="nlp-chips"><span>Plyšáci</span><span>Sladkosti</span><span>Bonbony</span><span>Přáníčka</span><span>Zážitky</span></div>
             <span class="nlp-brand-go">Prohlédnout Dárky<i class="ti ti-arrow-right" aria-hidden="true"></i></span>
           </div>
         </a>
-        <a class="nlp-brand nlp-r" href="https://vezminarin.cz/atelier">
-          <img src="https://static.tildacdn.com/tild3235-3366-4238-b966-323132643632/Blue_Pink_Flat_Illus.webp" alt="NARIN Atelier" loading="lazy">
-          <div>
+        <a class="nlp-brand nlp-brand--atelier nlp-r" href="https://vezminarin.cz/atelier">
+          <div class="nlp-brand-art"><img src="https://static.tildacdn.com/tild3235-3366-4238-b966-323132643632/Blue_Pink_Flat_Illus.webp" alt="NARIN Atelier" loading="lazy"></div>
+          <div class="nlp-brand-body">
+            <span class="nlp-brand-tag">Péče o květiny</span>
             <h3>NARIN Atelier</h3>
-            <p>Kenzany, vázy, nůžky na květiny, čističe kenzanů a vše, co potřebujete k péči o květiny.</p>
+            <p>Nástroje a doplňky, se kterými vydrží květiny doma déle.</p>
+            <div class="nlp-chips"><span>Kenzany</span><span>Vázy</span><span>Nůžky</span><span>Čističe kenzanů</span></div>
             <span class="nlp-brand-go">Prohlédnout Atelier<i class="ti ti-arrow-right" aria-hidden="true"></i></span>
           </div>
         </a>
@@ -645,9 +663,9 @@
       'https://static.tildacdn.com/tild6236-3832-4033-a465-383130623662/___-_17.webp',
       'https://static.tildacdn.com/tild6162-3965-4766-b037-333539343363/___-_15.webp',
       'https://static.tildacdn.com/tild6537-6564-4164-b265-343732666333/___-_16.webp',
-      'https://static.tildacdn.com/tild3339-3439-4235-b637-623634646139/___-_35.PNG',
-      'https://static.tildacdn.com/tild6237-3830-4263-b436-623864343934/___-_34.PNG',
-      'https://static.tildacdn.com/tild3066-3939-4366-b638-393035373533/___-_36.PNG'
+      'https://static.tildacdn.com/tild3936-3531-4663-b830-663166363632/35.png',
+      'https://static.tildacdn.com/tild6565-3338-4436-b331-646334303164/34.png',
+      'https://static.tildacdn.com/tild3066-6637-4961-b265-616234653861/36.png'
     ],
     // Pořadí na listu: všech 11 samolepek + jedna opakovaná (stejná květina = další stejná samolepka).
     sheetOrder: [0, 8, 1, 2, 9, 0, 3, 4, 10, 5, 6, 7],
