@@ -18,6 +18,7 @@
 | `occasions.html` | `/members/occasions` | Даты и получатели: карточки людей, привязка праздников, импорт .ics, автопредложение сохранить получателя из истории заказов, автозаполнение адреса через Google Places |
 | `b2b-cabinet.html` | `/members/b2b` | Личный кабинет для клиентов с привязанной фирмой: баланс, счета, история заказов. Синяя тема — сознательное визуальное отделение от обычного личного кабинета |
 | `orders.html` | `/members/orders` | История заказов: статус-степпер (Potvrzeno/Na cestě/Doručeno), детали заказа, стикеры, баннер на коллекцию. Читает `window.__memberData.orders`, сама держит свой собственный опрос `member-data` (раньше был продублирован дважды подряд в коде страницы — оставлен один экземпляр) |
+| `loyalty-program.html` | Stránka věrnostního programu (stránku nutno založit v Tilda, celý kód do jednoho T123 bloku) | Veřejná stránka programu: úrovně Sapphire/Silver/Gold/Platinum s výhodami, kalkulačka bodů s grafem, samolepky a 7 stylů tisku, dárky, FAQ. Vše nastavitelné v objektu `CONFIG` na začátku `<script>` (prahy, sazby, doprava zdarma na Gold, štítky „Již brzy“, obrázky stylů samolepek a dárků) |
 | `newsletter-unsubscribe.html` | `/odhlaseni` (страницу нужно завести в Tilda и вставить код) | Одноклик-отписка от рассылок: читает `?token=` из URL, дёргает RPC `unsubscribe_newsletter` напрямую по anon key (без логина — это обязательное требование самого unsubscribe). Транзакционных уведомлений о заказах не касается — та рассылка/эта таблица разные вещи |
 
 ## blocks/ — блоки внутри других страниц
