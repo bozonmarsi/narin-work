@@ -107,7 +107,9 @@
 <script>
 (function () {
     var SUPABASE_URL = 'https://wqburlamuipxmenqsjnx.supabase.co';
-    var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxYnVybGFtdWlweG1lbnFzam54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTY2MTIsImV4cCI6MjA4ODgzMjYxMn0.NYnQoorm3z5gkjr954JdYhzDNmYfCjefzK1ddq3cflw';
+    // Key is cleaned of any stray invisible characters that the Tilda editor
+    // or a copy-paste can add - one such character makes fetch throw.
+    var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxYnVybGFtdWlweG1lbnFzam54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTY2MTIsImV4cCI6MjA4ODgzMjYxMn0.NYnQoorm3z5gkjr954JdYhzDNmYfCjefzK1ddq3cflw'.replace(/[^A-Za-z0-9._-]/g, '');
 
     // Czech text is written as numeric HTML entities and decoded at runtime,
     // because diacritics get broken when pasted into the Tilda editor.
