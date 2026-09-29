@@ -119,6 +119,12 @@ html, body { overflow-x:hidden; }
 .nkc-close { display:none; flex-shrink:0; width:40px; height:40px; margin-left:auto; border:none; border-radius:50%; background:var(--tint); color:var(--ink); cursor:pointer; align-items:center; justify-content:center; }
 .nkc-close svg { width:18px; height:18px; }
 .nkc-open-hint { display:none; }
+.nkc-tapcover { display:none; }
+@media (max-width:767px) {
+  .nkc-chat { position:relative; }
+  .nkc-chat:not(.is-full) .nkc-tapcover { display:block; position:absolute; inset:0; z-index:5; border:none; background:transparent; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+}
+.nkc-open-btn { display:inline-flex; align-items:center; gap:8px; height:44px; padding:0 20px; border-radius:999px; background:var(--blue); color:#fff; font:500 15px 'Rubik',sans-serif; }
 .nkc-chat.is-full { transition:none; position:fixed; left:0; right:0; top:0; z-index:2147483000; margin:0; border:none; border-radius:0; box-shadow:none; height:100vh; height:100dvh; animation:nkcFullIn .28s cubic-bezier(.16,1,.3,1); }
 @keyframes nkcFullIn { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:none; } }
 .nkc-chat.is-full .nkc-chat-head { padding-top:calc(14px + env(safe-area-inset-top, 0px)); }
@@ -236,7 +242,8 @@ html.nkc-lock, html.nkc-lock body { overflow:hidden !important; }
   .nkc-plaque { padding:11px 16px; }
   .nkc-msgs { padding:16px; }
   .nkc-chat:not(.is-full) .nkc-msgs { height:190px; }
-  .nkc-chat:not(.is-full) .nkc-open-hint { display:block; text-align:center; font-size:12px; color:var(--muted); padding:0 16px 12px; }
+  .nkc-chat:not(.is-full) .nkc-open-hint { display:flex; justify-content:center; padding:4px 16px 16px; }
+  .nkc-chat:not(.is-full) .nkc-composer, .nkc-chat:not(.is-full) .nkc-topics, .nkc-chat:not(.is-full) .nkc-note, .nkc-chat:not(.is-full) .nkc-orders, .nkc-chat:not(.is-full) .nkc-attach, .nkc-chat:not(.is-full) .nkc-verify { display:none !important; }
   .nkc-bubble { max-width:88%; }
   .nkc-topics { flex-wrap:nowrap; overflow-x:auto; padding:12px 16px 4px; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
   .nkc-topics::-webkit-scrollbar { display:none; }
@@ -317,7 +324,8 @@ html.nkc-lock, html.nkc-lock body { overflow:hidden !important; }
           </button>
         </div>
         <div class="nkc-err" id="nkcSendErr" style="padding:0 22px 12px;"></div>
-        <div class="nkc-open-hint">Klepnutím otevřete chat na celou obrazovku</div>
+        <div class="nkc-open-hint"><span class="nkc-open-btn">Otevřít chat</span></div>
+        <button type="button" class="nkc-tapcover" id="nkcTapCover" aria-label="Otevřít chat"></button>
       </div>
     </div>
   </section>
@@ -674,8 +682,7 @@ html.nkc-lock, html.nkc-lock body { overflow:hidden !important; }
     var tp = (ownerMode ? CONFIG.ownerTopics : TOPICS)[+b.getAttribute('data-i')];
     text.value = (hasOrders() && tp.pl) ? tp.pl : tp.p;
     if (tp.order && hasOrders() && !selOrder) showOrders(true);
-    text.focus();
-    text.selectionStart = text.selectionEnd = text.value.length;
+    if (canHover) { text.focus(); text.selectionStart = text.selectionEnd = text.value.length; }
     grow();
   });
 
@@ -791,7 +798,7 @@ html.nkc-lock, html.nkc-lock body { overflow:hidden !important; }
   codeIn.addEventListener('input', function () { codeIn.value = codeIn.value.replace(/\D/g, ''); if (codeIn.value.length === 6) verify(); });
 
   send.addEventListener('click', function () {
-    if (!body()) { text.focus(); return; }
+    if (!body()) { if (canHover) text.focus(); return; }
     if (getToken()) { deliver(); return; }
     if (codeRow.hidden) showStep('email');
   });
@@ -816,11 +823,27 @@ html.nkc-lock, html.nkc-lock body { overflow:hidden !important; }
     chatEl.classList.toggle('is-kb', vv.height < window.innerHeight * 0.8);
     msgs.scrollTop = msgs.scrollHeight;
   }
+  var savedY = 0;
+  function lockPage() {
+    // iOS ignoruje overflow:hidden při otevření klávesnice, proto stránku zafixujeme na místě
+    savedY = window.scrollY || window.pageYOffset || 0;
+    document.documentElement.classList.add('nkc-lock');
+    var b = document.body.style;
+    b.position = 'fixed'; b.top = (-savedY) + 'px'; b.left = '0'; b.right = '0'; b.width = '100%';
+  }
+  function unlockPage() {
+    document.documentElement.classList.remove('nkc-lock');
+    var b = document.body.style;
+    b.position = ''; b.top = ''; b.left = ''; b.right = ''; b.width = '';
+    window.scrollTo(0, savedY);
+    // history.back() umí pozici posunout, proto ji po chvilce vrátíme ještě jednou
+    var y = savedY; setTimeout(function () { window.scrollTo(0, y); }, 60);
+  }
   function openFull() {
     if (fullOn || !isPhone()) return;
     fullOn = true;
     chatEl.classList.add('is-full');
-    document.documentElement.classList.add('nkc-lock');
+    lockPage();
     try { history.pushState({ nkcChat: 1 }, ''); } catch (e) {}
     if (vv) { vv.addEventListener('resize', fitViewport); vv.addEventListener('scroll', fitViewport); }
     fitViewport();
@@ -832,20 +855,16 @@ html.nkc-lock, html.nkc-lock body { overflow:hidden !important; }
     text.blur();
     chatEl.classList.remove('is-full', 'is-kb');
     chatEl.style.height = ''; chatEl.style.transform = '';
-    document.documentElement.classList.remove('nkc-lock');
+    unlockPage();
     if (vv) { vv.removeEventListener('resize', fitViewport); vv.removeEventListener('scroll', fitViewport); }
     if (!fromHistory && history.state && history.state.nkcChat) { try { history.back(); } catch (e) {} }
-    chatEl.scrollIntoView({ block: 'start' });
   }
   window.addEventListener('popstate', function () { if (fullOn) closeFull(true); });
   $('nkcClose').addEventListener('click', function () { closeFull(false); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && fullOn) closeFull(false); });
-  // cokoli uvnitř chatu na telefonu nejdřív otevře celou obrazovku
-  chatEl.addEventListener('pointerdown', function (e) {
-    if (fullOn || !isPhone() || e.target.closest('.nkc-close')) return;
-    openFull();
-  }, true);
-  text.addEventListener('focus', openFull);
+  // Na telefonu je chat na stránce jen náhled: klepnutí ho otevře na celou obrazovku
+  // bez klávesnice. Klávesnice se ukáže, až když člověk sám klepne do pole.
+  $('nkcTapCover').addEventListener('click', openFull);
   window.addEventListener('resize', function () { if (fullOn && !isPhone()) closeFull(false); });
 
   // ---------- REVEAL ----------
