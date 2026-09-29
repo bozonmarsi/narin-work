@@ -1,10 +1,9 @@
 <style>
-/* Narin catalog engine (Zero Block on the catalog page, #rec1915290073).
-   Replaces catalog-filter + catalog-availability-badges + catalog-custom-badges.
+/* Narin catalog engine - Zero Block on the catalog page (#rec1915290073).
    One data request (get_catalog_page_data), one render pass, one observer on the grid.
-   Hiding is ONLY via data-narin-hidden + the CSS rule below, never inline style
-   (Tilda rewrites the card style attribute but never touches data-* attributes).
-   Comments are ASCII-only on purpose: non-ASCII text breaks when pasted into Tilda. */
+   Hiding is ONLY via data-narin-hidden + CSS rule, never inline style.
+   Comments must stay plain ASCII without quote characters: the Tilda HTML
+   validator misreads them and reports an unclosed tag. */
 #rec1915290073 .t-store__card-list { row-gap: 20px !important; }
 #rec1915290073 .t-store__card__price-wrapper { margin-top: 4px !important; }
 #rec1915290073 .t-store__card__price-value, #rec1915290073 .t-store__card__price { font-size: 20px !important; font-weight: 500 !important; }
@@ -12,16 +11,51 @@
 #rec1915290073 .t-store__load-more-btn-wrap { display: none !important; }
 
 .narin-cat-nav { margin: 16px 0; font-family: 'Rubik', sans-serif; }
-.narin-cat-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 0 4px 6px 8px; margin: 0 -4px 10px; -webkit-overflow-scrolling: touch; }
+.narin-cat-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 4px 4px 10px 8px; margin: 0 -4px 6px; -webkit-overflow-scrolling: touch; }
 .narin-cat-tabs::-webkit-scrollbar { display: none; }
-.narin-cat-tab { flex: 0 0 auto; padding: 10px 20px; border-radius: 24px; border: 1px solid #e0e2e6; background: #fff; font-size: 14px; font-weight: 600; white-space: nowrap; cursor: pointer; color: #16181d; }
-.narin-cat-tab.active { background: #186ce0; border-color: #186ce0; color: #fff; }
-.narin-cat-count { font-size: 12px; color: #8a8f98; margin: -4px 0 10px; }
+.narin-cat-tab { flex: 0 0 auto; display: inline-flex; align-items: baseline; padding: 10px 18px; border-radius: 24px; border: 1px solid #e0e2e6; background: #fff; font-family: 'Rubik', sans-serif; font-size: 14px; font-weight: 600; white-space: nowrap; cursor: pointer; color: #16181d; transition: background .2s, border-color .2s, color .2s, box-shadow .2s, transform .15s; }
+.narin-cat-tab:active { transform: scale(0.96); }
+.narin-cat-tab.active { background: #186ce0; border-color: #186ce0; color: #fff; box-shadow: 0 6px 16px rgba(24,108,224,0.28); }
+.narin-cat-tab-count { margin-left: 6px; font-size: 11px; font-weight: 500; opacity: 0.5; font-variant-numeric: tabular-nums; }
+.narin-cat-tab.active .narin-cat-tab-count { opacity: 0.8; }
 .narin-cat-subbar { display: flex; gap: 6px; overflow-x: auto; padding: 0 4px 4px 8px; margin: 0 -4px 12px; -webkit-overflow-scrolling: touch; }
 .narin-cat-subbar::-webkit-scrollbar { display: none; }
-.narin-cat-pill { flex: 0 0 auto; padding: 6px 14px; border-radius: 20px; border: 1px solid #e0e2e6; background: #fff; font-size: 12px; cursor: pointer; color: #16181d; white-space: nowrap; }
+.narin-cat-pill { flex: 0 0 auto; padding: 6px 14px; border-radius: 20px; border: 1px solid #e0e2e6; background: #fff; font-family: 'Rubik', sans-serif; font-size: 12px; cursor: pointer; color: #16181d; white-space: nowrap; transition: background .2s, border-color .2s, color .2s; }
 .narin-cat-pill.active { background: #02e590; border-color: #02e590; color: #fff; }
-.narin-cat-empty { font-family: 'Rubik', sans-serif; font-size: 13px; color: #8a8f98; padding: 20px 0; }
+
+/* Empty state: shown when a tab or filter combination has no products. */
+.narin-cat-empty { position: relative; overflow: hidden; margin: 4px 0 28px; padding: 36px 24px 32px; border-radius: 24px; background: linear-gradient(160deg, #f1f7ff 0%, #ecfdf5 100%); text-align: center; font-family: 'Rubik', sans-serif; animation: narinEmptyIn .6s cubic-bezier(.2,.8,.2,1) both; }
+.narin-empty-art { position: relative; width: 96px; height: 112px; margin: 0 auto 18px; }
+.narin-tulip { position: absolute; left: 50%; bottom: 0; width: 0; height: 100px; transform-origin: 0 100%; animation: narinSway 3.4s ease-in-out infinite; }
+.narin-tulip-stem { position: absolute; left: -2px; bottom: 0; width: 4px; height: 64px; border-radius: 2px; background: #02c47a; }
+.narin-tulip-leaf { position: absolute; bottom: 12px; width: 24px; height: 11px; background: #02e590; }
+.narin-tulip-leaf.l { left: -25px; border-radius: 0 100% 0 100%; transform: rotate(-22deg); }
+.narin-tulip-leaf.r { left: 1px; border-radius: 100% 0 100% 0; transform: rotate(22deg); }
+.narin-tulip-bloom { position: absolute; left: -18px; bottom: 58px; width: 36px; height: 38px; }
+.narin-petal { position: absolute; bottom: 0; width: 17px; height: 32px; background: #186ce0; border-radius: 50% 50% 45% 45% / 70% 70% 30% 30%; }
+.narin-petal.l { left: 0; transform: rotate(-14deg); transform-origin: 100% 100%; }
+.narin-petal.r { right: 0; transform: rotate(14deg); transform-origin: 0 100%; }
+.narin-petal.m { left: 9px; height: 36px; background: #4a90ee; z-index: 1; }
+.narin-fall { position: absolute; top: -6px; width: 8px; height: 12px; border-radius: 60% 0 60% 0; background: #186ce0; opacity: 0; animation: narinFall 4.8s linear infinite; }
+.narin-fall.f1 { left: 18px; animation-delay: 0s; }
+.narin-fall.f2 { left: 60px; animation-delay: 1.6s; background: #02e590; }
+.narin-fall.f3 { left: 38px; animation-delay: 3.2s; background: #4a90ee; }
+.narin-empty-title { margin: 0 0 8px; font-size: 22px; font-weight: 700; line-height: 1.25; color: #16181d; }
+.narin-empty-text { max-width: 380px; margin: 0 auto 22px; font-size: 14px; line-height: 1.55; color: #5b616b; }
+.narin-empty-btn { display: inline-flex; align-items: center; gap: 6px; padding: 12px 24px; border: 0; border-radius: 24px; background: #186ce0; color: #fff; font-family: 'Rubik', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: 0 6px 16px rgba(24,108,224,0.28); transition: transform .15s, box-shadow .2s; }
+.narin-empty-btn:hover { box-shadow: 0 8px 20px rgba(24,108,224,0.36); }
+.narin-empty-btn:active { transform: scale(0.96); }
+@keyframes narinEmptyIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes narinSway { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
+@keyframes narinFall {
+    0% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+    12% { opacity: 0.85; }
+    100% { transform: translate(22px, 118px) rotate(240deg); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .narin-cat-empty, .narin-tulip { animation: none !important; }
+    .narin-fall { display: none; }
+}
 
 .narin-cat-promo-section { flex: 1 0 100%; width: 100%; box-sizing: border-box; background: #186ce0; border-radius: 0; padding: 20px 16px; margin: 10px -5px; }
 @media screen and (min-width: 961px) {
@@ -75,8 +109,8 @@
     var SUPABASE_URL = 'https://wqburlamuipxmenqsjnx.supabase.co';
     var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxYnVybGFtdWlweG1lbnFzam54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTY2MTIsImV4cCI6MjA4ODgzMjYxMn0.NYnQoorm3z5gkjr954JdYhzDNmYfCjefzK1ddq3cflw';
 
-    // Czech strings are written as numeric HTML entities (pure ASCII source)
-    // and decoded at runtime - diacritics break when pasted into Tilda.
+    // Czech text is written as numeric HTML entities and decoded at runtime,
+    // because diacritics get broken when pasted into the Tilda editor.
     function cz(s) { return decodeEntities(s); }
 
     var TABS = [
@@ -108,6 +142,7 @@
     var grid = null;
     var observer = null;
     var lastCardCount = null;
+    var categoryCounts = {};
 
     var TAP_MOVE_THRESHOLD = 10;
     function bindTap(el, handler) {
@@ -115,7 +150,7 @@
         var startX = 0, startY = 0, moved = false;
         function fire(e) {
             var now = Date.now();
-            if (500 > now - lastTime) return;
+            if (now - lastTime < 500) return;
             lastTime = now;
             handler(e);
         }
@@ -148,14 +183,28 @@
         return decodeEntities(text || '').replace(/\s+/g, ' ').trim();
     }
 
-    function cardName(card) {
-        var nameEl = card.querySelector('.js-product-name');
-        return nameEl ? normalize(nameEl.textContent) : null;
+    function el(tag, className, text) {
+        var node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text) node.textContent = text;
+        return node;
     }
 
     function activeTabDef() {
-        for (var i = 0; TABS.length > i; i++) if (TABS[i].key === state.activeTab) return TABS[i];
+        for (var i = 0; i < TABS.length; i++) if (TABS[i].key === state.activeTab) return TABS[i];
         return TABS[0];
+    }
+
+    function anyFilterActive() {
+        var f = state.filters;
+        return !!(f.flower_type.size || f.color.size || f.height.size || f.fragrant);
+    }
+
+    function clearFilters() {
+        state.filters.flower_type.clear();
+        state.filters.color.clear();
+        state.filters.height.clear();
+        state.filters.fragrant = false;
     }
 
     function matchesTab(tags) {
@@ -165,18 +214,13 @@
 
     function matchesFilters(tags) {
         var f = state.filters;
-        var any = f.flower_type.size || f.color.size || f.height.size || f.fragrant;
-        if (!any) return true;
+        if (!anyFilterActive()) return true;
         if (!tags) return false;
         if (f.flower_type.size && !(tags.flower_type || []).some(function (t) { return f.flower_type.has(t); })) return false;
         if (f.color.size && !(tags.color || []).some(function (c) { return f.color.has(c); })) return false;
         if (f.height.size && !f.height.has(tags.height)) return false;
         if (f.fragrant && !tags.fragrant) return false;
         return true;
-    }
-
-    function availType(name) {
-        return specialNames.has(name) ? 'special' : availableNames.has(name) ? 'today' : 'tomorrow';
     }
 
     function availTier(card) {
@@ -192,14 +236,10 @@
         if (card.querySelector('.narin-avail-badge')) return;
         var textWrapper = card.querySelector('.t-store__card__textwrapper');
         if (!textWrapper) return;
-        var badge = document.createElement('div');
-        badge.className = 'narin-avail-badge ' + type;
-        var dot = document.createElement('span');
-        dot.className = 'narin-avail-dot';
-        var label = document.createElement('span');
+        var badge = el('div', 'narin-avail-badge ' + type);
         var DORUCIME = 'Doru' + String.fromCharCode(269) + String.fromCharCode(237) + 'me';
-        label.textContent = type === 'today' ? DORUCIME + ' dnes' : type === 'special' ? DORUCIME + ' ' + specialDateLabel : DORUCIME + ' z' + String.fromCharCode(237) + 'tra';
-        badge.appendChild(dot);
+        var label = el('span', null, type === 'today' ? DORUCIME + ' dnes' : type === 'special' ? DORUCIME + ' ' + specialDateLabel : DORUCIME + ' z' + String.fromCharCode(237) + 'tra');
+        badge.appendChild(el('span', 'narin-avail-dot'));
         badge.appendChild(label);
         textWrapper.insertBefore(badge, textWrapper.firstChild);
     }
@@ -209,34 +249,27 @@
         if (window.getComputedStyle(card).position === 'static') {
             card.style.position = 'relative';
         }
-        var badge = document.createElement('div');
-        badge.className = 'narin-custom-badge';
-        badge.textContent = text;
+        var badge = el('div', 'narin-custom-badge', text);
         badge.style.background = color || '#186ce0';
         card.appendChild(badge);
     }
 
     function resolveCustomBadge(row) {
         if (row.badge_text) return { text: row.badge_text, color: row.badge_color || '#186ce0' };
-        // quantity 0 gets no badge - "Dorucime zitra" already says it.
+        // quantity 0 gets no badge - the Dorucime zitra line already says it.
         if (row.quantity === null || row.quantity === undefined || row.quantity === 0) return null;
-        if (LOW_STOCK_THRESHOLD > row.quantity) return { text: cz('Zb&#253;v&#225;') + ' ' + row.quantity + ' ks', color: '#ff7c76' };
+        if (row.quantity < LOW_STOCK_THRESHOLD) return { text: cz('Zb&#253;v&#225;') + ' ' + row.quantity + ' ks', color: '#ff7c76' };
         return null;
     }
 
-    // Only real grid cards - never clones inside promo sections.
-    function realCards() {
-        return Array.prototype.filter.call(grid.querySelectorAll('.t-store__card'), function (card) {
-            return !card.closest('.narin-cat-promo-section');
-        });
-    }
-
-    function findRealCandidates(tab, allCards, usedNames) {
+    function findRealCandidates(tab, allCards, usedNames, limit) {
         var found = [];
-        for (var i = 0; allCards.length > i; i++) {
+        for (var i = 0; i < allCards.length && found.length < limit; i++) {
             var card = allCards[i];
-            var name = cardName(card);
-            if (!name || usedNames.has(name)) continue;
+            var nameEl = card.querySelector('.js-product-name');
+            if (!nameEl) continue;
+            var name = normalize(nameEl.textContent);
+            if (usedNames.has(name)) continue;
             var tags = tagMap[name];
             if (tags && tags.category === tab.category && !unsourceableNames.has(name)) {
                 usedNames.add(name);
@@ -247,55 +280,38 @@
     }
 
     function buildPromoSection(tab, sourceCards) {
-        var section = document.createElement('div');
-        section.className = 'narin-cat-promo-section';
+        var section = el('div', 'narin-cat-promo-section');
 
-        var head = document.createElement('div');
-        head.className = 'narin-cat-promo-head';
-        var name = document.createElement('div');
-        name.className = 'narin-cat-promo-name';
-        name.textContent = tab.label;
-        var cta = document.createElement('div');
-        cta.className = 'narin-cat-promo-cta';
-        cta.textContent = cz('Zobrazit v&#353;e &#8594;');
+        var head = el('div', 'narin-cat-promo-head');
+        var cta = el('div', 'narin-cat-promo-cta', cz('Zobrazit v&#353;e &#8594;'));
         bindTap(cta, function () {
             switchTab(tab.key);
             var nav = document.querySelector('.narin-cat-nav');
             if (nav) nav.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
-        head.appendChild(name);
+        head.appendChild(el('div', 'narin-cat-promo-name', tab.label));
         head.appendChild(cta);
         section.appendChild(head);
 
-        if (tab.caption) {
-            var caption = document.createElement('div');
-            caption.className = 'narin-cat-promo-caption';
-            caption.textContent = tab.caption;
-            section.appendChild(caption);
-        }
+        if (tab.caption) section.appendChild(el('div', 'narin-cat-promo-caption', tab.caption));
 
-        var strip = document.createElement('div');
-        strip.className = 'narin-cat-promo-strip';
+        var strip = el('div', 'narin-cat-promo-strip');
         sourceCards.forEach(function (source) {
             var clone = source.cloneNode(true);
             clone.removeAttribute('data-narin-hidden');
 
-            // Source card may never have been in the viewport, so Tilda lazy-load
-            // left a placeholder; the real image URL is in data-original.
+            // The source card may never have been in the viewport, so Tilda
+            // lazy-load left a placeholder; the real image is in data-original.
             clone.querySelectorAll('.t-bgimg:not(.loaded)').forEach(function (bg) {
                 var full = bg.getAttribute('data-original');
                 if (full) {
-                    bg.style.backgroundImage = 'url(\'' + full + '\')';
+                    bg.style.backgroundImage = 'url(' + full + ')';
                     bg.classList.add('loaded');
                 }
             });
 
             if (clone.id) clone.removeAttribute('id');
-            clone.querySelectorAll('[id]').forEach(function (el) { el.removeAttribute('id'); });
-
-            // Source is hidden on the "Vse" tab so it never got an availability badge.
-            var cloneName = cardName(clone);
-            if (cloneName) addAvailBadge(clone, availType(cloneName));
+            clone.querySelectorAll('[id]').forEach(function (node) { node.removeAttribute('id'); });
 
             strip.appendChild(clone);
         });
@@ -310,13 +326,13 @@
         if (!otherTabs.length) return;
         var usedNames = new Set();
         var tabCursor = 0;
-        for (var i = 3; visibleCards.length > i; i += 4) {
+        for (var i = 3; i < visibleCards.length; i += 4) {
             var cards = [], tab = null, attempts = 0;
-            while (otherTabs.length > attempts) {
+            while (attempts < otherTabs.length) {
                 tab = otherTabs[tabCursor % otherTabs.length];
                 tabCursor++;
                 attempts++;
-                cards = findRealCandidates(tab, allCards, usedNames);
+                cards = findRealCandidates(tab, allCards, usedNames, Infinity);
                 if (cards.length) break;
             }
             if (!cards.length) continue;
@@ -324,17 +340,17 @@
         }
     }
 
-    // Removes duplicate cards by product name (Tilda "load more" re-adds some SETs).
-    // BUG FIXED 2026-09-29: this used to run BEFORE promo sections were removed and
-    // counted the clones inside them. A clone placed earlier in the DOM than its
-    // original won as "first", so the REAL Sety/Kovky card was removed forever -
-    // that is why those categories and the promo sections disappeared ~1s after load.
-    // Now: called after promos are removed, and promo clones are skipped anyway.
+    // Removes duplicate cards by product name (Tilda load-more re-adds some SETs).
+    // Must run AFTER promo sections are removed and must skip promo clones,
+    // otherwise a clone wins as first and the real card gets deleted.
     function dedupeCards() {
         var seen = new Set();
-        realCards().forEach(function (card) {
-            var name = cardName(card);
-            // Empty name = Tilda has not filled the card yet, not a duplicate.
+        grid.querySelectorAll('.t-store__card').forEach(function (card) {
+            if (card.closest('.narin-cat-promo-section')) return;
+            var nameEl = card.querySelector('.js-product-name');
+            if (!nameEl) return;
+            var name = normalize(nameEl.textContent);
+            // Empty name means Tilda has not filled the card yet - not a duplicate.
             if (!name) return;
             if (seen.has(name)) {
                 card.remove();
@@ -344,27 +360,91 @@
         });
     }
 
+    // Tulip illustration for the empty state, built from plain divs (no SVG
+    // markup strings, so nothing inside the script looks like an HTML tag).
+    function buildTulip() {
+        var art = el('div', 'narin-empty-art');
+        art.appendChild(el('span', 'narin-fall f1'));
+        art.appendChild(el('span', 'narin-fall f2'));
+        art.appendChild(el('span', 'narin-fall f3'));
+        var tulip = el('div', 'narin-tulip');
+        tulip.appendChild(el('div', 'narin-tulip-stem'));
+        tulip.appendChild(el('div', 'narin-tulip-leaf l'));
+        tulip.appendChild(el('div', 'narin-tulip-leaf r'));
+        var bloom = el('div', 'narin-tulip-bloom');
+        bloom.appendChild(el('div', 'narin-petal l'));
+        bloom.appendChild(el('div', 'narin-petal r'));
+        bloom.appendChild(el('div', 'narin-petal m'));
+        tulip.appendChild(bloom);
+        art.appendChild(tulip);
+        return art;
+    }
+
+    function buildEmptyState(key) {
+        var tab = activeTabDef();
+        var box = el('div', 'narin-cat-empty');
+        box.setAttribute('data-key', key);
+        box.appendChild(buildTulip());
+
+        var title, text, btnLabel = null, onBtn = null;
+        if (anyFilterActive()) {
+            title = 'Tahle kombinace dnes nekvete';
+            text = cz('Zkuste ubrat n&#283;kter&#253; filtr &#8212; ur&#269;it&#283; pro v&#225;s najdeme n&#283;co kr&#225;sn&#233;ho.');
+            btnLabel = cz('Zru&#353;it filtry');
+            onBtn = function () { clearFilters(); renderSubBar(); renderPass(); };
+        } else if (tab.category !== 'ohapka') {
+            title = cz('Ups, ') + tab.label + cz(' jsme dnes &#250;pln&#283; vyprodali');
+            text = cz('Nov&#233; kousky u&#382; pro v&#225;s chyst&#225;me. Mezit&#237;m se pod&#237;vejte na &#269;erstv&#233; kv&#283;tiny, kter&#233; m&#225;me pr&#225;v&#283; te&#271; skladem.');
+            btnLabel = cz('&#268;erstv&#233; kv&#283;tiny &#8594;');
+            onBtn = function () { switchTab('all'); };
+        } else {
+            title = cz('Ups, dnes je vyprod&#225;no');
+            text = cz('V&#353;echny kv&#283;tiny jsme dnes rozdali. Z&#237;tra r&#225;no pro v&#225;s budeme m&#237;t nov&#233;.');
+        }
+
+        box.appendChild(el('p', 'narin-empty-title', title));
+        box.appendChild(el('p', 'narin-empty-text', text));
+        if (btnLabel) {
+            var btn = el('button', 'narin-empty-btn', btnLabel);
+            btn.type = 'button';
+            bindTap(btn, onBtn);
+            box.appendChild(btn);
+        }
+        return box;
+    }
+
+    function updateTabCounts() {
+        document.querySelectorAll('.narin-cat-tab-count').forEach(function (span) {
+            span.textContent = categoryCounts[span.getAttribute('data-cat')] || 0;
+        });
+    }
+
     function renderPass() {
         if (!grid) return;
         if (observer) observer.disconnect();
 
         var existingPromos = grid.querySelectorAll('.narin-cat-promo-section');
-        for (var p = 0; existingPromos.length > p; p++) existingPromos[p].remove();
+        for (var p = 0; p < existingPromos.length; p++) existingPromos[p].remove();
 
         dedupeCards();
 
-        var cards = realCards();
+        var cards = grid.querySelectorAll('.t-store__card');
         var visibleCards = [];
+        var counts = {};
         cards.forEach(function (card) {
-            var name = cardName(card);
-            if (name === null) { card.removeAttribute('data-narin-hidden'); return; }
+            var nameEl = card.querySelector('.js-product-name');
+            if (!nameEl) { card.removeAttribute('data-narin-hidden'); return; }
+            var name = normalize(nameEl.textContent);
             var tags = tagMap[name];
-            var visible = matchesTab(tags) && matchesFilters(tags) && !unsourceableNames.has(name);
+            var sourceable = !unsourceableNames.has(name);
+            if (tags && sourceable) counts[tags.category] = (counts[tags.category] || 0) + 1;
+            var visible = matchesTab(tags) && matchesFilters(tags) && sourceable;
 
             if (visible) {
                 card.removeAttribute('data-narin-hidden');
                 visibleCards.push(card);
-                addAvailBadge(card, availType(name));
+                var type = specialNames.has(name) ? 'special' : availableNames.has(name) ? 'today' : 'tomorrow';
+                addAvailBadge(card, type);
             } else {
                 card.setAttribute('data-narin-hidden', '1');
             }
@@ -375,9 +455,11 @@
                 if (resolved) addCustomBadge(card, resolved.text, resolved.color);
             }
         });
+        categoryCounts = counts;
+        updateTabCounts();
 
-        // Sorting moves real DOM nodes (CSS order breaks Tilda's mobile flex-wrap).
-        // Only sort when the card count did not change since the last pass, i.e.
+        // Sorting moves real DOM nodes (CSS order breaks the Tilda mobile grid).
+        // Only sort when the card count is unchanged since the last pass, i.e.
         // Tilda is not inserting cards right now - otherwise cards get lost.
         var cardCountStable = (lastCardCount === cards.length);
         lastCardCount = cards.length;
@@ -392,21 +474,18 @@
 
         insertPromoSections(visibleCards, cards);
 
+        // Rebuild the empty state only when its context changes, so the
+        // entrance animation does not restart on every observer pass.
+        var emptyKey = visibleCards.length ? '' : state.activeTab + (anyFilterActive() ? ':filtered' : '');
         var emptyMsg = document.querySelector('.narin-cat-empty');
-        if (visibleCards.length === 0) {
-            if (!emptyMsg) {
-                emptyMsg = document.createElement('p');
-                emptyMsg.className = 'narin-cat-empty';
-                emptyMsg.textContent = cz('Podle vybran&#253;ch filtr&#367; jsme nic nena&#353;li &#8212; zkuste jinou kombinaci.');
-                var bar = document.querySelector('.narin-cat-nav');
-                if (bar) bar.insertAdjacentElement('afterend', emptyMsg);
-            }
-        } else if (emptyMsg) {
+        if (emptyMsg && emptyMsg.getAttribute('data-key') !== emptyKey) {
             emptyMsg.remove();
+            emptyMsg = null;
         }
-
-        var countEl = document.querySelector('.narin-cat-count');
-        if (countEl) countEl.textContent = visibleCards.length + (visibleCards.length === 1 ? ' produkt' : cz(' produkt&#367;'));
+        if (emptyKey && !emptyMsg) {
+            var nav = document.querySelector('.narin-cat-nav');
+            if (nav) nav.insertAdjacentElement('afterend', buildEmptyState(emptyKey));
+        }
 
         if (grid && observer) observer.observe(grid, { childList: true, subtree: true });
     }
@@ -424,21 +503,21 @@
         if (!bar) return;
         bar.innerHTML = '';
         TABS.forEach(function (tab) {
-            var btn = document.createElement('button');
+            var btn = el('button', 'narin-cat-tab' + (tab.key === state.activeTab ? ' active' : ''), tab.label);
             btn.type = 'button';
-            btn.className = 'narin-cat-tab' + (tab.key === state.activeTab ? ' active' : '');
-            btn.textContent = tab.label;
+            var count = el('span', 'narin-cat-tab-count');
+            count.setAttribute('data-cat', tab.category);
+            btn.appendChild(count);
             bindTap(btn, function () { switchTab(tab.key); });
             bar.appendChild(btn);
         });
+        updateTabCounts();
     }
 
     function makePill(bar, label, group, value) {
         var isActive = group === 'fragrant' ? state.filters.fragrant : state.filters[group].has(value);
-        var btn = document.createElement('button');
+        var btn = el('button', 'narin-cat-pill' + (isActive ? ' active' : ''), label);
         btn.type = 'button';
-        btn.className = 'narin-cat-pill' + (isActive ? ' active' : '');
-        btn.textContent = label;
         bindTap(btn, function () {
             if (group === 'fragrant') {
                 state.filters.fragrant = !state.filters.fragrant;
@@ -471,17 +550,10 @@
         var hasAnyPills = presentTypes.size || presentColors.size || presentHeights.size || anyFragrant;
         if (!hasAnyPills) return;
 
-        var anyActive = state.filters.flower_type.size || state.filters.color.size || state.filters.height.size || state.filters.fragrant;
-
-        var allBtn = document.createElement('button');
+        var allBtn = el('button', 'narin-cat-pill' + (!anyFilterActive() ? ' active' : ''), cz('V&#353;echny kv&#283;tiny'));
         allBtn.type = 'button';
-        allBtn.className = 'narin-cat-pill' + (!anyActive ? ' active' : '');
-        allBtn.textContent = cz('V&#353;echny kv&#283;tiny');
         bindTap(allBtn, function () {
-            state.filters.flower_type.clear();
-            state.filters.color.clear();
-            state.filters.height.clear();
-            state.filters.fragrant = false;
+            clearFilters();
             renderSubBar();
             renderPass();
         });
@@ -494,17 +566,9 @@
     }
 
     function buildNav() {
-        var nav = document.createElement('div');
-        nav.className = 'narin-cat-nav';
-        var tabBar = document.createElement('div');
-        tabBar.className = 'narin-cat-tabs';
-        var count = document.createElement('div');
-        count.className = 'narin-cat-count';
-        var subBar = document.createElement('div');
-        subBar.className = 'narin-cat-subbar';
-        nav.appendChild(tabBar);
-        nav.appendChild(count);
-        nav.appendChild(subBar);
+        var nav = el('div', 'narin-cat-nav');
+        nav.appendChild(el('div', 'narin-cat-tabs'));
+        nav.appendChild(el('div', 'narin-cat-subbar'));
         return nav;
     }
 
@@ -525,8 +589,8 @@
         return d.getUTCDate() + '. ' + (d.getUTCMonth() + 1) + '.';
     }
 
-    // Pagination is disabled in the Tilda block settings (50 per page > catalog size),
-    // so the "load more" button should never appear. Safety net only: max 5 clicks.
+    // Pagination is disabled in the Tilda block settings (50 per page is more
+    // than the catalog), so load-more should never appear. Safety net: max 5 clicks.
     function safetyLoadMoreIfPresent() {
         var btn = document.querySelector('.js-store-load-more-btn');
         if (!btn) return;
@@ -546,7 +610,7 @@
         tick();
     }
 
-    // Data request starts immediately, before DOMContentLoaded.
+    // The data request starts immediately, before DOMContentLoaded.
     var dataPromise = fetch(SUPABASE_URL + '/rest/v1/rpc/get_catalog_page_data', {
         method: 'POST',
         headers: {
@@ -577,7 +641,6 @@
                 var closedDates = new Set(data.closed_dates || []);
                 specialDateLabel = computeSpecialOrderDate(closedWeekdays, closedDates);
 
-                if (!grid) grid = document.querySelector('.js-store-grid-cont');
                 if (grid && grid.parentElement && !document.querySelector('.narin-cat-nav')) {
                     grid.parentElement.insertBefore(buildNav(), grid);
                 }
