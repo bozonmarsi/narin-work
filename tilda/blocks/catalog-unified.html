@@ -25,36 +25,36 @@
 
 /* Empty state: shown when a tab or filter combination has no products. */
 .narin-cat-empty { position: relative; overflow: hidden; margin: 4px 0 28px; padding: 36px 24px 32px; border-radius: 24px; background: linear-gradient(160deg, #f1f7ff 0%, #ecfdf5 100%); text-align: center; font-family: 'Rubik', sans-serif; animation: narinEmptyIn .6s cubic-bezier(.2,.8,.2,1) both; }
-.narin-empty-art { position: relative; width: 96px; height: 112px; margin: 0 auto 18px; }
-.narin-tulip { position: absolute; left: 50%; bottom: 0; width: 0; height: 100px; transform-origin: 0 100%; animation: narinSway 3.4s ease-in-out infinite; }
-.narin-tulip-stem { position: absolute; left: -2px; bottom: 0; width: 4px; height: 64px; border-radius: 2px; background: #02c47a; }
-.narin-tulip-leaf { position: absolute; bottom: 12px; width: 24px; height: 11px; background: #02e590; }
-.narin-tulip-leaf.l { left: -25px; border-radius: 0 100% 0 100%; transform: rotate(-22deg); }
-.narin-tulip-leaf.r { left: 1px; border-radius: 100% 0 100% 0; transform: rotate(22deg); }
-.narin-tulip-bloom { position: absolute; left: -18px; bottom: 58px; width: 36px; height: 38px; }
-.narin-petal { position: absolute; bottom: 0; width: 17px; height: 32px; background: #186ce0; border-radius: 50% 50% 45% 45% / 70% 70% 30% 30%; }
-.narin-petal.l { left: 0; transform: rotate(-14deg); transform-origin: 100% 100%; }
-.narin-petal.r { right: 0; transform: rotate(14deg); transform-origin: 0 100%; }
-.narin-petal.m { left: 9px; height: 36px; background: #4a90ee; z-index: 1; }
-.narin-fall { position: absolute; top: -6px; width: 8px; height: 12px; border-radius: 60% 0 60% 0; background: #186ce0; opacity: 0; animation: narinFall 4.8s linear infinite; }
-.narin-fall.f1 { left: 18px; animation-delay: 0s; }
-.narin-fall.f2 { left: 60px; animation-delay: 1.6s; background: #02e590; }
-.narin-fall.f3 { left: 38px; animation-delay: 3.2s; background: #4a90ee; }
+.narin-cat-empty > * { position: relative; z-index: 1; }
+.narin-empty-art { width: 170px; height: 170px; margin: 0 auto 14px; }
+.narin-empty-glow { position: absolute; inset: 12px; border-radius: 50%; background: radial-gradient(circle, rgba(24,108,224,0.20) 0%, rgba(2,229,144,0.10) 45%, rgba(255,255,255,0) 70%); animation: narinGlow 4s ease-in-out infinite; }
+.narin-empty-img { position: absolute; left: 10px; top: 10px; width: 150px; height: 150px; object-fit: contain; transform-origin: 50% 90%; animation: narinFloat 4s ease-in-out infinite; }
+.narin-cat-empty > .narin-empty-petals { position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 0; pointer-events: none; }
+.narin-pf { position: absolute; top: -24px; opacity: 0; animation: narinDrop linear infinite; }
+.narin-pf i { display: block; width: 12px; height: 15px; border-radius: 0 100% 0 100%; animation: narinFlutter ease-in-out infinite alternate; }
+.narin-pf.p1 { left: 7%; animation-duration: 9s; animation-delay: 0s; }
+.narin-pf.p2 { left: 21%; animation-duration: 11s; animation-delay: 2.6s; }
+.narin-pf.p3 { left: 38%; animation-duration: 10s; animation-delay: 5.2s; }
+.narin-pf.p4 { left: 62%; animation-duration: 12s; animation-delay: 1.3s; }
+.narin-pf.p5 { left: 79%; animation-duration: 9.5s; animation-delay: 3.9s; }
+.narin-pf.p6 { left: 91%; animation-duration: 11.5s; animation-delay: 6.4s; }
+.narin-pf.p1 i, .narin-pf.p4 i { background: #ffb8c9; animation-duration: 1.8s; }
+.narin-pf.p2 i, .narin-pf.p5 i { background: #ffd0ab; animation-duration: 2.3s; }
+.narin-pf.p3 i { background: #9fc2f6; animation-duration: 2s; }
+.narin-pf.p6 i { background: #8feec8; animation-duration: 1.6s; }
 .narin-empty-title { margin: 0 0 8px; font-size: 22px; font-weight: 700; line-height: 1.25; color: #16181d; }
 .narin-empty-text { max-width: 380px; margin: 0 auto 22px; font-size: 14px; line-height: 1.55; color: #5b616b; }
 .narin-empty-btn { display: inline-flex; align-items: center; gap: 6px; padding: 12px 24px; border: 0; border-radius: 24px; background: #186ce0; color: #fff; font-family: 'Rubik', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: 0 6px 16px rgba(24,108,224,0.28); transition: transform .15s, box-shadow .2s; }
 .narin-empty-btn:hover { box-shadow: 0 8px 20px rgba(24,108,224,0.36); }
 .narin-empty-btn:active { transform: scale(0.96); }
 @keyframes narinEmptyIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-@keyframes narinSway { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
-@keyframes narinFall {
-    0% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
-    12% { opacity: 0.85; }
-    100% { transform: translate(22px, 118px) rotate(240deg); opacity: 0; }
-}
+@keyframes narinFloat { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-8px) rotate(2deg); } }
+@keyframes narinGlow { 0%, 100% { transform: scale(0.92); opacity: 0.8; } 50% { transform: scale(1.06); opacity: 1; } }
+@keyframes narinDrop { 0% { transform: translateY(0); opacity: 0; } 8% { opacity: 1; } 88% { opacity: 1; } 100% { transform: translateY(520px); opacity: 0; } }
+@keyframes narinFlutter { 0% { transform: translateX(-14px) rotate(-35deg); } 100% { transform: translateX(14px) rotate(45deg); } }
 @media (prefers-reduced-motion: reduce) {
-    .narin-cat-empty, .narin-tulip { animation: none !important; }
-    .narin-fall { display: none; }
+    .narin-cat-empty, .narin-empty-img, .narin-empty-glow { animation: none !important; }
+    .narin-empty-petals { display: none; }
 }
 
 .narin-cat-promo-section { flex: 1 0 100%; width: 100%; box-sizing: border-box; background: #186ce0; border-radius: 0; padding: 20px 16px; margin: 10px -5px; }
@@ -362,31 +362,37 @@
         });
     }
 
-    // Tulip illustration for the empty state, built from plain divs (no SVG
-    // markup strings, so nothing inside the script looks like an HTML tag).
-    function buildTulip() {
+    var EMPTY_ART_URL = 'https://static.tildacdn.com/tild6661-3363-4132-b139-616631346264/nar_Klient.svg';
+
+    // Brand illustration that gently floats, with a soft pulsing glow behind it.
+    function buildArt() {
         var art = el('div', 'narin-empty-art');
-        art.appendChild(el('span', 'narin-fall f1'));
-        art.appendChild(el('span', 'narin-fall f2'));
-        art.appendChild(el('span', 'narin-fall f3'));
-        var tulip = el('div', 'narin-tulip');
-        tulip.appendChild(el('div', 'narin-tulip-stem'));
-        tulip.appendChild(el('div', 'narin-tulip-leaf l'));
-        tulip.appendChild(el('div', 'narin-tulip-leaf r'));
-        var bloom = el('div', 'narin-tulip-bloom');
-        bloom.appendChild(el('div', 'narin-petal l'));
-        bloom.appendChild(el('div', 'narin-petal r'));
-        bloom.appendChild(el('div', 'narin-petal m'));
-        tulip.appendChild(bloom);
-        art.appendChild(tulip);
+        art.appendChild(el('div', 'narin-empty-glow'));
+        var img = el('img', 'narin-empty-img');
+        img.alt = '';
+        img.onerror = function () { img.style.display = 'none'; };
+        img.src = EMPTY_ART_URL;
+        art.appendChild(img);
         return art;
+    }
+
+    // Petals slowly falling and swirling across the whole card, behind the text.
+    function buildPetals() {
+        var layer = el('div', 'narin-empty-petals');
+        for (var i = 1; i < 7; i++) {
+            var petal = el('span', 'narin-pf p' + i);
+            petal.appendChild(el('i'));
+            layer.appendChild(petal);
+        }
+        return layer;
     }
 
     function buildEmptyState(key) {
         var tab = activeTabDef();
         var box = el('div', 'narin-cat-empty');
         box.setAttribute('data-key', key);
-        box.appendChild(buildTulip());
+        box.appendChild(buildPetals());
+        box.appendChild(buildArt());
 
         var title, text, btnLabel = null, onBtn = null;
         if (anyFilterActive()) {
