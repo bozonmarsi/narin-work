@@ -1,27 +1,15 @@
 <style>
-/* Заменяет собой catalog-filter.html + catalog-availability-badges.html +
-   catalog-custom-badges.html. Раньше это были три независимых Zero
-   Block'а, у каждого свой MutationObserver на весь document.body —
-   один переставлял карточки (пересортировка по наличию), это будило
-   наблюдателя другого, тот перерисовывал бейджи, это будило третьего —
-   отсюда "то работает, то нет" и подтормаживания. Теперь один источник
-   данных (get_catalog_page_data — один запрос вместо семи, один из
-   которых раньше дублировался), один проход рендера на карточку, один
-   наблюдатель, только за самой сеткой товаров, а не всей страницей.
-
-   Скрытие — ТОЛЬКО через атрибут data-narin-hidden + это правило ниже,
-   никогда через инлайн-стиль. Так было в catalog-filter.html и это
-   единственный способ, который не ломает сама Tilda: она периодически
-   перезаписывает style-атрибут карточки целиком (подтверждено вживую),
-   но НЕ трогает произвольные data-атрибуты и никак не может обойти
-   правило из <style> — оно всегда снова выигрывает. Старая версия
-   бейджей хранила решение "скрыть" прямо в style с !important и была
-   вынуждена перебивать Tilda через setInterval раз в секунду — с этим
-   способом такой костыль просто не нужен. */
+/* Narin catalog engine (Zero Block on the catalog page, #rec1915290073).
+   Replaces catalog-filter + catalog-availability-badges + catalog-custom-badges.
+   One data request (get_catalog_page_data), one render pass, one observer on the grid.
+   Hiding is ONLY via data-narin-hidden + the CSS rule below, never inline style
+   (Tilda rewrites the card style attribute but never touches data-* attributes).
+   Comments are ASCII-only on purpose: non-ASCII text breaks when pasted into Tilda. */
 #rec1915290073 .t-store__card-list { row-gap: 20px !important; }
 #rec1915290073 .t-store__card__price-wrapper { margin-top: 4px !important; }
 #rec1915290073 .t-store__card__price-value, #rec1915290073 .t-store__card__price { font-size: 20px !important; font-weight: 500 !important; }
 #rec1915290073 .t1002__addBtn { top: auto !important; bottom: 10px !important; right: 10px !important; }
+#rec1915290073 .t-store__load-more-btn-wrap { display: none !important; }
 
 .narin-cat-nav { margin: 16px 0; font-family: 'Rubik', sans-serif; }
 .narin-cat-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 0 4px 6px 8px; margin: 0 -4px 10px; -webkit-overflow-scrolling: touch; }
@@ -45,14 +33,12 @@
 .narin-cat-promo-caption { color: #fff; opacity: 0.9; font-family: 'Rubik', sans-serif; font-size: 13px; font-style: italic; margin: 0 0 14px; max-width: 520px; }
 .narin-cat-promo-strip { display: flex; gap: 10px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .narin-cat-promo-strip::-webkit-scrollbar { display: none; }
+
 .narin-cat-promo-strip .t-store__card { flex: 0 0 auto !important; width: 190px !important; background: #fff; border-radius: 10px; overflow: hidden; padding-bottom: 3px !important; }
 
-/* Единственное место, где решается видимость карточки — по одному
-   атрибуту, независимо от причины (не та категория/фильтр ИЛИ нет
-   своего остатка и нет Van Vliet). */
+/* The only place where card visibility is decided. */
 .js-store-grid-cont [data-narin-hidden="1"] { display: none !important; }
 .js-store-grid-cont .t-clear { display: none !important; }
-#rec1915290073 .t-store__load-more-btn-wrap { display: none !important; }
 
 .narin-avail-badge { display: inline-flex; align-items: center; gap: 5px; margin-bottom: 3px; font-family: 'Rubik', sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 0.2px; white-space: nowrap; }
 .narin-avail-badge .narin-avail-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
@@ -89,16 +75,15 @@
     var SUPABASE_URL = 'https://wqburlamuipxmenqsjnx.supabase.co';
     var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxYnVybGFtdWlweG1lbnFzam54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTY2MTIsImV4cCI6MjA4ODgzMjYxMn0.NYnQoorm3z5gkjr954JdYhzDNmYfCjefzK1ddq3cflw';
 
-    // Чешские строки с диакритикой записаны как числовые HTML-сущности
-    // (чистый ASCII в исходнике) и раскодированы через decodeEntities()
-    // ниже — буквы вроде š/í/ě/ř уже не раз ломались при копипасте в
-    // редактор Tilda. Голые цифры испортить копипастом невозможно.
+    // Czech strings are written as numeric HTML entities (pure ASCII source)
+    // and decoded at runtime - diacritics break when pasted into Tilda.
     function cz(s) { return decodeEntities(s); }
 
     var TABS = [
         { key: 'all', label: cz('V&#353;e'), category: 'ohapka', caption: null },
         { key: 'set', label: 'Sety', category: 'set', caption: cz('Sestavte si vlastn&#237; kompozici nebo rozm&#237;st&#283;te kv&#283;tiny do r&#367;zn&#253;ch v&#225;z.') },
         { key: 'banky', label: 'Kovky', category: 'banky', caption: cz('Kv&#283;tiny naaran&#382;ovan&#233; p&#345;&#237;mo ve v&#225;ze, p&#345;ipraven&#233; k p&#345;ed&#225;n&#237;.') },
+        { key: 'buket', label: 'Kytice', category: 'buket', caption: cz('Hotov&#233; kytice p&#345;ipraven&#233; k p&#345;ed&#225;n&#237;.') },
         { key: 'ohapka', label: cz('N&#225;ru&#269;e'), category: 'ohapka', caption: null },
     ];
 
@@ -112,7 +97,7 @@
         filters: { flower_type: new Set(), color: new Set(), height: new Set(), fragrant: false },
     };
 
-    // Всё, что приходит одним запросом из get_catalog_page_data().
+    // Everything below comes from one get_catalog_page_data() call.
     var tagMap = {};
     var unsourceableNames = new Set();
     var availableNames = new Set();
@@ -163,6 +148,11 @@
         return decodeEntities(text || '').replace(/\s+/g, ' ').trim();
     }
 
+    function cardName(card) {
+        var nameEl = card.querySelector('.js-product-name');
+        return nameEl ? normalize(nameEl.textContent) : null;
+    }
+
     function activeTabDef() {
         for (var i = 0; i < TABS.length; i++) if (TABS[i].key === state.activeTab) return TABS[i];
         return TABS[0];
@@ -185,6 +175,10 @@
         return true;
     }
 
+    function availType(name) {
+        return specialNames.has(name) ? 'special' : availableNames.has(name) ? 'today' : 'tomorrow';
+    }
+
     function availTier(card) {
         var badge = card.querySelector('.narin-avail-badge');
         if (!badge) return 99;
@@ -203,8 +197,6 @@
         var dot = document.createElement('span');
         dot.className = 'narin-avail-dot';
         var label = document.createElement('span');
-        // Собрано через код символа (String.fromCharCode) — буквы č/í уже
-        // не раз ломались при копипасте этого файла в редактор Tilda.
         var DORUCIME = 'Doru' + String.fromCharCode(269) + String.fromCharCode(237) + 'me';
         label.textContent = type === 'today' ? DORUCIME + ' dnes' : type === 'special' ? DORUCIME + ' ' + specialDateLabel : DORUCIME + ' z' + String.fromCharCode(237) + 'tra';
         badge.appendChild(dot);
@@ -226,24 +218,25 @@
 
     function resolveCustomBadge(row) {
         if (row.badge_text) return { text: row.badge_text, color: row.badge_color || '#186ce0' };
-        // quantity === 0 не получает "Vyprodáno" — об этом уже говорит
-        // сама плашка "Doručíme zítra" (переключается через
-        // get_available_products). Две плашки с одной и той же мыслью
-        // (одна спокойная, одна тревожная красная "Vyprodáno") только
-        // путали.
+        // quantity 0 gets no badge - "Dorucime zitra" already says it.
         if (row.quantity === null || row.quantity === undefined || row.quantity === 0) return null;
         if (row.quantity < LOW_STOCK_THRESHOLD) return { text: cz('Zb&#253;v&#225;') + ' ' + row.quantity + ' ks', color: '#ff7c76' };
         return null;
     }
 
-    function findRealCandidates(tab, allCards, usedNames, limit) {
+    // Only real grid cards - never clones inside promo sections.
+    function realCards() {
+        return Array.prototype.filter.call(grid.querySelectorAll('.t-store__card'), function (card) {
+            return !card.closest('.narin-cat-promo-section');
+        });
+    }
+
+    function findRealCandidates(tab, allCards, usedNames) {
         var found = [];
-        for (var i = 0; i < allCards.length && found.length < limit; i++) {
+        for (var i = 0; i < allCards.length; i++) {
             var card = allCards[i];
-            var nameEl = card.querySelector('.js-product-name');
-            if (!nameEl) continue;
-            var name = normalize(nameEl.textContent);
-            if (usedNames.has(name)) continue;
+            var name = cardName(card);
+            if (!name || usedNames.has(name)) continue;
             var tags = tagMap[name];
             if (tags && tags.category === tab.category && !unsourceableNames.has(name)) {
                 usedNames.add(name);
@@ -267,7 +260,8 @@
         cta.textContent = cz('Zobrazit v&#353;e &#8594;');
         bindTap(cta, function () {
             switchTab(tab.key);
-            section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            var nav = document.querySelector('.narin-cat-nav');
+            if (nav) nav.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
         head.appendChild(name);
         head.appendChild(cta);
@@ -286,11 +280,8 @@
             var clone = source.cloneNode(true);
             clone.removeAttribute('data-narin-hidden');
 
-            // Если исходная карточка ещё не попадала в область видимости,
-            // родной lazy-load Tilda ни разу её не тронул — картинка так
-            // и осталась плейсхолдером (настоящий src лежит в
-            // data-original). Клон унаследует этот плейсхолдер навсегда,
-            // его тоже никто не зарегистрировал у того наблюдателя.
+            // Source card may never have been in the viewport, so Tilda lazy-load
+            // left a placeholder; the real image URL is in data-original.
             clone.querySelectorAll('.t-bgimg:not(.loaded)').forEach(function (bg) {
                 var full = bg.getAttribute('data-original');
                 if (full) {
@@ -301,6 +292,10 @@
 
             if (clone.id) clone.removeAttribute('id');
             clone.querySelectorAll('[id]').forEach(function (el) { el.removeAttribute('id'); });
+
+            // Source is hidden on the "Vse" tab so it never got an availability badge.
+            var cloneName = cardName(clone);
+            if (cloneName) addAvailBadge(clone, availType(cloneName));
 
             strip.appendChild(clone);
         });
@@ -321,7 +316,7 @@
                 tab = otherTabs[tabCursor % otherTabs.length];
                 tabCursor++;
                 attempts++;
-                cards = findRealCandidates(tab, allCards, usedNames, Infinity);
+                cards = findRealCandidates(tab, allCards, usedNames);
                 if (cards.length) break;
             }
             if (!cards.length) continue;
@@ -329,29 +324,26 @@
         }
     }
 
-    // Убирает дубли карточек по названию (Tilda при "Загрузить ещё" сама
-    // подмешивает уже показанные SET-ы). ВАЖНО: вызывать только когда
-    // промо-плашки уже удалены, и в любом случае пропускать карточки внутри
-    // .narin-cat-promo-section — иначе клон из плашки, стоящий в DOM раньше
-    // оригинала, считался "первым", а настоящая карточка (Sety/Kovky/Kytice)
-    // удалялась навсегда.
+    // Removes duplicate cards by product name (Tilda "load more" re-adds some SETs).
+    // BUG FIXED 2026-09-29: this used to run BEFORE promo sections were removed and
+    // counted the clones inside them. A clone placed earlier in the DOM than its
+    // original won as "first", so the REAL Sety/Kovky card was removed forever -
+    // that is why those categories and the promo sections disappeared ~1s after load.
+    // Now: called after promos are removed, and promo clones are skipped anyway.
     function dedupeCards() {
         var seen = new Set();
-        grid.querySelectorAll('.t-store__card').forEach(function (card) {
-            if (card.closest('.narin-cat-promo-section')) return;
-            var nameEl = card.querySelector('.js-product-name');
-            if (!nameEl) return;
-            var name = normalize(nameEl.textContent);
-            // Пустое имя — Tilda ещё не дорисовала карточку, не дубль.
+        realCards().forEach(function (card) {
+            var name = cardName(card);
+            // Empty name = Tilda has not filled the card yet, not a duplicate.
             if (!name) return;
-            if (seen.has(name)) card.remove(); else seen.add(name);
+            if (seen.has(name)) {
+                card.remove();
+            } else {
+                seen.add(name);
+            }
         });
     }
 
-    // Единственный проход по карточкам — решает видимость (фильтр
-    // категории/подфильтров ИЛИ нет своего остатка и нет Van Vliet),
-    // ставит бейдж наличия и кастомную плашку. Раньше это были три
-    // отдельных прохода из трёх разных скриптов.
     function renderPass() {
         if (!grid) return;
         if (observer) observer.disconnect();
@@ -361,20 +353,18 @@
 
         dedupeCards();
 
-        var cards = grid.querySelectorAll('.t-store__card');
+        var cards = realCards();
         var visibleCards = [];
         cards.forEach(function (card) {
-            var nameEl = card.querySelector('.js-product-name');
-            if (!nameEl) { card.removeAttribute('data-narin-hidden'); return; }
-            var name = normalize(nameEl.textContent);
+            var name = cardName(card);
+            if (name === null) { card.removeAttribute('data-narin-hidden'); return; }
             var tags = tagMap[name];
             var visible = matchesTab(tags) && matchesFilters(tags) && !unsourceableNames.has(name);
 
             if (visible) {
                 card.removeAttribute('data-narin-hidden');
                 visibleCards.push(card);
-                var type = specialNames.has(name) ? 'special' : availableNames.has(name) ? 'today' : 'tomorrow';
-                addAvailBadge(card, type);
+                addAvailBadge(card, availType(name));
             } else {
                 card.setAttribute('data-narin-hidden', '1');
             }
@@ -386,15 +376,17 @@
             }
         });
 
-        // Сортировка двигает настоящие DOM-узлы — делаем её только когда число
-        // карточек не менялось с прошлого прохода (Tilda точно ничего не
-        // доклеивает), иначе часть карточек пропадает.
+        // Sorting moves real DOM nodes (CSS order breaks Tilda's mobile flex-wrap).
+        // Only sort when the card count did not change since the last pass, i.e.
+        // Tilda is not inserting cards right now - otherwise cards get lost.
         var cardCountStable = (lastCardCount === cards.length);
         lastCardCount = cards.length;
         if (cardCountStable) {
             var sorted = visibleCards.slice().sort(function (a, b) { return availTier(a) - availTier(b); });
             var orderChanged = sorted.some(function (card, idx) { return card !== visibleCards[idx]; });
-            if (orderChanged) sorted.forEach(function (card) { card.parentElement.appendChild(card); });
+            if (orderChanged) {
+                sorted.forEach(function (card) { card.parentElement.appendChild(card); });
+            }
             visibleCards = sorted;
         }
 
@@ -533,28 +525,11 @@
         return d.getUTCDate() + '. ' + (d.getUTCMonth() + 1) + '.';
     }
 
-    // Запрос к базе стартует СРАЗУ, как только браузер дошёл до этого
-    // тега <script> при разборе страницы — не дожидаясь события
-    // DOMContentLoaded (та часть страницы, что выше этого блока, к тому
-    // моменту уже может грузиться секунду-другую сама по себе: фото,
-    // остальные скрипты). Пока сеть едет, это всё равно параллельно
-    // остальной загрузке страницы — просто раньше стартует. Применение
-    // к карточкам (ниже, в init) по-прежнему ждёт готовности DOM, сеть
-    // здесь ни при чём не тормозит.
-    var dataPromise = fetch(SUPABASE_URL + '/rest/v1/rpc/get_catalog_page_data', {
-        method: 'POST',
-        headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-            'Content-Type': 'application/json',
-        },
-        body: '{}',
-    }).then(function (r) { return r.ok ? r.json() : null; });
-
-    // Страховка: если кнопка "Загрузить ещё" всё же появилась (каталог
-    // перерос лимит "Товаров на странице"), кликаем не более 5 раз.
+    // Pagination is disabled in the Tilda block settings (50 per page > catalog size),
+    // so the "load more" button should never appear. Safety net only: max 5 clicks.
     function safetyLoadMoreIfPresent() {
-        if (!document.querySelector('.js-store-load-more-btn')) return;
+        var btn = document.querySelector('.js-store-load-more-btn');
+        if (!btn) return;
         if (observer) observer.disconnect();
         var attempts = 0;
         function tick() {
@@ -571,7 +546,20 @@
         tick();
     }
 
+    // Data request starts immediately, before DOMContentLoaded.
+    var dataPromise = fetch(SUPABASE_URL + '/rest/v1/rpc/get_catalog_page_data', {
+        method: 'POST',
+        headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json',
+        },
+        body: '{}',
+    }).then(function (r) { return r.ok ? r.json() : null; });
+
     function init() {
+        grid = document.querySelector('.js-store-grid-cont');
+
         dataPromise
             .then(function (data) {
                 if (!data) throw new Error('empty response');
@@ -589,7 +577,7 @@
                 var closedDates = new Set(data.closed_dates || []);
                 specialDateLabel = computeSpecialOrderDate(closedWeekdays, closedDates);
 
-                grid = document.querySelector('.js-store-grid-cont');
+                if (!grid) grid = document.querySelector('.js-store-grid-cont');
                 if (grid && grid.parentElement && !document.querySelector('.narin-cat-nav')) {
                     grid.parentElement.insertBefore(buildNav(), grid);
                 }
@@ -597,19 +585,6 @@
                 renderTabBar();
                 renderSubBar();
                 renderPass();
-
-                // Tilda сама дорисовывает/переотрисовывает карточки товаров
-                // отдельным, более поздним проходом (обнаружено вживую).
-                // Раньше это лечили setInterval раз в секунду НАВСЕГДА —
-                // больше не нужно, потому что скрытие теперь идёт через
-                // атрибут+CSS, а не инлайн-стиль, и Tilda его не трогает.
-                // Эти несколько отложенных перерасчётов нужны только на
-                // случай, если тот поздний проход Tilda всё-таки унесёт с
-                // собой наш бейдж (вставленный DOM-узел, а не атрибут) —
-                // renderPass идемпотентен, просто добавит его заново.
-                [1000, 2500].forEach(function (delay) {
-                    setTimeout(renderPass, delay);
-                });
 
                 if (grid) {
                     var pending = null;
@@ -621,6 +596,10 @@
                 }
 
                 safetyLoadMoreIfPresent();
+
+                // Tilda fills card content in a later pass of its own.
+                setTimeout(renderPass, 1000);
+                setTimeout(renderPass, 2500);
             })
             .catch(function (err) { console.error('narin catalog engine', err); });
     }
