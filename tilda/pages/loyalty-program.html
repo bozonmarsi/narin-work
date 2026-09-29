@@ -9,6 +9,9 @@
 <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" rel="stylesheet">
 
 <style>
+/* stránka se na telefonu nesmí posouvat do stran */
+html, body { overflow-x:hidden; }
+@supports (overflow:clip) { html, body { overflow-x:clip; } }
 .nlp { --blue:#186ce0; --blue-d:#1257b8; --tint:#f3f7fd; --tint-2:#e6effb; --ink:#16181d; --ink-2:#4a505b; --muted:#8a8f98; --line:#e6e9ee;
   --r-lg:24px; --r-md:16px;
   font-family:'Rubik',sans-serif; color:var(--ink); background:#fff; -webkit-font-smoothing:antialiased; overflow-x:hidden; }

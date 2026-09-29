@@ -10,7 +10,10 @@
 <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" rel="stylesheet">
 
 <style>
-.nkc { --blue:#186ce0; --blue-d:#1257b8; --tint:#f3f7fd; --tint-2:#e6effb; --ink:#16181d; --ink-2:#4a505b; --muted:#8a8f98; --line:#e6e9ee; --warn-bg:#fff6ea; --warn-ink:#8a5208; --warn-line:#f3d7ae; --err:#d93a2b;
+/* stránka se na telefonu nesmí posouvat do stran */
+html, body { overflow-x:hidden; }
+@supports (overflow:clip) { html, body { overflow-x:clip; } }
+.nkc { touch-action:pan-y pinch-zoom; --blue:#186ce0; --blue-d:#1257b8; --tint:#f3f7fd; --tint-2:#e6effb; --ink:#16181d; --ink-2:#4a505b; --muted:#8a8f98; --line:#e6e9ee; --warn-bg:#fff6ea; --warn-ink:#8a5208; --warn-line:#f3d7ae; --err:#d93a2b;
   --r-lg:24px; --r-md:16px;
   font-family:'Rubik',sans-serif; color:var(--ink); background:#fff; -webkit-font-smoothing:antialiased; overflow-x:hidden; }
 .nkc *, .nkc *::before, .nkc *::after { box-sizing:border-box; }
@@ -415,7 +418,14 @@
 
   var root = document.getElementById('nkc');
   if (!root) return;
+  // iOS Safari při klepnutí do pole stránku přiblíží. maximum-scale=1 to zastaví,
+  // iOS přitom dál dovolí ruční zoom dvěma prsty. Na Androidu meta neměníme.
+  if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+    var vp = document.querySelector('meta[name="viewport"]');
+    if (vp && !/maximum-scale/.test(vp.content)) vp.content += ', maximum-scale=1';
+  }
   var $ = function (id) { return document.getElementById(id); };
+  var canHover = window.matchMedia && window.matchMedia('(hover: hover)').matches;
 
   // Firemní ikona NARIN (stejná jako v loyalty-card.html)
   var DAISY = ['M 159.691406 91.921875 L 178.789062 42.375 C 185.230469 27.75 184.792969 17.382812 177.480469 6.578125 C 173.335938 0.359375 166.894531 1.230469 155.871094 3.195312 C 151.070312 4.066406 146.050781 4.941406 140.921875 4.941406 C 135.574219 4.941406 130.335938 3.851562 125.316406 2.757812 C 114.292969 0.359375 107.855469 -0.625 103.707031 5.921875 C 96.722656 16.945312 96.503906 27.859375 102.941406 42.375 L 103.050781 42.59375 L 122.042969 91.921875 L 131.972656 109.492188 C 134.808594 108.617188 137.757812 108.179688 140.8125 108.179688 C 143.976562 108.179688 146.921875 108.617188 149.871094 109.492188 Z M 159.691406 91.921875',
@@ -635,9 +645,9 @@
   }
   function focusChat() {
     $('nkcChat').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    setTimeout(function () { text.focus({ preventScroll: true }); }, 450);
+    if (canHover) setTimeout(function () { text.focus({ preventScroll: true }); }, 450);
   }
-  $('nkcOwnerGo').addEventListener('click', function () { setOwner(true); text.focus({ preventScroll: true }); });
+  $('nkcOwnerGo').addEventListener('click', function () { setOwner(true); if (canHover) text.focus({ preventScroll: true }); });
   $('nkcOwnerBack').addEventListener('click', function () { setOwner(false); });
   if ($('nkcAskBtn')) $('nkcAskBtn').addEventListener('click', focusChat);
 
@@ -701,7 +711,7 @@
     if (o) $('nkcAttachText').textContent = 'Objednávka č. ' + o.order_id + ' z ' + fmtDate(o.created_at);
     renderOrders();
     showOrders(false);
-    text.focus({ preventScroll: true });
+    if (canHover && o) text.focus({ preventScroll: true });
   }
   $('nkcOrdersList').addEventListener('click', function (e) {
     var b = e.target.closest('.nkc-ord'); if (!b) return;
