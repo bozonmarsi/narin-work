@@ -52,6 +52,7 @@
    своего остатка и нет Van Vliet). */
 .js-store-grid-cont [data-narin-hidden="1"] { display: none !important; }
 .js-store-grid-cont .t-clear { display: none !important; }
+#rec1915290073 .t-store__load-more-btn-wrap { display: none !important; }
 
 .narin-avail-badge { display: inline-flex; align-items: center; gap: 5px; margin-bottom: 3px; font-family: 'Rubik', sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 0.2px; white-space: nowrap; }
 .narin-avail-badge .narin-avail-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
@@ -121,6 +122,7 @@
 
     var grid = null;
     var observer = null;
+    var lastCardCount = null;
 
     var TAP_MOVE_THRESHOLD = 10;
     function bindTap(el, handler) {
@@ -319,12 +321,31 @@
                 tab = otherTabs[tabCursor % otherTabs.length];
                 tabCursor++;
                 attempts++;
-                cards = findRealCandidates(tab, allCards, usedNames, 3);
+                cards = findRealCandidates(tab, allCards, usedNames, Infinity);
                 if (cards.length) break;
             }
             if (!cards.length) continue;
             visibleCards[i].insertAdjacentElement('afterend', buildPromoSection(tab, cards));
         }
+    }
+
+    // Убирает дубли карточек по названию (Tilda при "Загрузить ещё" сама
+    // подмешивает уже показанные SET-ы). ВАЖНО: вызывать только когда
+    // промо-плашки уже удалены, и в любом случае пропускать карточки внутри
+    // .narin-cat-promo-section — иначе клон из плашки, стоящий в DOM раньше
+    // оригинала, считался "первым", а настоящая карточка (Sety/Kovky/Kytice)
+    // удалялась навсегда.
+    function dedupeCards() {
+        var seen = new Set();
+        grid.querySelectorAll('.t-store__card').forEach(function (card) {
+            if (card.closest('.narin-cat-promo-section')) return;
+            var nameEl = card.querySelector('.js-product-name');
+            if (!nameEl) return;
+            var name = normalize(nameEl.textContent);
+            // Пустое имя — Tilda ещё не дорисовала карточку, не дубль.
+            if (!name) return;
+            if (seen.has(name)) card.remove(); else seen.add(name);
+        });
     }
 
     // Единственный проход по карточкам — решает видимость (фильтр
@@ -337,6 +358,8 @@
 
         var existingPromos = grid.querySelectorAll('.narin-cat-promo-section');
         for (var p = 0; p < existingPromos.length; p++) existingPromos[p].remove();
+
+        dedupeCards();
 
         var cards = grid.querySelectorAll('.t-store__card');
         var visibleCards = [];
@@ -363,8 +386,17 @@
             }
         });
 
-        visibleCards.sort(function (a, b) { return availTier(a) - availTier(b); });
-        visibleCards.forEach(function (card) { card.parentElement.appendChild(card); });
+        // Сортировка двигает настоящие DOM-узлы — делаем её только когда число
+        // карточек не менялось с прошлого прохода (Tilda точно ничего не
+        // доклеивает), иначе часть карточек пропадает.
+        var cardCountStable = (lastCardCount === cards.length);
+        lastCardCount = cards.length;
+        if (cardCountStable) {
+            var sorted = visibleCards.slice().sort(function (a, b) { return availTier(a) - availTier(b); });
+            var orderChanged = sorted.some(function (card, idx) { return card !== visibleCards[idx]; });
+            if (orderChanged) sorted.forEach(function (card) { card.parentElement.appendChild(card); });
+            visibleCards = sorted;
+        }
 
         insertPromoSections(visibleCards, cards);
 
@@ -519,6 +551,26 @@
         body: '{}',
     }).then(function (r) { return r.ok ? r.json() : null; });
 
+    // Страховка: если кнопка "Загрузить ещё" всё же появилась (каталог
+    // перерос лимит "Товаров на странице"), кликаем не более 5 раз.
+    function safetyLoadMoreIfPresent() {
+        if (!document.querySelector('.js-store-load-more-btn')) return;
+        if (observer) observer.disconnect();
+        var attempts = 0;
+        function tick() {
+            var b = document.querySelector('.js-store-load-more-btn');
+            attempts++;
+            if (!b || attempts > 5) {
+                if (grid && observer) observer.observe(grid, { childList: true, subtree: true });
+                renderPass();
+                return;
+            }
+            b.click();
+            setTimeout(tick, 700);
+        }
+        tick();
+    }
+
     function init() {
         dataPromise
             .then(function (data) {
@@ -555,7 +607,7 @@
                 // случай, если тот поздний проход Tilda всё-таки унесёт с
                 // собой наш бейдж (вставленный DOM-узел, а не атрибут) —
                 // renderPass идемпотентен, просто добавит его заново.
-                [1200, 3000, 6000].forEach(function (delay) {
+                [1000, 2500].forEach(function (delay) {
                     setTimeout(renderPass, delay);
                 });
 
@@ -567,6 +619,8 @@
                     });
                     observer.observe(grid, { childList: true, subtree: true });
                 }
+
+                safetyLoadMoreIfPresent();
             })
             .catch(function (err) { console.error('narin catalog engine', err); });
     }
