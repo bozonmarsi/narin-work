@@ -115,7 +115,7 @@
         var startX = 0, startY = 0, moved = false;
         function fire(e) {
             var now = Date.now();
-            if (now - lastTime < 500) return;
+            if (500 > now - lastTime) return;
             lastTime = now;
             handler(e);
         }
@@ -154,7 +154,7 @@
     }
 
     function activeTabDef() {
-        for (var i = 0; i < TABS.length; i++) if (TABS[i].key === state.activeTab) return TABS[i];
+        for (var i = 0; TABS.length > i; i++) if (TABS[i].key === state.activeTab) return TABS[i];
         return TABS[0];
     }
 
@@ -220,7 +220,7 @@
         if (row.badge_text) return { text: row.badge_text, color: row.badge_color || '#186ce0' };
         // quantity 0 gets no badge - "Dorucime zitra" already says it.
         if (row.quantity === null || row.quantity === undefined || row.quantity === 0) return null;
-        if (row.quantity < LOW_STOCK_THRESHOLD) return { text: cz('Zb&#253;v&#225;') + ' ' + row.quantity + ' ks', color: '#ff7c76' };
+        if (LOW_STOCK_THRESHOLD > row.quantity) return { text: cz('Zb&#253;v&#225;') + ' ' + row.quantity + ' ks', color: '#ff7c76' };
         return null;
     }
 
@@ -233,7 +233,7 @@
 
     function findRealCandidates(tab, allCards, usedNames) {
         var found = [];
-        for (var i = 0; i < allCards.length; i++) {
+        for (var i = 0; allCards.length > i; i++) {
             var card = allCards[i];
             var name = cardName(card);
             if (!name || usedNames.has(name)) continue;
@@ -310,9 +310,9 @@
         if (!otherTabs.length) return;
         var usedNames = new Set();
         var tabCursor = 0;
-        for (var i = 3; i < visibleCards.length; i += 4) {
+        for (var i = 3; visibleCards.length > i; i += 4) {
             var cards = [], tab = null, attempts = 0;
-            while (attempts < otherTabs.length) {
+            while (otherTabs.length > attempts) {
                 tab = otherTabs[tabCursor % otherTabs.length];
                 tabCursor++;
                 attempts++;
@@ -349,7 +349,7 @@
         if (observer) observer.disconnect();
 
         var existingPromos = grid.querySelectorAll('.narin-cat-promo-section');
-        for (var p = 0; p < existingPromos.length; p++) existingPromos[p].remove();
+        for (var p = 0; existingPromos.length > p; p++) existingPromos[p].remove();
 
         dedupeCards();
 
