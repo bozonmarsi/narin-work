@@ -115,6 +115,19 @@ html, body { overflow-x:hidden; }
 .nkc-clip { flex-shrink:0; width:44px; height:44px; border-radius:50%; border:1.5px solid var(--line); background:#fff; color:var(--ink-2); cursor:pointer; display:none; align-items:center; justify-content:center; font-size:20px; }
 .nkc-clip.is-on { display:flex; }
 .nkc-clip:hover { border-color:var(--ink); color:var(--ink); }
+/* celoobrazovkový chat (jen telefon) */
+.nkc-close { display:none; flex-shrink:0; width:40px; height:40px; margin-left:auto; border:none; border-radius:50%; background:var(--tint); color:var(--ink); cursor:pointer; align-items:center; justify-content:center; }
+.nkc-close svg { width:18px; height:18px; }
+.nkc-open-hint { display:none; }
+.nkc-chat.is-full { transition:none; position:fixed; left:0; right:0; top:0; z-index:2147483000; margin:0; border:none; border-radius:0; box-shadow:none; height:100vh; height:100dvh; animation:nkcFullIn .28s cubic-bezier(.16,1,.3,1); }
+@keyframes nkcFullIn { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:none; } }
+.nkc-chat.is-full .nkc-chat-head { padding-top:calc(14px + env(safe-area-inset-top, 0px)); }
+.nkc-chat.is-full .nkc-close { display:flex; }
+.nkc-chat.is-full .nkc-msgs { flex:1 1 auto; height:auto; min-height:0; }
+.nkc-chat.is-full .nkc-composer { padding-bottom:calc(12px + env(safe-area-inset-bottom, 0px)); }
+.nkc-chat.is-full.is-kb .nkc-composer { padding-bottom:12px; }
+.nkc-chat.is-full.is-kb .nkc-plaque, .nkc-chat.is-full.is-kb .nkc-note { display:none !important; }
+html.nkc-lock, html.nkc-lock body { overflow:hidden !important; }
 .nkc-mtag { display:inline-block; font-size:11px; font-weight:600; letter-spacing:.02em; padding:2px 8px; border-radius:999px; background:rgba(255,255,255,.22); margin-bottom:5px; }
 .nkc-owner-tag { display:none; align-items:center; gap:8px; margin:12px 22px 0; padding:8px 8px 8px 12px; border-radius:12px; background:var(--warn-bg); color:var(--warn-ink); font-size:13px; font-weight:500; }
 .nkc-owner-tag.is-on { display:flex; }
@@ -222,6 +235,8 @@ html, body { overflow-x:hidden; }
   .nkc-chat-sub { font-size:12px; }
   .nkc-plaque { padding:11px 16px; }
   .nkc-msgs { padding:16px; }
+  .nkc-chat:not(.is-full) .nkc-msgs { height:190px; }
+  .nkc-chat:not(.is-full) .nkc-open-hint { display:block; text-align:center; font-size:12px; color:var(--muted); padding:0 16px 12px; }
   .nkc-bubble { max-width:88%; }
   .nkc-topics { flex-wrap:nowrap; overflow-x:auto; padding:12px 16px 4px; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
   .nkc-topics::-webkit-scrollbar { display:none; }
@@ -261,6 +276,7 @@ html, body { overflow-x:hidden; }
             <div class="nkc-chat-title" id="nkcChatTitle">Napište nám</div>
             <div class="nkc-chat-sub" id="nkcChatSub">Problém s objednávkou nebo dotaz? Odpovídáme do 10 minut.</div>
           </div>
+          <button type="button" class="nkc-close" id="nkcClose" aria-label="Zavřít chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         </div>
         <button type="button" class="nkc-plaque nkc-plaque-go" id="nkcOwnerGo"><i class="ti ti-user-star" aria-hidden="true"></i><span>Nespokojeni s naší službou?<small>Napište přímo majiteli, čte to osobně</small></span><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
         <button type="button" class="nkc-plaque nkc-plaque-back" id="nkcOwnerBack"><i class="ti ti-arrow-left" aria-hidden="true"></i><span>Zpět na běžnou podporu<small>objednávky, doručení, dotazy</small></span></button>
@@ -301,6 +317,7 @@ html, body { overflow-x:hidden; }
           </button>
         </div>
         <div class="nkc-err" id="nkcSendErr" style="padding:0 22px 12px;"></div>
+        <div class="nkc-open-hint">Klepnutím otevřete chat na celou obrazovku</div>
       </div>
     </div>
   </section>
@@ -644,6 +661,7 @@ html, body { overflow-x:hidden; }
     lastCount = -2; render(lastList);
   }
   function focusChat() {
+    if (isPhone()) { openFull(); return; }
     $('nkcChat').scrollIntoView({ behavior: 'smooth', block: 'start' });
     if (canHover) setTimeout(function () { text.focus({ preventScroll: true }); }, 450);
   }
@@ -786,6 +804,49 @@ html, body { overflow-x:hidden; }
   renderTopics();
   render([]);
   if (getToken()) { loadHistory(); startPolling(); loadOrders(); }
+
+  // ---------- celoobrazovkový chat na telefonu ----------
+  var chatEl = $('nkcChat'), fullOn = false, vv = window.visualViewport;
+  var isPhone = function () { return window.matchMedia('(max-width: 767px)').matches; };
+  function fitViewport() {
+    if (!fullOn || !vv) return;
+    chatEl.style.height = vv.height + 'px';
+    chatEl.style.transform = 'translateY(' + vv.offsetTop + 'px)';
+    // klávesnice je otevřená, když viditelná výška výrazně klesne
+    chatEl.classList.toggle('is-kb', vv.height < window.innerHeight * 0.8);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+  function openFull() {
+    if (fullOn || !isPhone()) return;
+    fullOn = true;
+    chatEl.classList.add('is-full');
+    document.documentElement.classList.add('nkc-lock');
+    try { history.pushState({ nkcChat: 1 }, ''); } catch (e) {}
+    if (vv) { vv.addEventListener('resize', fitViewport); vv.addEventListener('scroll', fitViewport); }
+    fitViewport();
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+  function closeFull(fromHistory) {
+    if (!fullOn) return;
+    fullOn = false;
+    text.blur();
+    chatEl.classList.remove('is-full', 'is-kb');
+    chatEl.style.height = ''; chatEl.style.transform = '';
+    document.documentElement.classList.remove('nkc-lock');
+    if (vv) { vv.removeEventListener('resize', fitViewport); vv.removeEventListener('scroll', fitViewport); }
+    if (!fromHistory && history.state && history.state.nkcChat) { try { history.back(); } catch (e) {} }
+    chatEl.scrollIntoView({ block: 'start' });
+  }
+  window.addEventListener('popstate', function () { if (fullOn) closeFull(true); });
+  $('nkcClose').addEventListener('click', function () { closeFull(false); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && fullOn) closeFull(false); });
+  // cokoli uvnitř chatu na telefonu nejdřív otevře celou obrazovku
+  chatEl.addEventListener('pointerdown', function (e) {
+    if (fullOn || !isPhone() || e.target.closest('.nkc-close')) return;
+    openFull();
+  }, true);
+  text.addEventListener('focus', openFull);
+  window.addEventListener('resize', function () { if (fullOn && !isPhone()) closeFull(false); });
 
   // ---------- REVEAL ----------
   var io = 'IntersectionObserver' in window ? new IntersectionObserver(function (entries) {
