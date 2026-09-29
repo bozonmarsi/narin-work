@@ -32,13 +32,16 @@
 
 /* ---------- HERO ---------- */
 .nkc-hero { padding:48px 0 72px; }
-.nkc-hero-grid { display:grid; grid-template-columns:5fr 6fr; gap:56px; align-items:start; }
+.nkc-hero-grid { display:grid; grid-template-columns:5fr 6fr; grid-template-areas:'intro chat' 'ways chat'; gap:0 56px; align-items:start; }
+.nkc-intro { grid-area:intro; }
+.nkc-ways-wrap { grid-area:ways; }
+#nkcChat { grid-area:chat; }
 .nkc-hero h1 { font-size:56px; line-height:1.02; font-weight:600; letter-spacing:-.03em; }
 .nkc-hero .nkc-lead { font-size:19px; max-width:34ch; margin-top:20px; }
 .nkc-status { display:inline-flex; align-items:center; gap:8px; margin-top:24px; font-size:14px; font-weight:500; color:var(--ink-2); background:var(--tint); border-radius:999px; padding:7px 14px; }
 .nkc-status i.dot { width:8px; height:8px; border-radius:50%; background:#1f9d57; box-shadow:0 0 0 4px rgba(31,157,87,.15); }
 .nkc-status.is-off i.dot { background:var(--muted); box-shadow:0 0 0 4px rgba(138,143,152,.15); }
-.nkc-ways { margin-top:36px; display:grid; gap:4px; }
+.nkc-ways { margin-top:32px; display:grid; gap:4px; }
 .nkc-way { display:grid; grid-template-columns:44px 1fr auto; gap:14px; align-items:center; padding:12px 12px 12px 0; border-radius:var(--r-md); text-decoration:none; color:var(--ink); }
 .nkc-way-ic { width:44px; height:44px; border-radius:14px; background:var(--tint); color:var(--blue); display:flex; align-items:center; justify-content:center; font-size:21px; }
 .nkc-way b { display:block; font-size:16px; font-weight:600; }
@@ -54,7 +57,7 @@
 .nkc-avatar img { width:100%; height:100%; object-fit:cover; }
 .nkc-chat-title { font-size:16px; font-weight:600; }
 .nkc-chat-sub { font-size:13px; color:var(--muted); margin-top:2px; }
-.nkc-msgs { height:340px; overflow-y:auto; padding:20px 22px; display:flex; flex-direction:column; gap:10px; background:linear-gradient(180deg,#fff,var(--tint) 140%); overscroll-behavior:contain; }
+.nkc-msgs { height:360px; height:clamp(280px, 46dvh, 420px); overflow-y:auto; padding:20px 22px; display:flex; flex-direction:column; gap:10px; background:linear-gradient(180deg,#fff,var(--tint) 140%); overscroll-behavior:contain; }
 .nkc-bubble { max-width:82%; padding:10px 14px; border-radius:18px; font-size:15px; line-height:1.45; word-wrap:break-word; white-space:pre-wrap; animation:nkcIn .35s cubic-bezier(.16,1,.3,1) both; }
 .nkc-bubble--me { align-self:flex-end; background:var(--blue); color:#fff; border-bottom-right-radius:6px; }
 .nkc-bubble--them { align-self:flex-start; background:#fff; color:var(--ink); border:1px solid var(--line); border-bottom-left-radius:6px; }
@@ -68,6 +71,48 @@
 .nkc-topic--warn { border-color:var(--warn-line); background:var(--warn-bg); color:var(--warn-ink); }
 .nkc-topic--warn .ti { color:var(--warn-ink); }
 .nkc-note { font-size:12px; color:var(--muted); padding:8px 22px 4px; line-height:1.5; }
+.nkc-plaque { display:flex; align-items:center; gap:12px; width:100%; border:none; border-bottom:1px solid var(--warn-line); background:var(--warn-bg); color:var(--warn-ink); padding:12px 22px; font:500 14px 'Rubik',sans-serif; text-align:left; cursor:pointer; transition:background .2s ease; }
+.nkc-plaque:hover { background:#fdeed8; }
+.nkc-plaque .ti { font-size:20px; flex-shrink:0; }
+.nkc-plaque .ti-chevron-right, .nkc-plaque .ti-arrow-left { font-size:18px; }
+.nkc-plaque span { flex:1; line-height:1.35; }
+.nkc-plaque small { display:block; font-weight:400; font-size:12px; opacity:.85; margin-top:1px; }
+.nkc-plaque-back { display:none; }
+.nkc-chat.is-owner .nkc-plaque-go { display:none; }
+.nkc-chat.is-owner .nkc-plaque-back { display:flex; }
+.nkc-chat.is-owner .nkc-chat-head { background:var(--warn-bg); }
+.nkc-chat.is-owner .nkc-avatar { background:#fff; }
+.nkc-chat.is-owner .nkc-msgs { background:linear-gradient(180deg,#fff,var(--warn-bg) 140%); }
+.nkc-chat.is-owner .nkc-send { background:var(--ink); }
+.nkc-chat.is-owner .nkc-textarea:focus { border-color:var(--warn-ink); }
+.nkc-chat.is-owner .nkc-topic .ti { color:var(--warn-ink); }
+.nkc-orders { padding:12px 22px 0; }
+.nkc-orders[hidden] { display:none; }
+.nkc-orders-t { display:flex; justify-content:space-between; align-items:center; gap:10px; font-size:13px; font-weight:600; margin-bottom:8px; }
+.nkc-orders-t button { border:none; background:none; color:var(--muted); font:500 13px 'Rubik',sans-serif; cursor:pointer; padding:4px; }
+.nkc-orders-list { display:flex; gap:8px; overflow-x:auto; padding:2px 2px 6px; scroll-snap-type:x mandatory; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+.nkc-orders-list::-webkit-scrollbar { display:none; }
+.nkc-ord { flex:0 0 auto; width:196px; display:grid; grid-template-columns:44px 1fr; gap:10px; align-items:center; text-align:left; border:1.5px solid var(--line); background:#fff; border-radius:14px; padding:8px 10px 8px 8px; cursor:pointer; font-family:'Rubik',sans-serif; color:var(--ink); scroll-snap-align:start; transition:border-color .2s ease, background .2s ease; }
+.nkc-ord:hover { border-color:var(--ink); }
+.nkc-ord.is-sel { border-color:var(--blue); background:var(--tint); }
+.nkc-ord-img { width:44px; height:44px; border-radius:10px; background:var(--tint); display:flex; align-items:center; justify-content:center; overflow:hidden; }
+.nkc-ord-img img { width:100%; height:100%; object-fit:contain; }
+.nkc-ord b { display:block; font-size:13px; font-weight:600; }
+.nkc-ord span { display:block; font-size:12px; color:var(--ink-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.nkc-ord em { display:inline-block; font-style:normal; font-size:11px; font-weight:600; padding:1px 7px; border-radius:999px; margin-top:3px; background:var(--tint-2); color:var(--blue); }
+.nkc-ord em.is-ok { background:#e7f5ec; color:#1b7a44; }
+.nkc-ord em.is-warn { background:var(--warn-bg); color:var(--warn-ink); }
+.nkc-ord em.is-off { background:#f1f2f4; color:var(--muted); }
+.nkc-ord--none { width:auto; grid-template-columns:auto; padding:0 16px; font-size:13px; font-weight:500; color:var(--ink-2); }
+.nkc-attach { display:none; align-items:center; gap:8px; margin:10px 22px 0; padding:6px 6px 6px 12px; border-radius:12px; background:var(--tint); font-size:13px; font-weight:500; color:var(--ink); width:max-content; max-width:calc(100% - 44px); }
+.nkc-attach.is-on { display:flex; }
+.nkc-attach .ti { color:var(--blue); font-size:16px; }
+.nkc-attach button { border:none; background:none; cursor:pointer; color:var(--muted); width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:15px; }
+.nkc-attach button:hover { background:#fff; color:var(--ink); }
+.nkc-clip { flex-shrink:0; width:44px; height:44px; border-radius:50%; border:1.5px solid var(--line); background:#fff; color:var(--ink-2); cursor:pointer; display:none; align-items:center; justify-content:center; font-size:20px; }
+.nkc-clip.is-on { display:flex; }
+.nkc-clip:hover { border-color:var(--ink); color:var(--ink); }
+.nkc-mtag { display:inline-block; font-size:11px; font-weight:600; letter-spacing:.02em; padding:2px 8px; border-radius:999px; background:rgba(255,255,255,.22); margin-bottom:5px; }
 .nkc-owner-tag { display:none; align-items:center; gap:8px; margin:12px 22px 0; padding:8px 8px 8px 12px; border-radius:12px; background:var(--warn-bg); color:var(--warn-ink); font-size:13px; font-weight:500; }
 .nkc-owner-tag.is-on { display:flex; }
 .nkc-owner-tag button { margin-left:auto; border:none; background:none; color:inherit; cursor:pointer; font-size:16px; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
@@ -76,7 +121,7 @@
 .nkc-verify[hidden] { display:none; }
 .nkc-verify-lead { font-size:13px; color:var(--ink-2); margin-bottom:8px; line-height:1.45; }
 .nkc-verify label { display:block; font-size:13px; font-weight:500; margin-bottom:6px; }
-.nkc-input { width:100%; padding:11px 14px; border-radius:12px; border:1.5px solid var(--line); font:15px 'Rubik',sans-serif; color:var(--ink); background:#fff; outline:none; transition:border-color .2s ease; }
+.nkc-input { width:100%; padding:11px 14px; border-radius:12px; border:1.5px solid var(--line); font:16px 'Rubik',sans-serif; color:var(--ink); background:#fff; outline:none; transition:border-color .2s ease; }
 .nkc-input:focus { border-color:var(--blue); }
 .nkc-input--code { text-align:center; letter-spacing:.4em; font-size:18px; font-variant-numeric:tabular-nums; }
 .nkc-verify-actions { display:flex; gap:8px; margin-top:10px; align-items:center; }
@@ -87,7 +132,7 @@
 .nkc-err { font-size:13px; color:var(--err); margin-top:6px; min-height:0; }
 .nkc-err:empty { display:none; }
 .nkc-composer { display:flex; gap:10px; align-items:flex-end; padding:14px 16px 16px; margin-top:14px; border-top:1px solid var(--line); }
-.nkc-textarea { flex:1; resize:none; border:1.5px solid var(--line); border-radius:16px; padding:11px 14px; font:15px/1.4 'Rubik',sans-serif; color:var(--ink); max-height:120px; outline:none; transition:border-color .2s ease; }
+.nkc-textarea { flex:1; min-width:0; resize:none; border:1.5px solid var(--line); border-radius:22px; padding:11px 16px; font:16px/1.4 'Rubik',sans-serif; color:var(--ink); max-height:120px; outline:none; transition:border-color .2s ease; }
 .nkc-textarea:focus { border-color:var(--blue); }
 .nkc-send { flex-shrink:0; width:46px; height:46px; border-radius:50%; border:none; background:var(--blue); color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:20px; transition:background .2s ease, transform .2s ease; }
 .nkc-send:hover { background:var(--blue-d); }
@@ -96,29 +141,26 @@
 .nkc-send svg { width:18px; height:18px; }
 .nkc-sendline { font-size:12px; color:var(--muted); padding:0 22px 14px; }
 
-/* ---------- OWNER ---------- */
-.nkc-owner { background:var(--warn-bg); border-radius:var(--r-lg); padding:48px; display:grid; grid-template-columns:auto 1fr auto; gap:40px; align-items:center; }
-.nkc-owner-photo { width:132px; height:132px; border-radius:50%; background:#fff; display:flex; align-items:center; justify-content:center; overflow:hidden; box-shadow:0 18px 36px -20px rgba(138,82,8,.5); }
-.nkc-owner-photo img { width:100%; height:100%; object-fit:cover; }
-.nkc-owner h2 { font-size:30px; font-weight:600; letter-spacing:-.02em; line-height:1.15; }
-.nkc-owner p { font-size:16px; line-height:1.6; color:var(--ink-2); margin-top:10px; max-width:54ch; }
-.nkc-owner-sign { font-size:14px; color:var(--warn-ink); font-weight:500; margin-top:14px; }
-.nkc-owner .nkc-btn { background:var(--ink); color:#fff; }
-.nkc-owner .nkc-btn:hover { background:#000; }
-
-/* ---------- HELP LINKS ---------- */
-.nkc-help { display:grid; grid-template-columns:2fr 1fr 1fr; grid-template-rows:auto auto; gap:16px; margin-top:40px; }
-.nkc-help a { display:flex; flex-direction:column; justify-content:space-between; gap:28px; padding:24px; border-radius:var(--r-lg); text-decoration:none; color:var(--ink); background:var(--tint); transition:transform .35s cubic-bezier(.16,1,.3,1), background .2s ease; min-height:150px; }
-.nkc-help a:hover { transform:translateY(-4px); background:var(--tint-2); }
-.nkc-help a .ti { font-size:26px; color:var(--blue); }
-.nkc-help b { display:block; font-size:18px; font-weight:600; }
-.nkc-help span { display:block; font-size:14px; color:var(--ink-2); margin-top:4px; line-height:1.45; }
-.nkc-help a.is-big { grid-row:span 2; background:var(--blue); color:#fff; }
-.nkc-help a.is-big .ti { color:#fff; font-size:32px; }
-.nkc-help a.is-big b { font-size:24px; }
-.nkc-help a.is-big span { color:rgba(255,255,255,.85); font-size:15px; }
-.nkc-help a.is-big:hover { background:var(--blue-d); }
-.nkc-help-go { display:inline-flex; align-items:center; gap:6px; font-size:15px; font-weight:500; margin-top:14px; }
+/* ---------- FAQ ---------- */
+.nkc-faq-grid { display:grid; grid-template-columns:4fr 7fr; gap:64px; }
+.nkc-faq-tabs { display:flex; flex-wrap:wrap; gap:6px; margin-top:28px; }
+.nkc-faq-tab { border:1.5px solid var(--line); background:#fff; border-radius:999px; padding:8px 16px; font:500 14px 'Rubik',sans-serif; color:var(--ink); cursor:pointer; white-space:nowrap; transition:all .2s ease; }
+.nkc-faq-tab:hover { border-color:var(--ink); }
+.nkc-faq-tab.is-active { background:var(--ink); border-color:var(--ink); color:#fff; }
+.nkc-faq-more { display:inline-flex; align-items:center; gap:6px; margin-top:28px; font-size:15px; font-weight:500; color:var(--blue); text-decoration:none; }
+.nkc-faq-more .ti { transition:transform .3s ease; }
+.nkc-faq-more:hover .ti { transform:translateX(4px); }
+.nkc-q { border-bottom:1px solid var(--line); animation:nkcIn .4s cubic-bezier(.16,1,.3,1) both; }
+.nkc-q:first-child { border-top:1px solid var(--line); }
+.nkc-q button { width:100%; background:none; border:none; padding:20px 0; display:flex; justify-content:space-between; align-items:center; gap:16px; font:500 17px 'Rubik',sans-serif; color:var(--ink); text-align:left; cursor:pointer; }
+.nkc-q button .ti { font-size:20px; color:var(--blue); transition:transform .35s cubic-bezier(.16,1,.3,1); flex-shrink:0; }
+.nkc-q.is-open button .ti { transform:rotate(45deg); }
+.nkc-a { display:grid; grid-template-rows:0fr; transition:grid-template-rows .4s cubic-bezier(.16,1,.3,1); }
+.nkc-a > div { overflow:hidden; }
+.nkc-a p { font-size:15px; line-height:1.65; color:var(--ink-2); padding-bottom:20px; max-width:62ch; }
+.nkc-a a { color:var(--blue); }
+.nkc-q.is-open .nkc-a { grid-template-rows:1fr; }
+.nkc-faq-ask { margin-top:24px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; font-size:15px; color:var(--ink-2); }
 
 /* ---------- PLACE ---------- */
 .nkc-place { display:grid; grid-template-columns:6fr 5fr; gap:16px; }
@@ -155,13 +197,11 @@
 
 /* ---------- RESPONSIVE ---------- */
 @media (max-width:1024px) {
-  .nkc-hero-grid, .nkc-place { grid-template-columns:1fr; gap:40px; }
+  .nkc-hero-grid { grid-template-columns:1fr; grid-template-areas:'intro' 'chat' 'ways'; gap:28px; }
+  .nkc-ways { margin-top:0; }
+  .nkc-place, .nkc-faq-grid { grid-template-columns:1fr; gap:32px; }
   .nkc-place { gap:16px; }
   .nkc-hero h1 { font-size:46px; }
-  .nkc-owner { grid-template-columns:auto 1fr; }
-  .nkc-owner .nkc-btn { grid-column:1/-1; justify-self:start; }
-  .nkc-help { grid-template-columns:1fr 1fr; }
-  .nkc-help a.is-big { grid-row:auto; grid-column:1/-1; }
   .nkc-legal-box { grid-template-columns:1fr; gap:18px; }
 }
 @media (max-width:767px) {
@@ -172,18 +212,24 @@
   .nkc-hero { padding:24px 0 40px; }
   .nkc-hero h1 { font-size:38px; }
   .nkc-hero .nkc-lead { font-size:17px; }
-  .nkc-ways { margin-top:24px; }
-  .nkc-chat { margin:0 -4px; }
-  .nkc-chat-head, .nkc-msgs { padding-left:16px; padding-right:16px; }
-  .nkc-topics, .nkc-note, .nkc-verify, .nkc-sendline { padding-left:16px; padding-right:16px; }
-  .nkc-owner-tag { margin-left:16px; margin-right:16px; }
-  .nkc-msgs { height:300px; }
-  .nkc-owner { grid-template-columns:1fr; padding:28px 22px; gap:22px; }
-  .nkc-owner-photo { width:96px; height:96px; }
-  .nkc-owner h2 { font-size:24px; }
-  .nkc-owner .nkc-btn { width:100%; }
-  .nkc-help { grid-template-columns:1fr; }
-  .nkc-help a { min-height:0; gap:18px; }
+  .nkc-status { margin-top:16px; }
+  .nkc-chat { border-radius:20px; }
+  .nkc-chat-head { padding:14px 16px; gap:12px; }
+  .nkc-avatar { width:40px; height:40px; }
+  .nkc-chat-sub { font-size:12px; }
+  .nkc-plaque { padding:11px 16px; }
+  .nkc-msgs { padding:16px; }
+  .nkc-bubble { max-width:88%; }
+  .nkc-topics { flex-wrap:nowrap; overflow-x:auto; padding:12px 16px 4px; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+  .nkc-topics::-webkit-scrollbar { display:none; }
+  .nkc-note, .nkc-verify, .nkc-sendline, .nkc-orders { padding-left:16px; padding-right:16px; }
+  .nkc-attach { margin-left:16px; margin-right:16px; max-width:calc(100% - 32px); }
+  .nkc-ord { width:176px; }
+  .nkc-verify-actions { flex-wrap:wrap; }
+  .nkc-composer { padding:12px; gap:8px; }
+  .nkc-send { width:44px; height:44px; }
+  #nkcSendErr { padding:0 16px 12px !important; }
+  .nkc-q button { font-size:16px; }
   .nkc-map { min-height:260px; }
   .nkc-place-info { padding:24px 20px; }
   .nkc-legal dl { grid-template-columns:1fr 1fr; }
@@ -199,24 +245,30 @@
   <!-- HERO + CHAT -->
   <section class="nkc-hero">
     <div class="nkc-wrap nkc-hero-grid">
-      <div class="nkc-r">
+      <div class="nkc-intro nkc-r">
         <h1>Kontakty</h1>
         <p class="nkc-lead">Nejrychleji nás zastihnete v chatu. Odpovídá vám člověk, ne robot.</p>
         <div class="nkc-status" id="nkcStatus"><i class="dot"></i><span id="nkcStatusText"></span></div>
-        <div class="nkc-ways" id="nkcWays"></div>
       </div>
+      <div class="nkc-ways-wrap nkc-r"><div class="nkc-ways" id="nkcWays"></div></div>
       <div class="nkc-chat nkc-r" id="nkcChat">
         <div class="nkc-chat-head">
           <div class="nkc-avatar" id="nkcTeamAvatar"></div>
           <div>
-            <div class="nkc-chat-title">Napište nám</div>
-            <div class="nkc-chat-sub">Problém s objednávkou nebo dotaz? Odpovídáme do 10 minut.</div>
+            <div class="nkc-chat-title" id="nkcChatTitle">Napište nám</div>
+            <div class="nkc-chat-sub" id="nkcChatSub">Problém s objednávkou nebo dotaz? Odpovídáme do 10 minut.</div>
           </div>
         </div>
+        <button type="button" class="nkc-plaque nkc-plaque-go" id="nkcOwnerGo"><i class="ti ti-user-star" aria-hidden="true"></i><span>Nespokojeni s naší službou?<small>Napište přímo majiteli, čte to osobně</small></span><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
+        <button type="button" class="nkc-plaque nkc-plaque-back" id="nkcOwnerBack"><i class="ti ti-arrow-left" aria-hidden="true"></i><span>Zpět na běžnou podporu<small>objednávky, doručení, dotazy</small></span></button>
         <div class="nkc-msgs" id="nkcMsgs" aria-live="polite"></div>
         <div class="nkc-topics" id="nkcTopics"></div>
-        <div class="nkc-note" id="nkcNote">Nenašli jste svou situaci? Napište nám přímo. Když budete chtít, spojíme vás i s majitelem.</div>
-        <div class="nkc-owner-tag" id="nkcOwnerTag"><i class="ti ti-user-star" aria-hidden="true"></i><span>Zprávu dostane přímo majitel</span><button type="button" id="nkcOwnerOff" aria-label="Zrušit zprávu pro majitele"><i class="ti ti-x" aria-hidden="true"></i></button></div>
+        <div class="nkc-note" id="nkcNote"></div>
+        <div class="nkc-orders" id="nkcOrders" hidden>
+          <div class="nkc-orders-t"><span>Které objednávky se to týká?</span><button type="button" id="nkcOrdersHide">Skrýt</button></div>
+          <div class="nkc-orders-list" id="nkcOrdersList"></div>
+        </div>
+        <div class="nkc-attach" id="nkcAttach"><i class="ti ti-package" aria-hidden="true"></i><span id="nkcAttachText"></span><button type="button" id="nkcAttachOff" aria-label="Odebrat objednávku"><i class="ti ti-x" aria-hidden="true"></i></button></div>
 
         <div class="nkc-verify" id="nkcEmailRow" hidden>
           <p class="nkc-verify-lead">Kam vám máme odpovědět? Na e-mail pošleme krátký ověřovací kód.</p>
@@ -238,8 +290,9 @@
         </div>
 
         <div class="nkc-composer">
+          <button type="button" class="nkc-clip" id="nkcClip" aria-label="Vybrat objednávku"><i class="ti ti-package" aria-hidden="true"></i></button>
           <label for="nkcText" class="nkc-sr" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">Zpráva</label>
-          <textarea class="nkc-textarea" id="nkcText" rows="1" placeholder="Napište zprávu…"></textarea>
+          <textarea class="nkc-textarea" id="nkcText" rows="1" placeholder="Napište zprávu…" enterkeyhint="send"></textarea>
           <button type="button" class="nkc-send" id="nkcSend" aria-label="Odeslat">
             <svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
           </button>
@@ -249,28 +302,18 @@
     </div>
   </section>
 
-  <!-- HELP -->
-  <section class="nkc-sec" style="padding-top:16px;">
-    <div class="nkc-wrap">
+  <!-- FAQ (zapíná se v CONFIG.showFaq) -->
+  <section class="nkc-sec" id="nkcFaqSec" style="padding-top:16px;">
+    <div class="nkc-wrap nkc-faq-grid">
       <div class="nkc-r">
         <h2 class="nkc-h2">Odpověď možná už máme</h2>
-        <p class="nkc-lead">Nejčastější otázky jsme sepsali. Když tam odpověď nenajdete, napište nám.</p>
+        <p class="nkc-lead">Na tyhle otázky odpovídáme nejčastěji.</p>
+        <div class="nkc-faq-tabs" id="nkcFaqTabs" role="tablist"></div>
+        <a class="nkc-faq-more" href="https://vezminarin.cz/to-buyers">Všechny informace pro zákazníky<i class="ti ti-arrow-right" aria-hidden="true"></i></a>
       </div>
-      <div class="nkc-help" id="nkcHelp"></div>
-    </div>
-  </section>
-
-  <!-- OWNER -->
-  <section class="nkc-sec" style="padding-top:0;">
-    <div class="nkc-wrap">
-      <div class="nkc-owner nkc-r">
-        <div class="nkc-owner-photo" id="nkcOwnerPhoto"></div>
-        <div>
-          <h2>Něco se pokazilo? Napište přímo majiteli</h2>
-          <p>Když vám něco nesedí a chcete to řešit s tím, kdo za NARIN odpovídá, napište mi. Každou takovou zprávu čtu osobně a ozvu se vám.</p>
-          <div class="nkc-owner-sign" id="nkcOwnerSign"></div>
-        </div>
-        <button type="button" class="nkc-btn" id="nkcOwnerBtn">Napsat majiteli</button>
+      <div class="nkc-r">
+        <div id="nkcFaq"></div>
+        <div class="nkc-faq-ask">Nenašli jste odpověď? <button type="button" class="nkc-btn nkc-btn--line" id="nkcAskBtn" style="height:44px;">Zeptat se v chatu</button></div>
       </div>
     </div>
   </section>
@@ -326,12 +369,31 @@
       photo: ''               // URL fotky majitele. Prázdné = ikona NARIN.
     },
     teamAvatar: '',           // URL fotky týmu/floristky pro hlavičku chatu. Prázdné = ikona NARIN.
-    help: [
-      { big: true, icon: 'ti-help-circle', t: 'Časté otázky', d: 'Doručení, platba, péče o květiny a všechno ostatní na jednom místě.', href: 'https://vezminarin.cz/faq' },
-      { icon: 'ti-truck-delivery', t: 'Doručení a platba', d: 'Časy, ceny, oblasti', href: 'https://vezminarin.cz/kupujicim' },
-      { icon: 'ti-refresh', t: 'Reklamace', d: 'Co dělat, když něco nesedí', href: 'https://vezminarin.cz/kupujicim' },
-      { icon: 'ti-building-store', t: 'Pro firmy', d: 'Faktura a firemní účet', href: 'https://vezminarin.cz/b2b' },
-      { icon: 'ti-coins', t: 'Věrnostní program', d: 'Body, úrovně, samolepky', href: 'https://vezminarin.cz/bonussystem' }
+    // Blok FAQ je zatím vypnutý, zapne se po přepracování stránky /to-buyers.
+    showFaq: false,
+    // FAQ: údaje vycházejí z nastavení e-shopu. Ceny a lhůty zkontrolujte.
+    faq: [
+      { tab: 'Doručení', items: [
+        ['Kolik stojí doručení?', 'Doručení kurýrem po Praze stojí 159 Kč. Osobní odběr je zdarma.'],
+        ['Kdy mi květiny přivezete?', 'Doručujeme v časových oknech 9-12, 12-15, 15-18 a 18-20. Okno si vyberete v košíku. U každé květiny v katalogu vidíte, jestli ji doručíme dnes, nebo zítra.'],
+        ['Dá příjemce vědět, že kurýr jede?', 'Ano. Asi 10 minut před příjezdem mu přijde SMS. Kurýr navíc kytici při předání vyfotí, abyste viděli, že dorazila.'],
+        ['Můžu změnit adresu nebo čas po objednání?', 'Napište nám co nejdřív do chatu s číslem objednávky. Když ještě nejsou květiny na cestě, rádi to změníme.']
+      ] },
+      { tab: 'Objednávka a platba', items: [
+        ['Jak můžu zaplatit?', 'Online platební kartou, nebo hotově při převzetí.'],
+        ['Kde uvidím stav objednávky?', 'Ve svém účtu v sekci Historie objednávek. Uvidíte, jestli je objednávka potvrzená, na cestě, nebo doručená.'],
+        ['Můžu zaplatit body z věrnostního programu?', 'Ano, body uplatníte v košíku až do výše 30 % hodnoty objednávky. 1 bod = 1 Kč. Více na stránce <a href="https://vezminarin.cz/bonussystem">věrnostního programu</a>.'],
+        ['Objednávám pro firmu. Dostanu fakturu?', 'Ano. Založte si <a href="https://vezminarin.cz/b2b">firemní účet</a>, nakupujte na fakturu a se slevou.']
+      ] },
+      { tab: 'Reklamace', items: [
+        ['Květiny rychle zvadly. Co mám dělat?', 'Když kytice zvadne do 2 dnů od doručení, vyměníme ji zdarma. Pošlete nám do chatu fotku a číslo objednávky.'],
+        ['Dorazilo něco jiného, než jsem objednal(a).', 'Omlouváme se. Napište nám do chatu číslo objednávky a fotku, vyřešíme to hned.'],
+        ['Nelíbilo se mi, jak se k vám kdo choval.', 'Napište přímo majiteli. V chatu nahoře klepněte na „Nespokojeni s naší službou?“. Majitel každou takovou zprávu čte osobně.']
+      ] },
+      { tab: 'Péče o květiny', items: [
+        ['Jak se o květiny starat, aby vydržely déle?', 'Seřízněte stonky šikmo o 1-2 cm, dejte je do čisté vázy s chladnou vodou a vodu měňte každé dva dny. Kytici nedávejte na přímé slunce ani k ovoci.'],
+        ['Jsou vaše květiny bezpečné pro kočky?', 'U každé květiny v katalogu označujeme, jestli je bezpečná pro kočky a jestli může vadit alergikům.']
+      ] }
     ],
     legal: [
       ['Provozovatel', 'Tebuev Magomed, OSVČ'],
@@ -341,7 +403,13 @@
       ['Rejstřík', 'Živnostenský rejstřík, ÚMČ Praha 1'],
       ['E-mail', 'support@vezminarin.cz']
     ],
-    ownerPrefix: 'Pro majitele: '
+    ownerPrefix: 'Pro majitele: ',
+    ownerTopics: [
+      { ic: 'ti-mood-sad', t: 'Nelíbila se mi služba', p: 'Nelíbilo se mi: ' },
+      { ic: 'ti-user-exclamation', t: 'Nepříjemný pracovník', p: 'Váš pracovník (kurýr/florista) se choval nevhodně: ', order: true },
+      { ic: 'ti-alert-triangle', t: 'Problém nikdo nevyřešil', p: 'Můj problém zatím nikdo nevyřešil: ' },
+      { ic: 'ti-bulb', t: 'Nápad na zlepšení', p: 'Mám nápad, co zlepšit: ' }
+    ]
   };
   // ===============================================
 
@@ -386,14 +454,26 @@
   });
 
   $('nkcTeamAvatar').innerHTML = CONFIG.teamAvatar ? '<img src="' + CONFIG.teamAvatar + '" alt="">' : daisy('#186ce0', 26);
-  $('nkcOwnerPhoto').innerHTML = CONFIG.owner.photo ? '<img src="' + CONFIG.owner.photo + '" alt="' + esc(CONFIG.owner.name || 'Majitel NARIN') + '">' : daisy('#8a5208', 60);
-  $('nkcOwnerSign').textContent = CONFIG.owner.name || 'Majitel NARIN';
   $('nkcPinMark').innerHTML = daisy('#fff', 28);
 
-  $('nkcHelp').innerHTML = CONFIG.help.map(function (h) {
-    return '<a href="' + h.href + '"' + (h.big ? ' class="is-big"' : '') + '><i class="ti ' + h.icon + '" aria-hidden="true"></i><div><b>' + esc(h.t) + '</b><span>' + esc(h.d) + '</span>' +
-      (h.big ? '<span class="nkc-help-go">Otevřít<i class="ti ti-arrow-right" aria-hidden="true"></i></span>' : '') + '</div></a>';
-  }).join('');
+  if (!CONFIG.showFaq) $('nkcFaqSec').remove();
+  var faqTabs = $('nkcFaqTabs'), faqBox = $('nkcFaq');
+  if (CONFIG.showFaq) {
+  function showFaq(k) {
+    faqTabs.querySelectorAll('.nkc-faq-tab').forEach(function (b, i) { b.classList.toggle('is-active', i === k); b.setAttribute('aria-selected', i === k); });
+    faqBox.innerHTML = CONFIG.faq[k].items.map(function (q, i) {
+      return '<div class="nkc-q" style="animation-delay:' + (i * 50) + 'ms"><button type="button" aria-expanded="false">' + esc(q[0]) + '<i class="ti ti-plus" aria-hidden="true"></i></button><div class="nkc-a"><div><p>' + q[1] + '</p></div></div></div>';
+    }).join('');
+  }
+  faqTabs.innerHTML = CONFIG.faq.map(function (g, i) { return '<button type="button" class="nkc-faq-tab" role="tab">' + esc(g.tab) + '</button>'; }).join('');
+  faqTabs.querySelectorAll('.nkc-faq-tab').forEach(function (b, i) { b.addEventListener('click', function () { showFaq(i); }); });
+  faqBox.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    var open = b.parentNode.classList.toggle('is-open');
+    b.setAttribute('aria-expanded', open);
+  });
+  showFaq(0);
+  }
 
   $('nkcAddr').textContent = CONFIG.pickup.address;
   $('nkcAddrNote').textContent = CONFIG.pickup.note;
@@ -427,11 +507,14 @@
   var GREETING = "Dobrý den! Napište nám, s čím vám můžeme pomoct, nebo vyberte téma níže.";
   var CLOSED = "Váš předchozí dotaz jsme vyřešili a chat uzavřeli. Máte další otázku? Napište nám.";
   var AUTO_REPLY = "Děkujeme za zprávu! Odpovíme vám do 10 minut. Pokud jde o objednávku, uveďte prosím její číslo.";
+  var OWNER_GREETING = "Mrzí nás, že něco nebylo v pořádku. Napište, co se stalo. Zprávu čte přímo majitel NARIN a ozve se vám.";
+  var NOTE_SUPPORT = "Nenašli jste svou situaci? Napište nám ji vlastními slovy.";
+  var NOTE_OWNER = "Když uvedete číslo objednávky nebo datum, dohledáme to rychleji.";
   var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   var TOPICS = [
-    { ic: 'ti-package', t: 'Objednávka', p: 'Mám dotaz k objednávce č. ' },
-    { ic: 'ti-flower', t: 'Kvalita květin', p: 'Květiny, které jsem dostal/a, mají tento problém: ' },
-    { ic: 'ti-truck', t: 'Doručení', p: 'Mám dotaz k doručení objednávky č. ' },
+    { ic: 'ti-package', t: 'Objednávka', p: 'Mám dotaz k objednávce č. ', pl: 'Mám dotaz k objednávce: ', order: true },
+    { ic: 'ti-flower', t: 'Kvalita květin', p: 'Květiny, které jsem dostal/a, mají tento problém: ', order: true },
+    { ic: 'ti-truck', t: 'Doručení', p: 'Mám dotaz k doručení objednávky č. ', pl: 'Mám dotaz k doručení: ', order: true },
     { ic: 'ti-building-store', t: 'Firemní objednávka', p: 'Dobrý den, chtěl/a bych objednat květiny pro firmu: ' },
     { ic: 'ti-help', t: 'Obecný dotaz', p: '' },
     { ic: 'ti-message-report', t: 'Jiný problém', p: 'Chci se podělit o problém, který tu nevidím: ', warn: true }
@@ -443,11 +526,32 @@
 
   function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function getTildaEmail() {
+    try {
+      for (var key in localStorage) {
+        if (key.indexOf('tilda_members_profile') === 0 && key.indexOf('_timestamp') === -1) {
+          try {
+            var pr = JSON.parse(localStorage.getItem(key));
+            var em = pr && (pr.login || pr.email);
+            if (em) return String(em).trim().toLowerCase();
+          } catch (e) {}
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+  function tokenEmail(token) {
+    try { var pl = JSON.parse(atob(String(token).split('.')[0])); return pl.email ? String(pl.email).trim().toLowerCase() : null; } catch (e) { return null; }
+  }
   function getToken() {
     try {
       var raw = lsGet(TOKEN_KEY); if (!raw) return null;
       var d = JSON.parse(raw);
       if (!d.token || !d.exp || d.exp < Date.now()) return null;
+      // Token žije 60 dní nezávisle na Tilda Members. Když je na zařízení přihlášený
+      // někdo jiný, token zahodíme, jinak by chat ukázal cizí zprávy a objednávky.
+      var te = getTildaEmail(), ke = tokenEmail(d.token);
+      if (te && ke && te !== ke) { try { localStorage.removeItem(TOKEN_KEY); } catch (e) {} return null; }
       return d.token;
     } catch (e) { return null; }
   }
@@ -482,13 +586,16 @@
   function render(list) {
     var nearBottom = msgs.scrollTop + msgs.clientHeight >= msgs.scrollHeight - 20;
     var started = list.length > 0;
-    $('nkcTopics').style.display = started ? 'none' : 'flex';
-    $('nkcNote').style.display = started ? 'none' : 'block';
+    $('nkcTopics').style.display = (started && !ownerMode) ? 'none' : 'flex';
+    $('nkcNote').style.display = (started && !ownerMode) ? 'none' : 'block';
     msgs.innerHTML = '';
-    msgs.appendChild(bubble('nkc-bubble--them', (!started && greeted()) ? CLOSED : GREETING));
+    msgs.appendChild(bubble('nkc-bubble--them', ownerMode ? OWNER_GREETING : (!started && greeted()) ? CLOSED : GREETING));
     if (started && greeted()) msgs.appendChild(bubble('nkc-bubble--them', AUTO_REPLY));
     list.forEach(function (m) {
-      msgs.appendChild(bubble(m.sender_type === 'customer' ? 'nkc-bubble--me' : 'nkc-bubble--them', m.body, m.created_at));
+      var isOwnerMsg = m.sender_type === 'customer' && m.body.indexOf(CONFIG.ownerPrefix) === 0;
+      var b = bubble(m.sender_type === 'customer' ? 'nkc-bubble--me' : 'nkc-bubble--them', isOwnerMsg ? m.body.slice(CONFIG.ownerPrefix.length) : m.body, m.created_at);
+      if (isOwnerMsg) { var tag = document.createElement('span'); tag.className = 'nkc-mtag'; tag.textContent = 'Majiteli'; b.insertBefore(tag, b.firstChild); }
+      msgs.appendChild(b);
     });
     if (nearBottom || list.length !== lastCount) msgs.scrollTop = msgs.scrollHeight;
     // bez animace při opakovaném vykreslení stejné historie
@@ -498,7 +605,7 @@
   async function loadHistory() {
     var token = getToken(); if (!token) return;
     var res = await api('support-chat', { action: 'history', token: token });
-    if (res.messages) render(res.messages);
+    if (res.messages) { lastList = res.messages; render(res.messages); }
   }
   function startPolling() { if (!pollTimer) pollTimer = setInterval(loadHistory, POLL_INTERVAL); }
 
@@ -508,23 +615,37 @@
     if (step === 'email') emailIn.focus();
     if (step === 'code') codeIn.focus();
   }
+  var lastList = [];
+  function renderTopics() {
+    var list = ownerMode ? CONFIG.ownerTopics : TOPICS;
+    $('nkcTopics').innerHTML = list.map(function (t, i) {
+      return '<button type="button" class="nkc-topic' + (t.warn ? ' nkc-topic--warn' : '') + '" data-i="' + i + '"><i class="ti ' + t.ic + '" aria-hidden="true"></i>' + t.t + '</button>';
+    }).join('');
+    $('nkcNote').textContent = ownerMode ? NOTE_OWNER : NOTE_SUPPORT;
+  }
   function setOwner(on) {
     ownerMode = on;
-    $('nkcOwnerTag').classList.toggle('is-on', on);
+    $('nkcChat').classList.toggle('is-owner', on);
+    $('nkcChatTitle').textContent = on ? 'Zpráva majiteli' : 'Napište nám';
+    $('nkcChatSub').textContent = on ? 'Stížnosti na službu nebo chování pracovníků čte majitel osobně.' : 'Problém s objednávkou nebo dotaz? Odpovídáme do 10 minut.';
+    $('nkcTeamAvatar').innerHTML = on ? (CONFIG.owner.photo ? '<img src="' + CONFIG.owner.photo + '" alt="">' : daisy('#8a5208', 26)) : (CONFIG.teamAvatar ? '<img src="' + CONFIG.teamAvatar + '" alt="">' : daisy('#186ce0', 26));
+    text.placeholder = on ? 'Popište, co se stalo…' : 'Napište zprávu…';
+    renderTopics();
+    lastCount = -2; render(lastList);
   }
   function focusChat() {
     $('nkcChat').scrollIntoView({ behavior: 'smooth', block: 'start' });
     setTimeout(function () { text.focus({ preventScroll: true }); }, 450);
   }
-  $('nkcOwnerOff').addEventListener('click', function () { setOwner(false); });
-  $('nkcOwnerBtn').addEventListener('click', function () { setOwner(true); focusChat(); });
+  $('nkcOwnerGo').addEventListener('click', function () { setOwner(true); text.focus({ preventScroll: true }); });
+  $('nkcOwnerBack').addEventListener('click', function () { setOwner(false); });
+  if ($('nkcAskBtn')) $('nkcAskBtn').addEventListener('click', focusChat);
 
-  $('nkcTopics').innerHTML = TOPICS.map(function (t, i) {
-    return '<button type="button" class="nkc-topic' + (t.warn ? ' nkc-topic--warn' : '') + '" data-i="' + i + '"><i class="ti ' + t.ic + '" aria-hidden="true"></i>' + t.t + '</button>';
-  }).join('');
   $('nkcTopics').addEventListener('click', function (e) {
     var b = e.target.closest('.nkc-topic'); if (!b) return;
-    text.value = TOPICS[+b.getAttribute('data-i')].p;
+    var tp = (ownerMode ? CONFIG.ownerTopics : TOPICS)[+b.getAttribute('data-i')];
+    text.value = (hasOrders() && tp.pl) ? tp.pl : tp.p;
+    if (tp.order && hasOrders() && !selOrder) showOrders(true);
     text.focus();
     text.selectionStart = text.selectionEnd = text.value.length;
     grow();
@@ -532,8 +653,64 @@
 
   function body() {
     var v = text.value.trim();
-    return v ? (ownerMode ? CONFIG.ownerPrefix + v : v) : '';
+    if (!v) return '';
+    if (selOrder) v = 'Objednávka č. ' + selOrder.order_id + ' (' + fmtDate(selOrder.created_at) + '): ' + v;
+    return ownerMode ? CONFIG.ownerPrefix + v : v;
   }
+
+  // ---------- objednávky přihlášeného klienta ----------
+  var myOrders = null, selOrder = null, ordersLoading = false;
+  var ORDER_STATUS = {
+    confirmed: ['Potvrzeno', ''], in_transit: ['Na cestě', ''], arriving: ['Na cestě', ''], delivered: ['Doručeno', 'is-ok'],
+    problem: ['Problém s doručením', 'is-warn'], not_home: ['Nezastihli jsme vás', 'is-warn'], transfer_pending: ['Předává se kurýrovi', ''], cancelled: ['Zrušeno', 'is-off']
+  };
+  function fmtDate(iso) { var d = new Date(iso); return isNaN(d) ? '' : d.getDate() + '. ' + (d.getMonth() + 1) + '.'; }
+  function hasOrders() { return !!(myOrders && myOrders.length); }
+  function orderStatus(o) {
+    if (ORDER_STATUS[o.status]) return ORDER_STATUS[o.status];
+    if (o.payment_status && o.payment_status.indexOf('Ожидает') !== -1) return ['Čeká na platbu', 'is-warn'];
+    return ['Přijato', ''];
+  }
+  async function loadOrders() {
+    if (myOrders || ordersLoading) return;
+    var token = getToken(); if (!token) return;
+    ordersLoading = true;
+    var data = window.__memberData && window.__memberData.orders ? window.__memberData : await api('member-data', { token: token });
+    ordersLoading = false;
+    if (!data || data.error || !Array.isArray(data.orders)) return;
+    myOrders = data.orders.filter(function (o) { return o.order_id; }).slice(0, 8);
+    renderOrders();
+  }
+  function renderOrders() {
+    $('nkcClip').classList.toggle('is-on', hasOrders());
+    if (!hasOrders()) return;
+    $('nkcOrdersList').innerHTML = myOrders.map(function (o, i) {
+      var pr = (o.raw_payload && o.raw_payload.payment && o.raw_payload.payment.products) || [];
+      var first = pr[0] || {}, st = orderStatus(o);
+      var name = first.name || o.products_text || 'Objednávka';
+      var more = pr.length > 1 ? ' +' + (pr.length - 1) : '';
+      return '<button type="button" class="nkc-ord' + (selOrder === o ? ' is-sel' : '') + '" data-i="' + i + '">' +
+        '<span class="nkc-ord-img">' + (first.image_url ? '<img src="' + esc(first.image_url) + '" alt="" loading="lazy">' : daisy('#186ce0', 24)) + '</span>' +
+        '<span style="min-width:0;"><b>č. ' + esc(o.order_id) + ' · ' + fmtDate(o.created_at) + '</b><span>' + esc(name) + more + '</span><em class="' + st[1] + '">' + st[0] + '</em></span></button>';
+    }).join('') + '<button type="button" class="nkc-ord nkc-ord--none" data-i="-1">Bez objednávky</button>';
+  }
+  function showOrders(on) { $('nkcOrders').hidden = !on || !hasOrders(); }
+  function pickOrder(o) {
+    selOrder = o;
+    $('nkcAttach').classList.toggle('is-on', !!o);
+    if (o) $('nkcAttachText').textContent = 'Objednávka č. ' + o.order_id + ' z ' + fmtDate(o.created_at);
+    renderOrders();
+    showOrders(false);
+    text.focus({ preventScroll: true });
+  }
+  $('nkcOrdersList').addEventListener('click', function (e) {
+    var b = e.target.closest('.nkc-ord'); if (!b) return;
+    var i = +b.getAttribute('data-i');
+    pickOrder(i < 0 ? null : myOrders[i]);
+  });
+  $('nkcOrdersHide').addEventListener('click', function () { showOrders(false); });
+  $('nkcAttachOff').addEventListener('click', function () { pickOrder(null); });
+  $('nkcClip').addEventListener('click', function () { showOrders($('nkcOrders').hidden); });
   async function deliver() {
     var token = getToken(); if (!token) return;
     var b = body(); if (!b) return;
@@ -542,7 +719,7 @@
     send.disabled = false;
     if (res.error) { $('nkcSendErr').textContent = 'Zprávu se nepodařilo odeslat. Zkuste to prosím znovu.'; return; }
     if (!greeted()) lsSet(GREETED_KEY, "1");
-    text.value = ''; grow(); setOwner(false);
+    text.value = ''; grow(); pickOrder(null);
     await loadHistory();
     startPolling();
   }
@@ -580,6 +757,7 @@
     storeToken(res.token);
     showStep(null);
     await deliver();
+    loadOrders();
   }
   $('nkcVerifyBtn').addEventListener('click', verify);
   codeIn.addEventListener('input', function () { codeIn.value = codeIn.value.replace(/\D/g, ''); if (codeIn.value.length === 6) verify(); });
@@ -595,8 +773,9 @@
   function grow() { text.style.height = 'auto'; text.style.height = Math.min(text.scrollHeight, 120) + 'px'; }
   text.addEventListener('input', grow);
 
+  renderTopics();
   render([]);
-  if (getToken()) { loadHistory(); startPolling(); }
+  if (getToken()) { loadHistory(); startPolling(); loadOrders(); }
 
   // ---------- REVEAL ----------
   var io = 'IntersectionObserver' in window ? new IntersectionObserver(function (entries) {
