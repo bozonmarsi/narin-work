@@ -96,7 +96,16 @@ export default function SubscriptionCatalogPage() {
 
   function saveCategory(cat: Category) {
     return run(`cat-${cat.id}`, () =>
-      createClient().from("subscription_categories").update({ name: cat.name, description: cat.description, active: cat.active }).eq("id", cat.id),
+      createClient()
+        .from("subscription_categories")
+        .update({
+          name: cat.name,
+          description: cat.description,
+          active: cat.active,
+          // поле есть только после миграции 20260930040000 — до неё не отправляем
+          ...(cat.coming_soon !== undefined ? { coming_soon: cat.coming_soon } : {}),
+        })
+        .eq("id", cat.id),
     );
   }
 
@@ -263,8 +272,8 @@ export default function SubscriptionCatalogPage() {
         <div>
           <p className="font-medium">1. Категории</p>
           <p className="text-xs text-zinc-400 dark:text-zinc-500">
-            Первый шаг конструктора. Если в категории нет ни одной включённой линейки, клиент увидит её серой с надписью
-            «Připravujeme».
+            Первый шаг конструктора. Галочка «Připravujeme» — категория видна на сайте серой с этой надписью, но выбрать и
+            оплатить её нельзя (линейки и цены при этом сохраняются). Так же выглядит категория без включённых линеек.
           </p>
         </div>
         <div className="space-y-2">
@@ -293,7 +302,17 @@ export default function SubscriptionCatalogPage() {
                       />
                       показывать
                     </label>
-                    {cat.active && empty && <span className="text-xs text-amber-600 dark:text-amber-400">нет включённых линеек → «Připravujeme»</span>}
+                    {cat.coming_soon !== undefined && (
+                      <label className="flex items-center gap-1 text-xs text-zinc-500 dark:text-zinc-400" title="Видна на сайте с плашкой «Připravujeme», но выбрать и оплатить нельзя">
+                        <input
+                          type="checkbox"
+                          checked={cat.coming_soon}
+                          onChange={(e) => setCategories((cs) => cs.map((c, j) => (j === i ? { ...c, coming_soon: e.target.checked } : c)))}
+                        />
+                        «Připravujeme»
+                      </label>
+                    )}
+                    {cat.active && !cat.coming_soon && empty && <span className="text-xs text-amber-600 dark:text-amber-400">нет включённых линеек → «Připravujeme»</span>}
                     <span className="ml-auto flex gap-1">
                       <button className={btnGhost} disabled={i === 0} onClick={() => move("subscription_categories", categories, i, -1)} aria-label="Выше">
                         ↑

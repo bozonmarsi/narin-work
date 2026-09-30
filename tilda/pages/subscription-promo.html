@@ -333,13 +333,14 @@ html, body { overflow-x:hidden; }
     return fetch(SUPABASE_URL + '/rest/v1/' + t + '?' + q, { headers: { apikey: ANON, Authorization: 'Bearer ' + ANON } })
       .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); });
   }
-  var CACHE = 'narin_sub_promo_v1';
+  var CACHE = 'narin_sub_promo_v2';
   try { var c = JSON.parse(localStorage.getItem(CACHE) || 'null'); if (c && c.tiers) D = c; } catch (e) {}
 
   function linesOf(cid) { return D.lines.filter(function (l) { return l.category_id === cid && D.plans.some(function (p) { return p.line_id === l.id; }); }); }
   function minPrice(lineIds) { var m = null; D.plans.forEach(function (p) { if (lineIds.indexOf(p.line_id) !== -1 && (m == null || Number(p.price_per_delivery) < m)) m = Number(p.price_per_delivery); }); return m; }
   function planPrice(lineId, size) { var p = D.plans.filter(function (x) { return x.line_id === lineId && x.size === size; })[0]; return p ? Number(p.price_per_delivery) : null; }
-  function sampleLine() { for (var i = 0; i < D.categories.length; i++) { var ls = linesOf(D.categories[i].id); if (ls.length) return ls[0]; } return null; }
+  function openCats() { return D.categories.filter(function (c) { return !c.coming_soon; }); } // bez kategorií "Připravujeme"
+  function sampleLine() { var cs = openCats(); for (var i = 0; i < cs.length; i++) { var ls = linesOf(cs[i].id); if (ls.length) return ls[0]; } return null; }
   function tierPerk(t) { return t && t.perk_text ? t.perk_text : ''; }
 
   // ---------- kalendář ----------
@@ -386,14 +387,21 @@ html, body { overflow-x:hidden; }
 
   // ---------- čísla + příklad ----------
   function renderNums() {
-    var all = D.lines.map(function (l) { return l.id; }), mp = minPrice(all);
+    var all = []; openCats().forEach(function (c) { linesOf(c.id).forEach(function (l) { all.push(l.id); }); });
+    var mp = all.length ? minPrice(all) : null;
     if (mp != null) { $('nspNumFrom').textContent = 'od ' + kc(mp); $('nspNumFromT').textContent = 'za jednu dodávku, čerstvé a sezónní.'; }
+    else { $('nspNumFrom').textContent = 'Sezónní'; $('nspNumFromT').textContent = 'výběr floristy při každé dodávce.'; }
     if (D.tiers.length) {
       var ns = D.tiers.map(function (t) { return t.deliveries_per_cycle; });
       $('nspNumFreq').textContent = ns.length > 1 ? Math.min.apply(null, ns) + '–' + Math.max.apply(null, ns) + '×' : ns[0] + '×';
     }
     var line = sampleLine();
-    if (!line || !D.tiers.length) return;
+    if (!line || !D.tiers.length) {
+      $('nspExH').textContent = 'Předplatné na 4 týdny';
+      $('nspExRows').innerHTML = '<div class="nsp-ex-row"><span>Dodávek</span><b>podle výběru</b></div><div class="nsp-ex-row"><span>Velikost</span><b>S, M nebo L</b></div><div class="nsp-ex-row is-hi"><span>Platba</span><b>jednou za 4 týdny</b></div>';
+      $('nspExNote').textContent = 'Přesnou cenu uvidíte v konstruktoru ještě před platbou.';
+      return;
+    }
     var t = D.tiers[D.tiers.length - 1], size = planPrice(line.id, 'medium') ? 'medium' : planPrice(line.id, 'small') ? 'small' : 'large';
     var base = planPrice(line.id, size), full = base * t.deliveries_per_cycle, total = Math.round(full * (1 - Number(t.discount_percent || 0) / 100));
     $('nspExH').textContent = line.name + ', velikost ' + { small: 'S', medium: 'M', large: 'L' }[size];
@@ -413,7 +421,7 @@ html, body { overflow-x:hidden; }
     var box = $('nspCats');
     var cats = D.categories.length ? D.categories : [{ key: 'bouquet', name: 'Kytice' }, { key: 'armful', name: 'Náruče' }, { key: 'collection', name: 'Kolekce' }];
     box.innerHTML = cats.map(function (c) {
-      var ls = c.id ? linesOf(c.id) : [], soon = !!c.id && !ls.length, mp = ls.length ? minPrice(ls.map(function (l) { return l.id; })) : null;
+      var ls = c.id ? linesOf(c.id) : [], soon = !!c.id && (!!c.coming_soon || !ls.length), mp = !soon && ls.length ? minPrice(ls.map(function (l) { return l.id; })) : null;
       var img = c.hero_image_url || (ls[0] && ls[0].image_url) || '';
       return '<a class="nsp-cat nsp-r' + (soon ? ' is-soon' : '') + '" href="' + BUILDER + '">' +
         '<div class="nsp-cat-img"' + (img ? ' style="background-image:url(\'' + esc(img) + '\')"' : '') + '>' + (img ? '' : '<span class="ph">' + daisy('#186ce0', 64) + '</span>') + '</div>' +
@@ -481,7 +489,7 @@ html, body { overflow-x:hidden; }
   $('nspFinalMark').innerHTML = daisy('#fff', 320);
 
   Promise.all([
-    rest('subscription_categories', 'select=id,key,name,description,hero_image_url&order=sort_order.asc'),
+    rest('subscription_categories', 'select=*&order=sort_order.asc'),
     rest('subscription_lines', 'select=id,category_id,name,description,image_url&order=sort_order.asc'),
     rest('subscription_plans', 'select=line_id,size,price_per_delivery&price_per_delivery=gt.0'),
     rest('subscription_frequency_tiers', 'select=deliveries_per_cycle,discount_percent,perk_text&active=eq.true&order=deliveries_per_cycle.asc'),

@@ -381,7 +381,7 @@
     var ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxYnVybGFtdWlweG1lbnFzam54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTY2MTIsImV4cCI6MjA4ODgzMjYxMn0.NYnQoorm3z5gkjr954JdYhzDNmYfCjefzK1ddq3cflw';
     var PAGE_URL = 'https://vezminarin.cz/members/subscription';
     var TOKEN_KEY = 'lk_auth_token';
-    var CATALOG_CACHE = 'narin_sub_catalog_cache_v3';
+    var CATALOG_CACHE = 'narin_sub_catalog_cache_v4';
     var SIZES = ['small', 'medium', 'large'];
     var SIZE_LABELS = { small: 'S', medium: 'M', large: 'L' };
     // výchozí hodnoty; skutečné nastavení bere stránka z tabulky subscription_settings (manažerská aplikace)
@@ -529,7 +529,7 @@
         if (cc && cc.categories && cc.tiers) { cat = cc; applySettings(); }
     } catch (e) {}
     var catalogReady = Promise.all([
-        rest('subscription_categories', 'select=id,key,name,description,hero_image_url&order=sort_order.asc'),
+        rest('subscription_categories', 'select=*&order=sort_order.asc'),
         rest('subscription_lines', 'select=id,category_id,name,description,image_url&order=sort_order.asc'),
         rest('subscription_plans', 'select=line_id,size,price_per_delivery&price_per_delivery=gt.0'),
         rest('subscription_frequency_tiers', 'select=deliveries_per_cycle,discount_percent,perk_text&active=eq.true&order=deliveries_per_cycle.asc'),
@@ -766,7 +766,8 @@
         if (ns.length) $('nsbHowFreq').textContent = ns.length === 1 ? ns[0] : ns.slice(0, -1).join(', ') + ' nebo ' + ns[ns.length - 1];
         if (!cat.categories.length) return;
         box.innerHTML = cat.categories.map(function (c) {
-            var has = linesOf(c.id).length > 0, mp = has ? minPrice(c.id) : null;
+            // coming_soon = manažer přepnul kategorii na "Připravujeme"
+            var has = !c.coming_soon && linesOf(c.id).length > 0, mp = has ? minPrice(c.id) : null;
             var img = c.hero_image_url || CAT_IMAGES[c.key] || CAT_IMAGES.bouquet;
             return '<button type="button" class="nsb-cat' + (has ? '' : ' off') + '" data-c="' + esc(c.id) + '"' + (has ? '' : ' disabled') + '>' +
                 '<img src="' + esc(img) + '" alt="" loading="lazy" decoding="async">' +
