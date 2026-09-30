@@ -578,7 +578,9 @@
         show($('nsbHow'), !subs.length);
         if (!subs.length) {
             show($('nsbMine'), false);
-            if (first && view === 'home' && !fromCache) setView('new');
+            // bez předplatného nemá přehled co ukázat → vždy konstruktor (dřív tu uvízla prázdná stránka,
+            // když byl v paměti prohlížeče uložený prázdný seznam z minulé návštěvy)
+            if (view === 'home') { goStep(1); setView('new'); }
             return;
         }
         show($('nsbMine'), true);
