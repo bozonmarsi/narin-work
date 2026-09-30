@@ -79,14 +79,23 @@ export default function SubscriptionCatalogPage() {
     setTimeout(() => setSavedKey((k) => (k === key ? null : k)), 1400);
   }
 
-  // Любое сохранение: показываем ошибку, а не молча "Сохранено ✓"
-  async function run(key: string, fn: () => PromiseLike<{ error: { message: string } | null }>, reload = false) {
+  // Любое сохранение: показываем ошибку, а не молча "Сохранено ✓".
+  // Важно: если запись не прошла по правам доступа (RLS), Supabase НЕ возвращает ошибку —
+  // просто ничего не меняет. Поэтому запросы делаются с .select(), и пустой ответ = не сохранилось.
+  async function run(key: string, fn: () => PromiseLike<{ data?: unknown; error: { message: string } | null }>, reload = false) {
     setBusyKey(key);
     setError(null);
-    const { error: err } = await fn();
+    const { data, error: err } = await fn();
     setBusyKey(null);
     if (err) {
       setError(err.message);
+      return false;
+    }
+    if (Array.isArray(data) && data.length === 0) {
+      setError(
+        "Не сохранилось: база не приняла изменение. Скорее всего, у этого аккаунта нет роли manager (users.role) или не выполнен SQL из последних миграций.",
+      );
+      load();
       return false;
     }
     flashSaved(key);
@@ -105,7 +114,8 @@ export default function SubscriptionCatalogPage() {
           // поле есть только после миграции 20260930040000 — до неё не отправляем
           ...(cat.coming_soon !== undefined ? { coming_soon: cat.coming_soon } : {}),
         })
-        .eq("id", cat.id),
+        .eq("id", cat.id)
+        .select("id"),
     );
   }
 
@@ -114,7 +124,8 @@ export default function SubscriptionCatalogPage() {
       createClient()
         .from("subscription_lines")
         .update({ name: line.name, description: line.description, category_id: line.category_id, active: line.active })
-        .eq("id", line.id),
+        .eq("id", line.id)
+        .select("id"),
     );
   }
 
@@ -133,7 +144,8 @@ export default function SubscriptionCatalogPage() {
             name: newLineDraft.name.trim(),
             description: newLineDraft.description.trim() || null,
             sort_order: lines.length,
-          }),
+          })
+          .select("id"),
       true,
     );
     if (ok) setNewLineDraft({ category_id: "", name: "", description: "" });
@@ -146,8 +158,8 @@ export default function SubscriptionCatalogPage() {
       `plan-${lineId}-${size}`,
       () =>
         existing
-          ? supabase.from("subscription_plans").update({ price_per_delivery: price, active }).eq("id", existing.id)
-          : supabase.from("subscription_plans").insert({ line_id: lineId, size, price_per_delivery: price, active }),
+          ? supabase.from("subscription_plans").update({ price_per_delivery: price, active }).eq("id", existing.id).select("id")
+          : supabase.from("subscription_plans").insert({ line_id: lineId, size, price_per_delivery: price, active }).select("id"),
       true,
     );
   }
@@ -157,7 +169,8 @@ export default function SubscriptionCatalogPage() {
       createClient()
         .from("subscription_frequency_tiers")
         .update({ discount_percent: tier.discount_percent, perk_text: tier.perk_text || null, active: tier.active })
-        .eq("deliveries_per_cycle", tier.deliveries_per_cycle),
+        .eq("deliveries_per_cycle", tier.deliveries_per_cycle)
+        .select("deliveries_per_cycle"),
     );
   }
 
@@ -166,7 +179,8 @@ export default function SubscriptionCatalogPage() {
     return run("settings", () =>
       createClient()
         .from("subscription_settings")
-        .upsert({ ...next, id: 1, updated_at: new Date().toISOString() }),
+        .upsert({ ...next, id: 1, updated_at: new Date().toISOString() })
+        .select("id"),
     );
   }
 
@@ -184,8 +198,9 @@ export default function SubscriptionCatalogPage() {
       `move-${a.id}`,
       async () => {
         for (const o of ordered) {
-          const { error: err } = await supabase.from(table).update({ sort_order: o.sort_order }).eq("id", o.id);
+          const { data, error: err } = await supabase.from(table).update({ sort_order: o.sort_order }).eq("id", o.id).select("id");
           if (err) return { error: err };
+          if (!data || data.length === 0) return { data: [], error: null };
         }
         return { error: null };
       },
@@ -220,8 +235,8 @@ export default function SubscriptionCatalogPage() {
       key,
       () =>
         kind === "category"
-          ? supabase.from("subscription_categories").update({ hero_image_url: url }).eq("id", id)
-          : supabase.from("subscription_lines").update({ image_url: url }).eq("id", id),
+          ? supabase.from("subscription_categories").update({ hero_image_url: url }).eq("id", id).select("id")
+          : supabase.from("subscription_lines").update({ image_url: url }).eq("id", id).select("id"),
       true,
     );
   }
@@ -232,8 +247,8 @@ export default function SubscriptionCatalogPage() {
       `img-${id}`,
       () =>
         kind === "category"
-          ? supabase.from("subscription_categories").update({ hero_image_url: null }).eq("id", id)
-          : supabase.from("subscription_lines").update({ image_url: null }).eq("id", id),
+          ? supabase.from("subscription_categories").update({ hero_image_url: null }).eq("id", id).select("id")
+          : supabase.from("subscription_lines").update({ image_url: null }).eq("id", id).select("id"),
       true,
     );
   }
@@ -298,7 +313,12 @@ export default function SubscriptionCatalogPage() {
                       <input
                         type="checkbox"
                         checked={cat.active}
-                        onChange={(e) => setCategories((cs) => cs.map((c, j) => (j === i ? { ...c, active: e.target.checked } : c)))}
+                        disabled={busyKey === `cat-${cat.id}`}
+                        onChange={(e) => {
+                          const next = { ...cat, active: e.target.checked };
+                          setCategories((cs) => cs.map((c, j) => (j === i ? next : c)));
+                          saveCategory(next); // галочки сохраняются сразу, без кнопки
+                        }}
                       />
                       показывать
                     </label>
@@ -307,7 +327,12 @@ export default function SubscriptionCatalogPage() {
                         <input
                           type="checkbox"
                           checked={cat.coming_soon}
-                          onChange={(e) => setCategories((cs) => cs.map((c, j) => (j === i ? { ...c, coming_soon: e.target.checked } : c)))}
+                          disabled={busyKey === `cat-${cat.id}`}
+                          onChange={(e) => {
+                            const next = { ...cat, coming_soon: e.target.checked };
+                            setCategories((cs) => cs.map((c, j) => (j === i ? next : c)));
+                            saveCategory(next);
+                          }}
                         />
                         «Připravujeme»
                       </label>
@@ -387,7 +412,12 @@ export default function SubscriptionCatalogPage() {
                         <input
                           type="checkbox"
                           checked={line.active}
-                          onChange={(e) => setLines((ls) => ls.map((l, j) => (j === i ? { ...l, active: e.target.checked } : l)))}
+                          disabled={busyKey === `line-${line.id}`}
+                          onChange={(e) => {
+                            const next = { ...line, active: e.target.checked };
+                            setLines((ls) => ls.map((l, j) => (j === i ? next : l)));
+                            saveLine(next);
+                          }}
                         />
                         показывать
                       </label>
@@ -503,7 +533,12 @@ export default function SubscriptionCatalogPage() {
                 <input
                   type="checkbox"
                   checked={tier.active}
-                  onChange={(e) => setTiers((ts) => ts.map((t, j) => (j === i ? { ...t, active: e.target.checked } : t)))}
+                  disabled={busyKey === `tier-${tier.deliveries_per_cycle}`}
+                  onChange={(e) => {
+                    const next = { ...tier, active: e.target.checked };
+                    setTiers((ts) => ts.map((t, j) => (j === i ? next : t)));
+                    saveTier(next);
+                  }}
                 />
                 показывать
               </label>

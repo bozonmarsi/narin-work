@@ -160,9 +160,15 @@ export function SubscriptionEditModal({
       return;
     }
 
-    const { error: updateErr } = await supabase.from("subscriptions").update(payload).eq("id", subscription.id);
+    const { data: updated, error: updateErr } = await supabase.from("subscriptions").update(payload).eq("id", subscription.id).select("id");
     if (updateErr) {
       setError(updateErr.message);
+      setSaving(false);
+      return;
+    }
+    // RLS без прав не даёт ошибку, а просто ничего не меняет
+    if (!updated || updated.length === 0) {
+      setError("Не сохранилось: база не приняла изменение (проверьте, что у аккаунта роль manager).");
       setSaving(false);
       return;
     }
@@ -543,7 +549,11 @@ function OccurrenceRow({
     }
 
     setPending(false);
-    if (!error && data) onChange(data as Occurrence);
+    if (error || !data) setUploadError("Не сохранилось: " + (error?.message ?? "нет доступа"));
+    else {
+      setUploadError(null);
+      onChange(data as Occurrence);
+    }
   }
 
   async function saveOverride() {
@@ -578,7 +588,11 @@ function OccurrenceRow({
     }
 
     setPending(false);
-    if (!error && data) onChange(data as Occurrence);
+    if (error || !data) setUploadError("Не сохранилось: " + (error?.message ?? "нет доступа"));
+    else {
+      setUploadError(null);
+      onChange(data as Occurrence);
+    }
   }
 
   async function clearOverride() {
@@ -592,7 +606,11 @@ function OccurrenceRow({
       .select("*")
       .single();
     setPending(false);
-    if (!error && data) onChange(data as Occurrence);
+    if (error || !data) setUploadError("Не сохранилось: " + (error?.message ?? "нет доступа"));
+    else {
+      setUploadError(null);
+      onChange(data as Occurrence);
+    }
   }
 
   async function skip() {
@@ -604,8 +622,32 @@ function OccurrenceRow({
       .eq("id", occurrence.id)
       .select("*")
       .single();
+
+    // Заказ для этой даты уже создан (заказы создаются на весь цикл сразу) — отменяем его,
+    // иначе флорист и курьер всё равно его соберут и повезут.
+    if (!error && occurrence.order_id) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const { error: orderErr } = await supabase
+        .from("tilda_orders")
+        .update({ status: "cancelled", cancelled_reason: "Доставка по подписке пропущена" })
+        .eq("id", occurrence.order_id);
+      if (!orderErr) {
+        await supabase.from("order_status_history").insert({
+          order_id: occurrence.order_id,
+          status: "cancelled",
+          changed_by: user?.id,
+          note: "Доставка по подписке пропущена",
+        });
+      }
+    }
     setPending(false);
-    if (!error && data) onChange(data as Occurrence);
+    if (error || !data) setUploadError("Не сохранилось: " + (error?.message ?? "нет доступа"));
+    else {
+      setUploadError(null);
+      onChange(data as Occurrence);
+    }
   }
 
   async function generateOrder() {
@@ -659,7 +701,11 @@ function OccurrenceRow({
       .select("*")
       .single();
     setPending(false);
-    if (!error && data) onChange(data as Occurrence);
+    if (error || !data) setUploadError("Не сохранилось: " + (error?.message ?? "нет доступа"));
+    else {
+      setUploadError(null);
+      onChange(data as Occurrence);
+    }
   }
 
   return (
