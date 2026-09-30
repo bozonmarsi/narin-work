@@ -1861,7 +1861,7 @@ export default function ShopPage() {
             {activeTab !== "archive" && (
               <div
                 className={`flex gap-3 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-600 p-2 ${
-                  newProductNeedsRecipe ? "col-span-full flex-col sm:flex-row" : "flex-col gap-1.5"
+                  newProductNeedsRecipe ? "col-span-2 flex-col sm:flex-row" : "flex-col gap-1.5"
                 }`}
               >
                 <div className={`flex flex-col gap-1.5 ${newProductNeedsRecipe ? "sm:w-56 sm:shrink-0" : ""}`}>
