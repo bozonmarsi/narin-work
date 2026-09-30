@@ -33,7 +33,18 @@ type Product = {
   added_to_tilda: boolean;
   price: number | null;
   pending_review: boolean;
+  vanvliet_cheapest_price: number | null;
+  price_markup_multiplier: number;
 };
+
+// Подсказка по цене — не себестоимость (её почти никогда не вносят на
+// Приёмке), а самая дешёвая актуальная цена этого цветка у Van Vliet
+// (vanvliet_cheapest_price, обновляет vanvliet-stock-scan) × личный
+// коэффициент наценки менеджера, округлено до десятков.
+function recommendedPrice(p: Pick<Product, "vanvliet_cheapest_price" | "price_markup_multiplier">): number | null {
+  if (p.vanvliet_cheapest_price == null) return null;
+  return Math.round((p.vanvliet_cheapest_price * p.price_markup_multiplier) / 10) * 10;
+}
 
 // Ниже этого остатка на сайте сама встаёт плашка "Zbývá N ks" — если
 // менеджер не поставил свою плашку руками (та в приоритете).
@@ -368,6 +379,7 @@ function ProductCard({
   onRemoveRecipeItem,
   onSetOrderUnitSize,
   onSetVaseLife,
+  onSetMarkup,
   onApprovePending,
   onRejectPending,
 }: {
@@ -396,6 +408,7 @@ function ProductCard({
   onRemoveRecipeItem: (recipeId: string) => void;
   onSetOrderUnitSize: (id: string, size: number) => void;
   onSetVaseLife: (id: string, days: number) => void;
+  onSetMarkup: (id: string, multiplier: number) => void;
   onApprovePending?: (id: string) => void;
   onRejectPending?: (id: string, name: string) => void;
 }) {
@@ -723,6 +736,26 @@ function ProductCard({
               </div>
             </div>
           )}
+          {p.category === "ohapka" && p.vanvliet_cheapest_price != null && (
+            <p
+              title="Самая дешёвая актуальная цена этого цветка у Van Vliet × твой коэффициент, округлено до 10 — не себестоимость, а подсказка для цены на сайте"
+              className="mt-1 flex items-center gap-1 text-[9px] text-zinc-400 dark:text-zinc-500"
+            >
+              Van Vliet {p.vanvliet_cheapest_price} Kč ×
+              <input
+                type="number"
+                min={1}
+                step={0.1}
+                defaultValue={p.price_markup_multiplier}
+                onBlur={(e) => {
+                  const v = parseFloat(e.target.value);
+                  if (v > 0 && v !== p.price_markup_multiplier) onSetMarkup(p.id, v);
+                }}
+                className="w-9 rounded border border-zinc-300 dark:border-zinc-600 bg-transparent px-1 py-0 text-center text-[9px]"
+              />
+              = рек. <span className="font-semibold text-accent">{recommendedPrice(p)} Kč</span>
+            </p>
+          )}
           {badgeOpen && (
             <div className="mt-1 space-y-1 rounded-md border border-zinc-200 dark:border-zinc-700 p-1.5">
               <input
@@ -1037,7 +1070,7 @@ export default function ShopPage() {
       supabase
         .from("product_stickers")
         .select(
-          "id, product_name, image_url, category, archived, special_order, flower_type, color, height, fragrant, badge_text, badge_color, quantity, order_unit_size, default_vase_life_days, vanvliet_in_stock, manually_hidden, added_to_tilda, price, pending_review",
+          "id, product_name, image_url, category, archived, special_order, flower_type, color, height, fragrant, badge_text, badge_color, quantity, order_unit_size, default_vase_life_days, vanvliet_in_stock, manually_hidden, added_to_tilda, price, pending_review, vanvliet_cheapest_price, price_markup_multiplier",
         )
         .order("product_name", { ascending: true }),
       supabase.from("product_availability").select("product_name"),
@@ -1067,6 +1100,8 @@ export default function ShopPage() {
           added_to_tilda: p.added_to_tilda ?? false,
           price: p.price ?? null,
           pending_review: p.pending_review ?? false,
+          vanvliet_cheapest_price: p.vanvliet_cheapest_price ?? null,
+          price_markup_multiplier: p.price_markup_multiplier ?? 2.5,
         })),
     );
     setAvailableToday(new Set((availabilityRes.data ?? []).map((r) => r.product_name)));
@@ -1272,6 +1307,12 @@ export default function ShopPage() {
   async function setVaseLife(productId: string, days: number) {
     const supabase = createClient();
     await supabase.from("product_stickers").update({ default_vase_life_days: days }).eq("id", productId);
+    loadAvailability();
+  }
+
+  async function setMarkup(productId: string, multiplier: number) {
+    const supabase = createClient();
+    await supabase.from("product_stickers").update({ price_markup_multiplier: multiplier }).eq("id", productId);
     loadAvailability();
   }
 
@@ -1637,6 +1678,7 @@ export default function ShopPage() {
                   onRemoveRecipeItem={removeRecipeItem}
                   onSetOrderUnitSize={setOrderUnitSize}
                   onSetVaseLife={setVaseLife}
+                  onSetMarkup={setMarkup}
                   onToggleAvailable={toggleAvailable}
                   onSetCategory={setCategory}
                   onToggleFlowerType={toggleFlowerType}
@@ -1869,6 +1911,7 @@ export default function ShopPage() {
                 onRemoveRecipeItem={removeRecipeItem}
                 onSetOrderUnitSize={setOrderUnitSize}
                 onSetVaseLife={setVaseLife}
+                onSetMarkup={setMarkup}
                 onToggleAvailable={toggleAvailable}
                 onSetCategory={setCategory}
                 onToggleFlowerType={toggleFlowerType}

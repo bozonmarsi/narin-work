@@ -17,18 +17,7 @@ type Product = {
   price: number | null;
   order_unit_size: number;
   added_to_tilda: boolean;
-  vanvliet_cheapest_price: number | null;
-  price_markup_multiplier: number;
 };
-
-// Подсказка по цене — не себестоимость (её почти никогда не вносят на
-// Приёмке), а самая дешёвая актуальная цена этого цветка у Van Vliet
-// (vanvliet_cheapest_price, обновляет vanvliet-stock-scan) × личный
-// коэффициент наценки менеджера, округлено до десятков.
-function recommendedPrice(p: Pick<Product, "vanvliet_cheapest_price" | "price_markup_multiplier">): number | null {
-  if (p.vanvliet_cheapest_price == null) return null;
-  return Math.round((p.vanvliet_cheapest_price * p.price_markup_multiplier) / 10) * 10;
-}
 
 type BatchLite = { id: string; product_sticker_id: string; remaining: number; purchase_date: string; estimated_wilt_date: string | null };
 type RecipeRow = { id: string; bouquet_sticker_id: string; ingredient_sticker_id: string; quantity_needed: number };
@@ -92,9 +81,7 @@ export function CatalogTab() {
     const [productsRes, availabilityRes, batchesRes, recipesRes] = await Promise.all([
       supabase
         .from("product_stickers")
-        .select(
-          "id, product_name, image_url, category, archived, quantity, price, order_unit_size, added_to_tilda, vanvliet_cheapest_price, price_markup_multiplier",
-        )
+        .select("id, product_name, image_url, category, archived, quantity, price, order_unit_size, added_to_tilda")
         .order("product_name"),
       supabase.from("product_availability").select("product_name"),
       supabase.from("batches").select("id, product_sticker_id, remaining, purchase_date, estimated_wilt_date").gt("remaining", 0),
@@ -130,12 +117,6 @@ export function CatalogTab() {
   async function setPrice(id: string, price: number) {
     const supabase = createClient();
     await supabase.from("product_stickers").update({ price }).eq("id", id);
-    load();
-  }
-
-  async function setMarkup(id: string, multiplier: number) {
-    const supabase = createClient();
-    await supabase.from("product_stickers").update({ price_markup_multiplier: multiplier }).eq("id", id);
     load();
   }
 
@@ -347,27 +328,6 @@ export function CatalogTab() {
                   <span>Kč{isOhapka && p.order_unit_size > 1 ? `/${p.order_unit_size} шт` : ""}</span>
                 </span>
               </div>
-
-              {isOhapka && p.vanvliet_cheapest_price != null && (
-                <p
-                  title="Самая дешёвая актуальная цена этого цветка у Van Vliet × твой коэффициент, округлено до 10 — не себестоимость, а подсказка для цены на сайте"
-                  className="mt-1 flex items-center gap-1 text-[11px] text-zinc-400 dark:text-zinc-500"
-                >
-                  Van Vliet {p.vanvliet_cheapest_price} Kč ×
-                  <input
-                    type="number"
-                    min={1}
-                    step={0.1}
-                    defaultValue={p.price_markup_multiplier}
-                    onBlur={(e) => {
-                      const v = parseFloat(e.target.value);
-                      if (v > 0 && v !== p.price_markup_multiplier) setMarkup(p.id, v);
-                    }}
-                    className="w-10 rounded border-0 bg-transparent text-center outline-none focus:ring-1 focus:ring-accent"
-                  />
-                  = рек. <span className="font-semibold text-accent">{recommendedPrice(p)} Kč</span>
-                </p>
-              )}
 
               {!p.added_to_tilda && (
                 <button
