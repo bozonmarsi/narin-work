@@ -406,9 +406,9 @@ html.nkc-lock, html.nkc-lock body { overflow:hidden !important; }
     phone: '+420 776 421 993',
     email: 'support@vezminarin.cz',
     // Sociální sítě. Uživatelské jméno bez @. Prázdné = tlačítko se nezobrazí.
-    instagram: '',
-    threads: '',
-    website: { label: 'narin.cz', href: 'https://narin.cz' },
+    instagram: 'narin.cz',
+    threads: 'narin.cz',
+    website: null,            // např. { label: 'web', href: 'https://...' }. Prázdné = nezobrazí se.
     // Otevírací doba chatu a telefonu. Pořadí: Po, Út, St, Čt, Pá, So, Ne. null = zavřeno. TODO: potvrdit.
     hours: [['9:00', '20:00'], ['9:00', '20:00'], ['9:00', '20:00'], ['9:00', '20:00'], ['9:00', '20:00'], ['10:00', '18:00'], null],
     owner: {
@@ -530,12 +530,12 @@ html.nkc-lock, html.nkc-lock body { overflow:hidden !important; }
   $('nkcTeamAvatar').innerHTML = CONFIG.teamAvatar ? '<img src="' + CONFIG.teamAvatar + '" alt="">' : daisy('#186ce0', 26);
   $('nkcStoreMark').innerHTML = daisy('#fff', 400);
   var socials = [];
-  if (CONFIG.instagram) socials.push({ ic: 'ti-brand-instagram', t: 'Instagram', href: 'https://www.instagram.com/' + CONFIG.instagram });
-  if (CONFIG.threads) socials.push({ ic: 'ti-brand-threads', t: 'Threads', href: 'https://www.threads.net/@' + CONFIG.threads });
+  if (CONFIG.instagram) socials.push({ ic: 'ti-brand-instagram', t: 'Instagram', title: '@' + CONFIG.instagram, href: 'https://www.instagram.com/' + CONFIG.instagram });
+  if (CONFIG.threads) socials.push({ ic: 'ti-brand-threads', t: 'Threads', title: '@' + CONFIG.threads, href: 'https://www.threads.com/@' + CONFIG.threads });
   if (CONFIG.website && CONFIG.website.href) socials.push({ ic: 'ti-world', t: CONFIG.website.label, href: CONFIG.website.href });
   function socialHtml(dark) {
     return socials.map(function (x) {
-      return '<a class="nkc-chip' + (dark ? ' nkc-chip--on-dark' : '') + '" href="' + x.href + '" target="_blank" rel="noopener"><i class="ti ' + x.ic + '" aria-hidden="true"></i>' + esc(x.t) + '</a>';
+      return '<a class="nkc-chip' + (dark ? ' nkc-chip--on-dark' : '') + '" href="' + x.href + '" target="_blank" rel="noopener"' + (x.title ? ' title="' + esc(x.title) + '"' : '') + '><i class="ti ' + x.ic + '" aria-hidden="true"></i>' + esc(x.t) + '</a>';
     }).join('');
   }
   $('nkcSocial').innerHTML = socialHtml(false);
