@@ -10,7 +10,13 @@ import { Modal } from "../warehouse/Modal";
 
 type ClosedDate = { closed_date: string; reason: string | null };
 type ClosedSlot = { id: string; closed_date: string; slot_label: string; reason: string | null };
-type RecipeRow = { id: string; bouquet_sticker_id: string; ingredient_sticker_id: string; quantity_needed: number };
+type RecipeRow = {
+  id: string;
+  bouquet_sticker_id: string;
+  ingredient_sticker_id: string | null;
+  vanvliet_ingredient_name: string | null;
+  quantity_needed: number;
+};
 type Product = {
   id: string;
   name: string;
@@ -33,7 +39,33 @@ type Product = {
   added_to_tilda: boolean;
   price: number | null;
   pending_review: boolean;
+  vanvliet_cheapest_price: number | null;
+  price_markup_multiplier: number;
+  auto_special_order: boolean;
 };
+
+// Van Vliet — оптовый поставщик, его цена без DPH; конечная цена на
+// сайте — розничная, с DPH, поэтому 21% добавляем прямо в расчёт, а не
+// оставляем менеджеру считать в уме.
+const DPH_RATE = 1.21;
+
+// Фиксированный выбор — не произвольное число: только эти три
+// коэффициента и выбираются кнопками, чтобы коэффициент было видно
+// сразу, а не искать глазами мелкое поле ввода.
+const MARKUP_OPTIONS = [2, 2.5, 3];
+
+// Подсказка по цене — не себестоимость (её почти никогда не вносят на
+// Приёмке), а самая дешёвая актуальная цена этого цветка у Van Vliet
+// (vanvliet_cheapest_price — за 1 стебель, без DPH) × число стеблей в
+// единице заказа (order_unit_size — цена у нас за весь пучок, не за
+// стебель) × личный коэффициент наценки менеджера × DPH 21%, округлено
+// до десятков.
+function recommendedPrice(
+  p: Pick<Product, "vanvliet_cheapest_price" | "price_markup_multiplier" | "order_unit_size">
+): number | null {
+  if (p.vanvliet_cheapest_price == null) return null;
+  return Math.round((p.vanvliet_cheapest_price * p.order_unit_size * p.price_markup_multiplier * DPH_RATE) / 10) * 10;
+}
 
 // Ниже этого остатка на сайте сама встаёт плашка "Zbývá N ks" — если
 // менеджер не поставил свою плашку руками (та в приоритете).
@@ -365,11 +397,17 @@ function ProductCard({
   onSetBadge,
   onAddDelivery,
   onAddRecipeItem,
+  onAddVanVlietRecipeItem,
   onRemoveRecipeItem,
   onSetOrderUnitSize,
   onSetVaseLife,
+  onSetMarkup,
   onApprovePending,
   onRejectPending,
+  vvCatalogNames,
+  vvCatalogLoading,
+  vvCatalogError,
+  onEnsureVvCatalog,
 }: {
   product: Product;
   isAvailable: boolean;
@@ -393,16 +431,23 @@ function ProductCard({
   onSetBadge: (id: string, text: string | null, color: string | null) => void;
   onAddDelivery: (id: string, delta: number) => void;
   onAddRecipeItem: (bouquetId: string, ingredientId: string, qty: number) => void;
+  onAddVanVlietRecipeItem: (bouquetId: string, name: string, qty: number) => void;
   onRemoveRecipeItem: (recipeId: string) => void;
   onSetOrderUnitSize: (id: string, size: number) => void;
   onSetVaseLife: (id: string, days: number) => void;
+  onSetMarkup: (id: string, multiplier: number) => void;
   onApprovePending?: (id: string) => void;
   onRejectPending?: (id: string, name: string) => void;
+  vvCatalogNames: string[];
+  vvCatalogLoading: boolean;
+  vvCatalogError: string | null;
+  onEnsureVvCatalog: () => void;
 }) {
   const [tagsOpen, setTagsOpen] = useState(false);
   const [recipeOpen, setRecipeOpen] = useState(false);
   const [newIngredientId, setNewIngredientId] = useState("");
   const [newIngredientQty, setNewIngredientQty] = useState("1");
+  const [vvQuery, setVvQuery] = useState("");
   const [badgeOpen, setBadgeOpen] = useState(false);
   const [badgeDraftText, setBadgeDraftText] = useState(p.badge_text ?? "");
   const [badgeDraftColor, setBadgeDraftColor] = useState(p.badge_color ?? BADGE_COLOR_OPTIONS[0].value);
@@ -572,10 +617,11 @@ function ProductCard({
             <div className="mt-1 space-y-1 rounded-md border border-zinc-200 dark:border-zinc-700 p-1.5">
               {recipe.map((r) => {
                 const ing = rawMaterials.find((m) => m.id === r.ingredient_sticker_id);
+                const displayName = ing?.name ?? r.vanvliet_ingredient_name ?? "—";
                 return (
                   <div key={r.id} className="flex items-center justify-between gap-1 text-[10px]">
-                    <span className="text-zinc-600 dark:text-zinc-300">
-                      {ing?.name ?? "—"} × {r.quantity_needed}
+                    <span className="text-zinc-600 dark:text-zinc-300" title={!ing && r.vanvliet_ingredient_name ? "Цветок только у Van Vliet, своего товара нет" : undefined}>
+                      {displayName} × {r.quantity_needed}
                     </span>
                     <button
                       type="button"
@@ -619,6 +665,39 @@ function ProductCard({
                 >
                   +
                 </button>
+              </div>
+              <div className="border-t border-zinc-200 dark:border-zinc-700 pt-1">
+                <input
+                  value={vvQuery}
+                  onChange={(e) => setVvQuery(e.target.value)}
+                  onFocus={onEnsureVvCatalog}
+                  placeholder={vvCatalogLoading ? "Загружаю Van Vliet…" : "Или найти у Van Vliet…"}
+                  className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 bg-transparent px-1.5 py-0.5 text-[10px]"
+                />
+                {vvCatalogError && <p className="mt-0.5 text-[9px] text-red-600 dark:text-red-400">{vvCatalogError}</p>}
+                {vvQuery.trim() && (
+                  <div className="mt-0.5 max-h-24 space-y-0.5 overflow-y-auto">
+                    {vvCatalogNames
+                      .filter((n) => n.toLowerCase().includes(vvQuery.trim().toLowerCase()))
+                      .slice(0, 15)
+                      .map((name) => (
+                        <button
+                          key={name}
+                          type="button"
+                          onClick={() => {
+                            onAddVanVlietRecipeItem(p.id, name, parseFloat(newIngredientQty) || 1);
+                            setVvQuery("");
+                          }}
+                          className="block w-full truncate rounded px-1 py-0.5 text-left text-[10px] text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                        >
+                          + {name}
+                        </button>
+                      ))}
+                    {!vvCatalogLoading && !vvCatalogNames.some((n) => n.toLowerCase().includes(vvQuery.trim().toLowerCase())) && (
+                      <p className="text-[9px] text-zinc-400">Ничего не нашлось у Van Vliet.</p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -720,6 +799,33 @@ function ProductCard({
                   }}
                   className="w-10 rounded border border-zinc-300 dark:border-zinc-600 bg-transparent px-1 py-0 text-[10px]"
                 />
+              </div>
+            </div>
+          )}
+          {p.category === "ohapka" && p.vanvliet_cheapest_price != null && (
+            <div
+              title="Самая дешёвая актуальная цена этого цветка у Van Vliet (без DPH) за 1 стебель × число стеблей в пучке × коэффициент × DPH 21%, округлено до 10 — не себестоимость, а подсказка для цены на сайте"
+              className="mt-1 space-y-0.5"
+            >
+              <p className="text-[9px] text-zinc-400 dark:text-zinc-500">
+                {p.vanvliet_cheapest_price} Kč × {p.order_unit_size} шт
+              </p>
+              <div className="flex flex-wrap items-center gap-1">
+                {MARKUP_OPTIONS.map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => onSetMarkup(p.id, m)}
+                    className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                      p.price_markup_multiplier === m
+                        ? "bg-accent text-white"
+                        : "border border-zinc-300 dark:border-zinc-600 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                    }`}
+                  >
+                    ×{m}
+                  </button>
+                ))}
+                <span className="text-[10px] font-semibold text-accent">= {recommendedPrice(p)} Kč</span>
               </div>
             </div>
           )}
@@ -836,8 +942,11 @@ function ProductCard({
           </p>
         )}
         {p.special_order ? (
-          <p className="rounded-md bg-orange-50 dark:bg-orange-500/10 px-2 py-1 text-[11px] font-medium text-orange-600 dark:text-orange-400 ring-1 ring-inset ring-orange-200 dark:ring-orange-500/30">
-            🚚 Всегда под заказ (+2 дня)
+          <p
+            title={p.auto_special_order ? "Проставлено автоматически — не хватает цветка из состава" : undefined}
+            className="rounded-md bg-orange-50 dark:bg-orange-500/10 px-2 py-1 text-[11px] font-medium text-orange-600 dark:text-orange-400 ring-1 ring-inset ring-orange-200 dark:ring-orange-500/30"
+          >
+            🚚 {p.auto_special_order ? "Под заказ — не хватает цветка" : "Всегда под заказ"} (+2 дня)
           </p>
         ) : p.category === "ohapka" ? (
           <>
@@ -924,7 +1033,15 @@ export default function ShopPage() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [newProductName, setNewProductName] = useState("");
   const [newProductCategory, setNewProductCategory] = useState("");
+  // Сет/букет собирается из состава — под эту категорию форма "Новый
+  // товар" превращается в более широкую, с чек-листом цветов, вместо
+  // компактной карточки для охапки/darky/atelier.
+  const newProductNeedsRecipe = newProductCategory !== "" && !NO_RECIPE_CATEGORIES.has(newProductCategory);
   const [newProductFile, setNewProductFile] = useState<File | null>(null);
+  // Состав сета/букета — задаётся сразу при создании, а не потом на
+  // отдельной карточке: для сета это и есть главное, ради чего его
+  // вообще заводят, неудобно было бы заставлять искать карточку заново.
+  const [newProductRecipe, setNewProductRecipe] = useState<{ ingredientId: string | null; ingredientName: string; qty: number }[]>([]);
   const [addingProduct, setAddingProduct] = useState(false);
   const [addProductError, setAddProductError] = useState<string | null>(null);
   // Каталог на сайте живёт в самой Tilda — этот товар тут не создаёт
@@ -1037,7 +1154,7 @@ export default function ShopPage() {
       supabase
         .from("product_stickers")
         .select(
-          "id, product_name, image_url, category, archived, special_order, flower_type, color, height, fragrant, badge_text, badge_color, quantity, order_unit_size, default_vase_life_days, vanvliet_in_stock, manually_hidden, added_to_tilda, price, pending_review",
+          "id, product_name, image_url, category, archived, special_order, flower_type, color, height, fragrant, badge_text, badge_color, quantity, order_unit_size, default_vase_life_days, vanvliet_in_stock, manually_hidden, added_to_tilda, price, pending_review, vanvliet_cheapest_price, price_markup_multiplier, auto_special_order",
         )
         .order("product_name", { ascending: true }),
       supabase.from("product_availability").select("product_name"),
@@ -1067,6 +1184,9 @@ export default function ShopPage() {
           added_to_tilda: p.added_to_tilda ?? false,
           price: p.price ?? null,
           pending_review: p.pending_review ?? false,
+          vanvliet_cheapest_price: p.vanvliet_cheapest_price ?? null,
+          price_markup_multiplier: p.price_markup_multiplier ?? 2.5,
+          auto_special_order: p.auto_special_order ?? false,
         })),
     );
     setAvailableToday(new Set((availabilityRes.data ?? []).map((r) => r.product_name)));
@@ -1077,7 +1197,7 @@ export default function ShopPage() {
     loadAvailability();
     createClient()
       .from("product_recipes")
-      .select("id, bouquet_sticker_id, ingredient_sticker_id, quantity_needed")
+      .select("id, bouquet_sticker_id, ingredient_sticker_id, vanvliet_ingredient_name, quantity_needed")
       .then(({ data }) => setRecipes(data ?? []));
   }, [load, loadAvailability]);
 
@@ -1089,10 +1209,23 @@ export default function ShopPage() {
         { bouquet_sticker_id: bouquetId, ingredient_sticker_id: ingredientId, quantity_needed: qty },
         { onConflict: "bouquet_sticker_id,ingredient_sticker_id" }
       )
-      .select("id, bouquet_sticker_id, ingredient_sticker_id, quantity_needed")
+      .select("id, bouquet_sticker_id, ingredient_sticker_id, vanvliet_ingredient_name, quantity_needed")
       .single();
     if (error || !data) return;
     setRecipes((prev) => [...prev.filter((r) => r.id !== data.id), data]);
+  }
+
+  // Тот же принцип, что и при создании сета — цветок только из
+  // прайс-листа Van Vliet, без своего товара (product_recipes.vanvliet_ingredient_name).
+  async function addVanVlietRecipeItem(bouquetId: string, name: string, qty: number) {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("product_recipes")
+      .insert({ bouquet_sticker_id: bouquetId, vanvliet_ingredient_name: name, quantity_needed: qty })
+      .select("id, bouquet_sticker_id, ingredient_sticker_id, vanvliet_ingredient_name, quantity_needed")
+      .single();
+    if (error || !data) return;
+    setRecipes((prev) => [...prev, data]);
   }
 
   async function removeRecipeItem(id: string) {
@@ -1194,13 +1327,91 @@ export default function ShopPage() {
       supabase.functions.invoke("vanvliet-alias-refresh", { body: {} }).catch(() => {});
     }
 
+    if (newProductRecipe.length > 0) {
+      await supabase.from("product_recipes").insert(
+        newProductRecipe.map((r) =>
+          r.ingredientId
+            ? { bouquet_sticker_id: id, ingredient_sticker_id: r.ingredientId, quantity_needed: r.qty }
+            : { bouquet_sticker_id: id, vanvliet_ingredient_name: r.ingredientName, quantity_needed: r.qty }
+        )
+      );
+    }
+
     setJustAddedProduct({ id, name });
     setNewProductName("");
     setNewProductCategory("");
     setNewProductFile(null);
+    setNewProductRecipe([]);
     setAddingProduct(false);
     loadAvailability();
   }
+
+  function toggleStagedRecipeItem(ingredientId: string, ingredientName: string) {
+    setNewProductRecipe((prev) =>
+      prev.some((r) => r.ingredientId === ingredientId)
+        ? prev.filter((r) => r.ingredientId !== ingredientId)
+        : [...prev, { ingredientId, ingredientName, qty: 1 }]
+    );
+  }
+
+  // Цветок прямо из прайс-листа Van Vliet, без своего товара в базе —
+  // для редкой/разовой позиции, которую не хотят заводить полноценной
+  // охапкой с категорией/тегами/остатком (см. product_recipes.vanvliet_ingredient_name).
+  function toggleVanVlietRecipeItem(name: string) {
+    setNewProductRecipe((prev) =>
+      prev.some((r) => r.ingredientId === null && r.ingredientName === name)
+        ? prev.filter((r) => !(r.ingredientId === null && r.ingredientName === name))
+        : [...prev, { ingredientId: null, ingredientName: name, qty: 1 }]
+    );
+  }
+
+  function setStagedRecipeItemQty(ingredientId: string | null, ingredientName: string, qty: number) {
+    if (!(qty > 0)) return;
+    setNewProductRecipe((prev) =>
+      prev.map((r) => (r.ingredientId === ingredientId && r.ingredientName === ingredientName ? { ...r, qty } : r))
+    );
+  }
+
+  // Каталог Van Vliet для поиска в составе сета — грузим один раз, лениво,
+  // только когда реально понадобился (не при каждой загрузке страницы).
+  const [vvCatalogNames, setVvCatalogNames] = useState<string[]>([]);
+  const [vvCatalogLoading, setVvCatalogLoading] = useState(false);
+  const [vvCatalogError, setVvCatalogError] = useState<string | null>(null);
+  const [vvSearchQuery, setVvSearchQuery] = useState("");
+
+  async function loadVvCatalogNames() {
+    setVvCatalogLoading(true);
+    setVvCatalogError(null);
+    const supabase = createClient();
+    const { data, error } = await supabase.functions.invoke("vanvliet-search", { body: { fullCatalog: true } });
+    setVvCatalogLoading(false);
+    if (error || data?.ok === false) {
+      setVvCatalogError("Не удалось загрузить каталог Van Vliet — попробуй ещё раз.");
+      return;
+    }
+    const names = Array.from(new Set(((data?.catalog ?? []) as { product: string }[]).map((c) => c.product))).sort();
+    setVvCatalogNames(names);
+  }
+
+  // Общая точка входа — вызывается и формой создания сета, и поиском
+  // Van Vliet на уже существующей карточке (Состав), чтобы не грузить
+  // каталог дважды и не дублировать проверку "уже грузится/уже есть".
+  function ensureVvCatalogLoaded() {
+    if (vvCatalogNames.length === 0 && !vvCatalogLoading && !vvCatalogError) {
+      loadVvCatalogNames();
+    }
+  }
+
+  useEffect(() => {
+    if (newProductNeedsRecipe) ensureVvCatalogLoaded();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newProductNeedsRecipe]);
+
+  const vvFilteredNames = useMemo(() => {
+    const q = vvSearchQuery.trim().toLowerCase();
+    if (!q) return [];
+    return vvCatalogNames.filter((n) => n.toLowerCase().includes(q)).slice(0, 30);
+  }, [vvCatalogNames, vvSearchQuery]);
 
   async function setCategory(productId: string, category: string) {
     const supabase = createClient();
@@ -1275,6 +1486,12 @@ export default function ShopPage() {
     loadAvailability();
   }
 
+  async function setMarkup(productId: string, multiplier: number) {
+    const supabase = createClient();
+    await supabase.from("product_stickers").update({ price_markup_multiplier: multiplier }).eq("id", productId);
+    loadAvailability();
+  }
+
   async function setHeight(productId: string, height: string) {
     const supabase = createClient();
     await supabase
@@ -1321,7 +1538,10 @@ export default function ShopPage() {
 
   async function toggleSpecialOrder(productId: string, specialOrder: boolean) {
     const supabase = createClient();
-    await supabase.from("product_stickers").update({ special_order: !specialOrder }).eq("id", productId);
+    // auto_special_order сбрасываем всегда — это теперь ручное решение
+    // человека, а не автоматика по нехватке цветка (см. миграцию
+    // set_recipe_shortage_automation), она больше не должна его трогать.
+    await supabase.from("product_stickers").update({ special_order: !specialOrder, auto_special_order: false }).eq("id", productId);
     loadAvailability();
   }
 
@@ -1353,6 +1573,19 @@ export default function ShopPage() {
     loadAvailability();
   }
 
+  // Подтверждённая менеджером замена цветка в составе сета — просто
+  // переставляет ingredient_sticker_id на другой товар, количество не
+  // трогаем. Триггер recompute_set_special_order сам пересчитает "под
+  // заказ" после этого изменения состава.
+  async function substituteRecipeIngredient(recipeRowId: string, newIngredientId: string) {
+    const supabase = createClient();
+    const { error } = await supabase.from("product_recipes").update({ ingredient_sticker_id: newIngredientId }).eq("id", recipeRowId);
+    if (!error) {
+      setRecipes((prev) => prev.map((r) => (r.id === recipeRowId ? { ...r, ingredient_sticker_id: newIngredientId } : r)));
+      loadAvailability();
+    }
+  }
+
   // Заявки от флориста (pending_review) — отдельная очередь на одобрение
   // менеджером, из общего каталога они скрыты, пока не подтверждены (см.
   // approvePending/rejectPending и триггер enforce_pending_review_guard).
@@ -1362,6 +1595,36 @@ export default function ShopPage() {
   // Кандидаты для массового CSV — те же товары, что показывают чекбокс
   // на карточке (не в архиве и ещё не отмечены как добавленные в Tilda).
   const notInTildaProducts = useMemo(() => activeProducts.filter((p) => !p.added_to_tilda), [activeProducts]);
+
+  // Сеты, которых триггер recompute_set_special_order сам поставил "под
+  // заказ" из-за нехватки цветка в составе (auto_special_order = true,
+  // см. миграцию set_recipe_shortage_automation) — здесь только
+  // предлагаем похожую замену (тот же тип + тот же цвет), подтверждает
+  // менеджер, автоматически ничего не подменяем.
+  const setsNeedingSubstitute = useMemo(() => {
+    const isStocked = (p: Product) => (p.quantity ?? 0) > 0 || p.vanvliet_in_stock === true;
+    const result: { set: Product; recipeRowId: string; shortName: string; substitute: Product | null }[] = [];
+    for (const set of products) {
+      if (set.archived || !set.auto_special_order) continue;
+      for (const r of recipes) {
+        if (r.bouquet_sticker_id !== set.id || !r.ingredient_sticker_id) continue;
+        const ing = products.find((p) => p.id === r.ingredient_sticker_id);
+        if (!ing || ing.archived || isStocked(ing)) continue;
+        const substitute =
+          products.find(
+            (cand) =>
+              cand.id !== ing.id &&
+              cand.category === "ohapka" &&
+              !cand.archived &&
+              isStocked(cand) &&
+              cand.flower_type.some((t) => ing.flower_type.includes(t)) &&
+              cand.color.some((c) => ing.color.includes(c))
+          ) ?? null;
+        result.push({ set, recipeRowId: r.id, shortName: ing.name, substitute });
+      }
+    }
+    return result;
+  }, [products, recipes]);
 
   // Ингредиенты для рецептов — те же product_stickers с категорией
   // "ohapka" (продаются поштучно одним видом), больше ничего искать не
@@ -1614,6 +1877,40 @@ export default function ShopPage() {
 
       {mainTab === "catalog" && (
       <section className="space-y-3">
+        {setsNeedingSubstitute.length > 0 && (
+          <div className="rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50/60 dark:bg-amber-500/10 p-4">
+            <p className="mb-1 font-medium text-amber-800 dark:text-amber-300">
+              ⚠️ Сетам не хватает цветка ({setsNeedingSubstitute.length})
+            </p>
+            <p className="mb-3 text-xs text-amber-700 dark:text-amber-400">
+              Пока не хватает — сет сам ушёл «под заказ» (+2 дня), карточка на сайте не пропала. Замену никто не
+              подставляет без вас — подтвердите или оставьте как «под заказ».
+            </p>
+            <div className="space-y-1.5">
+              {setsNeedingSubstitute.map((s) => (
+                <div
+                  key={s.recipeRowId}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-200 dark:border-amber-500/30 bg-white dark:bg-zinc-900 px-2 py-1.5 text-xs"
+                >
+                  <span className="text-zinc-700 dark:text-zinc-200">
+                    <b>{s.set.name}</b>: не хватает «{s.shortName}»
+                    {s.substitute && <> → заменить на «{s.substitute.name}»?</>}
+                  </span>
+                  {s.substitute ? (
+                    <button
+                      onClick={() => substituteRecipeIngredient(s.recipeRowId, s.substitute!.id)}
+                      className="shrink-0 rounded-md bg-amber-600 px-2 py-1 font-medium text-white hover:bg-amber-700"
+                    >
+                      ✅ Заменить
+                    </button>
+                  ) : (
+                    <span className="shrink-0 text-zinc-400 dark:text-zinc-500">похожей замены в каталоге нет</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         {pendingProducts.length > 0 && (
           <div className="rounded-lg border border-violet-200 dark:border-violet-500/30 bg-violet-50/60 dark:bg-violet-500/10 p-4">
             <p className="mb-1 font-medium text-violet-800 dark:text-violet-300">
@@ -1634,9 +1931,15 @@ export default function ShopPage() {
                   recipe={recipes.filter((r) => r.bouquet_sticker_id === p.id)}
                   rawMaterials={rawMaterialOptions}
                   onAddRecipeItem={addRecipeItem}
+                  onAddVanVlietRecipeItem={addVanVlietRecipeItem}
+                  vvCatalogNames={vvCatalogNames}
+                  vvCatalogLoading={vvCatalogLoading}
+                  vvCatalogError={vvCatalogError}
+                  onEnsureVvCatalog={ensureVvCatalogLoaded}
                   onRemoveRecipeItem={removeRecipeItem}
                   onSetOrderUnitSize={setOrderUnitSize}
                   onSetVaseLife={setVaseLife}
+                  onSetMarkup={setMarkup}
                   onToggleAvailable={toggleAvailable}
                   onSetCategory={setCategory}
                   onToggleFlowerType={toggleFlowerType}
@@ -1767,44 +2070,144 @@ export default function ShopPage() {
 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
             {activeTab !== "archive" && (
-              <div className="flex flex-col gap-1.5 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-600 p-2">
-                <p className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">Новый товар</p>
-                <input
-                  value={newProductName}
-                  onChange={(e) => setNewProductName(e.target.value)}
-                  placeholder="Название"
-                  className="rounded-md border border-zinc-300 dark:border-zinc-600 px-1.5 py-1 text-[11px]"
-                />
-                <select
-                  value={newProductCategory}
-                  onChange={(e) => setNewProductCategory(e.target.value)}
-                  title="Категория — лучше выбрать сразу, чтобы товар везде вёл себя правильно (рецепт, соответствие с поставщиком)"
-                  className="rounded-md border border-zinc-300 dark:border-zinc-600 px-1.5 py-1 text-[11px]"
-                >
-                  <option value="">Категория…</option>
-                  {CATEGORY_OPTIONS.map((c) => (
-                    <option key={c.value} value={c.value}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-                <label className="cursor-pointer truncate rounded-md border border-zinc-300 dark:border-zinc-600 px-1.5 py-1 text-center text-[10px] text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800">
-                  {newProductFile ? newProductFile.name : "Фото (необязательно)"}
+              <div
+                className={`flex gap-3 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-600 p-2 ${
+                  newProductNeedsRecipe ? "col-span-2 flex-col sm:flex-row" : "flex-col gap-1.5"
+                }`}
+              >
+                <div className={`flex flex-col gap-1.5 ${newProductNeedsRecipe ? "sm:w-56 sm:shrink-0" : ""}`}>
+                  <p className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                    {newProductNeedsRecipe ? "Новый сет/букет" : "Новый товар"}
+                  </p>
                   <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => setNewProductFile(e.target.files?.[0] ?? null)}
+                    value={newProductName}
+                    onChange={(e) => setNewProductName(e.target.value)}
+                    placeholder="Название"
+                    className="rounded-md border border-zinc-300 dark:border-zinc-600 px-1.5 py-1 text-[11px]"
                   />
-                </label>
-                <button
-                  onClick={addProduct}
-                  disabled={!newProductName.trim() || addingProduct}
-                  className="rounded-md bg-accent px-2 py-1.5 text-[11px] font-medium text-white hover:bg-accent-hover disabled:opacity-50"
-                >
-                  {addingProduct ? "Добавляю…" : "+ Добавить"}
-                </button>
-                {addProductError && <p className="text-[10px] text-red-600 dark:text-red-400">{addProductError}</p>}
+                  <select
+                    value={newProductCategory}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      setNewProductCategory(next);
+                      if (NO_RECIPE_CATEGORIES.has(next)) setNewProductRecipe([]);
+                    }}
+                    title="Категория — лучше выбрать сразу, чтобы товар везде вёл себя правильно (рецепт, соответствие с поставщиком)"
+                    className="rounded-md border border-zinc-300 dark:border-zinc-600 px-1.5 py-1 text-[11px]"
+                  >
+                    <option value="">Категория…</option>
+                    {CATEGORY_OPTIONS.map((c) => (
+                      <option key={c.value} value={c.value}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
+                  <label className="cursor-pointer truncate rounded-md border border-zinc-300 dark:border-zinc-600 px-1.5 py-1 text-center text-[10px] text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                    {newProductFile ? newProductFile.name : "Фото (необязательно)"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => setNewProductFile(e.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                  <button
+                    onClick={addProduct}
+                    disabled={!newProductName.trim() || addingProduct}
+                    className="rounded-md bg-accent px-2 py-1.5 text-[11px] font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+                  >
+                    {addingProduct ? "Добавляю…" : "+ Добавить"}
+                  </button>
+                  {addProductError && <p className="text-[10px] text-red-600 dark:text-red-400">{addProductError}</p>}
+                </div>
+
+                {newProductNeedsRecipe && (
+                  <div className="grid min-w-0 flex-1 grid-cols-1 gap-2 border-t border-zinc-200 pt-1.5 sm:grid-cols-2 sm:border-l sm:border-t-0 sm:pl-3 sm:pt-0 dark:border-zinc-700">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400">
+                        Наши цветы{newProductRecipe.some((r) => r.ingredientId) ? ` (выбрано: ${newProductRecipe.filter((r) => r.ingredientId).length})` : ""}
+                      </p>
+                      <div className="max-h-40 space-y-0.5 overflow-y-auto pr-1">
+                        {rawMaterialOptions.map((m) => {
+                          const staged = newProductRecipe.find((r) => r.ingredientId === m.id);
+                          return (
+                            <label key={m.id} className="flex items-center gap-1.5 text-[10px]">
+                              <input
+                                type="checkbox"
+                                checked={!!staged}
+                                onChange={() => toggleStagedRecipeItem(m.id, m.name)}
+                                className="h-3 w-3 shrink-0 accent-accent"
+                              />
+                              <span className="min-w-0 flex-1 truncate text-zinc-600 dark:text-zinc-300">{m.name}</span>
+                              {staged && (
+                                <input
+                                  type="number"
+                                  min={1}
+                                  value={staged.qty}
+                                  onChange={(e) => setStagedRecipeItemQty(m.id, m.name, parseFloat(e.target.value))}
+                                  className="w-9 shrink-0 rounded border border-zinc-300 dark:border-zinc-600 bg-transparent px-1 py-0 text-center text-[10px]"
+                                />
+                              )}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400">
+                        У Van Vliet (без своего товара)
+                        {newProductRecipe.some((r) => !r.ingredientId) ? ` (выбрано: ${newProductRecipe.filter((r) => !r.ingredientId).length})` : ""}
+                      </p>
+                      <input
+                        value={vvSearchQuery}
+                        onChange={(e) => setVvSearchQuery(e.target.value)}
+                        placeholder={vvCatalogLoading ? "Загружаю каталог…" : "Начни вводить название…"}
+                        disabled={vvCatalogLoading}
+                        className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 bg-transparent px-1.5 py-0.5 text-[10px]"
+                      />
+                      {vvCatalogError && <p className="text-[9px] text-red-600 dark:text-red-400">{vvCatalogError}</p>}
+                      <div className="max-h-32 space-y-0.5 overflow-y-auto pr-1">
+                        {newProductRecipe
+                          .filter((r) => !r.ingredientId)
+                          .map((r) => (
+                            <label key={r.ingredientName} className="flex items-center gap-1.5 text-[10px]">
+                              <input
+                                type="checkbox"
+                                checked
+                                onChange={() => toggleVanVlietRecipeItem(r.ingredientName)}
+                                className="h-3 w-3 shrink-0 accent-accent"
+                              />
+                              <span className="min-w-0 flex-1 truncate text-zinc-600 dark:text-zinc-300">{r.ingredientName}</span>
+                              <input
+                                type="number"
+                                min={1}
+                                value={r.qty}
+                                onChange={(e) => setStagedRecipeItemQty(null, r.ingredientName, parseFloat(e.target.value))}
+                                className="w-9 shrink-0 rounded border border-zinc-300 dark:border-zinc-600 bg-transparent px-1 py-0 text-center text-[10px]"
+                              />
+                            </label>
+                          ))}
+                        {vvFilteredNames
+                          .filter((name) => !newProductRecipe.some((r) => !r.ingredientId && r.ingredientName === name))
+                          .map((name) => (
+                            <label key={name} className="flex items-center gap-1.5 text-[10px]">
+                              <input
+                                type="checkbox"
+                                checked={false}
+                                onChange={() => toggleVanVlietRecipeItem(name)}
+                                className="h-3 w-3 shrink-0 accent-accent"
+                              />
+                              <span className="min-w-0 flex-1 truncate text-zinc-600 dark:text-zinc-300">{name}</span>
+                            </label>
+                          ))}
+                        {vvSearchQuery.trim() && vvFilteredNames.length === 0 && (
+                          <p className="text-[9px] text-zinc-400">Ничего не нашлось у Van Vliet по этому названию.</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1866,9 +2269,15 @@ export default function ShopPage() {
                 recipe={recipes.filter((r) => r.bouquet_sticker_id === p.id)}
                 rawMaterials={rawMaterialOptions}
                 onAddRecipeItem={addRecipeItem}
+                onAddVanVlietRecipeItem={addVanVlietRecipeItem}
+                vvCatalogNames={vvCatalogNames}
+                vvCatalogLoading={vvCatalogLoading}
+                vvCatalogError={vvCatalogError}
+                onEnsureVvCatalog={ensureVvCatalogLoaded}
                 onRemoveRecipeItem={removeRecipeItem}
                 onSetOrderUnitSize={setOrderUnitSize}
                 onSetVaseLife={setVaseLife}
+                onSetMarkup={setMarkup}
                 onToggleAvailable={toggleAvailable}
                 onSetCategory={setCategory}
                 onToggleFlowerType={toggleFlowerType}

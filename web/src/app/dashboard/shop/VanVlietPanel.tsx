@@ -260,6 +260,9 @@ async function describeFunctionError(err: unknown): Promise<string> {
         if (typeof parsed?.error === "string") return parsed.error;
         return JSON.stringify(parsed);
       } catch {
+        if (/compute resources/i.test(text)) {
+          return "Сервер Supabase дважды не справился с нагрузкой на этот запрос (перегрузка, не ошибка в данных) — попробуй ещё раз через пару минут.";
+        }
         return text || String(err);
       }
     } catch {
@@ -533,7 +536,15 @@ export function VanVlietPanel() {
     setRefreshResult(null);
     try {
       const supabase = createClient();
-      const { data, error: fnError } = await supabase.functions.invoke("vanvliet-alias-refresh", { body: {} });
+      let { data, error: fnError } = await supabase.functions.invoke("vanvliet-alias-refresh", { body: {} });
+      // Статус 546 — платформа Supabase убила процесс за превышение
+      // CPU/памяти проекта ("not enough compute resources"), не наша
+      // ошибка в коде. Один тяжёлый вызов (каталог + ИИ с расширенным
+      // размышлением) иногда едва не укладывается в лимит — вторая
+      // попытка почти всегда проходит без изменений в промпте/effort.
+      if (fnError && (fnError as { context?: Response })?.context?.status === 546) {
+        ({ data, error: fnError } = await supabase.functions.invoke("vanvliet-alias-refresh", { body: {} }));
+      }
       if (fnError) throw fnError;
       if (data?.ok === false) {
         throw new Error(data.step ? `${data.step}: ${JSON.stringify(data.body ?? data.raw)}` : data.error);
