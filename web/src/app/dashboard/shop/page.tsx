@@ -37,16 +37,22 @@ type Product = {
   price_markup_multiplier: number;
 };
 
+// Van Vliet — оптовый поставщик, его цена без DPH; конечная цена на
+// сайте — розничная, с DPH, поэтому 21% добавляем прямо в расчёт, а не
+// оставляем менеджеру считать в уме.
+const DPH_RATE = 1.21;
+
 // Подсказка по цене — не себестоимость (её почти никогда не вносят на
 // Приёмке), а самая дешёвая актуальная цена этого цветка у Van Vliet
-// (vanvliet_cheapest_price — за 1 стебель) × число стеблей в единице
-// заказа (order_unit_size — цена у нас за весь пучок, не за стебель) ×
-// личный коэффициент наценки менеджера, округлено до десятков.
+// (vanvliet_cheapest_price — за 1 стебель, без DPH) × число стеблей в
+// единице заказа (order_unit_size — цена у нас за весь пучок, не за
+// стебель) × личный коэффициент наценки менеджера × DPH 21%, округлено
+// до десятков.
 function recommendedPrice(
   p: Pick<Product, "vanvliet_cheapest_price" | "price_markup_multiplier" | "order_unit_size">
 ): number | null {
   if (p.vanvliet_cheapest_price == null) return null;
-  return Math.round((p.vanvliet_cheapest_price * p.order_unit_size * p.price_markup_multiplier) / 10) * 10;
+  return Math.round((p.vanvliet_cheapest_price * p.order_unit_size * p.price_markup_multiplier * DPH_RATE) / 10) * 10;
 }
 
 // Ниже этого остатка на сайте сама встаёт плашка "Zbývá N ks" — если
@@ -741,7 +747,7 @@ function ProductCard({
           )}
           {p.category === "ohapka" && p.vanvliet_cheapest_price != null && (
             <p
-              title="Самая дешёвая актуальная цена этого цветка у Van Vliet за 1 стебель × число стеблей в пучке × твой коэффициент, округлено до 10 — не себестоимость, а подсказка для цены на сайте"
+              title="Самая дешёвая актуальная цена этого цветка у Van Vliet (без DPH) за 1 стебель × число стеблей в пучке × твой коэффициент × DPH 21%, округлено до 10 — не себестоимость, а подсказка для цены на сайте"
               className="mt-1 flex items-center gap-1 text-[9px] text-zinc-400 dark:text-zinc-500"
             >
               {p.vanvliet_cheapest_price} Kč × {p.order_unit_size} шт ×
