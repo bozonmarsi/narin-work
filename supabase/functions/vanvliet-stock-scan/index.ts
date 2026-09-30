@@ -53,7 +53,7 @@ function coreName(name: string): string {
     .toLowerCase()
 }
 
-type CatalogItem = { product: string; color: string; key: number; stock: number }
+type CatalogItem = { product: string; color: string; key: number; stock: number; price: number }
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -127,23 +127,42 @@ Deno.serve(async (req) => {
     }
 
     const catalog: CatalogItem[] = searchData.catalog ?? []
+    const inStockItems = catalog.filter((c) => c.stock > 0)
     // Множество нормализованных названий, у которых реально есть остаток
     // (stock > 0) — сравниваем алиасы именно с ним.
-    const inStockNames = new Set(catalog.filter((c) => c.stock > 0).map((c) => coreName(c.product)))
+    const inStockNames = new Set(inStockItems.map((c) => coreName(c.product)))
+    // Самая низкая цена среди позиций в наличии с этим нормализованным
+    // названием — для подсказки по цене (см. миграцию
+    // vanvliet_price_recommendation) нужна именно самая дешёвая, а не
+    // любая случайная партия/сорт под тем же алиасом.
+    const minPriceByName = new Map<string, number>()
+    for (const c of inStockItems) {
+      const name = coreName(c.product)
+      const prev = minPriceByName.get(name)
+      if (prev === undefined || c.price < prev) minPriceByName.set(name, c.price)
+    }
 
     let updated = 0
-    const report: { name: string; inStock: boolean }[] = []
+    const report: { name: string; inStock: boolean; cheapestPrice: number | null }[] = []
     const checkedAt = new Date().toISOString()
     for (const m of materialsWithAlias) {
       const materialAliases = aliasesByMaterial.get(m.id) ?? []
       const inStock = materialAliases.some((alias) => inStockNames.has(alias))
+      // Самое дешёвое среди ВСЕХ алиасов этого цветка, не только первого
+      // совпавшего — сорта/расфасовки одного и того же цветка у
+      // поставщика стоят по-разному.
+      let cheapestPrice: number | null = null
+      for (const alias of materialAliases) {
+        const price = minPriceByName.get(alias)
+        if (price !== undefined && (cheapestPrice === null || price < cheapestPrice)) cheapestPrice = price
+      }
       const { error } = await supabase
         .from('product_stickers')
-        .update({ vanvliet_in_stock: inStock, vanvliet_stock_checked_at: checkedAt })
+        .update({ vanvliet_in_stock: inStock, vanvliet_stock_checked_at: checkedAt, vanvliet_cheapest_price: cheapestPrice })
         .eq('id', m.id)
       if (!error) {
         updated++
-        report.push({ name: m.product_name, inStock })
+        report.push({ name: m.product_name, inStock, cheapestPrice })
       }
     }
 

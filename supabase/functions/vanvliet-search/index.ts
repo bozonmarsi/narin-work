@@ -269,13 +269,15 @@ Deno.serve(async (req) => {
 
     const catalog = await loadCatalog(username, password, targetDate)
 
-    // fullCatalog:true — для автосопоставления алиасов на фронте: там
-    // нужны все товары с их цветом, а не top-4 по конкретному запросу.
+    // fullCatalog:true — для автосопоставления алиасов на фронте и для
+    // подсказки по цене (vanvliet-stock-scan берёт отсюда price, чтобы
+    // найти самое дешёвое актуальное соответствие) — нужны все товары с
+    // их цветом и ценой, а не top-4 по конкретному запросу.
     if (body.fullCatalog === true) {
       return json({
         ok: true,
         catalogSize: catalog.length,
-        catalog: catalog.map((c) => ({ product: c.product, color: c.color, key: c.key, stock: c.stock })),
+        catalog: catalog.map((c) => ({ product: c.product, color: c.color, key: c.key, stock: c.stock, price: c.price })),
         date: targetDate,
       })
     }
