@@ -110,13 +110,21 @@ Deno.serve(async (req) => {
       .from('product_stickers')
       .select('product_name, image_url')
 
-    const stickerByName = new Map((stickers ?? []).map((s) => [s.product_name, s.image_url]))
+    // Tilda posílá názvy produktů s HTML entitami (&amp;, &quot;, &#39;...) a občas
+    // s jinými mezerami nebo velikostí písmen, než jak je název uložený v product_stickers.
+    // Dřív se porovnávalo přesně, takže u takových produktů samolepka chyběla.
+    const normName = (v: unknown) =>
+      String(v ?? '')
+        .replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'")
+        .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;|\u00a0/g, ' ')
+        .replace(/\s+/g, ' ').trim().toLowerCase()
+    const stickerByName = new Map((stickers ?? []).map((s) => [normName(s.product_name), s.image_url]))
 
     for (const order of orders ?? []) {
       const products = order.raw_payload?.payment?.products
       if (!Array.isArray(products)) continue
       for (const p of products) {
-        const imageUrl = stickerByName.get(p.name)
+        const imageUrl = stickerByName.get(normName(p.name))
         if (imageUrl) p.image_url = imageUrl
       }
     }
