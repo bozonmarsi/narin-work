@@ -979,6 +979,12 @@ export default function ShopPage() {
   const [newProductName, setNewProductName] = useState("");
   const [newProductCategory, setNewProductCategory] = useState("");
   const [newProductFile, setNewProductFile] = useState<File | null>(null);
+  // Состав сета/букета — задаётся сразу при создании, а не потом на
+  // отдельной карточке: для сета это и есть главное, ради чего его
+  // вообще заводят, неудобно было бы заставлять искать карточку заново.
+  const [newProductRecipe, setNewProductRecipe] = useState<{ ingredientId: string; ingredientName: string; qty: number }[]>([]);
+  const [newRecipeIngredientId, setNewRecipeIngredientId] = useState("");
+  const [newRecipeQty, setNewRecipeQty] = useState("1");
   const [addingProduct, setAddingProduct] = useState(false);
   const [addProductError, setAddProductError] = useState<string | null>(null);
   // Каталог на сайте живёт в самой Tilda — этот товар тут не создаёт
@@ -1250,12 +1256,33 @@ export default function ShopPage() {
       supabase.functions.invoke("vanvliet-alias-refresh", { body: {} }).catch(() => {});
     }
 
+    if (newProductRecipe.length > 0) {
+      await supabase.from("product_recipes").insert(
+        newProductRecipe.map((r) => ({ bouquet_sticker_id: id, ingredient_sticker_id: r.ingredientId, quantity_needed: r.qty }))
+      );
+    }
+
     setJustAddedProduct({ id, name });
     setNewProductName("");
     setNewProductCategory("");
     setNewProductFile(null);
+    setNewProductRecipe([]);
     setAddingProduct(false);
     loadAvailability();
+  }
+
+  function addStagedRecipeItem() {
+    const qty = parseFloat(newRecipeQty);
+    if (!newRecipeIngredientId || !(qty > 0)) return;
+    const ingredient = rawMaterialOptions.find((m) => m.id === newRecipeIngredientId);
+    if (!ingredient) return;
+    setNewProductRecipe((prev) => [...prev, { ingredientId: ingredient.id, ingredientName: ingredient.name, qty }]);
+    setNewRecipeIngredientId("");
+    setNewRecipeQty("1");
+  }
+
+  function removeStagedRecipeItem(index: number) {
+    setNewProductRecipe((prev) => prev.filter((_, i) => i !== index));
   }
 
   async function setCategory(productId: string, category: string) {
@@ -1840,7 +1867,11 @@ export default function ShopPage() {
                 />
                 <select
                   value={newProductCategory}
-                  onChange={(e) => setNewProductCategory(e.target.value)}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setNewProductCategory(next);
+                    if (NO_RECIPE_CATEGORIES.has(next)) setNewProductRecipe([]);
+                  }}
                   title="Категория — лучше выбрать сразу, чтобы товар везде вёл себя правильно (рецепт, соответствие с поставщиком)"
                   className="rounded-md border border-zinc-300 dark:border-zinc-600 px-1.5 py-1 text-[11px]"
                 >
@@ -1860,6 +1891,56 @@ export default function ShopPage() {
                     onChange={(e) => setNewProductFile(e.target.files?.[0] ?? null)}
                   />
                 </label>
+                {newProductCategory && !NO_RECIPE_CATEGORIES.has(newProductCategory) && (
+                  <div className="space-y-1 rounded-md border border-zinc-200 dark:border-zinc-700 p-1.5">
+                    <p className="text-[9px] font-medium text-zinc-400 dark:text-zinc-500">Состав (необязательно, можно и позже)</p>
+                    {newProductRecipe.map((r, i) => (
+                      <div key={r.ingredientId} className="flex items-center justify-between gap-1 text-[10px]">
+                        <span className="truncate text-zinc-600 dark:text-zinc-300">
+                          {r.ingredientName} × {r.qty}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeStagedRecipeItem(i)}
+                          className="shrink-0 text-zinc-400 hover:text-red-600 dark:hover:text-red-400"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                    <div className="flex items-center gap-1">
+                      <select
+                        value={newRecipeIngredientId}
+                        onChange={(e) => setNewRecipeIngredientId(e.target.value)}
+                        className="min-w-0 flex-1 rounded-md border border-zinc-300 dark:border-zinc-600 bg-transparent px-1 py-0.5 text-[10px]"
+                      >
+                        <option value="">Ингредиент…</option>
+                        {rawMaterialOptions
+                          .filter((m) => !newProductRecipe.some((r) => r.ingredientId === m.id))
+                          .map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.name}
+                            </option>
+                          ))}
+                      </select>
+                      <input
+                        type="number"
+                        min={1}
+                        value={newRecipeQty}
+                        onChange={(e) => setNewRecipeQty(e.target.value)}
+                        className="w-10 rounded-md border border-zinc-300 dark:border-zinc-600 bg-transparent px-1 py-0.5 text-[10px]"
+                      />
+                      <button
+                        type="button"
+                        disabled={!newRecipeIngredientId || !(parseFloat(newRecipeQty) > 0)}
+                        onClick={addStagedRecipeItem}
+                        className="rounded-md bg-accent px-1.5 py-0.5 text-[10px] font-medium text-white disabled:opacity-40"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <button
                   onClick={addProduct}
                   disabled={!newProductName.trim() || addingProduct}
