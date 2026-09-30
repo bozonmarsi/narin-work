@@ -1,0 +1,898 @@
+<!--
+  NARIN: stránka Předplatné květin (/members/subscription).
+  Celý kód patří do jednoho HTML bloku T123.
+  Obsahuje: seznam předplatných klienta → detail (dodávky, změna data/příjemce, platba, zrušení)
+  a nové předplatné: typ → sestavení (linie, velikost, počet dodávek, nálada) → doručení → Stripe.
+  Identita = lk_auth_token (stejně jako member-data). Funkce subscriptions a subscriptions-list
+  e-mail z těla požadavku už neberou, jen z tokenu.
+-->
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://wqburlamuipxmenqsjnx.supabase.co" crossorigin>
+<style>
+.nsb { --blue:#186ce0; --blue-d:#1257b8; --tint:#f3f7fd; --tint-2:#e6effb; --ink:#16181d; --ink-2:#4a505b; --muted:#8a8f98; --line:#e9ebef;
+  --ok:#1b7a44; --ok-bg:#e7f5ec; --err:#a32d2d; --err-bg:#fdeeee; --pink:#f6405a;
+  font-family:'Rubik',sans-serif; color:var(--ink); max-width:640px; margin:0 auto; padding:16px 16px 48px; box-sizing:border-box; -webkit-font-smoothing:antialiased; }
+.nsb *, .nsb *::before, .nsb *::after { box-sizing:border-box; }
+.nsb h1, .nsb h2, .nsb h3, .nsb p { margin:0; }
+.nsb a { text-decoration:none; }
+.nsb button { font-family:inherit; }
+.nsb [hidden] { display:none !important; }
+.nsb-top { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:22px; }
+.nsb-back { display:inline-flex; align-items:center; gap:6px; color:var(--blue); font-size:15px; font-weight:500; background:none; border:none; padding:0; cursor:pointer; }
+.nsb-home { display:inline-flex; align-items:center; gap:7px; height:40px; padding:0 16px; border-radius:999px; border:1.5px solid var(--line); color:var(--ink); font-size:14px; font-weight:500; background:#fff; }
+.nsb-back svg, .nsb-home svg { width:18px; height:18px; }
+.nsb h1 { font-size:28px; font-weight:600; letter-spacing:-.02em; }
+.nsb-lead { font-size:15px; color:var(--ink-2); margin-top:6px; line-height:1.45; }
+.nsb-sec { font-size:13px; font-weight:600; color:var(--muted); letter-spacing:.02em; margin:26px 2px 10px; display:flex; justify-content:space-between; align-items:center; gap:10px; }
+
+.nsb-note { display:flex; gap:12px; align-items:flex-start; padding:14px 16px; border-radius:18px; margin-top:18px; font-size:14.5px; line-height:1.45; }
+.nsb-note b { display:block; font-size:15.5px; margin-bottom:2px; }
+.nsb-note.ok { background:var(--ok-bg); color:#15532f; }
+.nsb-note.info { background:var(--tint); color:var(--ink-2); }
+.nsb-note svg { width:22px; height:22px; flex-shrink:0; margin-top:1px; }
+
+.nsb-sk { background:linear-gradient(90deg,#eef1f6 25%,#f6f8fb 37%,#eef1f6 63%); background-size:400% 100%; animation:nsbShim 1.4s ease infinite; border-radius:18px; }
+@keyframes nsbShim { 0% { background-position:100% 50%; } 100% { background-position:0 50%; } }
+
+/* moje předplatné */
+.nsb-tabs { display:flex; gap:6px; }
+.nsb-tab { height:30px; padding:0 12px; border-radius:999px; border:1.5px solid var(--line); background:#fff; color:var(--ink-2); font-size:12.5px; font-weight:500; cursor:pointer; }
+.nsb-tab.on { background:var(--ink); border-color:var(--ink); color:#fff; }
+.nsb-sub { width:100%; text-align:left; display:block; border:1.5px solid var(--line); background:#fff; border-radius:22px; padding:16px; margin-bottom:10px; cursor:pointer; box-shadow:0 6px 20px rgba(20,40,80,.05); color:var(--ink); transition:transform .12s ease; }
+.nsb-sub:active { transform:scale(.99); }
+.nsb-sub-top { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
+.nsb-sub-title { font-size:17px; font-weight:600; }
+.nsb-sub-meta { font-size:13.5px; color:var(--muted); margin-top:3px; }
+.nsb-badge { display:inline-flex; align-items:center; height:26px; padding:0 11px; border-radius:999px; font-size:12.5px; font-weight:600; flex-shrink:0; }
+.nsb-badge.ok { background:var(--ok-bg); color:var(--ok); }
+.nsb-badge.off { background:#f1f2f4; color:#5f5e5a; }
+.nsb-next { display:flex; align-items:center; gap:12px; margin-top:12px; padding:11px 13px; border-radius:14px; background:var(--tint); }
+.nsb-next svg { width:22px; height:22px; color:var(--blue); flex-shrink:0; }
+.nsb-next b { display:block; font-size:15px; font-weight:600; }
+.nsb-next span { display:block; font-size:13px; color:var(--ink-2); margin-top:1px; }
+.nsb-dots { display:flex; gap:4px; margin-top:12px; }
+.nsb-dots i { flex:1; height:6px; border-radius:6px; background:#e7eaf0; }
+.nsb-dots i.done { background:#48a868; }
+.nsb-dots i.next { background:var(--blue); }
+.nsb-dots i.skip { background:#f0b49e; }
+.nsb-add { width:100%; height:52px; border-radius:999px; border:1.5px dashed #bcd3f3; background:#fff; color:var(--blue); font-size:15px; font-weight:600; cursor:pointer; margin-top:4px; display:flex; align-items:center; justify-content:center; gap:8px; }
+.nsb-add svg { width:18px; height:18px; }
+
+/* detail */
+.nsb-card { border:1.5px solid var(--line); background:#fff; border-radius:22px; padding:16px; margin-bottom:12px; }
+.nsb-metrics { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:14px; }
+.nsb-metric { background:var(--tint); border-radius:14px; padding:10px 12px; min-width:0; }
+.nsb-metric small { display:block; font-size:12px; color:var(--muted); }
+.nsb-metric b { display:block; font-size:15px; font-weight:600; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.nsb-metric s { color:var(--muted); font-weight:400; font-size:12.5px; margin-left:4px; }
+.nsb-pay { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:10px; padding:12px 14px; border-radius:14px; background:#eef4fc; color:#0c447c; flex-wrap:wrap; }
+.nsb-pay small { display:block; font-size:12px; }
+.nsb-pay b { font-size:14.5px; font-weight:600; }
+.nsb-link { background:none; border:none; padding:0; color:var(--blue); font-size:14px; font-weight:600; cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
+.nsb-chips { display:flex; gap:8px; overflow-x:auto; padding:2px 2px 6px; margin:0 -2px; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+.nsb-chips::-webkit-scrollbar { display:none; }
+.nsb-chip { flex:0 0 auto; min-width:66px; padding:9px 10px; border-radius:16px; border:1.5px solid var(--line); background:#fff; cursor:pointer; text-align:center; color:var(--ink); }
+.nsb-chip small { display:block; font-size:11.5px; color:var(--muted); text-transform:capitalize; }
+.nsb-chip b { display:block; font-size:16px; font-weight:600; margin-top:1px; }
+.nsb-chip i { display:block; width:6px; height:6px; border-radius:50%; margin:5px auto 0; background:#d5dae2; }
+.nsb-chip.done i { background:#48a868; } .nsb-chip.skip i { background:#f0997b; } .nsb-chip.soon i { background:var(--blue); }
+.nsb-chip.on { border-color:var(--blue); background:var(--tint); }
+.nsb-occ { display:flex; align-items:center; gap:12px; }
+.nsb-occ-img { width:56px; height:56px; border-radius:14px; background:var(--tint); flex-shrink:0; object-fit:cover; display:flex; align-items:center; justify-content:center; }
+.nsb-occ h3 { font-size:16px; font-weight:600; text-transform:none; }
+.nsb-occ p { font-size:13.5px; color:var(--muted); margin-top:2px; }
+.nsb-occ-to { font-size:14px; color:var(--ink-2); margin-top:12px; line-height:1.45; padding-top:12px; border-top:1px dashed var(--line); }
+.nsb-btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; height:48px; padding:0 22px; border-radius:999px; border:1.5px solid var(--line); background:#fff; color:var(--ink); font-size:15px; font-weight:500; cursor:pointer; }
+.nsb-btn.primary { background:var(--blue); border-color:var(--blue); color:#fff; font-weight:600; }
+.nsb-btn.block { width:100%; }
+.nsb-btn[disabled] { opacity:.5; cursor:default; }
+.nsb-btn svg { width:18px; height:18px; }
+.nsb-danger { display:block; margin:18px auto 0; background:none; border:none; color:var(--err); font-size:14px; font-weight:500; cursor:pointer; padding:8px; }
+.nsb-confirm { background:var(--err-bg); border-radius:18px; padding:16px; margin-top:14px; text-align:center; }
+.nsb-confirm p { font-size:14.5px; color:#6b1f1f; line-height:1.45; margin-bottom:12px; }
+.nsb-confirm .row { display:flex; gap:8px; }
+.nsb-confirm .row > * { flex:1; }
+.nsb-btn.red { background:var(--err); border-color:var(--err); color:#fff; font-weight:600; }
+
+/* formuláře */
+.nsb-field { display:block; margin-bottom:10px; }
+.nsb-field > span { display:block; font-size:13px; color:var(--ink-2); font-weight:500; margin:0 2px 5px; }
+.nsb input[type=text], .nsb input[type=tel], .nsb input[type=date], .nsb input[type=email] {
+  width:100%; height:48px; border-radius:14px; border:1.5px solid var(--line); background:#fff; padding:0 14px; font-family:inherit; font-size:16px; color:var(--ink); outline:none; -webkit-appearance:none; appearance:none; margin:0; }
+.nsb input:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(24,108,224,.12); }
+.nsb input.bad { border-color:var(--err); }
+.nsb input[disabled] { background:#f6f7f9; color:var(--muted); }
+.nsb-2 { display:grid; grid-template-columns:1fr 120px; gap:10px; }
+.nsb-hint { font-size:13px; color:var(--muted); margin:-4px 2px 10px; line-height:1.4; }
+.nsb-err { font-size:14px; color:var(--err); background:var(--err-bg); border-radius:12px; padding:10px 12px; margin-top:10px; }
+.nsb-more { background:none; border:none; padding:4px 2px; color:var(--blue); font-size:14px; font-weight:500; cursor:pointer; margin-bottom:8px; }
+
+/* průvodce */
+.nsb-steps { display:flex; gap:6px; margin:18px 0 18px; }
+.nsb-steps div { flex:1; }
+.nsb-steps i { display:block; height:5px; border-radius:5px; background:#e7eaf0; transition:background .3s ease; }
+.nsb-steps span { display:block; font-size:12px; color:var(--muted); margin-top:6px; font-weight:500; }
+.nsb-steps .on i { background:var(--blue); }
+.nsb-steps .on span { color:var(--ink); }
+.nsb-step[hidden] { display:none; }
+.nsb-h2 { font-size:21px; font-weight:600; letter-spacing:-.01em; }
+.nsb-sub2 { font-size:14.5px; color:var(--ink-2); margin-top:4px; line-height:1.45; }
+
+.nsb-cat { width:100%; display:flex; gap:14px; align-items:stretch; text-align:left; border:1.5px solid var(--line); background:#fff; border-radius:22px; padding:10px; margin-top:12px; cursor:pointer; color:var(--ink); box-shadow:0 6px 20px rgba(20,40,80,.05); transition:transform .12s ease, border-color .15s ease; }
+.nsb-cat:active { transform:scale(.99); }
+.nsb-cat:hover { border-color:#c9dbf5; }
+.nsb-cat img, .nsb-cat .ph { width:108px; height:108px; border-radius:16px; object-fit:cover; flex-shrink:0; background:var(--tint); }
+.nsb-cat-b { flex:1; min-width:0; display:flex; flex-direction:column; padding:4px 4px 2px 0; }
+.nsb-cat-b h3 { font-size:17px; font-weight:600; }
+.nsb-cat-b ul { list-style:none; padding:0; margin:6px 0 0; }
+.nsb-cat-b li { font-size:13.5px; color:var(--ink-2); line-height:1.5; padding-left:14px; position:relative; }
+.nsb-cat-b li::before { content:''; position:absolute; left:2px; top:8px; width:5px; height:5px; border-radius:50%; background:var(--blue); }
+.nsb-cat-price { margin-top:auto; padding-top:6px; font-size:14px; color:var(--ink-2); display:flex; justify-content:space-between; align-items:center; }
+.nsb-cat-price b { font-size:16px; color:var(--ink); }
+.nsb-cat-price svg { width:18px; height:18px; color:var(--blue); }
+.nsb-cat.off { cursor:default; box-shadow:none; }
+.nsb-cat.off img { filter:grayscale(.6); opacity:.7; }
+.nsb-cat.off h3 { color:var(--muted); }
+.nsb-cat.off li::before { background:#c3c7ce; }
+.nsb-soon { font-size:12px; font-weight:600; color:var(--muted); background:#f1f2f4; border-radius:999px; padding:3px 9px; }
+
+.nsb-label { font-size:15px; font-weight:600; margin:22px 2px 4px; }
+.nsb-label + .nsb-hint { margin:0 2px 10px; }
+.nsb-lines { display:flex; gap:10px; overflow-x:auto; scroll-snap-type:x mandatory; padding:2px 2px 6px; margin:12px -2px 0; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+.nsb-lines::-webkit-scrollbar { display:none; }
+.nsb-line { scroll-snap-align:start; flex:0 0 76%; max-width:300px; display:flex; flex-direction:column; align-items:stretch; height:auto; border:2px solid var(--line); border-radius:20px; background:#fff; padding:8px; cursor:pointer; text-align:left; color:var(--ink); position:relative; }
+.nsb-line.on { border-color:var(--blue); box-shadow:0 8px 22px rgba(24,108,224,.14); }
+.nsb-line img, .nsb-line .ph { width:100%; height:auto; aspect-ratio:4/3; border-radius:14px; object-fit:cover; display:block; background:var(--tint); flex-shrink:0; }
+.nsb .ph { display:flex; align-items:center; justify-content:center; }
+.nsb-line b { display:block; font-size:15.5px; font-weight:600; margin:9px 4px 2px; }
+.nsb-line span { display:block; font-size:13px; color:var(--muted); margin:0 4px 4px; line-height:1.35; }
+.nsb-line .tick { position:absolute; top:16px; right:16px; width:28px; height:28px; border-radius:50%; background:var(--blue); color:#fff; display:none; align-items:center; justify-content:center; box-shadow:0 0 0 3px #fff; }
+.nsb-line.on .tick { display:flex; }
+.nsb-line .tick svg { width:15px; height:15px; }
+
+.nsb-seg { display:flex; gap:8px; }
+.nsb-opt { flex:1; min-width:0; border:1.5px solid var(--line); background:#fff; border-radius:16px; padding:10px 6px; cursor:pointer; text-align:center; color:var(--ink); position:relative; }
+.nsb-opt b { display:block; font-size:18px; font-weight:600; }
+.nsb-opt small { display:block; font-size:12.5px; color:var(--muted); margin-top:2px; white-space:nowrap; }
+.nsb-opt em { position:absolute; top:-9px; left:50%; transform:translateX(-50%); font-style:normal; font-size:11px; font-weight:600; background:var(--pink); color:#fff; border-radius:999px; padding:2px 8px; white-space:nowrap; }
+.nsb-opt .perk { display:flex; justify-content:center; gap:3px; margin-top:4px; color:var(--blue); min-height:14px; }
+.nsb-opt .perk svg { width:14px; height:14px; }
+.nsb-opt.on { border-color:var(--blue); background:var(--blue); color:#fff; }
+.nsb-opt.on small { color:rgba(255,255,255,.85); }
+.nsb-opt.on .perk { color:#fff; }
+.nsb-legend { display:flex; flex-wrap:wrap; gap:6px 14px; margin:10px 2px 0; font-size:13px; color:var(--ink-2); }
+.nsb-legend span { display:inline-flex; align-items:center; gap:5px; }
+.nsb-legend svg { width:15px; height:15px; color:var(--blue); }
+
+.nsb-vase { display:flex; gap:12px; align-items:flex-start; background:var(--tint); border-radius:18px; padding:14px; margin-top:14px; cursor:pointer; }
+.nsb-vase-ic { width:38px; height:38px; border-radius:50%; background:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--blue); }
+.nsb-vase-ic svg { width:20px; height:20px; }
+.nsb-vase b { display:block; font-size:15px; font-weight:600; }
+.nsb-vase p { font-size:13.5px; color:var(--ink-2); line-height:1.45; margin-top:3px; }
+.nsb-check { width:22px; height:22px; accent-color:var(--blue); flex-shrink:0; margin:2px 0 0; }
+
+.nsb-moods { display:flex; gap:8px; flex-wrap:wrap; }
+.nsb-mood { height:38px; padding:0 15px; border-radius:999px; border:1.5px solid var(--line); background:#fff; color:var(--ink); font-size:14px; font-weight:500; cursor:pointer; }
+.nsb-mood.on { background:var(--blue); border-color:var(--blue); color:#fff; }
+
+.nsb-agree { display:flex; gap:12px; align-items:flex-start; background:#f7f8fa; border-radius:16px; padding:14px; margin-top:20px; cursor:pointer; font-size:13.5px; color:var(--ink-2); line-height:1.45; }
+
+.nsb-bar { position:sticky; bottom:10px; z-index:5; margin-top:18px; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 12px 12px 18px; border-radius:24px; background:rgba(255,255,255,.96); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); box-shadow:0 10px 30px rgba(20,40,80,.14), 0 0 0 1px rgba(20,40,80,.05); }
+.nsb-bar-p { min-width:0; }
+.nsb-bar-p b { display:block; font-size:19px; font-weight:600; white-space:nowrap; }
+.nsb-bar-p b s { font-size:13px; color:var(--muted); font-weight:400; margin-left:6px; }
+.nsb-bar-p small { display:block; font-size:12.5px; color:var(--muted); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.nsb-bar-p small.perk { color:var(--blue); font-weight:500; }
+.nsb-bar .nsb-btn { flex-shrink:0; }
+
+.nsb-sum { background:var(--tint); border-radius:18px; padding:14px 16px; margin-top:18px; }
+.nsb-sum div { display:flex; justify-content:space-between; gap:12px; font-size:14px; padding:4px 0; }
+.nsb-sum div span:first-child { color:var(--muted); }
+.nsb-sum div span:last-child { text-align:right; font-weight:500; }
+.nsb-acc { display:flex; gap:10px; align-items:center; font-size:14px; color:var(--ink-2); background:#f7f8fa; border-radius:14px; padding:11px 14px; margin-top:16px; }
+.nsb-acc svg { width:18px; height:18px; color:var(--blue); flex-shrink:0; }
+.nsb-acc b { color:var(--ink); font-weight:600; word-break:break-all; }
+.nsb-secure { display:flex; align-items:center; justify-content:center; gap:6px; font-size:12.5px; color:var(--muted); margin-top:10px; }
+.nsb-secure svg { width:14px; height:14px; }
+.nsb-fail { text-align:center; padding:28px 18px; border-radius:22px; background:var(--tint); font-size:14.5px; color:var(--ink-2); margin-top:12px; }
+</style>
+
+<div class="nsb" id="nsb">
+  <div class="nsb-top">
+    <a class="nsb-back" href="https://vezminarin.cz/members/" id="nsbTopBack"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span>Zpět do profilu</span></a>
+    <a class="nsb-home" href="https://vezminarin.cz/"><svg viewBox="0 0 24 24" fill="none" stroke="#186ce0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Domů</a>
+  </div>
+
+  <!-- ===== přehled ===== -->
+  <div id="nsbHome">
+    <h1>Předplatné květin</h1>
+    <p class="nsb-lead" id="nsbLead">Čerstvé květiny domů nebo do kanceláře pravidelně, bez objednávání. Termíny i adresu u každé dodávky změníte tady.</p>
+    <div id="nsbNotice"></div>
+
+    <div id="nsbMine">
+      <div class="nsb-sec"><span>Vaše předplatné</span><div class="nsb-tabs" id="nsbTabs" hidden></div></div>
+      <div id="nsbList"><div class="nsb-sk" style="height:150px;"></div></div>
+      <button class="nsb-add" id="nsbAdd" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nové předplatné</button>
+    </div>
+  </div>
+
+  <!-- ===== detail ===== -->
+  <div id="nsbDetail" hidden>
+    <div class="nsb-card">
+      <div class="nsb-sub-top">
+        <div style="min-width:0;"><div class="nsb-sub-title" id="nsbDTitle"></div><div class="nsb-sub-meta" id="nsbDMeta"></div></div>
+        <span class="nsb-badge" id="nsbDBadge"></span>
+      </div>
+      <div class="nsb-metrics">
+        <div class="nsb-metric"><small>Dodávek za 4 týdny</small><b id="nsbMCount"></b></div>
+        <div class="nsb-metric"><small>Cena za 4 týdny</small><b id="nsbMPrice"></b></div>
+        <div class="nsb-metric"><small>Předplatné od</small><b id="nsbMFrom"></b></div>
+        <div class="nsb-metric"><small>Poslední dodávka cyklu</small><b id="nsbMTo"></b></div>
+      </div>
+      <div class="nsb-pay" id="nsbPay" hidden>
+        <div><small>Příští platba</small><b id="nsbPayVal"></b></div>
+        <button class="nsb-link" id="nsbPayLink" type="button">Spravovat platbu</button>
+      </div>
+    </div>
+
+    <div class="nsb-sec"><span>Dodávky</span></div>
+    <div class="nsb-chips" id="nsbChips"></div>
+
+    <div class="nsb-card" id="nsbOcc" style="margin-top:10px;">
+      <div class="nsb-occ">
+        <div class="nsb-occ-img" id="nsbOccImg"></div>
+        <div style="flex:1;min-width:0;"><h3 id="nsbOccDate"></h3><p id="nsbOccStatus"></p></div>
+      </div>
+      <div class="nsb-occ-to" id="nsbOccTo"></div>
+      <button class="nsb-btn block" id="nsbOccEdit" type="button" style="margin-top:12px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>Změnit datum nebo příjemce</button>
+      <div id="nsbOccForm" hidden style="margin-top:14px;">
+        <label class="nsb-field"><span>Datum doručení</span><input type="date" id="nsbOccDateIn"></label>
+        <p class="nsb-hint" id="nsbOccDateNote"></p>
+        <p class="nsb-hint">Prázdné pole = použije se příjemce z předplatného.</p>
+        <label class="nsb-field"><span>Jméno příjemce</span><input type="text" id="nsbOccName" autocomplete="name"></label>
+        <label class="nsb-field"><span>Telefon</span><input type="tel" id="nsbOccPhone" autocomplete="tel"></label>
+        <label class="nsb-field"><span>Ulice a číslo</span><input type="text" id="nsbOccAddr" autocomplete="street-address"></label>
+        <div class="nsb-2">
+          <label class="nsb-field"><span>Město</span><input type="text" id="nsbOccCity" autocomplete="address-level2"></label>
+          <label class="nsb-field"><span>PSČ</span><input type="text" id="nsbOccPsk" inputmode="numeric" autocomplete="postal-code"></label>
+        </div>
+        <div class="nsb-err" id="nsbOccErr" hidden></div>
+        <div style="display:flex;gap:8px;margin-top:6px;">
+          <button class="nsb-btn" id="nsbOccCancel" type="button" style="flex:1;">Zpět</button>
+          <button class="nsb-btn primary" id="nsbOccSave" type="button" style="flex:1.4;">Uložit</button>
+        </div>
+      </div>
+    </div>
+
+    <button class="nsb-danger" id="nsbCancel" type="button">Zrušit předplatné</button>
+    <div class="nsb-confirm" id="nsbConfirm" hidden>
+      <p>Opravdu zrušit? Další platby se už nestrhnou a naplánované dodávky, které ještě nejsou připravené, se nedoručí.</p>
+      <div class="row"><button class="nsb-btn" id="nsbConfirmNo" type="button">Ponechat</button><button class="nsb-btn red" id="nsbConfirmYes" type="button">Zrušit</button></div>
+      <div class="nsb-err" id="nsbCancelErr" hidden></div>
+    </div>
+  </div>
+
+  <!-- ===== nové předplatné ===== -->
+  <div id="nsbNew" hidden>
+    <div class="nsb-steps" id="nsbSteps"><div class="on"><i></i><span>Typ</span></div><div><i></i><span>Sestavení</span></div><div><i></i><span>Doručení</span></div></div>
+
+    <div class="nsb-step" data-step="1">
+      <h2 class="nsb-h2">Co vám budeme vozit?</h2>
+      <p class="nsb-sub2">Vyberte typ, detaily doladíte v dalším kroku.</p>
+      <div id="nsbCats"><div class="nsb-sk" style="height:130px;margin-top:12px;"></div><div class="nsb-sk" style="height:130px;margin-top:12px;"></div><div class="nsb-sk" style="height:130px;margin-top:12px;"></div></div>
+    </div>
+
+    <div class="nsb-step" data-step="2" hidden>
+      <h2 class="nsb-h2" id="nsbConTitle"></h2>
+      <p class="nsb-sub2" id="nsbConSub"></p>
+      <div class="nsb-lines" id="nsbLines"></div>
+
+      <div class="nsb-label">Velikost</div>
+      <p class="nsb-hint">S – menší a jemná, M – střední, L – bohatá a výrazná. Cena je za jednu dodávku.</p>
+      <div class="nsb-seg" id="nsbSizes"></div>
+
+      <div class="nsb-label">Kolik dodávek za 4 týdny</div>
+      <p class="nsb-hint">Čím častěji, tím výhodnější cena za dodávku.</p>
+      <div class="nsb-seg" id="nsbCounts" style="margin-top:14px;"></div>
+      <div class="nsb-legend" id="nsbLegend"></div>
+
+      <label class="nsb-vase" id="nsbVase" hidden>
+        <span class="nsb-vase-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3h4l-1 4.5 4.5 3.2L16.5 20a2 2 0 01-2 2h-5a2 2 0 01-2-2l-1-9.3L11 7.5z"/></svg></span>
+        <span style="flex:1;min-width:0;"><b>Výměna váz zdarma</b><p>Ke každé dodávce přivezeme vázu na míru právě těm květinám. Jednu si necháte, tu z minulé dodávky florista při další návštěvě odveze. Nemusíte řešit, jestli máte doma tu správnou.</p></span>
+        <input type="checkbox" class="nsb-check" id="nsbVaseCheck">
+      </label>
+
+      <div class="nsb-label">Nálada <span style="font-weight:400;color:var(--muted);font-size:13px;">(nepovinné)</span></div>
+      <div class="nsb-moods" id="nsbMoods" style="margin-top:8px;"></div>
+
+      <div class="nsb-label">Co určitě nechcete vidět</div>
+      <input type="text" id="nsbExcl" placeholder="např. slunečnice, lilie" style="margin-top:8px;">
+
+      <label class="nsb-agree"><input type="checkbox" class="nsb-check" id="nsbAgree"><span>Rozumím, že květiny se mohou mírně lišit od fotografie. Florista tvoří podle sezónní nabídky a vašich přání.</span></label>
+
+      <div class="nsb-bar">
+        <div class="nsb-bar-p"><b id="nsbPrice">–</b><small id="nsbPriceSub">za 4 týdny</small></div>
+        <button class="nsb-btn primary" id="nsbNext2" type="button" disabled>Pokračovat</button>
+      </div>
+    </div>
+
+    <div class="nsb-step" data-step="3" hidden>
+      <h2 class="nsb-h2">Kam a odkdy vozit</h2>
+      <p class="nsb-sub2">Adresu i datum můžete později změnit u každé dodávky zvlášť.</p>
+      <div class="nsb-acc" id="nsbAcc" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg><span>Předplatné bude na účtu <b id="nsbAccEmail"></b></span></div>
+
+      <div class="nsb-label">První dodávka</div>
+      <label class="nsb-field" style="margin-top:8px;"><input type="date" id="nsbStart"></label>
+      <p class="nsb-hint" id="nsbStartNote">Nejdříve zítra. V neděli nevozíme.</p>
+
+      <div class="nsb-label">Příjemce</div>
+      <div style="margin-top:8px;">
+        <label class="nsb-field"><span>Jméno a příjmení</span><input type="text" id="nsbName" autocomplete="name"></label>
+        <label class="nsb-field"><span>Telefon</span><input type="tel" id="nsbPhone" autocomplete="tel" placeholder="+420"></label>
+        <label class="nsb-field"><span>Ulice a číslo popisné</span><input type="text" id="nsbAddr" autocomplete="street-address"></label>
+        <div class="nsb-2">
+          <label class="nsb-field"><span>Město</span><input type="text" id="nsbCity" autocomplete="address-level2" value="Praha"></label>
+          <label class="nsb-field"><span>PSČ</span><input type="text" id="nsbPsk" inputmode="numeric" autocomplete="postal-code"></label>
+        </div>
+        <button class="nsb-more" id="nsbMore" type="button">+ Patro, firma, byt, kód zvonku</button>
+        <div id="nsbExtra" hidden>
+          <div class="nsb-2" style="grid-template-columns:1fr 1fr;">
+            <label class="nsb-field"><span>Patro</span><input type="text" id="nsbPatro"></label>
+            <label class="nsb-field"><span>Číslo bytu</span><input type="text" id="nsbByt"></label>
+          </div>
+          <label class="nsb-field"><span>Firma</span><input type="text" id="nsbCompany" autocomplete="organization"></label>
+          <label class="nsb-field"><span>Kód zvonku / intercomu</span><input type="text" id="nsbIntercom"></label>
+        </div>
+      </div>
+
+      <div class="nsb-sum" id="nsbSum"></div>
+      <div class="nsb-err" id="nsbErr" hidden></div>
+      <div class="nsb-bar">
+        <div class="nsb-bar-p"><b id="nsbPrice3">–</b><small>za 4 týdny, platba kartou</small></div>
+        <button class="nsb-btn primary" id="nsbPay3" type="button">Zaplatit</button>
+      </div>
+      <p class="nsb-secure"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>Bezpečná platba přes Stripe. Zrušit můžete kdykoli.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+    var SUPABASE_URL = 'https://wqburlamuipxmenqsjnx.supabase.co';
+    var ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxYnVybGFtdWlweG1lbnFzam54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTY2MTIsImV4cCI6MjA4ODgzMjYxMn0.NYnQoorm3z5gkjr954JdYhzDNmYfCjefzK1ddq3cflw';
+    var PAGE_URL = 'https://vezminarin.cz/members/subscription';
+    var TOKEN_KEY = 'lk_auth_token';
+    var CATALOG_CACHE = 'narin_sub_catalog_cache_v2';
+    var SIZES = ['small', 'medium', 'large'];
+    var SIZE_LABELS = { small: 'S', medium: 'M', large: 'L' };
+    var MOODS = ['Romantická', 'Jasná', 'Pastelová', 'Divoká', 'Klasická', 'Minimalistická', 'Luxusní'];
+    var VASE_FROM = 4; // výměna váz od 4 dodávek
+    // Dočasné fotky, dokud manažer nenahraje vlastní (hero_image_url / image_url mají přednost)
+    var CAT_IMAGES = {
+        bouquet: 'https://images.unsplash.com/photo-1487070183336-b863922373d4?w=240&h=240&fit=crop',
+        armful: 'https://images.unsplash.com/photo-1502904550040-7534597429ae?w=240&h=240&fit=crop',
+        collection: 'https://images.unsplash.com/photo-1518895949257-7621c3c786d7?w=240&h=240&fit=crop'
+    };
+    var CAT_BULLETS = {
+        bouquet: ['Hotové kompozice od floristy', 'Mnoho stylů na výběr', 'Stačí dát do vázy'],
+        armful: ['Víc květin, přírodní styl', 'Jednoduché balení', 'Pro domov i kancelář'],
+        collection: ['Kytici si sestavíte sami', 'Sekáčky v boxu', 'Prémiový box']
+    };
+    var LINE_IMAGES = [
+        'https://images.unsplash.com/photo-1518895949257-7621c3c786d7?w=480&h=360&fit=crop',
+        'https://images.unsplash.com/photo-1455659817273-f96807779a8a?w=480&h=360&fit=crop',
+        'https://images.unsplash.com/photo-1462275646964-a0e3386b89fa?w=480&h=360&fit=crop',
+        'https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=480&h=360&fit=crop'
+    ];
+    var ICON = {
+        scissors: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.5 15.5"/><path d="M8.5 8.5L20 20"/></svg>',
+        cert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="6"/><path d="M9 13.5L7 22l5-3 5 3-2-8.5"/></svg>',
+        vase: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3h4l-1 4.5 4.5 3.2L16.5 20a2 2 0 01-2 2h-5a2 2 0 01-2-2l-1-9.3L11 7.5z"/></svg>',
+        cal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+        chev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
+        tick: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>',
+        ok: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12.5l2.5 2.5L16 9.5"/></svg>',
+        info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8h.01M11 12h1v4h1"/></svg>',
+        flower: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#186ce0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="2.5"/><path d="M12 3.5a2.5 2.5 0 012.2 3.7M12 3.5a2.5 2.5 0 00-2.2 3.7M17.2 7.3a2.5 2.5 0 01-1.5 4M6.8 7.3a2.5 2.5 0 001.5 4M12 11.5V21M12 17c-2-2-4.5-2-6-1M12 17c2-2 4.5-2 6-1"/></svg>'
+    };
+
+    function $(id) { return document.getElementById(id); }
+    function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+    function kc(n) { return Math.round(Number(n) || 0).toLocaleString('cs-CZ') + ' Kč'; }
+    var DAYS = ['neděle', 'pondělí', 'úterý', 'středa', 'čtvrtek', 'pátek', 'sobota'];
+    var DAYS_SHORT = ['ne', 'po', 'út', 'st', 'čt', 'pá', 'so'];
+    var MONTHS = ['ledna', 'února', 'března', 'dubna', 'května', 'června', 'července', 'srpna', 'září', 'října', 'listopadu', 'prosince'];
+    function d0(s) { return new Date(String(s).slice(0, 10) + 'T12:00:00'); }
+    function longDate(s) { var d = d0(s); return isNaN(d) ? '' : DAYS[d.getDay()] + ' ' + d.getDate() + '. ' + MONTHS[d.getMonth()]; }
+    function shortDate(s) { var d = d0(s); return isNaN(d) ? '' : d.getDate() + '. ' + (d.getMonth() + 1) + '. ' + d.getFullYear(); }
+    function isoLocal(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+    function today() { return isoLocal(new Date()); }
+    function addDays(s, n) { var d = d0(s); d.setDate(d.getDate() + n); return isoLocal(d); }
+    function deliveriesWord(n) { return n === 1 ? 'dodávka' : (n >= 2 && n <= 4 ? 'dodávky' : 'dodávek'); }
+    function show(el, on) { el.hidden = !on; }
+    // rozbitá fotka → světlá plocha s květinou místo ikony rozbitého obrázku
+    document.addEventListener('error', function (e) {
+        var im = e.target;
+        if (!im || im.tagName !== 'IMG' || !im.closest || !im.closest('#nsb') || im.getAttribute('data-ph')) return;
+        var ph = document.createElement('span');
+        ph.className = 'ph ' + (im.className || '');
+        ph.setAttribute('data-ph', '1');
+        ph.innerHTML = ICON.flower;
+        im.replaceWith(ph);
+    }, true);
+
+    // ---------- token (stejná pravidla jako member-data-bootstrap) ----------
+    function tildaEmail() {
+        try {
+            for (var k in localStorage) {
+                if (k.indexOf('tilda_members_profile') === 0 && k.indexOf('_timestamp') === -1) {
+                    try { var p = JSON.parse(localStorage.getItem(k)); var e = p && (p.login || p.email); if (e) return String(e).trim().toLowerCase(); } catch (e) {}
+                }
+            }
+        } catch (e) {}
+        return null;
+    }
+    function tokenEmail(t) { try { var pl = JSON.parse(atob(String(t).split('.')[0])); return pl.email ? String(pl.email).trim().toLowerCase() : null; } catch (e) { return null; } }
+    function getToken() {
+        try {
+            var raw = localStorage.getItem(TOKEN_KEY); if (!raw) return null;
+            var d = JSON.parse(raw);
+            if (!d.token || !d.exp || d.exp < Date.now()) return null;
+            var te = tildaEmail(), ke = tokenEmail(d.token);
+            if (te && ke && te !== ke) { localStorage.removeItem(TOKEN_KEY); return null; }
+            return d.token;
+        } catch (e) { return null; }
+    }
+    function whenToken(cb) {
+        var t = getToken(); if (t) { cb(t); return; }
+        var waited = 0, iv = setInterval(function () {
+            var t2 = getToken();
+            if (t2) { clearInterval(iv); cb(t2); }
+            else if ((waited += 700) > 180000) { clearInterval(iv); cb(null); }
+        }, 700);
+    }
+
+    function api(fn, body) {
+        body.token = getToken();
+        return fetch(SUPABASE_URL + '/functions/v1/' + fn, {
+            method: 'POST',
+            headers: { apikey: ANON, Authorization: 'Bearer ' + ANON, 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        }).then(function (r) { return r.json().catch(function () { return {}; }); });
+    }
+    function rest(table, q) {
+        return fetch(SUPABASE_URL + '/rest/v1/' + table + '?' + q, { headers: { apikey: ANON, Authorization: 'Bearer ' + ANON } })
+            .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); });
+    }
+
+    // ---------- stav ----------
+    var cat = { categories: [], lines: [], plans: [], tiers: [], closedDays: [0], closedDates: [] };
+    var st = { catId: null, lineId: null, size: 'medium', count: null, mood: null, extra: false };
+    var subs = null, filter = 'active', current = null, currentOcc = -1;
+    var view = 'home';
+
+    function setView(v) {
+        view = v;
+        show($('nsbHome'), v === 'home');
+        show($('nsbDetail'), v === 'detail');
+        show($('nsbNew'), v === 'new');
+        $('nsbTopBack').querySelector('span').textContent = backIsProfile() ? 'Zpět do profilu' : 'Zpět';
+        window.scrollTo({ top: Math.max(0, $('nsb').getBoundingClientRect().top + window.scrollY - 10), behavior: 'smooth' });
+    }
+    // bez předplatného je první krok průvodce zároveň úvodní obrazovka → tlačítko vede do profilu
+    function backIsProfile() { return view === 'home' || (view === 'new' && step === 1 && !(subs && subs.length)); }
+    $('nsbTopBack').addEventListener('click', function (e) {
+        if (backIsProfile()) return; // normální odkaz do profilu
+        e.preventDefault();
+        if (view === 'new' && step > 1) { goStep(step - 1); return; }
+        setView('home');
+    });
+
+    // ---------- návrat ze Stripe ----------
+    var qs = new URLSearchParams(location.search);
+    var returned = qs.get('status');
+    if (returned) {
+        try { history.replaceState(null, '', location.pathname); } catch (e) {}
+        $('nsbNotice').innerHTML = returned === 'success'
+            ? '<div class="nsb-note ok">' + ICON.ok + '<div><b>Hotovo, předplatné je zaplacené!</b>Potvrzení jsme poslali e-mailem. Za chvíli ho uvidíte i tady.</div></div>'
+            : '<div class="nsb-note info">' + ICON.info + '<div><b>Platba nebyla dokončena</b>Nic jsme vám nestrhli. Můžete to zkusit znovu, výběr zůstal uložený.</div></div>';
+    }
+
+    // ---------- katalog (veřejný, s mezipamětí) ----------
+    try {
+        var cc = JSON.parse(localStorage.getItem(CATALOG_CACHE) || 'null');
+        if (cc && cc.categories && cc.tiers) { cat = cc; }
+    } catch (e) {}
+    var catalogReady = Promise.all([
+        rest('subscription_categories', 'select=id,key,name,description,hero_image_url&order=sort_order.asc'),
+        rest('subscription_lines', 'select=id,category_id,name,description,image_url&order=sort_order.asc'),
+        rest('subscription_plans', 'select=line_id,size,price_per_delivery'),
+        rest('subscription_frequency_tiers', 'select=deliveries_per_cycle,discount_percent,perk_text&active=eq.true&order=deliveries_per_cycle.asc'),
+        rest('shop_weekly_closed_days', 'select=weekday').catch(function () { return [{ weekday: 0 }]; }),
+        rest('shop_closed_dates', 'select=closed_date&closed_date=gte.' + today()).catch(function () { return []; })
+    ]).then(function (r) {
+        cat = { categories: r[0], lines: r[1], plans: r[2], tiers: r[3], closedDays: r[4].map(function (x) { return x.weekday; }), closedDates: r[5].map(function (x) { return x.closed_date; }) };
+        try { localStorage.setItem(CATALOG_CACHE, JSON.stringify(cat)); } catch (e) {}
+        renderCats();
+        if (view === 'new' && step === 2) renderCon();
+    }).catch(function () {
+        if (!cat.categories.length) $('nsbCats').innerHTML = '<div class="nsb-fail">Nabídku se nepodařilo načíst. Zkuste prosím stránku obnovit.</div>';
+    });
+    if (cat.categories.length) renderCats();
+
+    // ---------- moje předplatné ----------
+    function listCacheKey(t) { return 'narin_sub_mylist_v2_' + (tokenEmail(t) || ''); }
+    var successTries = 0;
+    function loadSubs(token) {
+        if (!token) { $('nsbList').innerHTML = '<div class="nsb-fail">Pro zobrazení předplatného se prosím znovu přihlaste.</div>'; return; }
+        if (subs === null) {
+            try { var c = JSON.parse(localStorage.getItem(listCacheKey(token)) || 'null'); if (c) applySubs(c, true); } catch (e) {}
+        }
+        api('subscriptions-list', {}).then(function (d) {
+            if (!d || !Array.isArray(d.subscriptions)) { if (subs === null) $('nsbList').innerHTML = '<div class="nsb-fail">Předplatné se nepodařilo načíst. Zkuste to prosím za chvíli.</div>'; return; }
+            try { localStorage.setItem(listCacheKey(token), JSON.stringify(d.subscriptions)); } catch (e) {}
+            applySubs(d.subscriptions, false);
+            // po zaplacení zakládá předplatné webhook Stripe, může to pár sekund trvat
+            if (returned === 'success' && successTries < 10) {
+                var fresh = d.subscriptions.some(function (s) { return Date.now() - new Date(s.created_at).getTime() < 15 * 60000; });
+                if (!fresh) { successTries++; setTimeout(function () { loadSubs(getToken()); }, 3000); }
+            }
+        }).catch(function () {
+            if (subs === null) $('nsbList').innerHTML = '<div class="nsb-fail">Předplatné se nepodařilo načíst. Zkontrolujte připojení.</div>';
+        });
+    }
+    function applySubs(list, fromCache) {
+        var first = subs === null;
+        subs = list;
+        if (!subs.length) {
+            show($('nsbMine'), false);
+            if (first && view === 'home' && !fromCache) setView('new');
+            return;
+        }
+        show($('nsbMine'), true);
+        show($('nsbAdd'), true);
+        if (view === 'new' && first && step === 1) setView('home');
+        renderTabs(); renderList();
+        if (current) { var again = subs.filter(function (s) { return s.id === current.id; })[0]; if (again && view === 'detail') { current = again; renderDetail(); } }
+    }
+    function sortedOccs(s) { return (s.occurrences || []).slice().sort(function (a, b) { return a.occurrence_date < b.occurrence_date ? -1 : a.occurrence_date > b.occurrence_date ? 1 : 0; }); }
+    function nextIdx(occs) { var t = today(); for (var i = 0; i < occs.length; i++) if (occs[i].occurrence_date >= t && occs[i].status !== 'skipped') return i; return -1; }
+    function occState(o, isNext) {
+        if (o.order_status === 'delivered') return 'done';
+        if (o.status === 'skipped') return 'skip';
+        return isNext ? 'next' : '';
+    }
+    function renderTabs() {
+        var hasOff = subs.some(function (s) { return s.status !== 'active'; });
+        var hasOn = subs.some(function (s) { return s.status === 'active'; });
+        if (!hasOn) filter = 'all';
+        var tabs = $('nsbTabs');
+        show(tabs, hasOff && hasOn);
+        tabs.innerHTML = [['active', 'Aktivní'], ['cancelled', 'Zrušené']].map(function (t) {
+            return '<button type="button" class="nsb-tab' + (filter === t[0] ? ' on' : '') + '" data-f="' + t[0] + '">' + t[1] + '</button>';
+        }).join('');
+    }
+    $('nsbTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-f]'); if (!b) return; filter = b.getAttribute('data-f'); renderTabs(); renderList(); });
+    function renderList() {
+        var list = subs.filter(function (s) { return filter === 'all' || s.status === filter || (filter === 'cancelled' && s.status !== 'active'); });
+        var box = $('nsbList');
+        if (!list.length) { box.innerHTML = '<div class="nsb-fail">Tady zatím nic není.</div>'; return; }
+        box.innerHTML = list.map(function (s) {
+            var occs = sortedOccs(s), ni = nextIdx(occs), on = s.status === 'active';
+            var next = on && ni !== -1 ? occs[ni] : null;
+            return '<button type="button" class="nsb-sub" data-id="' + esc(s.id) + '">' +
+                '<div class="nsb-sub-top"><div style="min-width:0;"><div class="nsb-sub-title">' + esc(s.line_name_snapshot) + ' · ' + (SIZE_LABELS[s.size] || esc(s.size)) + '</div>' +
+                '<div class="nsb-sub-meta">' + s.deliveries_per_cycle + '× za 4 týdny · ' + kc(s.cycle_price_snapshot) + '</div></div>' +
+                '<span class="nsb-badge ' + (on ? 'ok' : 'off') + '">' + (on ? 'Aktivní' : 'Zrušeno') + '</span></div>' +
+                (next ? '<div class="nsb-next">' + ICON.cal + '<div><b>' + esc(longDate(next.occurrence_date)) + '</b><span>Příští dodávka' + (next.recipient_name ? ' · pro ' + esc(next.recipient_name) : (s.recipient_name ? ' · pro ' + esc(s.recipient_name) : '')) + '</span></div></div>' : '') +
+                (on && occs.length ? '<div class="nsb-dots">' + occs.map(function (o, i) { return '<i class="' + occState(o, i === ni) + '"></i>'; }).join('') + '</div>' : '') +
+                '</button>';
+        }).join('');
+    }
+    $('nsbList').addEventListener('click', function (e) {
+        var b = e.target.closest('.nsb-sub'); if (!b) return;
+        current = subs.filter(function (s) { return s.id === b.getAttribute('data-id'); })[0];
+        if (!current) return;
+        currentOcc = -1;
+        renderDetail(); setView('detail'); loadBilling();
+    });
+    $('nsbAdd').addEventListener('click', function () { goStep(1); setView('new'); });
+
+    // ---------- detail ----------
+    function renderDetail() {
+        var s = current, on = s.status === 'active', occs = sortedOccs(s);
+        $('nsbDTitle').textContent = s.line_name_snapshot + ' · ' + (SIZE_LABELS[s.size] || s.size);
+        var extras = [];
+        if (s.mood_note) extras.push(s.mood_note);
+        if (s.vase_exchange) extras.push('výměna váz');
+        $('nsbDMeta').textContent = extras.join(' · ') || (s.deliveries_per_cycle + '× za 4 týdny');
+        var badge = $('nsbDBadge'); badge.textContent = on ? 'Aktivní' : 'Zrušeno'; badge.className = 'nsb-badge ' + (on ? 'ok' : 'off');
+        $('nsbMCount').textContent = s.deliveries_per_cycle + ' ' + deliveriesWord(s.deliveries_per_cycle);
+        var full = Number(s.price_per_delivery_snapshot) * s.deliveries_per_cycle;
+        $('nsbMPrice').innerHTML = kc(s.cycle_price_snapshot) + (Number(s.discount_percent_snapshot) > 0 ? '<s>' + kc(full) + '</s>' : '');
+        $('nsbMFrom').textContent = shortDate(s.cycle_anchor_date);
+        $('nsbMTo').textContent = occs.length ? shortDate(occs[occs.length - 1].occurrence_date) : shortDate(addDays(s.cycle_anchor_date, 27));
+        show($('nsbCancel'), on); show($('nsbConfirm'), false);
+
+        var ni = nextIdx(occs);
+        if (currentOcc < 0 || currentOcc >= occs.length) currentOcc = ni !== -1 ? ni : occs.length - 1;
+        $('nsbChips').innerHTML = occs.map(function (o, i) {
+            var d = d0(o.occurrence_date), sState = occState(o, i === ni);
+            return '<button type="button" class="nsb-chip ' + (sState === 'next' ? 'soon' : sState) + (i === currentOcc ? ' on' : '') + '" data-i="' + i + '"><small>' + DAYS_SHORT[d.getDay()] + '</small><b>' + d.getDate() + '. ' + (d.getMonth() + 1) + '.</b><i></i></button>';
+        }).join('');
+        show($('nsbOcc'), occs.length > 0);
+        if (!occs.length) { show($('nsbChips'), false); return; }
+        show($('nsbChips'), true);
+        renderOcc();
+        var chip = $('nsbChips').children[currentOcc];
+        if (chip) chip.scrollIntoView({ block: 'nearest', inline: 'center' });
+    }
+    $('nsbChips').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-i]'); if (!b) return;
+        currentOcc = +b.getAttribute('data-i');
+        Array.prototype.forEach.call(this.children, function (c, i) { c.classList.toggle('on', i === currentOcc); });
+        renderOcc();
+    });
+    function renderOcc() {
+        var s = current, o = sortedOccs(s)[currentOcc]; if (!o) return;
+        $('nsbOccDate').textContent = longDate(o.occurrence_date).replace(/^./, function (c) { return c.toUpperCase(); });
+        var txt = o.order_status === 'delivered' ? 'Doručeno' : o.status === 'skipped' ? 'Přeskočeno' : o.status === 'generated' ? 'Florista ji chystá' : (o.occurrence_date < today() ? 'Proběhlo' : 'Naplánováno');
+        $('nsbOccStatus').textContent = txt;
+        var img = $('nsbOccImg');
+        img.innerHTML = o.preview_photo_url ? '<img src="' + esc(o.preview_photo_url) + '" alt="" style="width:56px;height:56px;border-radius:14px;object-fit:cover;">' : ICON.flower;
+        var name = o.recipient_name || s.recipient_name, addr = [o.address || s.address, o.city || s.city].filter(Boolean).join(', ');
+        $('nsbOccTo').innerHTML = 'Pro <b>' + esc(name || '–') + '</b>' + (addr ? '<br>' + esc(addr) : '');
+        var editable = s.status === 'active' && o.occurrence_date >= today() && o.order_status !== 'delivered' && o.status !== 'skipped';
+        show($('nsbOccEdit'), editable);
+        show($('nsbOccForm'), false);
+        $('nsbOccErr').hidden = true;
+    }
+    $('nsbOccEdit').addEventListener('click', function () {
+        var s = current, o = sortedOccs(s)[currentOcc];
+        $('nsbOccName').value = o.recipient_name || ''; $('nsbOccName').placeholder = s.recipient_name || '';
+        $('nsbOccPhone').value = o.recipient_phone || ''; $('nsbOccPhone').placeholder = s.recipient_phone || '';
+        $('nsbOccAddr').value = o.address || ''; $('nsbOccAddr').placeholder = s.address || '';
+        $('nsbOccCity').value = o.city || ''; $('nsbOccCity').placeholder = s.city || '';
+        $('nsbOccPsk').value = o.psk || ''; $('nsbOccPsk').placeholder = s.psk || '';
+        var di = $('nsbOccDateIn'), hours = (d0(o.occurrence_date).getTime() - 12 * 3600000 - Date.now()) / 3600000;
+        di.value = o.occurrence_date;
+        di.disabled = hours < 48;
+        di.min = isoLocal(new Date(Date.now() + 48 * 3600000 + 24 * 3600000));
+        $('nsbOccDateNote').textContent = di.disabled ? 'Do doručení zbývá méně než 48 hodin, datum už změnit nejde. Příjemce ano.' : 'Datum jde změnit nejpozději 48 hodin před doručením.';
+        show($('nsbOccEdit'), false); show($('nsbOccForm'), true);
+    });
+    $('nsbOccCancel').addEventListener('click', function () { show($('nsbOccForm'), false); show($('nsbOccEdit'), true); });
+    $('nsbOccSave').addEventListener('click', function () {
+        var s = current, occs = sortedOccs(s), o = occs[currentOcc], btn = this, err = $('nsbOccErr');
+        var di = $('nsbOccDateIn');
+        var body = { action: 'update-occurrence', occurrence_id: o.id,
+            recipient_name: $('nsbOccName').value.trim(), recipient_phone: $('nsbOccPhone').value.trim(),
+            address: $('nsbOccAddr').value.trim(), city: $('nsbOccCity').value.trim(), psk: $('nsbOccPsk').value.trim() };
+        if (!di.disabled && di.value && di.value !== o.occurrence_date) {
+            if (isClosed(di.value)) { err.textContent = 'V tento den nevozíme, vyberte prosím jiný.'; err.hidden = false; return; }
+            body.occurrence_date = di.value;
+        }
+        btn.disabled = true; btn.textContent = 'Ukládáme…'; err.hidden = true;
+        api('subscriptions', body).then(function (d) {
+            btn.disabled = false; btn.textContent = 'Uložit';
+            if (d && d.occurrence) {
+                var merged = Object.assign({}, o, d.occurrence, { order_status: o.order_status });
+                s.occurrences = (s.occurrences || []).map(function (x) { return x.id === o.id ? merged : x; });
+                currentOcc = sortedOccs(s).findIndex(function (x) { return x.id === o.id; });
+                renderDetail(); renderList();
+            } else {
+                err.textContent = (d && d.message) || 'Nepodařilo se uložit, zkuste to prosím znovu.'; err.hidden = false;
+            }
+        }).catch(function () { btn.disabled = false; btn.textContent = 'Uložit'; err.textContent = 'Nepodařilo se uložit, zkontrolujte připojení.'; err.hidden = false; });
+    });
+
+    function loadBilling() {
+        var s = current; show($('nsbPay'), false);
+        if (s.status !== 'active' || !s.stripe_subscription_id) return;
+        api('subscriptions', { action: 'billing-info', subscription_id: s.id, return_url: PAGE_URL }).then(function (d) {
+            if (current !== s || !d || !d.next_payment_date) return;
+            $('nsbPayVal').textContent = shortDate(d.next_payment_date) + ' · ' + kc(d.next_payment_amount);
+            $('nsbPayLink').onclick = function () { if (d.portal_url) location.href = d.portal_url; };
+            show($('nsbPay'), true);
+        }).catch(function () {});
+    }
+
+    $('nsbCancel').addEventListener('click', function () { show(this, false); show($('nsbConfirm'), true); $('nsbCancelErr').hidden = true; });
+    $('nsbConfirmNo').addEventListener('click', function () { show($('nsbConfirm'), false); show($('nsbCancel'), true); });
+    $('nsbConfirmYes').addEventListener('click', function () {
+        var s = current, btn = this; btn.disabled = true; btn.textContent = 'Rušíme…';
+        api('subscriptions', { action: 'cancel', subscription_id: s.id }).then(function (d) {
+            btn.disabled = false; btn.textContent = 'Zrušit';
+            if (d && (d.ok || d.error === 'already cancelled')) {
+                s.status = 'cancelled'; renderDetail(); renderTabs(); renderList(); show($('nsbPay'), false);
+            } else { $('nsbCancelErr').textContent = 'Nepodařilo se zrušit, zkuste to prosím znovu.'; $('nsbCancelErr').hidden = false; }
+        }).catch(function () { btn.disabled = false; btn.textContent = 'Zrušit'; $('nsbCancelErr').textContent = 'Nepodařilo se zrušit, zkontrolujte připojení.'; $('nsbCancelErr').hidden = false; });
+    });
+
+    // ---------- nové předplatné ----------
+    var step = 1;
+    function goStep(n) {
+        step = n;
+        document.querySelectorAll('#nsbNew .nsb-step').forEach(function (el) { show(el, +el.getAttribute('data-step') === n); });
+        Array.prototype.forEach.call($('nsbSteps').children, function (el, i) { el.classList.toggle('on', i < n); });
+        if (view === 'new') setView('new');
+    }
+    function linesOf(cid) { return cat.lines.filter(function (l) { return l.category_id === cid; }); }
+    function price(lineId, size) { var p = cat.plans.filter(function (p) { return p.line_id === lineId && p.size === size; })[0]; return p ? Number(p.price_per_delivery) : null; }
+    function minPrice(cid) { var m = null; linesOf(cid).forEach(function (l) { SIZES.forEach(function (sz) { var p = price(l.id, sz); if (p != null && (m == null || p < m)) m = p; }); }); return m; }
+    function perks(t) {
+        var p = String(t.perk_text || '').toLowerCase();
+        return { scissors: p.indexOf('sek') !== -1, cert: p.indexOf('certifik') !== -1, vase: t.deliveries_per_cycle >= VASE_FROM };
+    }
+
+    function renderCats() {
+        var box = $('nsbCats');
+        if (!cat.categories.length) return;
+        box.innerHTML = cat.categories.map(function (c) {
+            var has = linesOf(c.id).length > 0, mp = has ? minPrice(c.id) : null;
+            var img = c.hero_image_url || CAT_IMAGES[c.key] || CAT_IMAGES.bouquet;
+            return '<button type="button" class="nsb-cat' + (has ? '' : ' off') + '" data-c="' + esc(c.id) + '"' + (has ? '' : ' disabled') + '>' +
+                '<img src="' + esc(img) + '" alt="" loading="lazy" decoding="async">' +
+                '<span class="nsb-cat-b"><h3>' + esc(c.name) + '</h3><ul>' + (CAT_BULLETS[c.key] || []).map(function (b) { return '<li>' + esc(b) + '</li>'; }).join('') + '</ul>' +
+                '<span class="nsb-cat-price">' + (has ? (mp != null ? '<span>od <b>' + kc(mp) + '</b> / dodávka</span>' : '<span></span>') + ICON.chev : '<span class="nsb-soon">Připravujeme</span>') + '</span></span></button>';
+        }).join('');
+    }
+    $('nsbCats').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-c]'); if (!b || b.disabled) return;
+        var c = cat.categories.filter(function (x) { return x.id === b.getAttribute('data-c'); })[0];
+        openCon(c);
+    });
+
+    function openCon(c) {
+        var lines = linesOf(c.id);
+        if (st.catId !== c.id) { st.catId = c.id; st.lineId = lines[0].id; st.mood = null; $('nsbAgree').checked = false; $('nsbVaseCheck').checked = false; $('nsbExcl').value = ''; }
+        if (st.count == null || !cat.tiers.some(function (t) { return t.deliveries_per_cycle === st.count; })) st.count = (cat.tiers[1] || cat.tiers[0]).deliveries_per_cycle;
+        $('nsbConTitle').textContent = c.name;
+        $('nsbConSub').textContent = c.description || '';
+        $('nsbLines').innerHTML = lines.map(function (l, i) {
+            return '<button type="button" class="nsb-line" data-l="' + esc(l.id) + '"><img src="' + esc(l.image_url || LINE_IMAGES[i % LINE_IMAGES.length]) + '" alt="" loading="lazy" decoding="async"><span class="tick">' + ICON.tick + '</span><b>' + esc(l.name) + '</b><span>' + esc(l.description || '') + '</span></button>';
+        }).join('');
+        $('nsbMoods').innerHTML = MOODS.map(function (m) { return '<button type="button" class="nsb-mood" data-m="' + esc(m) + '">' + esc(m) + '</button>'; }).join('');
+        renderCon();
+        goStep(2);
+        var sel = $('nsbLines').querySelector('.on'); if (sel) sel.scrollIntoView({ block: 'nearest', inline: 'start' });
+    }
+    $('nsbLines').addEventListener('click', function (e) { var b = e.target.closest('[data-l]'); if (!b) return; st.lineId = b.getAttribute('data-l'); renderCon(); });
+    $('nsbSizes').addEventListener('click', function (e) { var b = e.target.closest('[data-s]'); if (!b) return; st.size = b.getAttribute('data-s'); renderCon(); });
+    $('nsbCounts').addEventListener('click', function (e) { var b = e.target.closest('[data-n]'); if (!b) return; st.count = +b.getAttribute('data-n'); renderCon(); });
+    $('nsbMoods').addEventListener('click', function (e) { var b = e.target.closest('[data-m]'); if (!b) return; var m = b.getAttribute('data-m'); st.mood = st.mood === m ? null : m; renderCon(); });
+    $('nsbAgree').addEventListener('change', function () { $('nsbNext2').disabled = !this.checked; });
+    $('nsbNext2').addEventListener('click', function () { prepStep3(); goStep(3); });
+
+    function calc() {
+        var base = price(st.lineId, st.size), tier = cat.tiers.filter(function (t) { return t.deliveries_per_cycle === st.count; })[0];
+        if (base == null || !tier) return null;
+        var full = base * st.count;
+        return { base: base, full: full, total: Math.round(full * (1 - Number(tier.discount_percent) / 100)), tier: tier };
+    }
+    function renderCon() {
+        Array.prototype.forEach.call($('nsbLines').children, function (b) { b.classList.toggle('on', b.getAttribute('data-l') === st.lineId); });
+        $('nsbSizes').innerHTML = SIZES.map(function (sz) {
+            var p = price(st.lineId, sz);
+            return '<button type="button" class="nsb-opt' + (st.size === sz ? ' on' : '') + '" data-s="' + sz + '"' + (p == null ? ' disabled style="opacity:.4"' : '') + '><b>' + SIZE_LABELS[sz] + '</b><small>' + (p != null ? kc(p) : '–') + '</small></button>';
+        }).join('');
+        var legend = { scissors: null, cert: null, vase: null };
+        $('nsbCounts').innerHTML = cat.tiers.map(function (t) {
+            var pk = perks(t), n = t.deliveries_per_cycle;
+            ['scissors', 'cert', 'vase'].forEach(function (k) { if (pk[k] && legend[k] == null) legend[k] = n; });
+            return '<button type="button" class="nsb-opt' + (st.count === n ? ' on' : '') + '" data-n="' + n + '">' + (Number(t.discount_percent) > 0 ? '<em>−' + Number(t.discount_percent) + ' %</em>' : '') +
+                '<b>' + n + '×</b><small>' + (n === 4 ? 'každý týden' : n === 2 ? 'každé 2 týdny' : n + '× za 4 týdny') + '</small>' +
+                '<span class="perk">' + (pk.scissors ? ICON.scissors : '') + (pk.cert ? ICON.cert : '') + (pk.vase ? ICON.vase : '') + '</span></button>';
+        }).join('');
+        var lg = [];
+        if (legend.scissors != null) lg.push('<span>' + ICON.scissors + 'od ' + legend.scissors + '× sekáčky darem</span>');
+        if (legend.cert != null) lg.push('<span>' + ICON.cert + 'od ' + legend.cert + '× partnerský certifikát</span>');
+        if (legend.vase != null) lg.push('<span>' + ICON.vase + 'od ' + legend.vase + '× výměna váz</span>');
+        $('nsbLegend').innerHTML = lg.join('');
+        var vaseOk = st.count >= VASE_FROM;
+        show($('nsbVase'), vaseOk); if (!vaseOk) $('nsbVaseCheck').checked = false;
+        Array.prototype.forEach.call($('nsbMoods').children, function (b) { b.classList.toggle('on', b.getAttribute('data-m') === st.mood); });
+        $('nsbNext2').disabled = !$('nsbAgree').checked;
+
+        var c = calc();
+        if (!c) { $('nsbPrice').textContent = '–'; return; }
+        $('nsbPrice').innerHTML = kc(c.total) + (c.total < c.full ? '<s>' + kc(c.full) + '</s>' : '');
+        var sub = $('nsbPriceSub');
+        sub.textContent = c.tier.perk_text ? '+ ' + c.tier.perk_text : 'za 4 týdny · ' + kc(Math.round(c.total / st.count)) + ' / dodávka';
+        sub.className = c.tier.perk_text ? 'perk' : '';
+        $('nsbPrice3').textContent = kc(c.total);
+    }
+
+    function isClosed(iso) {
+        var d = d0(iso);
+        return cat.closedDays.indexOf(d.getDay()) !== -1 || cat.closedDates.indexOf(iso) !== -1;
+    }
+    function firstOpen() { var d = addDays(today(), 1), i = 0; while (isClosed(d) && i++ < 30) d = addDays(d, 1); return d; }
+    function prepStep3() {
+        var email = tokenEmail(getToken()) || tildaEmail();
+        if (email) { $('nsbAccEmail').textContent = email; show($('nsbAcc'), true); }
+        var sIn = $('nsbStart');
+        sIn.min = addDays(today(), 1);
+        if (!sIn.value || sIn.value < sIn.min || isClosed(sIn.value)) sIn.value = firstOpen();
+        var names = cat.closedDays.map(function (w) { return ['v neděli', 'v pondělí', 'v úterý', 've středu', 've čtvrtek', 'v pátek', 'v sobotu'][w]; });
+        $('nsbStartNote').textContent = 'Nejdříve zítra.' + (names.length ? ' ' + names.join(' ani ').replace(/^./, function (c) { return c.toUpperCase(); }) + ' nevozíme.' : '');
+        if (!$('nsbName').value) { try { for (var k in localStorage) if (k.indexOf('tilda_members_profile') === 0 && k.indexOf('_timestamp') === -1) { var p = JSON.parse(localStorage.getItem(k)); if (p && p.name) { $('nsbName').value = p.name; break; } } } catch (e) {} }
+        var c = calc(), line = cat.lines.filter(function (l) { return l.id === st.lineId; })[0];
+        var rows = [
+            ['Předplatné', esc(line ? line.name : '') + ' · ' + SIZE_LABELS[st.size]],
+            ['Dodávek', st.count + '× za 4 týdny'],
+            st.mood ? ['Nálada', esc(st.mood)] : null,
+            $('nsbVaseCheck').checked ? ['Výměna váz', 'ano'] : null,
+            $('nsbExcl').value.trim() ? ['Bez', esc($('nsbExcl').value.trim())] : null,
+            c && c.tier.perk_text ? ['Dárek', esc(c.tier.perk_text)] : null,
+            c ? ['Cena za 4 týdny', '<b>' + kc(c.total) + '</b>'] : null
+        ].filter(Boolean);
+        $('nsbSum').innerHTML = rows.map(function (r) { return '<div><span>' + r[0] + '</span><span>' + r[1] + '</span></div>'; }).join('');
+        $('nsbErr').hidden = true;
+    }
+    $('nsbStart').addEventListener('change', function () {
+        var bad = this.value && isClosed(this.value);
+        this.classList.toggle('bad', !!bad);
+        if (bad) { $('nsbErr').textContent = 'V tento den nevozíme, vyberte prosím jiný.'; $('nsbErr').hidden = false; } else $('nsbErr').hidden = true;
+    });
+    $('nsbMore').addEventListener('click', function () { st.extra = !st.extra; show($('nsbExtra'), st.extra); this.textContent = st.extra ? '− Skrýt další údaje' : '+ Patro, firma, byt, kód zvonku'; });
+
+    $('nsbPay3').addEventListener('click', function () {
+        var err = $('nsbErr'), btn = this;
+        var f = { start: $('nsbStart'), name: $('nsbName'), phone: $('nsbPhone'), addr: $('nsbAddr') };
+        var bad = [];
+        if (!f.start.value || f.start.value < addDays(today(), 1) || isClosed(f.start.value)) bad.push(f.start);
+        if (!f.name.value.trim()) bad.push(f.name);
+        if (f.phone.value.replace(/\D/g, '').length < 9) bad.push(f.phone);
+        if (!f.addr.value.trim()) bad.push(f.addr);
+        [f.start, f.name, f.phone, f.addr].forEach(function (el) { el.classList.toggle('bad', bad.indexOf(el) !== -1); });
+        if (bad.length) { err.textContent = 'Zkontrolujte prosím označená pole.'; err.hidden = false; bad[0].focus({ preventScroll: false }); return; }
+        if (!getToken()) { err.textContent = 'Vaše přihlášení vypršelo. Obnovte prosím stránku a přihlaste se znovu.'; err.hidden = false; return; }
+        err.hidden = true;
+        btn.disabled = true; btn.textContent = 'Přesměrováváme…';
+        api('subscriptions', {
+            action: 'create-checkout', line_id: st.lineId, size: st.size, count: st.count,
+            mood_note: st.mood || '', exclusions_note: $('nsbExcl').value.trim(), vase_exchange: $('nsbVaseCheck').checked,
+            cycle_anchor_date: f.start.value, recipient_name: f.name.value.trim(), recipient_phone: f.phone.value.trim(), address: f.addr.value.trim(),
+            city: $('nsbCity').value.trim(), psk: $('nsbPsk').value.trim(), patro: $('nsbPatro').value.trim(), company_name: $('nsbCompany').value.trim(),
+            cislo_bytu: $('nsbByt').value.trim(), kod_intercomu: $('nsbIntercom').value.trim(),
+            success_url: PAGE_URL + '?status=success', cancel_url: PAGE_URL + '?status=cancelled'
+        }).then(function (d) {
+            if (d && d.url) { saveDraft(); location.href = d.url; return; }
+            btn.disabled = false; btn.textContent = 'Zaplatit';
+            err.textContent = (d && d.message) || (d && d.error === 'invalid_token' ? 'Vaše přihlášení vypršelo. Obnovte prosím stránku.' : 'Platbu se nepodařilo založit, zkuste to prosím znovu.');
+            err.hidden = false;
+        }).catch(function () { btn.disabled = false; btn.textContent = 'Zaplatit'; err.textContent = 'Platbu se nepodařilo založit, zkontrolujte připojení.'; err.hidden = false; });
+    });
+
+    // rozpracovaný výběr si pamatujeme, aby po zrušené platbě nebylo nutné vše vyplňovat znovu
+    var DRAFT = 'narin_sub_draft_v1';
+    var DRAFT_FIELDS = ['nsbExcl', 'nsbStart', 'nsbName', 'nsbPhone', 'nsbAddr', 'nsbCity', 'nsbPsk', 'nsbPatro', 'nsbByt', 'nsbCompany', 'nsbIntercom'];
+    function saveDraft() {
+        try {
+            var d = { st: st, vase: $('nsbVaseCheck').checked, f: {} };
+            DRAFT_FIELDS.forEach(function (id) { d.f[id] = $(id).value; });
+            sessionStorage.setItem(DRAFT, JSON.stringify(d));
+        } catch (e) {}
+    }
+    function restoreDraft() {
+        try {
+            var d = JSON.parse(sessionStorage.getItem(DRAFT) || 'null'); if (!d) return false;
+            sessionStorage.removeItem(DRAFT);
+            var c = cat.categories.filter(function (x) { return x.id === d.st.catId; })[0]; if (!c) return false;
+            st.catId = null; openCon(c);
+            st.lineId = d.st.lineId; st.size = d.st.size; st.count = d.st.count; st.mood = d.st.mood;
+            DRAFT_FIELDS.forEach(function (id) { if (d.f[id] != null) $(id).value = d.f[id]; });
+            $('nsbVaseCheck').checked = !!d.vase; $('nsbAgree').checked = true;
+            renderCon(); prepStep3(); goStep(3); setView('new');
+            return true;
+        } catch (e) { return false; }
+    }
+
+    // ---------- start ----------
+    whenToken(loadSubs);
+    if (returned === 'cancelled') {
+        (cat.categories.length ? Promise.resolve() : catalogReady).then(function () { restoreDraft(); });
+    } else { try { sessionStorage.removeItem(DRAFT); } catch (e) {} }
+})();
+</script>

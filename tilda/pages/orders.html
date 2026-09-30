@@ -19,7 +19,7 @@
 .lko-count { font-size:14px; color:var(--muted); margin-top:4px; min-height:18px; }
 .lko-coll { display:flex; align-items:center; gap:12px; margin:18px 0 26px; padding:12px 14px; border-radius:18px; background:var(--tint); color:var(--ink); }
 .lko-coll .lko-coll-ic { width:40px; height:40px; border-radius:12px; background:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-.lko-coll b { display:block; font-size:15px; font-weight:600; }
+.lko-coll-logo { display:block; width:189px; max-width:100%; height:24px; background:url('https://static.tildacdn.com/tild3365-3764-4766-b162-383862333535/Photoroom_20260804_1.PNG') no-repeat -15px -10.5px / 222px 45px; }
 .lko-coll span { display:block; font-size:13px; color:var(--ink-2); margin-top:1px; }
 .lko-coll-arrow { margin-left:auto; color:var(--muted); flex-shrink:0; }
 .lko-h2 { font-size:13px; font-weight:600; color:var(--muted); letter-spacing:.02em; margin:0 0 10px 2px; }
@@ -137,7 +137,7 @@
   <div class="lko-count" id="lkoCount"></div>
   <a href="https://vezminarin.cz/members/collection" class="lko-coll">
     <span class="lko-coll-ic" id="lkoCollIc"></span>
-    <span><b>Sbírka samolepek</b><span>Podívejte se, jaké květiny jste už sbírali</span></span>
+    <span><i class="lko-coll-logo" role="img" aria-label="NARIN Stickers"></i><span>Podívejte se, jaké květiny jste už sbírali</span></span>
     <svg class="lko-coll-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
   </a>
   <div id="lkoList">
@@ -312,8 +312,8 @@
         var list = products(o);
         if (!list.length) return '';
         return '<div class="lko-stickers">' + list.map(function (p) {
-            var q = qtyOf(p);
-            return '<span class="lko-st" title="' + esc(decode(p.name)) + '">' + stickerImg(p, 26) + (q > 1 ? '<em>×' + q + '</em>' : '') + '</span>';
+            // 1 produkt = 1 nálepka, bez ohledu na počet kusů
+            return '<span class="lko-st" title="' + esc(decode(p.name)) + '">' + stickerImg(p, 26) + '</span>';
         }).join('') + '</div>';
     }
 
@@ -387,10 +387,9 @@
     function row(o) {
         var list = products(o), first = list[0] || {};
         var names = list.length ? list.map(function (p) { return decode(p.name); }).join(', ') : (o.products_text || 'Květiny');
-        var totalQty = list.reduce(function (s, p) { return s + qtyOf(p); }, 0);
         var st = o.status === 'cancelled' ? ['Zrušeno', '#f1f2f4', '#5f5e5a'] : ['Doručeno', '#e7f5ec', '#1b7a44'];
         return '<div class="lko-row" data-id="' + esc(o.order_id) + '"><button type="button" class="lko-row-btn" data-toggle aria-expanded="false">' +
-            '<span class="lko-row-img">' + stickerImg(first, 24) + (totalQty > 1 ? '<em>' + totalQty + '</em>' : '') + '</span>' +
+            '<span class="lko-row-img">' + stickerImg(first, 24) + (list.length > 1 ? '<em>' + list.length + '</em>' : '') + '</span>' +
             '<span class="lko-row-main"><b>' + esc(names) + '</b><span>č. ' + esc(o.order_id) + ' · ' + dShort(o.created_at) + '</span></span>' +
             '<span class="lko-row-side"><b>' + kc(o.order_total) + '</b>' + pill(st) + '</span></button>' +
             '<div class="lko-detail"><div>' + detailHtml(o) + '</div></div></div>';

@@ -55,6 +55,68 @@ async function verifyToken(token: string, secret: string): Promise<string | null
   }
 }
 
+const NAMED_ENTITIES: Record<string, string> = {
+  amp: '&', quot: '"', apos: "'", lt: '<', gt: '>', nbsp: ' ', shy: '',
+  ndash: '–', mdash: '—', hellip: '…', laquo: '«', raquo: '»', bdquo: '„', ldquo: '“', rdquo: '”', lsquo: '‘', rsquo: '’', sbquo: '‚',
+  times: '×', deg: '°', middot: '·', bull: '•', euro: '€', copy: '©', reg: '®', trade: '™',
+  aacute: 'á', Aacute: 'Á', eacute: 'é', Eacute: 'É', iacute: 'í', Iacute: 'Í', oacute: 'ó', Oacute: 'Ó',
+  uacute: 'ú', Uacute: 'Ú', yacute: 'ý', Yacute: 'Ý', ecaron: 'ě', Ecaron: 'Ě', scaron: 'š', Scaron: 'Š',
+  ccaron: 'č', Ccaron: 'Č', rcaron: 'ř', Rcaron: 'Ř', zcaron: 'ž', Zcaron: 'Ž', ncaron: 'ň', Ncaron: 'Ň',
+  dcaron: 'ď', Dcaron: 'Ď', tcaron: 'ť', Tcaron: 'Ť', uring: 'ů', Uring: 'Ů',
+  auml: 'ä', Auml: 'Ä', ouml: 'ö', Ouml: 'Ö', uuml: 'ü', Uuml: 'Ü', szlig: 'ß', agrave: 'à', egrave: 'è', ccedil: 'ç',
+}
+
+function decodeEntities(v: unknown): string {
+  let s = String(v ?? '')
+  // dvakrát kvůli dvojitě zakódovaným názvům typu "&amp;#345;"
+  for (let i = 0; i < 2; i++) {
+    s = s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, code: string) => {
+      if (code[0] === '#') {
+        const n = code[1] === 'x' || code[1] === 'X' ? parseInt(code.slice(2), 16) : parseInt(code.slice(1), 10)
+        return Number.isFinite(n) && n > 0 && n < 0x110000 ? String.fromCodePoint(n) : m
+      }
+      return NAMED_ENTITIES[code] ?? NAMED_ENTITIES[code.toLowerCase()] ?? m
+    })
+  }
+  return s
+}
+
+const strictKey = (v: unknown) =>
+  decodeEntities(v).normalize('NFC').replace(/[\u00a0\s]+/g, ' ').trim().toLowerCase()
+const looseKey = (v: unknown) =>
+  strictKey(v).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
+
+function buildStickerIndex(rows: { product_name: string | null; image_url: string | null }[]) {
+  const strict = new Map<string, string>()
+  const loose = new Map<string, string>()
+  let fallback: string | null = null
+  for (const r of rows) {
+    if (!r.image_url || !r.product_name) continue
+    if (r.product_name === '__default__') { fallback = r.image_url; continue }
+    const sk = strictKey(r.product_name), lk = looseKey(r.product_name)
+    if (sk && !strict.has(sk)) strict.set(sk, r.image_url)
+    if (lk && !loose.has(lk)) loose.set(lk, r.image_url)
+  }
+  // nejdelší názvy první, aby "Růže Pink Express" vyhrála nad "Růže"
+  const prefixes = [...loose.entries()].filter(([k]) => k.length >= 4).sort((a, b) => b[0].length - a[0].length)
+  const cache = new Map<string, string | null>()
+  return (name: unknown): string | null => {
+    const sk = strictKey(name)
+    if (!sk) return fallback
+    if (cache.has(sk)) return cache.get(sk)!
+    let url = strict.get(sk) ?? null
+    const lk = looseKey(name)
+    if (!url) url = loose.get(lk) ?? null
+    if (!url) {
+      const hit = prefixes.find(([k]) => lk.startsWith(k + ' ') || k.startsWith(lk + ' '))
+      url = hit ? hit[1] : null
+    }
+    if (!url) url = fallback
+    cache.set(sk, url)
+    return url
+  }
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -110,21 +172,19 @@ Deno.serve(async (req) => {
       .from('product_stickers')
       .select('product_name, image_url')
 
-    // Tilda posílá názvy produktů s HTML entitami (&amp;, &quot;, &#39;...) a občas
-    // s jinými mezerami nebo velikostí písmen, než jak je název uložený v product_stickers.
-    // Dřív se porovnávalo přesně, takže u takových produktů samolepka chyběla.
-    const normName = (v: unknown) =>
-      String(v ?? '')
-        .replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'")
-        .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;|\u00a0/g, ' ')
-        .replace(/\s+/g, ' ').trim().toLowerCase()
-    const stickerByName = new Map((stickers ?? []).map((s) => [normName(s.product_name), s.image_url]))
+    // Samolepky se párují podle názvu produktu, stejně jako v manažerském katalogu.
+    // Tilda ale ukládá názvy s HTML entitami všeho druhu (&amp;, &#345; = ř, &scaron; = š...),
+    // v katalogu i v objednávce různě. Manažerský web je dekóduje přes prohlížeč, tady
+    // to děláme ručně: číselné entity + pojmenované (včetně českých), pak porovnání
+    // bez ohledu na velikost písmen a mezery; když to nesedí, i bez diakritiky
+    // a nakonec podle začátku názvu (produkt přejmenovaný nebo s dovětkem, např. "… 60 cm").
+    const stickerIndex = buildStickerIndex(stickers ?? [])
 
     for (const order of orders ?? []) {
       const products = order.raw_payload?.payment?.products
       if (!Array.isArray(products)) continue
       for (const p of products) {
-        const imageUrl = stickerByName.get(normName(p.name))
+        const imageUrl = stickerIndex(p.name)
         if (imageUrl) p.image_url = imageUrl
       }
     }

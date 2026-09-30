@@ -24,6 +24,33 @@ const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY_TEST")!, {
   httpClient: Stripe.createFetchHttpClient(),
 });
 
+// Identita klienta = HMAC-token (lk_auth_token z auth-verify), stejně jako
+// member-data / personal-dates. E-mail z těla požadavku se už nebere:
+// dřív šlo poslat cizí e-mail a číst/rušit cizí předplatné.
+const encoder = new TextEncoder();
+async function emailFromToken(token: unknown): Promise<string | null> {
+  const parts = String(token ?? "").split(".");
+  if (parts.length !== 2) return null;
+  const [payloadB64, sigB64] = parts;
+  const key = await crypto.subtle.importKey("raw", encoder.encode(Deno.env.get("AUTH_TOKEN_SECRET")!), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sigBuf = await crypto.subtle.sign("HMAC", key, encoder.encode(payloadB64));
+  if (btoa(String.fromCharCode(...new Uint8Array(sigBuf))) !== sigB64) return null;
+  try {
+    const payload = JSON.parse(atob(payloadB64));
+    if (!payload.exp || payload.exp < Date.now() || !payload.email) return null;
+    return String(payload.email).trim().toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
+// Stripe přesměrování jen zpět na náš web (jinak by šlo podstrčit cizí adresu)
+const SITE = "https://vezminarin.cz/";
+function safeUrl(u: unknown, fallback: string) {
+  const s = String(u ?? "");
+  return s.startsWith(SITE) ? s : fallback;
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -39,6 +66,10 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json();
     const action = body.action;
+
+    const email = await emailFromToken(body.token);
+    if (!email) return json({ error: "invalid_token" }, 401);
+    body.email = email;
 
     if (action === "create-checkout") {
       return await createCheckout(body);
@@ -72,11 +103,16 @@ async function createCheckout(body: Record<string, unknown>) {
   const recipientName = String(body.recipient_name ?? "").trim();
   const recipientPhone = String(body.recipient_phone ?? "").trim();
   const address = String(body.address ?? "").trim();
-  const successUrl = String(body.success_url ?? "");
-  const cancelUrl = String(body.cancel_url ?? "");
+  const successUrl = safeUrl(body.success_url, SITE + "members/subscription?status=success");
+  const cancelUrl = safeUrl(body.cancel_url, SITE + "members/subscription?status=cancelled");
 
   if (!email || !lineId || !size || !count || !cycleAnchorDate || !recipientName || !recipientPhone || !address || !successUrl || !cancelUrl) {
     return json({ error: "missing required fields" }, 400);
+  }
+
+  const anchorMs = new Date(cycleAnchorDate + "T00:00:00Z").getTime();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(cycleAnchorDate) || Number.isNaN(anchorMs) || anchorMs < Date.now() - 24 * 3600 * 1000) {
+    return json({ error: "invalid_date", message: "Datum první dodávky musí být v budoucnosti." }, 400);
   }
 
   const { data: line, error: lineErr } = await supabase
@@ -210,7 +246,7 @@ async function billingInfo(body: Record<string, unknown>) {
   const stripeSub = await stripe.subscriptions.retrieve(sub.stripe_subscription_id);
   const portalSession = await stripe.billingPortal.sessions.create({
     customer: sub.stripe_customer_id,
-    return_url: String(body.return_url ?? ""),
+    return_url: safeUrl(body.return_url, SITE + "members/subscription"),
   });
 
   return json({
@@ -230,6 +266,9 @@ async function updateOccurrence(body: Record<string, unknown>) {
   if (!occ) return json({ error: "not found" }, 404);
   const sub = await loadOwnedSubscription(email, occ.subscription_id);
   if (!sub) return json({ error: "not found" }, 404);
+  if (new Date(occ.occurrence_date + "T23:59:59Z").getTime() < Date.now()) {
+    return json({ error: "past", message: "Tato dodávka už proběhla, nelze ji upravit." }, 400);
+  }
 
   const payload: Record<string, unknown> = {};
   for (const f of ["recipient_name", "recipient_phone", "address", "city", "psk"]) {

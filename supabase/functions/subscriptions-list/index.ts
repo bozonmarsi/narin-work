@@ -16,6 +16,26 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
 
+// Identita klienta = HMAC-token (lk_auth_token z auth-verify), stejně jako
+// member-data / personal-dates. E-mail z těla požadavku se už nebere:
+// dřív šlo poslat cizí e-mail a číst/rušit cizí předplatné.
+const encoder = new TextEncoder();
+async function emailFromToken(token: unknown): Promise<string | null> {
+  const parts = String(token ?? "").split(".");
+  if (parts.length !== 2) return null;
+  const [payloadB64, sigB64] = parts;
+  const key = await crypto.subtle.importKey("raw", encoder.encode(Deno.env.get("AUTH_TOKEN_SECRET")!), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sigBuf = await crypto.subtle.sign("HMAC", key, encoder.encode(payloadB64));
+  if (btoa(String.fromCharCode(...new Uint8Array(sigBuf))) !== sigB64) return null;
+  try {
+    const payload = JSON.parse(atob(payloadB64));
+    if (!payload.exp || payload.exp < Date.now() || !payload.email) return null;
+    return String(payload.email).trim().toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -30,8 +50,8 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const email = String(body.email ?? "").trim().toLowerCase();
-    if (!email) return json({ error: "missing email" }, 400);
+    const email = await emailFromToken(body.token);
+    if (!email) return json({ error: "invalid_token" }, 401);
 
     const { data: subs, error: subErr } = await supabase
       .from("subscriptions")
@@ -45,7 +65,7 @@ Deno.serve(async (req) => {
     if (ids.length > 0) {
       const { data: occs, error: occErr } = await supabase
         .from("subscription_occurrences")
-        .select("id, subscription_id, occurrence_date, status, preview_photo_url, order_id, tilda_orders(status)")
+        .select("id, subscription_id, occurrence_date, status, preview_photo_url, order_id, recipient_name, recipient_phone, address, city, psk, tilda_orders(status)")
         .in("subscription_id", ids)
         .order("occurrence_date");
       if (occErr) return json({ error: occErr.message }, 500);

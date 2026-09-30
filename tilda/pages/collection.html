@@ -279,7 +279,6 @@
         'https://static.tildacdn.com/tild3936-3637-4665-b363-326233336536/317F2FF1-7E48-40B1-A.PNG'
     ];
     var MAX_IN_JAR = 60;          // víc nálepek do sklenice nedáváme (výkon), v albu jsou všechny
-    var MAX_COPIES_PER_LINE = 5;  // 1 nálepka = 1 balení; u velkých objednávek max. 5 kusů jednoho druhu
     var SEEN_KEY = 'lk_seen_stickers';
     var DAISY = ['M 159.691406 91.921875 L 178.789062 42.375 C 185.230469 27.75 184.792969 17.382812 177.480469 6.578125 C 173.335938 0.359375 166.894531 1.230469 155.871094 3.195312 C 151.070312 4.066406 146.050781 4.941406 140.921875 4.941406 C 135.574219 4.941406 130.335938 3.851562 125.316406 2.757812 C 114.292969 0.359375 107.855469 -0.625 103.707031 5.921875 C 96.722656 16.945312 96.503906 27.859375 102.941406 42.375 L 103.050781 42.59375 L 122.042969 91.921875 L 131.972656 109.492188 C 134.808594 108.617188 137.757812 108.179688 140.8125 108.179688 C 143.976562 108.179688 146.921875 108.617188 149.871094 109.492188 Z M 159.691406 91.921875',
         'M 41.828125 109.601562 L 42.046875 109.601562 L 91.703125 125.207031 L 111.347656 128.261719 C 113.636719 122.476562 117.566406 117.566406 122.476562 114.074219 L 115.164062 95.195312 L 89.082031 49.140625 C 81.878906 34.953125 73.695312 28.839844 60.816406 27.859375 C 60.488281 27.859375 60.164062 27.859375 59.945312 27.859375 C 53.179688 27.859375 49.902344 33.425781 44.773438 43.027344 C 42.484375 47.394531 39.972656 51.867188 36.808594 56.015625 C 33.425781 60.273438 29.386719 63.765625 25.347656 67.148438 C 16.617188 74.460938 11.816406 79.042969 14.328125 86.355469 C 18.472656 98.578125 26.660156 105.5625 41.828125 109.601562 Z M 41.828125 109.601562',
@@ -332,9 +331,9 @@
             products.forEach(function (p, idx) {
                 var name = decode(p.name);
                 if (!name || !p.image_url) return;
-                var base = orderKey + '::' + idx + '::' + name;   // stejný klíč jako dřív = už viděné se znovu neukazují
-                var n = Math.min(MAX_COPIES_PER_LINE, Math.max(1, parseInt(p.quantity, 10) || 1));
-                for (var c = 0; c < n; c++) list.push({ key: c ? base + '#' + c : base, base: base, name: name, url: p.image_url, at: o.created_at });
+                // 1 produkt v objednávce = 1 nálepka (i když je v něm 10 květin nebo víc balení).
+                // Klíč je stejný jako ve staré verzi, takže už viděné nálepky se znovu neukazují.
+                list.push({ key: orderKey + '::' + idx + '::' + name, name: name, url: p.image_url, at: o.created_at });
             });
         });
         list.sort(function (a, b) { return new Date(b.at) - new Date(a.at); });
@@ -375,11 +374,6 @@
 
         var seenArr = readSeen();
         var seenSet = {}; seenArr.forEach(function (k) { seenSet[k] = true; });
-        // přechod na nálepky podle počtu balení: kopie už viděných objednávek nejsou "nové"
-        if (!localStorage.getItem('lk_seen_stickers_v2')) {
-            list.forEach(function (s) { if (seenSet[s.base]) seenSet[s.key] = true; });
-            try { localStorage.setItem('lk_seen_stickers_v2', '1'); } catch (e) {}
-        }
         var fresh = list.filter(function (s) { return !seenSet[s.key]; });
         seen = seenSet;
 
