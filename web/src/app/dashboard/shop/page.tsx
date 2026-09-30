@@ -397,12 +397,17 @@ function ProductCard({
   onSetBadge,
   onAddDelivery,
   onAddRecipeItem,
+  onAddVanVlietRecipeItem,
   onRemoveRecipeItem,
   onSetOrderUnitSize,
   onSetVaseLife,
   onSetMarkup,
   onApprovePending,
   onRejectPending,
+  vvCatalogNames,
+  vvCatalogLoading,
+  vvCatalogError,
+  onEnsureVvCatalog,
 }: {
   product: Product;
   isAvailable: boolean;
@@ -426,17 +431,23 @@ function ProductCard({
   onSetBadge: (id: string, text: string | null, color: string | null) => void;
   onAddDelivery: (id: string, delta: number) => void;
   onAddRecipeItem: (bouquetId: string, ingredientId: string, qty: number) => void;
+  onAddVanVlietRecipeItem: (bouquetId: string, name: string, qty: number) => void;
   onRemoveRecipeItem: (recipeId: string) => void;
   onSetOrderUnitSize: (id: string, size: number) => void;
   onSetVaseLife: (id: string, days: number) => void;
   onSetMarkup: (id: string, multiplier: number) => void;
   onApprovePending?: (id: string) => void;
   onRejectPending?: (id: string, name: string) => void;
+  vvCatalogNames: string[];
+  vvCatalogLoading: boolean;
+  vvCatalogError: string | null;
+  onEnsureVvCatalog: () => void;
 }) {
   const [tagsOpen, setTagsOpen] = useState(false);
   const [recipeOpen, setRecipeOpen] = useState(false);
   const [newIngredientId, setNewIngredientId] = useState("");
   const [newIngredientQty, setNewIngredientQty] = useState("1");
+  const [vvQuery, setVvQuery] = useState("");
   const [badgeOpen, setBadgeOpen] = useState(false);
   const [badgeDraftText, setBadgeDraftText] = useState(p.badge_text ?? "");
   const [badgeDraftColor, setBadgeDraftColor] = useState(p.badge_color ?? BADGE_COLOR_OPTIONS[0].value);
@@ -654,6 +665,39 @@ function ProductCard({
                 >
                   +
                 </button>
+              </div>
+              <div className="border-t border-zinc-200 dark:border-zinc-700 pt-1">
+                <input
+                  value={vvQuery}
+                  onChange={(e) => setVvQuery(e.target.value)}
+                  onFocus={onEnsureVvCatalog}
+                  placeholder={vvCatalogLoading ? "Загружаю Van Vliet…" : "Или найти у Van Vliet…"}
+                  className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 bg-transparent px-1.5 py-0.5 text-[10px]"
+                />
+                {vvCatalogError && <p className="mt-0.5 text-[9px] text-red-600 dark:text-red-400">{vvCatalogError}</p>}
+                {vvQuery.trim() && (
+                  <div className="mt-0.5 max-h-24 space-y-0.5 overflow-y-auto">
+                    {vvCatalogNames
+                      .filter((n) => n.toLowerCase().includes(vvQuery.trim().toLowerCase()))
+                      .slice(0, 15)
+                      .map((name) => (
+                        <button
+                          key={name}
+                          type="button"
+                          onClick={() => {
+                            onAddVanVlietRecipeItem(p.id, name, parseFloat(newIngredientQty) || 1);
+                            setVvQuery("");
+                          }}
+                          className="block w-full truncate rounded px-1 py-0.5 text-left text-[10px] text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                        >
+                          + {name}
+                        </button>
+                      ))}
+                    {!vvCatalogLoading && !vvCatalogNames.some((n) => n.toLowerCase().includes(vvQuery.trim().toLowerCase())) && (
+                      <p className="text-[9px] text-zinc-400">Ничего не нашлось у Van Vliet.</p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1171,6 +1215,19 @@ export default function ShopPage() {
     setRecipes((prev) => [...prev.filter((r) => r.id !== data.id), data]);
   }
 
+  // Тот же принцип, что и при создании сета — цветок только из
+  // прайс-листа Van Vliet, без своего товара (product_recipes.vanvliet_ingredient_name).
+  async function addVanVlietRecipeItem(bouquetId: string, name: string, qty: number) {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("product_recipes")
+      .insert({ bouquet_sticker_id: bouquetId, vanvliet_ingredient_name: name, quantity_needed: qty })
+      .select("id, bouquet_sticker_id, ingredient_sticker_id, vanvliet_ingredient_name, quantity_needed")
+      .single();
+    if (error || !data) return;
+    setRecipes((prev) => [...prev, data]);
+  }
+
   async function removeRecipeItem(id: string) {
     const supabase = createClient();
     await supabase.from("product_recipes").delete().eq("id", id);
@@ -1336,10 +1393,17 @@ export default function ShopPage() {
     setVvCatalogNames(names);
   }
 
-  useEffect(() => {
-    if (newProductNeedsRecipe && vvCatalogNames.length === 0 && !vvCatalogLoading && !vvCatalogError) {
+  // Общая точка входа — вызывается и формой создания сета, и поиском
+  // Van Vliet на уже существующей карточке (Состав), чтобы не грузить
+  // каталог дважды и не дублировать проверку "уже грузится/уже есть".
+  function ensureVvCatalogLoaded() {
+    if (vvCatalogNames.length === 0 && !vvCatalogLoading && !vvCatalogError) {
       loadVvCatalogNames();
     }
+  }
+
+  useEffect(() => {
+    if (newProductNeedsRecipe) ensureVvCatalogLoaded();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [newProductNeedsRecipe]);
 
@@ -1867,6 +1931,11 @@ export default function ShopPage() {
                   recipe={recipes.filter((r) => r.bouquet_sticker_id === p.id)}
                   rawMaterials={rawMaterialOptions}
                   onAddRecipeItem={addRecipeItem}
+                  onAddVanVlietRecipeItem={addVanVlietRecipeItem}
+                  vvCatalogNames={vvCatalogNames}
+                  vvCatalogLoading={vvCatalogLoading}
+                  vvCatalogError={vvCatalogError}
+                  onEnsureVvCatalog={ensureVvCatalogLoaded}
                   onRemoveRecipeItem={removeRecipeItem}
                   onSetOrderUnitSize={setOrderUnitSize}
                   onSetVaseLife={setVaseLife}
@@ -2200,6 +2269,11 @@ export default function ShopPage() {
                 recipe={recipes.filter((r) => r.bouquet_sticker_id === p.id)}
                 rawMaterials={rawMaterialOptions}
                 onAddRecipeItem={addRecipeItem}
+                onAddVanVlietRecipeItem={addVanVlietRecipeItem}
+                vvCatalogNames={vvCatalogNames}
+                vvCatalogLoading={vvCatalogLoading}
+                vvCatalogError={vvCatalogError}
+                onEnsureVvCatalog={ensureVvCatalogLoaded}
                 onRemoveRecipeItem={removeRecipeItem}
                 onSetOrderUnitSize={setOrderUnitSize}
                 onSetVaseLife={setVaseLife}
