@@ -39,11 +39,14 @@ type Product = {
 
 // Подсказка по цене — не себестоимость (её почти никогда не вносят на
 // Приёмке), а самая дешёвая актуальная цена этого цветка у Van Vliet
-// (vanvliet_cheapest_price, обновляет vanvliet-stock-scan) × личный
-// коэффициент наценки менеджера, округлено до десятков.
-function recommendedPrice(p: Pick<Product, "vanvliet_cheapest_price" | "price_markup_multiplier">): number | null {
+// (vanvliet_cheapest_price — за 1 стебель) × число стеблей в единице
+// заказа (order_unit_size — цена у нас за весь пучок, не за стебель) ×
+// личный коэффициент наценки менеджера, округлено до десятков.
+function recommendedPrice(
+  p: Pick<Product, "vanvliet_cheapest_price" | "price_markup_multiplier" | "order_unit_size">
+): number | null {
   if (p.vanvliet_cheapest_price == null) return null;
-  return Math.round((p.vanvliet_cheapest_price * p.price_markup_multiplier) / 10) * 10;
+  return Math.round((p.vanvliet_cheapest_price * p.order_unit_size * p.price_markup_multiplier) / 10) * 10;
 }
 
 // Ниже этого остатка на сайте сама встаёт плашка "Zbývá N ks" — если
@@ -738,10 +741,10 @@ function ProductCard({
           )}
           {p.category === "ohapka" && p.vanvliet_cheapest_price != null && (
             <p
-              title="Самая дешёвая актуальная цена этого цветка у Van Vliet × твой коэффициент, округлено до 10 — не себестоимость, а подсказка для цены на сайте"
+              title="Самая дешёвая актуальная цена этого цветка у Van Vliet за 1 стебель × число стеблей в пучке × твой коэффициент, округлено до 10 — не себестоимость, а подсказка для цены на сайте"
               className="mt-1 flex items-center gap-1 text-[9px] text-zinc-400 dark:text-zinc-500"
             >
-              Van Vliet {p.vanvliet_cheapest_price} Kč ×
+              Van Vliet {p.vanvliet_cheapest_price} Kč × {p.order_unit_size} шт ×
               <input
                 type="number"
                 min={1}
