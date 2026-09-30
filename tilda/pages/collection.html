@@ -8,27 +8,28 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <style>
 .nkl { --blue:#186ce0; --tint:#f3f7fd; --tint-2:#e6effb; --ink:#16181d; --ink-2:#4a505b; --muted:#8a8f98; --line:#e9ebef;
-  font-family:'Rubik',sans-serif; color:var(--ink); max-width:640px; margin:0 auto; padding:16px 16px 48px; box-sizing:border-box; -webkit-font-smoothing:antialiased; }
+  font-family:'Rubik',sans-serif; color:var(--ink); max-width:640px; margin:0 auto; padding:4px 16px 40px; box-sizing:border-box; -webkit-font-smoothing:antialiased; }
 .nkl *, .nkl *::before, .nkl *::after { box-sizing:border-box; }
 .nkl h2, .nkl p { margin:0; }
 .nkl a { text-decoration:none; }
 .nkl button { font-family:inherit; }
 .nkl-top { display:flex; justify-content:space-between; align-items:center; gap:10px; }
 .nkl-back { display:inline-flex; align-items:center; gap:6px; color:var(--blue); font-size:15px; font-weight:500; }
-.nkl-home { display:inline-flex; align-items:center; gap:7px; height:40px; padding:0 16px; border-radius:999px; border:1.5px solid var(--line); color:var(--ink); font-size:14px; font-weight:500; background:#fff; }
+.nkl-home { display:inline-flex; align-items:center; gap:6px; height:36px; padding:0 14px; border-radius:999px; border:1.5px solid var(--line); color:var(--ink); font-size:14px; font-weight:500; background:#fff; }
 .nkl-back svg, .nkl-home svg { width:18px; height:18px; }
 
-.nkl-brand { text-align:center; margin:14px 0 4px; }
-.nkl-brand img { width:240px; max-width:78%; height:auto; aspect-ratio:3/1; object-fit:contain; display:inline-block; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; pointer-events:none; }
-.nkl-tag { font-size:14px; color:var(--muted); margin-top:2px; }
+.nkl-brand { text-align:center; margin:4px 0 0; }
+.nkl-brand img { width:200px; max-width:64%; height:auto; aspect-ratio:3/1; object-fit:contain; display:inline-block; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; pointer-events:none; }
+.nkl-tag { font-size:13px; color:var(--muted); margin-top:0; }
 
-.nkl-stats { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin:14px 0 16px; min-height:34px; }
-.nkl-stat { display:inline-flex; align-items:center; gap:6px; height:34px; padding:0 14px; border-radius:999px; background:var(--tint); font-size:13px; color:var(--ink-2); white-space:nowrap; }
+.nkl-stats { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; margin:10px 0 12px; min-height:30px; }
+.nkl-stat { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; border-radius:999px; background:var(--tint); font-size:13px; color:var(--ink-2); white-space:nowrap; }
 .nkl-stat b { color:var(--blue); font-weight:600; font-size:14px; }
 .nkl-stat.sk { width:110px; background:linear-gradient(90deg,#eef1f6 25%,#f6f8fb 37%,#eef1f6 63%); background-size:400% 100%; animation:nklShim 1.4s ease infinite; }
 @keyframes nklShim { 0% { background-position:100% 50%; } 100% { background-position:0 50%; } }
 
-.nkl-jar { position:relative; width:100%; height:380px; border-radius:26px; overflow:hidden; touch-action:none; background:linear-gradient(165deg,#eef5fd 0%,#dcebfb 100%); box-shadow:inset 0 0 0 1px rgba(24,108,224,.06); -webkit-user-select:none; user-select:none; }
+.nkl-jar { position:relative; width:100%; height:360px; border-radius:26px; overflow:hidden; touch-action:none; background:linear-gradient(165deg,#eef5fd 0%,#dcebfb 100%); box-shadow:inset 0 0 0 1px rgba(24,108,224,.06); -webkit-user-select:none; user-select:none; }
+@media (max-width:380px) { .nkl-jar { height:300px; } .nkl-hint { font-size:12px; } }
 .nkl-jar-glass { position:absolute; inset:0; pointer-events:none; background:radial-gradient(120% 60% at 20% 0%,rgba(255,255,255,.7),rgba(255,255,255,0) 60%); }
 .nkl-spark { position:absolute; background:#fff; border-radius:50%; animation:nklTw 2.4s ease-in-out infinite; pointer-events:none; }
 @keyframes nklTw { 0%,100% { opacity:.12; transform:scale(.6); } 50% { opacity:.85; transform:scale(1.2); } }
@@ -38,16 +39,16 @@
 .nkl-jar-msg .d { animation:nklBob 1.6s ease-in-out infinite; }
 @keyframes nklBob { 0%,100% { transform:translateY(0) rotate(0); } 50% { transform:translateY(-8px) rotate(12deg); } }
 
-.nkl-actions { display:flex; gap:10px; margin:14px 0 6px; }
-.nkl-shake { flex:1; height:50px; border-radius:999px; border:none; background:var(--blue); color:#fff; font-size:15px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:8px; transition:transform .12s ease; }
+.nkl-actions { display:flex; gap:8px; margin:12px 0 6px; }
+.nkl-shake { flex:1; min-width:0; height:44px; padding:0 14px; border-radius:999px; border:none; background:var(--blue); color:#fff; font-size:14px; font-weight:600; white-space:nowrap; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:7px; transition:transform .12s ease; }
 .nkl-shake:active, .nkl-share:active { transform:scale(.97); }
-.nkl-shake svg { width:20px; height:20px; }
-.nkl-share { height:50px; padding:0 18px; border-radius:999px; border:none; background:linear-gradient(135deg,#f58529,#dd2a7b,#8134af,#515bd4); color:#fff; font-size:15px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:8px; flex-shrink:0; transition:transform .12s ease, opacity .2s ease; }
-.nkl-share svg { width:20px; height:20px; }
+.nkl-shake svg { width:18px; height:18px; flex-shrink:0; }
+.nkl-share { width:44px; height:44px; padding:0; border-radius:50%; border:none; background:linear-gradient(135deg,#f58529,#dd2a7b,#8134af,#515bd4); color:#fff; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; transition:transform .12s ease, opacity .2s ease; }
+.nkl-share svg { width:20px; height:20px; flex-shrink:0; }
 .nkl-share[disabled] { opacity:.55; cursor:default; }
 .nkl-hint { font-size:12.5px; color:var(--muted); text-align:center; }
 
-.nkl-sec { display:flex; align-items:baseline; justify-content:space-between; margin:30px 2px 12px; }
+.nkl-sec { display:flex; align-items:baseline; justify-content:space-between; margin:24px 2px 10px; }
 .nkl-sec h2 { font-size:19px; font-weight:600; letter-spacing:-.01em; }
 .nkl-sec span { font-size:13px; color:var(--muted); }
 .nkl-album { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
@@ -66,6 +67,7 @@
 .nkl-empty p { font-size:14.5px; color:var(--ink-2); line-height:1.5; max-width:340px; margin:0 auto 18px; }
 .nkl-cta { display:inline-flex; align-items:center; justify-content:center; height:48px; padding:0 26px; border-radius:999px; background:var(--blue); color:#fff !important; font-size:15px; font-weight:600; }
 
+.nkl-ov, .nkl-ov *, .nkl-ov *::before, .nkl-ov *::after { box-sizing:border-box; }
 .nkl-ov { position:fixed; inset:0; background:rgba(16,24,40,.55); display:flex; align-items:center; justify-content:center; z-index:9999; padding:20px; opacity:0; pointer-events:none; transition:opacity .25s ease; font-family:'Rubik',sans-serif; -webkit-font-smoothing:antialiased; }
 .nkl-ov.on { opacity:1; pointer-events:auto; }
 .nkl-card { position:relative; background:#fff; border-radius:26px; padding:26px 22px 22px; max-width:320px; width:100%; text-align:center; transform:scale(.9) translateY(14px); transition:transform .4s cubic-bezier(.34,1.56,.64,1); box-sizing:border-box; }
@@ -82,10 +84,11 @@
 @keyframes nklPop { 0% { transform:scale(0) rotate(-18deg); opacity:0; } 60% { transform:scale(1.15) rotate(6deg); opacity:1; } 100% { transform:none; opacity:1; } }
 .nkl-x { position:absolute; top:10px; right:10px; width:32px; height:32px; border-radius:50%; border:none; background:#f1f3f6; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; }
 .nkl-x svg { width:14px; height:14px; }
-.nkl-share-card { padding:16px; max-width:280px; }
-.nkl-share-img { width:100%; aspect-ratio:9/16; border-radius:16px; margin-bottom:14px; background:#eef1f6; display:flex; align-items:center; justify-content:center; overflow:hidden; color:#8a8f98; font-size:13px; }
+.nkl-share-card { padding:12px 12px 14px; max-width:280px; }
+.nkl-share-card .nkl-card-btn { width:100%; min-width:0; height:42px; font-size:14px; padding:0 16px; }
+.nkl-share-img { width:100%; aspect-ratio:9/16; border-radius:14px; margin-bottom:12px; background:#eef1f6; display:flex; align-items:center; justify-content:center; overflow:hidden; color:#8a8f98; font-size:13px; }
 .nkl-share-img img { width:100%; height:100%; object-fit:cover; display:block; }
-.nkl-bgs { display:flex; gap:10px; justify-content:center; margin-bottom:14px; }
+.nkl-bgs { display:flex; gap:10px; justify-content:center; margin-bottom:12px; }
 .nkl-bg { width:40px; height:40px; border-radius:50%; border:2.5px solid transparent; background-size:cover; background-position:center; padding:0; cursor:pointer; box-shadow:0 0 0 1px #e9ebef; }
 .nkl-bg.on { border-color:#186ce0; }
 @media (prefers-reduced-motion: reduce) { .nkl-spark, .nkl-jar-msg .d, .nkl-pop { animation:none; } }
@@ -112,7 +115,7 @@
     </div>
     <div class="nkl-actions">
       <button class="nkl-shake" id="nklShake" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4l-3 3 3 3"/><path d="M17 20l3-3-3-3"/><path d="M4 7h10a4 4 0 014 4"/><path d="M20 17H10a4 4 0 01-4-4"/></svg>Zatřást sbírkou</button>
-      <button class="nkl-share" id="nklShare" type="button" disabled aria-label="Sdílet do Instagramu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg>Sdílet</button>
+      <button class="nkl-share" id="nklShare" type="button" disabled aria-label="Sdílet do Instagramu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg></button>
     </div>
     <p class="nkl-hint" id="nklHint">Nálepky můžete chytit prstem a pohazovat s nimi.</p>
 
@@ -146,7 +149,7 @@
     <button class="nkl-x" id="nklShareClose" type="button" aria-label="Zavřít"><svg viewBox="0 0 24 24" fill="none" stroke="#8a8f98" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
     <div class="nkl-share-img" id="nklShareImg">Připravujeme obrázek…</div>
     <div class="nkl-bgs" id="nklBgs"></div>
-    <button class="nkl-card-btn" id="nklShareGo" type="button" style="width:100%;" disabled>Sdílet</button>
+    <button class="nkl-card-btn" id="nklShareGo" type="button" disabled>Sdílet</button>
   </div>
 </div>
 
@@ -671,7 +674,7 @@
                 ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(0, 0, W, H);
             } else { ctx.fillStyle = '#eaf3fc'; ctx.fillRect(0, 0, W, H); }
 
-            var top = 70, y = top, maxW = 0;
+            var top = 44, y = top, maxW = 0;
             if (logo) {
                 var lw = 260, lh = lw * logo.naturalHeight / logo.naturalWidth, bw = lw + 52, bh = lh + 36;
                 ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.25)'; ctx.shadowBlur = 16; ctx.shadowOffsetY = 5; ctx.fillStyle = '#fff';
