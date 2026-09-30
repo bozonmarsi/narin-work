@@ -42,6 +42,11 @@ type Product = {
 // оставляем менеджеру считать в уме.
 const DPH_RATE = 1.21;
 
+// Фиксированный выбор — не произвольное число: только эти три
+// коэффициента и выбираются кнопками, чтобы коэффициент было видно
+// сразу, а не искать глазами мелкое поле ввода.
+const MARKUP_OPTIONS = [2, 2.5, 3];
+
 // Подсказка по цене — не себестоимость (её почти никогда не вносят на
 // Приёмке), а самая дешёвая актуальная цена этого цветка у Van Vliet
 // (vanvliet_cheapest_price — за 1 стебель, без DPH) × число стеблей в
@@ -746,24 +751,31 @@ function ProductCard({
             </div>
           )}
           {p.category === "ohapka" && p.vanvliet_cheapest_price != null && (
-            <p
-              title="Самая дешёвая актуальная цена этого цветка у Van Vliet (без DPH) за 1 стебель × число стеблей в пучке × твой коэффициент × DPH 21%, округлено до 10 — не себестоимость, а подсказка для цены на сайте"
-              className="mt-1 flex items-center gap-1 text-[9px] text-zinc-400 dark:text-zinc-500"
+            <div
+              title="Самая дешёвая актуальная цена этого цветка у Van Vliet (без DPH) за 1 стебель × число стеблей в пучке × коэффициент × DPH 21%, округлено до 10 — не себестоимость, а подсказка для цены на сайте"
+              className="mt-1 space-y-0.5"
             >
-              {p.vanvliet_cheapest_price} Kč × {p.order_unit_size} шт ×
-              <input
-                type="number"
-                min={1}
-                step={0.1}
-                defaultValue={p.price_markup_multiplier}
-                onBlur={(e) => {
-                  const v = parseFloat(e.target.value);
-                  if (v > 0 && v !== p.price_markup_multiplier) onSetMarkup(p.id, v);
-                }}
-                className="w-9 rounded border border-zinc-300 dark:border-zinc-600 bg-transparent px-1 py-0 text-center text-[9px]"
-              />
-              = рек. <span className="font-semibold text-accent">{recommendedPrice(p)} Kč</span>
-            </p>
+              <p className="text-[9px] text-zinc-400 dark:text-zinc-500">
+                {p.vanvliet_cheapest_price} Kč × {p.order_unit_size} шт
+              </p>
+              <div className="flex flex-wrap items-center gap-1">
+                {MARKUP_OPTIONS.map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => onSetMarkup(p.id, m)}
+                    className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                      p.price_markup_multiplier === m
+                        ? "bg-accent text-white"
+                        : "border border-zinc-300 dark:border-zinc-600 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                    }`}
+                  >
+                    ×{m}
+                  </button>
+                ))}
+                <span className="text-[10px] font-semibold text-accent">= {recommendedPrice(p)} Kč</span>
+              </div>
+            </div>
           )}
           {badgeOpen && (
             <div className="mt-1 space-y-1 rounded-md border border-zinc-200 dark:border-zinc-700 p-1.5">
