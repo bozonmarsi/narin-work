@@ -1,0 +1,199 @@
+<!--
+  NARIN Dárky: dočasná stránka "připravujeme" (/darky).
+  Celý kód patří do jednoho HTML bloku T123 v Tilda. Vše je scoped pod .ndk.
+  Létající medvídci na balóncích: po klepnutí balónek praskne a medvídek spadne.
+  Obrázky medvídků, texty a odkazy jsou v objektu CONFIG dole ve <script>.
+-->
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+html, body { overflow-x:hidden; }
+@supports (overflow:clip) { html, body { overflow-x:clip; } }
+.ndk { --pink:#e0607e; --pink-d:#c94a69; --pink-soft:#fde9f0; --pink-2:#f8cfdd; --blue:#186ce0; --ink:#16181d; --ink-2:#4a505b; --muted:#8a8f98; --line:#f1d9e1;
+  font-family:'Rubik',sans-serif; color:var(--ink); background:#fff; -webkit-font-smoothing:antialiased; overflow:hidden; position:relative; }
+.ndk *, .ndk *::before, .ndk *::after { box-sizing:border-box; }
+.ndk h1, .ndk p { margin:0; }
+
+/* ---------- SCÉNA ---------- */
+.ndk-stage { position:relative; min-height:100vh; min-height:100svh; display:flex; align-items:center; justify-content:center; padding:72px 16px 96px; background:radial-gradient(120% 80% at 50% 110%, var(--pink-2) 0%, var(--pink-soft) 45%, #fff 85%); overflow:hidden; }
+.ndk-sky { position:absolute; inset:0; pointer-events:none; }
+.ndk-sky .ndk-fly { pointer-events:auto; }
+
+/* balónek s medvídkem */
+.ndk-fly { position:absolute; bottom:-220px; left:0; display:flex; flex-direction:column; align-items:center; cursor:pointer; -webkit-tap-highlight-color:transparent; will-change:transform; animation:ndkRise var(--dur) linear forwards; }
+.ndk-fly-sway { display:flex; flex-direction:column; align-items:center; animation:ndkSway var(--sway) ease-in-out infinite alternate; transform-origin:50% 0; }
+.ndk-balloon { position:relative; width:var(--bw); height:calc(var(--bw) * 1.18); border-radius:50% 50% 48% 48% / 55% 55% 45% 45%; background:radial-gradient(circle at 32% 28%, rgba(255,255,255,.75) 0 8%, rgba(255,255,255,0) 22%), var(--bc); box-shadow:inset -6px -10px 16px rgba(0,0,0,.08); transition:transform .12s ease; }
+.ndk-balloon::after { content:''; position:absolute; left:50%; bottom:-7px; width:12px; height:10px; margin-left:-6px; background:var(--bc); clip-path:polygon(50% 0, 100% 100%, 0 100%); }
+.ndk-string { width:1.5px; height:calc(var(--bw) * .9); background:linear-gradient(rgba(22,24,29,.35), rgba(22,24,29,.15)); }
+.ndk-bear { font-size:calc(var(--bw) * .72); line-height:1; margin-top:-4px; filter:drop-shadow(0 6px 8px rgba(120,40,60,.18)); user-select:none; }
+.ndk-bear img { width:calc(var(--bw) * .9); height:auto; display:block; }
+.ndk-fly:hover .ndk-balloon { transform:scale(1.05); }
+@keyframes ndkRise { from { transform:translate(var(--x), 0); } to { transform:translate(calc(var(--x) + var(--drift)), calc(-100vh - 440px)); } }
+@keyframes ndkSway { from { transform:rotate(-5deg); } to { transform:rotate(5deg); } }
+
+/* prasknutí */
+.ndk-fly.is-popped { animation-play-state:paused; cursor:default; }
+.ndk-fly.is-popped .ndk-balloon, .ndk-fly.is-popped .ndk-string { animation:ndkPop .25s ease-out forwards; }
+.ndk-fly.is-popped .ndk-bear { animation:ndkFall 1.3s cubic-bezier(.55,0,1,.45) forwards; }
+@keyframes ndkPop { to { transform:scale(1.6); opacity:0; } }
+@keyframes ndkFall { 0% { transform:translateY(0) rotate(0); } 100% { transform:translateY(110vh) rotate(var(--spin)); } }
+.ndk-bit { position:absolute; width:8px; height:8px; border-radius:50%; background:var(--bc); pointer-events:none; animation:ndkBit .6s ease-out forwards; }
+@keyframes ndkBit { to { transform:translate(var(--bx), var(--by)) scale(.3); opacity:0; } }
+.ndk-heart { position:absolute; pointer-events:none; font-size:22px; animation:ndkHeart 1s ease-out forwards; }
+@keyframes ndkHeart { to { transform:translateY(-60px) scale(1.3); opacity:0; } }
+
+/* ---------- OBSAH ---------- */
+.ndk-card { position:relative; z-index:2; max-width:640px; width:100%; text-align:center; padding:44px 40px 40px; border-radius:32px; background:rgba(255,255,255,.94); box-shadow:0 40px 80px -40px rgba(160,50,80,.35); border:1px solid rgba(255,255,255,.9); pointer-events:auto; }
+.ndk-logo { width:120px; height:120px; margin:0 auto 22px; border-radius:24px; overflow:hidden; background:#fff; box-shadow:0 16px 30px -18px rgba(160,50,80,.5); display:flex; align-items:center; justify-content:center; animation:ndkBob 4s ease-in-out infinite; }
+.ndk-logo img { width:100%; height:100%; object-fit:contain; }
+@keyframes ndkBob { 50% { transform:translateY(-6px) rotate(-2deg); } }
+.ndk-soon { display:inline-block; font-size:13px; font-weight:600; letter-spacing:.02em; color:var(--pink-d); background:var(--pink-soft); border-radius:999px; padding:6px 14px; }
+.ndk h1 { font-size:48px; line-height:1.05; font-weight:600; letter-spacing:-.03em; margin-top:16px; }
+.ndk h1 span { color:var(--pink); }
+.ndk-lead { font-size:18px; line-height:1.6; color:var(--ink-2); margin:16px auto 0; max-width:40ch; }
+.ndk-chips { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-top:24px; }
+.ndk-chip { display:inline-flex; align-items:center; gap:6px; font-size:14px; font-weight:500; padding:8px 14px; border-radius:999px; background:#fff; border:1.5px solid var(--line); color:var(--ink); }
+.ndk-cta { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:30px; }
+.ndk-btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; height:52px; padding:0 26px; border-radius:999px; font:500 16px 'Rubik',sans-serif; text-decoration:none; white-space:nowrap; transition:transform .2s cubic-bezier(.16,1,.3,1), background .2s ease, border-color .2s ease; }
+.ndk-btn:active { transform:scale(.98); }
+.ndk-btn--primary { background:var(--pink); color:#fff; }
+.ndk-btn--primary:hover { background:var(--pink-d); }
+.ndk-btn--line { background:#fff; color:var(--ink); border:1.5px solid var(--line); }
+.ndk-btn--line:hover { border-color:var(--ink); }
+.ndk-btn svg { width:18px; height:18px; }
+.ndk-hint { font-size:13px; color:var(--muted); margin-top:26px; min-height:1.4em; }
+.ndk-score { font-weight:600; color:var(--pink-d); }
+
+@media (max-width:767px) {
+  .ndk-stage { padding:40px 16px 72px; align-items:flex-start; }
+  /* na telefonu bez karty: balónky létají kolem textu, ne za mléčným sklem */
+  .ndk-card { padding:8px 4px 0; border-radius:0; margin-top:16px; background:none; box-shadow:none; border:none; }
+  .ndk-fly { opacity:.9; }
+  .ndk-logo { width:92px; height:92px; border-radius:20px; margin-bottom:18px; }
+  .ndk h1 { font-size:34px; }
+  .ndk-lead { font-size:16px; }
+  .ndk-btn { flex:1 1 100%; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .ndk *, .ndk *::before, .ndk *::after { animation:none !important; transition:none !important; }
+}
+</style>
+
+<div class="ndk" id="ndk">
+  <section class="ndk-stage">
+    <div class="ndk-sky" id="ndkSky" aria-hidden="true"></div>
+    <div class="ndk-card">
+      <div class="ndk-logo" id="ndkLogo"></div>
+      <span class="ndk-soon">Už brzy</span>
+      <h1>NARIN <span>Dárky</span> připravujeme</h1>
+      <p class="ndk-lead">Plyšáci, sladkosti, přáníčka a další radosti, které se hodí ke květinám. Obchod právě ladíme a brzy ho otevřeme.</p>
+      <div class="ndk-chips" id="ndkChips"></div>
+      <div class="ndk-cta">
+        <a class="ndk-btn ndk-btn--primary" id="ndkShop" href="https://vezminarin.cz/page118819546.html">Zatím vybrat květiny</a>
+        <a class="ndk-btn ndk-btn--line" id="ndkIg" href="https://www.instagram.com/narin.cz" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r=".6" fill="currentColor"/></svg>Sledovat novinky</a>
+      </div>
+      <p class="ndk-hint" id="ndkHint">Klepněte na balónek.</p>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  // ================== NASTAVENÍ ==================
+  var CONFIG = {
+    logo: 'https://static.tildacdn.com/tild6663-6565-4865-a434-656133616161/Blue_Pink_Flat_Illus.webp',
+    // Obrázky medvídků (PNG s průhledným pozadím). Prázdné = použije se emoji.
+    bearImages: [],
+    bearEmoji: ['🧸', '🧸', '🧸', '🎁', '🧸', '🍫', '🧸', '💌'],
+    balloonColors: ['#e0607e', '#f4a3b8', '#186ce0', '#8fb6f2', '#f2c14e', '#b9a4f0', '#f7b267'],
+    chips: [['🧸', 'Plyšáci'], ['🍫', 'Sladkosti'], ['🍬', 'Bonbony'], ['💌', 'Přáníčka'], ['🎈', 'Zážitky']],
+    maxFlying: 12
+  };
+  // ===============================================
+
+  var root = document.getElementById('ndk');
+  if (!root) return;
+  var $ = function (id) { return document.getElementById(id); };
+  var sky = $('ndkSky');
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var rand = function (a, b) { return a + Math.random() * (b - a); };
+  var pick = function (arr) { return arr[Math.floor(Math.random() * arr.length)]; };
+
+  $('ndkLogo').innerHTML = '<img src="' + CONFIG.logo + '" alt="NARIN Dárky">';
+  $('ndkChips').innerHTML = CONFIG.chips.map(function (c) { return '<span class="ndk-chip"><span aria-hidden="true">' + c[0] + '</span>' + c[1] + '</span>'; }).join('');
+
+  function bearHtml() {
+    if (CONFIG.bearImages.length) return '<img src="' + pick(CONFIG.bearImages) + '" alt="" draggable="false">';
+    return pick(CONFIG.bearEmoji);
+  }
+
+  function spawn(startProgress) {
+    if (sky.children.length >= CONFIG.maxFlying) return;
+    var w = sky.clientWidth || window.innerWidth;
+    var small = w < 700;
+    var bw = small ? rand(38, 58) : rand(48, 78);
+    var el = document.createElement('div');
+    el.className = 'ndk-fly';
+    var dur = rand(small ? 11 : 13, small ? 17 : 22);
+    el.style.setProperty('--x', rand(-20, w - bw + 20) + 'px');
+    el.style.setProperty('--drift', rand(-80, 80) + 'px');
+    el.style.setProperty('--dur', dur + 's');
+    el.style.setProperty('--sway', rand(2.2, 3.8) + 's');
+    el.style.setProperty('--bw', bw + 'px');
+    el.style.setProperty('--bc', pick(CONFIG.balloonColors));
+    el.style.setProperty('--spin', rand(-200, 200) + 'deg');
+    // při načtení stránky část balónků rovnou "rozletíme", ať není nebe prázdné
+    if (startProgress) el.style.animationDelay = (-dur * startProgress) + 's';
+    el.innerHTML = '<div class="ndk-fly-sway"><div class="ndk-balloon"></div><div class="ndk-string"></div><div class="ndk-bear">' + bearHtml() + '</div></div>';
+    el.addEventListener('animationend', function (e) { if (e.target === el) el.remove(); });
+    el.addEventListener('pointerdown', function () { pop(el); });
+    sky.appendChild(el);
+  }
+
+  var popped = 0;
+  function pop(el) {
+    if (el.classList.contains('is-popped')) return;
+    el.classList.add('is-popped');
+    var b = el.querySelector('.ndk-balloon').getBoundingClientRect();
+    var s = sky.getBoundingClientRect();
+    var cx = b.left - s.left + b.width / 2, cy = b.top - s.top + b.height / 2;
+    var color = getComputedStyle(el).getPropertyValue('--bc');
+    for (var i = 0; i < 8; i++) {
+      var bit = document.createElement('span');
+      bit.className = 'ndk-bit';
+      var a = i / 8 * Math.PI * 2;
+      bit.style.left = cx + 'px'; bit.style.top = cy + 'px';
+      bit.style.setProperty('--bc', color);
+      bit.style.setProperty('--bx', Math.cos(a) * 40 + 'px');
+      bit.style.setProperty('--by', Math.sin(a) * 40 + 'px');
+      sky.appendChild(bit);
+      setTimeout(function (n) { n.remove(); }.bind(null, bit), 700);
+    }
+    var h = document.createElement('span');
+    h.className = 'ndk-heart'; h.textContent = '💗';
+    h.style.left = (cx - 11) + 'px'; h.style.top = (cy - 11) + 'px';
+    sky.appendChild(h);
+    setTimeout(function () { h.remove(); }, 1000);
+    setTimeout(function () { el.remove(); }, 1400);
+    popped++;
+    $('ndkHint').innerHTML = popped === 1 ? 'Prásk! Medvídek to přežil, neboj.' : 'Prasklé balónky: <span class="ndk-score">' + popped + '</span>';
+  }
+
+  if (reduced) {
+    // bez animací: pár statických balónků po stranách
+    [.08, .82, .2, .7].forEach(function (p, i) {
+      spawn(0);
+      var el = sky.lastChild; el.style.animation = 'none';
+      el.style.transform = 'translate(' + (p * (sky.clientWidth || window.innerWidth)) + 'px,' + (-(i % 2 ? 380 : 520)) + 'px)';
+    });
+    $('ndkHint').remove();
+    return;
+  }
+
+  for (var i = 0; i < 7; i++) spawn(rand(.1, .85));
+  var timer = setInterval(function () { if (!document.hidden) spawn(0); }, 1500);
+  document.addEventListener('visibilitychange', function () {
+    sky.querySelectorAll('.ndk-fly:not(.is-popped)').forEach(function (el) { el.style.animationPlayState = document.hidden ? 'paused' : 'running'; });
+  });
+})();
+</script>
