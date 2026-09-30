@@ -37,6 +37,8 @@
 .lk-order-detail-label { color:#8a8f98; flex-shrink:0; }
 .lk-order-detail-value { color:#16181d; text-align:right; }
 .lk-empty { font-size:13px; color:#8a8f98; padding:20px 0; }
+.lk-orders-skel { height:84px; border-radius:16px; margin-bottom:10px; background:linear-gradient(90deg,#f1f4f8 0%,#fafbfd 50%,#f1f4f8 100%); background-size:200% 100%; animation:lkOrdSkel 1.4s ease-in-out infinite; }
+@keyframes lkOrdSkel { to { background-position:-200% 0; } }
 .lk-order-products { margin-bottom: 12px; }
 .lk-order-product-row { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; color: #16181d; }
 .lk-order-product-name { color: #16181d; }
@@ -107,80 +109,118 @@
         </div>
         <svg class="lk-collection-banner-arrow" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
     </a>
-    <div id="lkOrdersList"></div>
+    <div id="lkOrdersList"><div class="lk-orders-skel"></div><div class="lk-orders-skel"></div><div class="lk-orders-skel"></div></div>
 </div>
 
 
 
 <script>
-(function() {
-    const SUPABASE_URL = "https://wqburlamuipxmenqsjnx.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_ORMmBYvVjH6i2GanWa2JyA_mWm3fTCZ";
-    const TOKEN_KEY = "lk_auth_token";
+/*
+  NARIN: jediný zdroj dat pro osobní účet (/members/...).
+  Načte member-data (body, úroveň, objednávky) a uloží je do window.__memberData.
+  Ostatní bloky NEMAJÍ mít vlastní opakované dotazy ani setInterval na čekání:
+  stačí window.narinOnMemberData(function (data) { ... }), zavolá se hned,
+  jakmile data jsou, a pak znovu po každé aktualizaci.
 
-    let loaded = false;
-    let timer = null;
+  Proti dřívější verzi:
+  - běží jen jednou, i když je blok na stránce vložený víckrát (nebo i v profile-header),
+  - obnovuje data jen když je stránka vidět (skrytá záložka nic nestahuje),
+  - interval 30 s místo 15 s, po návratu do záložky se data hned obnoví,
+  - kontrola, že token patří právě přihlášenému účtu (jinak by se ukázala cizí data).
+*/
+(function () {
+    if (window.__narinMemberPoller) return;
+    window.__narinMemberPoller = true;
 
-    function getStoredToken() {
+    var SUPABASE_URL = "https://wqburlamuipxmenqsjnx.supabase.co";
+    var SUPABASE_KEY = "sb_publishable_ORMmBYvVjH6i2GanWa2JyA_mWm3fTCZ";
+    var TOKEN_KEY = "lk_auth_token";
+    var REFRESH_MS = 30000;        // jak často obnovovat data, když je stránka vidět
+    var TOKEN_WAIT_MS = 700;       // jak často se podívat, jestli už je token (bez sítě)
+    var TOKEN_WAIT_MAX_MS = 180000; // po 3 minutách bez tokenu přestaneme čekat
+
+    var listeners = [];
+    var timer = null, lastFetch = 0, inFlight = false, waitedFor = 0;
+
+    // Veřejné API pro ostatní bloky
+    window.narinOnMemberData = function (cb) {
+        listeners.push(cb);
+        if (window.__memberData) { try { cb(window.__memberData); } catch (e) { console.error(e); } }
+    };
+
+    function getTildaEmail() {
         try {
-            const raw = localStorage.getItem(TOKEN_KEY);
+            for (var key in localStorage) {
+                if (key.indexOf("tilda_members_profile") === 0 && key.indexOf("_timestamp") === -1) {
+                    try {
+                        var p = JSON.parse(localStorage.getItem(key));
+                        var em = p && (p.login || p.email);
+                        if (em) return String(em).trim().toLowerCase();
+                    } catch (e) {}
+                }
+            }
+        } catch (e) {}
+        return null;
+    }
+    function tokenEmail(token) {
+        try { var pl = JSON.parse(atob(String(token).split('.')[0])); return pl.email ? String(pl.email).trim().toLowerCase() : null; } catch (e) { return null; }
+    }
+    function getToken() {
+        try {
+            var raw = localStorage.getItem(TOKEN_KEY);
             if (!raw) return null;
-            const data = JSON.parse(raw);
-            if (!data.token || !data.exp || data.exp < Date.now()) return null;
-            return data.token;
-        } catch (e) {
-            return null;
-        }
+            var d = JSON.parse(raw);
+            if (!d.token || !d.exp || d.exp < Date.now()) return null;
+            var te = getTildaEmail(), ke = tokenEmail(d.token);
+            if (te && ke && te !== ke) { localStorage.removeItem(TOKEN_KEY); return null; }
+            return d.token;
+        } catch (e) { return null; }
     }
 
-    // lkAuthGateOverlay (vloženo globálně na celý web) ověří e-mail a
-    // uloží lk_auth_token dřív, než se člověk vůbec dostane na tuto
-    // stránku — tady jen čekáme, až se objeví, žádnou vlastní obrazovku
-    // potvrzení nepotřebujeme.
-    async function loadMemberData() {
-        const token = getStoredToken();
+    function publish(data) {
+        window.__memberData = data;
+        document.querySelectorAll(".user-balance").forEach(function (el) { el.textContent = data.balance; });
+        listeners.forEach(function (cb) { try { cb(data); } catch (e) { console.error(e); } });
+        try { document.dispatchEvent(new CustomEvent('narin:memberdata', { detail: data })); } catch (e) {}
+    }
+
+    async function load() {
+        if (inFlight) return;
+        var token = getToken();
         if (!token) {
-            scheduleNext();
+            // token ještě nemáme (lk-auth-gate teprve ověřuje e-mail), čekáme bez dotazů na server
+            if (waitedFor < TOKEN_WAIT_MAX_MS) { waitedFor += TOKEN_WAIT_MS; schedule(TOKEN_WAIT_MS); }
             return;
         }
+        inFlight = true;
         try {
-            const res = await fetch(SUPABASE_URL + "/functions/v1/member-data", {
+            var res = await fetch(SUPABASE_URL + "/functions/v1/member-data", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    apikey: SUPABASE_KEY,
-                    Authorization: "Bearer " + SUPABASE_KEY
-                },
+                headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
                 body: JSON.stringify({ token: token })
             });
-            const data = await res.json();
-
-            if (data.error) {
-                // "token required" (chybí token) nebo "invalid_token"
-                // (expiroval, nebo ho jiný widget smazal po zjištění
-                // neshody s aktuálně přihlášeným Tilda účtem) — v obou
-                // případech nic neukládáme, lkAuthGateOverlay token při
-                // dalším načtení stránky obnoví.
-                loaded = false;
-                scheduleNext();
-                return;
-            }
-
-            window.__memberData = data;
-            loaded = true;
+            var data = await res.json();
+            lastFetch = Date.now();
+            if (data && !data.error) publish(data);
         } catch (e) {
-            console.log("member-data ошибка:", e);
+            console.log("member-data chyba:", e);
         }
-        scheduleNext();
+        inFlight = false;
+        schedule(REFRESH_MS);
     }
 
-    function scheduleNext() {
+    function schedule(ms) {
         clearTimeout(timer);
-        const delay = loaded ? 15000 : 400;
-        timer = setTimeout(loadMemberData, delay);
+        timer = setTimeout(function () { if (!document.hidden) load(); else timer = null; }, ms);
     }
 
-    loadMemberData();
+    document.addEventListener('visibilitychange', function () {
+        if (document.hidden) return;
+        // návrat do záložky: když jsou data starší než interval, obnovíme je hned
+        if (!timer || Date.now() - lastFetch > REFRESH_MS) load();
+    });
+
+    load();
 })();
 </script>
 
@@ -192,7 +232,9 @@
         'Отменено': { label: 'Zrušeno', bg: '#f1efe8', color: '#5f5e5a' }
     };
     const PAYMENT_LABELS = { stripe: 'Platební kartou (online)', cash: 'Hotově' };
-    const DEFAULT_STICKER = 'ССЫЛКА_НА_ДЕФОЛТНЫЙ_ЦВЕТОК';
+    // Když produkt nemá vlastní samolepku, samolepku prostě nevykreslíme
+    // (dřív tu byl nevyplněný zástupný text a prohlížeč ukazoval rozbitý obrázek).
+    const DEFAULT_STICKER = '';
 
     function getStatus(order) {
         if (order.payment_status && order.payment_status.indexOf('Оплачено') !== -1) return { label: 'Zaplaceno', bg: '#eaf3de', color: '#3b6d11' };
@@ -247,6 +289,7 @@
         let html = '';
         products.forEach(function(p) {
             const src = p.image_url || DEFAULT_STICKER;
+            if (!src) return;
             const bundleSize = p.portion ? parseInt(p.portion) : 1;
             const count = Math.max(1, Math.round((p.quantity || 1) / bundleSize));
             for (let i = 0; i < count; i++) {
@@ -378,7 +421,11 @@
             container.innerHTML = '<div class="lk-empty">Zatím žádné objednávky.</div>';
             return;
         }
+        // zapamatujeme si rozbalené objednávky, ať se po obnově dat nezavřou
+        const open = {};
+        container.querySelectorAll('.lk-order-detail.open').forEach(function (el) { open[el.id] = true; });
         container.innerHTML = data.orders.map(renderOrder).join('');
+        Object.keys(open).forEach(function (id) { const el = document.getElementById(id); if (el) el.classList.add('open'); });
         container.querySelectorAll('[data-toggle]').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 const idx = this.getAttribute('data-toggle');
@@ -392,15 +439,16 @@
         });
     }
 
-    if (window.__memberData) {
-        render(window.__memberData);
-    } else {
-        const wait = setInterval(function() {
-            if (window.__memberData) {
-                render(window.__memberData);
-                clearInterval(wait);
-            }
-        }, 300);
+    // Seznam se překreslí po každé obnově dat (stav Potvrzeno / Na cestě / Doručeno
+    // se tak změní sám, dřív se vykreslil jen jednou a stál).
+    let lastSig = null;
+    function onData(data) {
+        const sig = JSON.stringify((data.orders || []).map(function (o) { return [o.order_id, o.status, o.payment_status]; }));
+        if (sig === lastSig) return;
+        lastSig = sig;
+        render(data);
     }
+    if (window.narinOnMemberData) window.narinOnMemberData(onData);
+    else document.addEventListener('narin:memberdata', function (e) { onData(e.detail); });
 })();
 </script>
