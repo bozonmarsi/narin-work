@@ -1,704 +1,770 @@
+<!--
+  NARIN: stránka Sbírka nálepek (/members/collection).
+  Celý kód patří do jednoho HTML bloku T123 (nahrazuje celý starý kód stránky).
+  Data bere ze společného zavaděče member-data (je vložený přímo tady, na stránce běží jen jednou).
+-->
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://wqburlamuipxmenqsjnx.supabase.co" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <style>
-.lk-collection-wrap { font-family: 'Rubik', sans-serif; max-width: 600px; margin: 0 auto; padding: 0 20px 40px; box-sizing: border-box; }
-.lk-topbar { display: flex; justify-content: space-between; align-items: center; padding: 20px 0 0; }
-.lk-brand-header { text-align: center; margin: 18px 0 12px; }
-.lk-brand-header img { max-width: 280px; width: 100%; height: auto; display: inline-block; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; pointer-events: none; }
-.lk-brand-tagline { font-size: 13px; color: #8a8f98; margin-top: 6px; }
-.lk-collection-count { font-size: 13px; color: #8a8f98; margin-bottom: 14px; text-align: center; }
-.lk-action-row { display: flex; gap: 8px; margin-bottom: 14px; }
-.lk-shake-btn { flex: 1; padding: 13px; border-radius: 16px; border: none; background: #186ce0; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; display: none; }
-.lk-share-btn { width: 50px; border-radius: 16px; border: none; background: linear-gradient(135deg,#f58529,#dd2a7b,#8134af,#515bd4); display: none; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: opacity 0.2s ease; }
-.lk-jar { position: relative; width: 100%; height: 370px; border-radius: 24px; overflow: hidden; touch-action: none; display: none; background: linear-gradient(160deg,#eaf3fc,#dcecfb); }
-.lk-spark { position: absolute; background: #fff; border-radius: 50%; animation: lkTwinkle 2.4s ease-in-out infinite; pointer-events: none; }
-@keyframes lkTwinkle { 0%, 100% { opacity: 0.12; transform: scale(0.6); } 50% { opacity: 0.85; transform: scale(1.2); } }
-.lk-collection-empty { display: none; text-align: center; padding: 60px 20px; color: #8a8f98; font-size: 14px; background: #f7f8fa; border-radius: 24px; }
+.nkl { --blue:#186ce0; --tint:#f3f7fd; --tint-2:#e6effb; --ink:#16181d; --ink-2:#4a505b; --muted:#8a8f98; --line:#e9ebef;
+  font-family:'Rubik',sans-serif; color:var(--ink); max-width:640px; margin:0 auto; padding:16px 16px 48px; box-sizing:border-box; -webkit-font-smoothing:antialiased; }
+.nkl *, .nkl *::before, .nkl *::after { box-sizing:border-box; }
+.nkl h2, .nkl p { margin:0; }
+.nkl a { text-decoration:none; }
+.nkl button { font-family:inherit; }
+.nkl-top { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+.nkl-back { display:inline-flex; align-items:center; gap:6px; color:var(--blue); font-size:15px; font-weight:500; }
+.nkl-home { display:inline-flex; align-items:center; gap:7px; height:40px; padding:0 16px; border-radius:999px; border:1.5px solid var(--line); color:var(--ink); font-size:14px; font-weight:500; background:#fff; }
+.nkl-back svg, .nkl-home svg { width:18px; height:18px; }
 
-.lk-sticker-reveal { position: fixed; inset: 0; background: rgba(16,24,40,0.55); display: flex; align-items: center; justify-content: center; z-index: 999; padding: 20px; box-sizing: border-box; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
-.lk-sticker-reveal.active { opacity: 1; pointer-events: auto; }
-.lk-sticker-reveal-card { background: #ffffff; border-radius: 24px; padding: 28px 24px 24px; max-width: 320px; width: 100%; text-align: center; transform: scale(0.88) translateY(14px); transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1); }
-.lk-sticker-reveal.active .lk-sticker-reveal-card { transform: scale(1) translateY(0); }
-.lk-sticker-reveal-label { font-size: 13px; font-weight: 700; color: #186ce0; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 16px; }
-.lk-sticker-reveal-img-wrap { height: 140px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
-.lk-sticker-reveal-img-wrap img { max-height: 140px; max-width: 100%; filter: drop-shadow(0 6px 14px rgba(20,40,70,0.28)); }
-.lk-sticker-pop { animation: lkStickerPop 0.6s cubic-bezier(0.34,1.56,0.64,1); }
-@keyframes lkStickerPop {
-    0% { transform: scale(0) rotate(-18deg); opacity: 0; }
-    60% { transform: scale(1.15) rotate(6deg); opacity: 1; }
-    100% { transform: scale(1) rotate(0deg); opacity: 1; }
-}
-.lk-sticker-reveal-batch { display: none; font-size: 52px; font-weight: 700; color: #186ce0; margin-bottom: 12px; }
-.lk-sticker-reveal-name { font-size: 16px; font-weight: 600; color: #16181d; margin-bottom: 20px; }
-.lk-sticker-reveal-btn { width: auto; min-width: 150px; padding: 10px 26px; border-radius: 13px; border: none; background: #186ce0; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; display: block; margin: 0 auto; transition: transform 0.12s ease; }
-.lk-sticker-reveal-btn:active { transform: scale(0.95); }
+.nkl-brand { text-align:center; margin:14px 0 4px; }
+.nkl-brand img { width:240px; max-width:78%; height:auto; aspect-ratio:3/1; object-fit:contain; display:inline-block; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; pointer-events:none; }
+.nkl-tag { font-size:14px; color:var(--muted); margin-top:2px; }
 
-.lk-share-preview { position: fixed; inset: 0; background: rgba(16,24,40,0.6); display: flex; align-items: center; justify-content: center; z-index: 999; padding: 20px; box-sizing: border-box; opacity: 0; pointer-events: none; transition: opacity 0.25s ease; }
-.lk-share-preview.active { opacity: 1; pointer-events: auto; }
-.lk-share-preview-card { background: #ffffff; border-radius: 24px; padding: 16px; max-width: 260px; width: 100%; text-align: center; position: relative; transform: scale(0.92); transition: transform 0.25s ease; }
-.lk-share-preview.active .lk-share-preview-card { transform: scale(1); }
-.lk-share-preview-close-x { position: absolute; top: 10px; right: 10px; width: 28px; height: 28px; border-radius: 50%; border: none; background: rgba(0,0,0,0.06); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; z-index: 2; }
-.lk-share-preview-card img { width: 100%; aspect-ratio: 9 / 16; object-fit: cover; border-radius: 16px; margin-bottom: 14px; background: #f0f2f5; }
-.lk-bg-picker { display: flex; gap: 10px; justify-content: center; margin-bottom: 14px; }
-.lk-bg-swatch { width: 40px; height: 40px; border-radius: 50%; border: 2.5px solid transparent; background-size: cover; background-position: center; padding: 0; cursor: pointer; }
-.lk-bg-swatch.active { border-color: #186ce0; }
-.lk-share-preview-btn { width: 100% !important; max-width: 228px !important; padding: 10px !important; border-radius: 12px !important; border: none !important; background: #186ce0 !important; color: #fff !important; font-size: 13px !important; font-weight: 600 !important; cursor: pointer !important; box-sizing: border-box !important; display: block !important; margin: 0 auto !important; }
+.nkl-stats { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin:14px 0 16px; min-height:34px; }
+.nkl-stat { display:inline-flex; align-items:center; gap:6px; height:34px; padding:0 14px; border-radius:999px; background:var(--tint); font-size:13px; color:var(--ink-2); white-space:nowrap; }
+.nkl-stat b { color:var(--blue); font-weight:600; font-size:14px; }
+.nkl-stat.sk { width:110px; background:linear-gradient(90deg,#eef1f6 25%,#f6f8fb 37%,#eef1f6 63%); background-size:400% 100%; animation:nklShim 1.4s ease infinite; }
+@keyframes nklShim { 0% { background-position:100% 50%; } 100% { background-position:0 50%; } }
+
+.nkl-jar { position:relative; width:100%; height:380px; border-radius:26px; overflow:hidden; touch-action:none; background:linear-gradient(165deg,#eef5fd 0%,#dcebfb 100%); box-shadow:inset 0 0 0 1px rgba(24,108,224,.06); -webkit-user-select:none; user-select:none; }
+.nkl-jar-glass { position:absolute; inset:0; pointer-events:none; background:radial-gradient(120% 60% at 20% 0%,rgba(255,255,255,.7),rgba(255,255,255,0) 60%); }
+.nkl-spark { position:absolute; background:#fff; border-radius:50%; animation:nklTw 2.4s ease-in-out infinite; pointer-events:none; }
+@keyframes nklTw { 0%,100% { opacity:.12; transform:scale(.6); } 50% { opacity:.85; transform:scale(1.2); } }
+.nkl-st { position:absolute; left:0; top:0; pointer-events:none; will-change:transform; }
+.nkl-st img { width:100%; height:100%; display:block; filter:drop-shadow(0 3px 6px rgba(20,40,70,.25)); -webkit-user-drag:none; }
+.nkl-jar-msg { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; color:var(--ink-2); font-size:14px; text-align:center; padding:24px; }
+.nkl-jar-msg .d { animation:nklBob 1.6s ease-in-out infinite; }
+@keyframes nklBob { 0%,100% { transform:translateY(0) rotate(0); } 50% { transform:translateY(-8px) rotate(12deg); } }
+
+.nkl-actions { display:flex; gap:10px; margin:14px 0 6px; }
+.nkl-shake { flex:1; height:50px; border-radius:999px; border:none; background:var(--blue); color:#fff; font-size:15px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:8px; transition:transform .12s ease; }
+.nkl-shake:active, .nkl-share:active { transform:scale(.97); }
+.nkl-shake svg { width:20px; height:20px; }
+.nkl-share { height:50px; padding:0 18px; border-radius:999px; border:none; background:linear-gradient(135deg,#f58529,#dd2a7b,#8134af,#515bd4); color:#fff; font-size:15px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:8px; flex-shrink:0; transition:transform .12s ease, opacity .2s ease; }
+.nkl-share svg { width:20px; height:20px; }
+.nkl-share[disabled] { opacity:.55; cursor:default; }
+.nkl-hint { font-size:12.5px; color:var(--muted); text-align:center; }
+
+.nkl-sec { display:flex; align-items:baseline; justify-content:space-between; margin:30px 2px 12px; }
+.nkl-sec h2 { font-size:19px; font-weight:600; letter-spacing:-.01em; }
+.nkl-sec span { font-size:13px; color:var(--muted); }
+.nkl-album { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+@media (max-width:420px) { .nkl-album { grid-template-columns:repeat(3,1fr); } }
+.nkl-tile { position:relative; border:none; padding:10px 6px 9px; border-radius:18px; background:var(--tint); cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:6px; min-width:0; transition:transform .15s ease; }
+.nkl-tile:active { transform:scale(.96); }
+.nkl-tile-img { width:100%; aspect-ratio:1; display:flex; align-items:center; justify-content:center; }
+.nkl-tile-img img { max-width:86%; max-height:86%; object-fit:contain; filter:drop-shadow(0 3px 6px rgba(20,40,70,.18)); }
+.nkl-tile-name { font-size:12px; color:var(--ink-2); line-height:1.25; text-align:center; width:100%; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; min-height:30px; }
+.nkl-tile em { position:absolute; right:6px; top:6px; min-width:22px; height:22px; padding:0 6px; border-radius:999px; background:var(--blue); color:#fff; font-style:normal; font-size:11.5px; font-weight:600; display:flex; align-items:center; justify-content:center; }
+.nkl-tile.new::after { content:'Nová'; position:absolute; left:6px; top:6px; padding:3px 7px; border-radius:999px; background:#f6405a; color:#fff; font-size:10px; font-weight:600; }
+.nkl-tile.sk { cursor:default; background:linear-gradient(90deg,#eef1f6 25%,#f6f8fb 37%,#eef1f6 63%); background-size:400% 100%; animation:nklShim 1.4s ease infinite; aspect-ratio:3/4; }
+
+.nkl-empty { text-align:center; padding:44px 22px; border-radius:24px; background:var(--tint); }
+.nkl-empty h2 { font-size:19px; font-weight:600; margin:14px 0 6px; }
+.nkl-empty p { font-size:14.5px; color:var(--ink-2); line-height:1.5; max-width:340px; margin:0 auto 18px; }
+.nkl-cta { display:inline-flex; align-items:center; justify-content:center; height:48px; padding:0 26px; border-radius:999px; background:var(--blue); color:#fff !important; font-size:15px; font-weight:600; }
+
+.nkl-ov { position:fixed; inset:0; background:rgba(16,24,40,.55); display:flex; align-items:center; justify-content:center; z-index:9999; padding:20px; opacity:0; pointer-events:none; transition:opacity .25s ease; font-family:'Rubik',sans-serif; -webkit-font-smoothing:antialiased; }
+.nkl-ov.on { opacity:1; pointer-events:auto; }
+.nkl-card { position:relative; background:#fff; border-radius:26px; padding:26px 22px 22px; max-width:320px; width:100%; text-align:center; transform:scale(.9) translateY(14px); transition:transform .4s cubic-bezier(.34,1.56,.64,1); box-sizing:border-box; }
+.nkl-ov.on .nkl-card { transform:none; }
+.nkl-card-label { font-size:12.5px; font-weight:700; color:var(--blue,#186ce0); text-transform:uppercase; letter-spacing:.05em; margin-bottom:14px; }
+.nkl-card-img { height:150px; display:flex; align-items:center; justify-content:center; margin-bottom:12px; }
+.nkl-card-img img { max-height:150px; max-width:100%; filter:drop-shadow(0 8px 16px rgba(20,40,70,.28)); }
+.nkl-card-big { font-size:56px; font-weight:700; color:#186ce0; margin-bottom:8px; }
+.nkl-card-name { font-size:17px; font-weight:600; color:#16181d; margin-bottom:4px; }
+.nkl-card-meta { font-size:13.5px; color:#8a8f98; margin-bottom:20px; min-height:18px; }
+.nkl-card-btn { min-width:160px; height:46px; padding:0 26px; border-radius:999px; border:none; background:#186ce0; color:#fff; font-family:inherit; font-size:15px; font-weight:600; cursor:pointer; }
+.nkl-card-btn[disabled] { opacity:.55; cursor:default; }
+.nkl-pop { animation:nklPop .6s cubic-bezier(.34,1.56,.64,1); }
+@keyframes nklPop { 0% { transform:scale(0) rotate(-18deg); opacity:0; } 60% { transform:scale(1.15) rotate(6deg); opacity:1; } 100% { transform:none; opacity:1; } }
+.nkl-x { position:absolute; top:10px; right:10px; width:32px; height:32px; border-radius:50%; border:none; background:#f1f3f6; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; }
+.nkl-x svg { width:14px; height:14px; }
+.nkl-share-card { padding:16px; max-width:280px; }
+.nkl-share-img { width:100%; aspect-ratio:9/16; border-radius:16px; margin-bottom:14px; background:#eef1f6; display:flex; align-items:center; justify-content:center; overflow:hidden; color:#8a8f98; font-size:13px; }
+.nkl-share-img img { width:100%; height:100%; object-fit:cover; display:block; }
+.nkl-bgs { display:flex; gap:10px; justify-content:center; margin-bottom:14px; }
+.nkl-bg { width:40px; height:40px; border-radius:50%; border:2.5px solid transparent; background-size:cover; background-position:center; padding:0; cursor:pointer; box-shadow:0 0 0 1px #e9ebef; }
+.nkl-bg.on { border-color:#186ce0; }
+@media (prefers-reduced-motion: reduce) { .nkl-spark, .nkl-jar-msg .d, .nkl-pop { animation:none; } }
 </style>
 
-<div class="lk-collection-wrap">
-    <div class="lk-topbar">
-        <a href="/members/" style="display:inline-flex;align-items:center;gap:4px;color:#186ce0;text-decoration:none;font-size:15px;font-weight:600;">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#186ce0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-            Zpět do profilu
-        </a>
-        <a href="/" style="display:inline-flex;align-items:center;gap:7px;height:40px;padding:0 16px;border-radius:20px;background:#fff;border:1px solid #e8eaed;color:#16181d;text-decoration:none;font-size:13px;font-weight:500;">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#186ce0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
-            Domů
-        </a>
+<div class="nkl" id="nkl">
+  <div class="nkl-top">
+    <a class="nkl-back" href="https://vezminarin.cz/members/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Zpět do profilu</a>
+    <a class="nkl-home" href="https://vezminarin.cz/"><svg viewBox="0 0 24 24" fill="none" stroke="#186ce0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Domů</a>
+  </div>
+
+  <div class="nkl-brand">
+    <img src="https://static.tildacdn.com/tild3365-3764-4766-b162-383862333535/Photoroom_20260804_1.PNG" alt="NARIN stickers" draggable="false" fetchpriority="high" decoding="async">
+    <div class="nkl-tag">vaše kouzelná sbírka květin</div>
+  </div>
+
+  <div class="nkl-stats" id="nklStats"><span class="nkl-stat sk"></span><span class="nkl-stat sk"></span></div>
+
+  <div id="nklMain">
+    <div class="nkl-jar" id="nklJar">
+      <div id="nklSparks" style="position:absolute;inset:0;"></div>
+      <div class="nkl-jar-glass"></div>
+      <div class="nkl-jar-msg" id="nklJarMsg"><span class="d" id="nklJarDaisy"></span><span>Sypeme vaše nálepky…</span></div>
     </div>
-
-    <div class="lk-brand-header">
-        <img src="https://static.tildacdn.com/tild3365-3764-4766-b162-383862333535/Photoroom_20260804_1.PNG" alt="Narin stickers" draggable="false" oncontextmenu="return false">
-        <div class="lk-brand-tagline">vaše kouzelná sbírka kytic</div>
+    <div class="nkl-actions">
+      <button class="nkl-shake" id="nklShake" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4l-3 3 3 3"/><path d="M17 20l3-3-3-3"/><path d="M4 7h10a4 4 0 014 4"/><path d="M20 17H10a4 4 0 01-4-4"/></svg>Zatřást sbírkou</button>
+      <button class="nkl-share" id="nklShare" type="button" disabled aria-label="Sdílet do Instagramu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg>Sdílet</button>
     </div>
+    <p class="nkl-hint" id="nklHint">Nálepky můžete chytit prstem a pohazovat s nimi.</p>
 
-    <div class="lk-collection-count" id="lkCollectionCount"></div>
-
-    <div class="lk-action-row">
-        <button class="lk-shake-btn" id="lkShakeBtn">Zatřást sbírkou</button>
-        <button class="lk-share-btn" id="lkShareBtn" aria-label="Sdílet do Instagramu">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg>
-        </button>
+    <div class="nkl-sec"><h2>Vaše album</h2><span id="nklAlbumCount"></span></div>
+    <div class="nkl-album" id="nklAlbum">
+      <div class="nkl-tile sk"></div><div class="nkl-tile sk"></div><div class="nkl-tile sk"></div><div class="nkl-tile sk"></div>
     </div>
+  </div>
 
-    <div class="lk-jar" id="lkJar">
-        <div id="lkSparkles" style="position:absolute; inset:0;"></div>
-    </div>
-
-    <div class="lk-collection-empty" id="lkCollectionEmpty">Zatím žádné stikery — objednejte si první kytici a sbírka se začne plnit.</div>
+  <div class="nkl-empty" id="nklEmpty" hidden>
+    <span id="nklEmptyDaisy"></span>
+    <h2 id="nklEmptyTitle">Sbírka zatím čeká na první nálepku</h2>
+    <p id="nklEmptyText">Ke každé objednávce dostanete nálepku květiny, kterou jste si vybrali. Tady se vám budou sypat do sklenice.</p>
+    <a class="nkl-cta" id="nklEmptyCta" href="https://vezminarin.cz/page118819546.html">Vybrat květiny</a>
+  </div>
 </div>
 
-<div class="lk-sticker-reveal" id="lkStickerReveal">
-    <div class="lk-sticker-reveal-card">
-        <div class="lk-sticker-reveal-label" id="lkRevealLabel">Nová nálepka!</div>
-        <div class="lk-sticker-reveal-img-wrap" id="lkRevealImgWrap"><img id="lkRevealImg" src="" alt=""></div>
-        <div class="lk-sticker-reveal-batch" id="lkRevealBatch"></div>
-        <div class="lk-sticker-reveal-name" id="lkRevealName"></div>
-        <button class="lk-sticker-reveal-btn" id="lkRevealBtn">Pokračovat</button>
-    </div>
+<div class="nkl-ov" id="nklReveal" aria-hidden="true">
+  <div class="nkl-card">
+    <div class="nkl-card-label" id="nklRevLabel">Nová nálepka!</div>
+    <div class="nkl-card-img" id="nklRevImgWrap"><img id="nklRevImg" src="data:," alt=""></div>
+    <div class="nkl-card-big" id="nklRevBig" hidden></div>
+    <div class="nkl-card-name" id="nklRevName"></div>
+    <div class="nkl-card-meta" id="nklRevMeta"></div>
+    <button class="nkl-card-btn" id="nklRevBtn" type="button">Pokračovat</button>
+  </div>
 </div>
 
-<div class="lk-share-preview" id="lkSharePreview">
-    <div class="lk-share-preview-card">
-        <button class="lk-share-preview-close-x" id="lkSharePreviewClose" aria-label="Zavřít">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#8a8f98" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-        </button>
-        <img id="lkSharePreviewImg" src="" alt="">
-        <div class="lk-bg-picker" id="lkBgPicker">
-            <button class="lk-bg-swatch active" data-bg-index="0" style="background-image:url('https://static.tildacdn.com/tild6631-6365-4462-b537-636137613861/2737C39E-DD56-4E1D-B.PNG');" aria-label="Pozadí louka"></button>
-            <button class="lk-bg-swatch" data-bg-index="1" style="background-image:url('https://static.tildacdn.com/tild3232-3633-4861-b639-396163633033/2A75B8F8-2BA1-4A04-A.PNG');" aria-label="Pozadí jezero"></button>
-            <button class="lk-bg-swatch" data-bg-index="2" style="background-image:url('https://static.tildacdn.com/tild3936-3637-4665-b363-326233336536/317F2FF1-7E48-40B1-A.PNG');" aria-label="Pozadí 3"></button>
-        </div>
-        <button class="lk-share-preview-btn" id="lkSharePreviewBtn">Sdílet</button>
-    </div>
+<div class="nkl-ov" id="nklShareOv" aria-hidden="true">
+  <div class="nkl-card nkl-share-card">
+    <button class="nkl-x" id="nklShareClose" type="button" aria-label="Zavřít"><svg viewBox="0 0 24 24" fill="none" stroke="#8a8f98" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+    <div class="nkl-share-img" id="nklShareImg">Připravujeme obrázek…</div>
+    <div class="nkl-bgs" id="nklBgs"></div>
+    <button class="nkl-card-btn" id="nklShareGo" type="button" style="width:100%;" disabled>Sdílet</button>
+  </div>
 </div>
 
 <script>
-(function() {
-    const SUPABASE_URL = "https://wqburlamuipxmenqsjnx.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_ORMmBYvVjH6i2GanWa2JyA_mWm3fTCZ";
-    const TOKEN_KEY = "lk_auth_token";
+/*
+  NARIN: jediný zdroj dat pro osobní účet (/members/...).
+  Načte member-data (body, úroveň, objednávky) a uloží je do window.__memberData.
+  Ostatní bloky NEMAJÍ mít vlastní opakované dotazy ani setInterval na čekání:
+  stačí window.narinOnMemberData(function (data) { ... }), zavolá se hned,
+  jakmile data jsou, a pak znovu po každé aktualizaci.
 
-    let loaded = false;
-    let timer = null;
+  Proti dřívější verzi:
+  - běží jen jednou, i když je blok na stránce vložený víckrát (nebo i v profile-header),
+  - obnovuje data jen když je stránka vidět (skrytá záložka nic nestahuje),
+  - interval 30 s místo 15 s, po návratu do záložky se data hned obnoví,
+  - kontrola, že token patří právě přihlášenému účtu (jinak by se ukázala cizí data).
+*/
+(function () {
+    if (window.__narinMemberPoller) return;
+    window.__narinMemberPoller = true;
 
-    function getStoredToken() {
+    var SUPABASE_URL = "https://wqburlamuipxmenqsjnx.supabase.co";
+    var SUPABASE_KEY = "sb_publishable_ORMmBYvVjH6i2GanWa2JyA_mWm3fTCZ";
+    var TOKEN_KEY = "lk_auth_token";
+    var REFRESH_MS = 30000;        // jak často obnovovat data, když je stránka vidět
+    var TOKEN_WAIT_MS = 700;       // jak často se podívat, jestli už je token (bez sítě)
+    var TOKEN_WAIT_MAX_MS = 180000; // po 3 minutách bez tokenu přestaneme čekat
+
+    var listeners = [];
+    var timer = null, lastFetch = 0, inFlight = false, waitedFor = 0;
+
+    // Veřejné API pro ostatní bloky
+    window.narinOnMemberData = function (cb) {
+        listeners.push(cb);
+        if (window.__memberData) { try { cb(window.__memberData); } catch (e) { console.error(e); } }
+    };
+
+    function getTildaEmail() {
         try {
-            const raw = localStorage.getItem(TOKEN_KEY);
+            for (var key in localStorage) {
+                if (key.indexOf("tilda_members_profile") === 0 && key.indexOf("_timestamp") === -1) {
+                    try {
+                        var p = JSON.parse(localStorage.getItem(key));
+                        var em = p && (p.login || p.email);
+                        if (em) return String(em).trim().toLowerCase();
+                    } catch (e) {}
+                }
+            }
+        } catch (e) {}
+        return null;
+    }
+    function tokenEmail(token) {
+        try { var pl = JSON.parse(atob(String(token).split('.')[0])); return pl.email ? String(pl.email).trim().toLowerCase() : null; } catch (e) { return null; }
+    }
+    function getToken() {
+        try {
+            var raw = localStorage.getItem(TOKEN_KEY);
             if (!raw) return null;
-            const data = JSON.parse(raw);
-            if (!data.token || !data.exp || data.exp < Date.now()) return null;
-            return data.token;
-        } catch (e) {
-            return null;
-        }
+            var d = JSON.parse(raw);
+            if (!d.token || !d.exp || d.exp < Date.now()) return null;
+            var te = getTildaEmail(), ke = tokenEmail(d.token);
+            if (te && ke && te !== ke) { localStorage.removeItem(TOKEN_KEY); return null; }
+            return d.token;
+        } catch (e) { return null; }
     }
 
-    async function loadMemberData() {
-        const token = getStoredToken();
-        if (!token) { scheduleNext(); return; }
+    function publish(data) {
+        window.__memberData = data;
+        document.querySelectorAll(".user-balance").forEach(function (el) { el.textContent = data.balance; });
+        listeners.forEach(function (cb) { try { cb(data); } catch (e) { console.error(e); } });
+        try { document.dispatchEvent(new CustomEvent('narin:memberdata', { detail: data })); } catch (e) {}
+    }
+
+    async function load() {
+        if (inFlight) return;
+        var token = getToken();
+        if (!token) {
+            // token ještě nemáme (lk-auth-gate teprve ověřuje e-mail), čekáme bez dotazů na server
+            if (waitedFor < TOKEN_WAIT_MAX_MS) { waitedFor += TOKEN_WAIT_MS; schedule(TOKEN_WAIT_MS); }
+            return;
+        }
+        inFlight = true;
         try {
-            const res = await fetch(SUPABASE_URL + "/functions/v1/member-data", {
+            var res = await fetch(SUPABASE_URL + "/functions/v1/member-data", {
                 method: "POST",
                 headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
                 body: JSON.stringify({ token: token })
             });
-            const data = await res.json();
-
-            if (data.error) {
-                loaded = false;
-                scheduleNext();
-                return;
-            }
-
-            window.__memberData = data;
-            loaded = true;
+            var data = await res.json();
+            lastFetch = Date.now();
+            if (data && !data.error) publish(data);
         } catch (e) {
-            console.log("member-data ошибка:", e);
+            console.log("member-data chyba:", e);
         }
-        scheduleNext();
+        inFlight = false;
+        schedule(REFRESH_MS);
     }
 
-    function scheduleNext() {
+    function schedule(ms) {
         clearTimeout(timer);
-        timer = setTimeout(loadMemberData, loaded ? 15000 : 400);
+        timer = setTimeout(function () { if (!document.hidden) load(); else timer = null; }, ms);
     }
 
-    loadMemberData();
+    document.addEventListener('visibilitychange', function () {
+        if (document.hidden) return;
+        // návrat do záložky: když jsou data starší než interval, obnovíme je hned
+        if (!timer || Date.now() - lastFetch > REFRESH_MS) load();
+    });
+
+    load();
 })();
 </script>
-
-<script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js"></script>
 <script>
-(function() {
-    const MAX_STICKERS = 60;
-    const BACKGROUNDS = [
+/*
+  Sbírka nálepek. Proč dřív nálepky občas chyběly:
+  1) obrázky se načítaly s crossOrigin="anonymous". Když prohlížeč už měl stejný obrázek
+     v mezipaměti ze stránky objednávek (bez CORS), načtení selhalo a nálepka se vůbec nepřidala;
+  2) při hodně nálepkách se nevešly do sklenice a zůstaly nad jejím okrajem, mimo dohled;
+  3) stránka čekala na knihovnu fyziky, která se stahovala synchronně a blokovala vše ostatní.
+  Teď: obrázky pro zobrazení bez CORS (a zmenšené přes Tilda CDN), velikost nálepek se přizpůsobí
+  počtu, knihovna se stahuje asynchronně a album pod sklenicí ukáže nálepky i bez ní.
+  Obrázek pro sdílení se kreslí až po klepnutí na "Sdílet".
+*/
+(function () {
+    var MATTER_SRC = 'https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js';
+    var LOGO_SRC = 'https://static.tildacdn.com/tild3131-3033-4536-a130-623830646536/Photoroom_20260804_1.PNG';
+    var BACKGROUNDS = [
         'https://static.tildacdn.com/tild6631-6365-4462-b537-636137613861/2737C39E-DD56-4E1D-B.PNG',
         'https://static.tildacdn.com/tild3232-3633-4861-b639-396163633033/2A75B8F8-2BA1-4A04-A.PNG',
         'https://static.tildacdn.com/tild3936-3637-4665-b363-326233336536/317F2FF1-7E48-40B1-A.PNG'
     ];
-    let selectedBgIndex = 0;
-    let lastLoadedImages = null;
-    let pendingShareBlob = null;
-    let motionRequested = false;
-    let lastShakeTime = 0;
+    var MAX_IN_JAR = 60;          // víc nálepek do sklenice nedáváme (výkon), v albu jsou všechny
+    var MAX_COPIES_PER_LINE = 5;  // 1 nálepka = 1 balení; u velkých objednávek max. 5 kusů jednoho druhu
+    var SEEN_KEY = 'lk_seen_stickers';
+    var DAISY = ['M 159.691406 91.921875 L 178.789062 42.375 C 185.230469 27.75 184.792969 17.382812 177.480469 6.578125 C 173.335938 0.359375 166.894531 1.230469 155.871094 3.195312 C 151.070312 4.066406 146.050781 4.941406 140.921875 4.941406 C 135.574219 4.941406 130.335938 3.851562 125.316406 2.757812 C 114.292969 0.359375 107.855469 -0.625 103.707031 5.921875 C 96.722656 16.945312 96.503906 27.859375 102.941406 42.375 L 103.050781 42.59375 L 122.042969 91.921875 L 131.972656 109.492188 C 134.808594 108.617188 137.757812 108.179688 140.8125 108.179688 C 143.976562 108.179688 146.921875 108.617188 149.871094 109.492188 Z M 159.691406 91.921875',
+        'M 41.828125 109.601562 L 42.046875 109.601562 L 91.703125 125.207031 L 111.347656 128.261719 C 113.636719 122.476562 117.566406 117.566406 122.476562 114.074219 L 115.164062 95.195312 L 89.082031 49.140625 C 81.878906 34.953125 73.695312 28.839844 60.816406 27.859375 C 60.488281 27.859375 60.164062 27.859375 59.945312 27.859375 C 53.179688 27.859375 49.902344 33.425781 44.773438 43.027344 C 42.484375 47.394531 39.972656 51.867188 36.808594 56.015625 C 33.425781 60.273438 29.386719 63.765625 25.347656 67.148438 C 16.617188 74.460938 11.816406 79.042969 14.328125 86.355469 C 18.472656 98.578125 26.660156 105.5625 41.828125 109.601562 Z M 41.828125 109.601562',
+        'M 55.359375 200.070312 L 98.25 170.277344 L 112.875 156.527344 C 110.363281 151.835938 108.835938 146.488281 108.835938 140.8125 C 108.835938 140.15625 108.835938 139.503906 108.945312 138.847656 L 89.957031 132.738281 L 38.335938 124.769531 C 34.296875 124.003906 30.695312 123.570312 27.3125 123.570312 C 17.929688 123.570312 10.835938 126.953125 4.394531 134.15625 C -0.625 139.722656 1.667969 145.941406 5.921875 156.417969 C 7.777344 161.003906 9.742188 165.804688 10.945312 170.933594 C 12.144531 176.28125 12.253906 181.738281 12.363281 186.976562 C 12.582031 198.542969 13.015625 205.09375 20.21875 207.710938 C 32.226562 212.078125 42.703125 209.785156 55.25 200.179688 Z M 55.359375 200.070312',
+        'M 119.3125 164.820312 L 102.941406 176.28125 L 64.636719 212.511719 C 52.742188 222.769531 48.703125 232.265625 50.667969 245.363281 C 51.757812 252.78125 57.980469 254.855469 68.675781 258.023438 C 73.367188 259.332031 78.277344 260.75 82.863281 263.042969 C 87.664062 265.441406 91.921875 268.714844 96.066406 271.992188 C 105.015625 278.976562 110.363281 282.792969 116.910156 278.648438 C 127.714844 271.773438 132.519531 262.058594 132.953125 246.125 L 132.953125 245.90625 L 136.882812 192.976562 L 135.355469 172.789062 C 129.242188 171.695312 123.789062 168.859375 119.3125 164.820312 Z M 119.3125 164.820312',
+        'M 216.660156 212.511719 L 216.550781 212.402344 L 178.464844 176.390625 L 161.984375 164.929688 C 157.507812 168.96875 152.054688 171.804688 145.941406 172.789062 L 144.414062 192.976562 L 148.34375 246.125 C 148.777344 262.058594 153.582031 271.226562 164.820312 277.773438 C 171.261719 281.484375 176.71875 277.882812 185.773438 271.226562 C 189.703125 268.28125 193.851562 265.332031 198.542969 263.042969 C 203.34375 260.640625 208.585938 259.332031 213.605469 258.128906 C 224.625 255.402344 230.847656 253.4375 231.71875 245.6875 C 233.03125 232.703125 228.554688 222.878906 216.660156 212.511719 Z M 216.660156 212.511719',
+        'M 277.882812 133.71875 C 268.933594 124.441406 258.457031 121.824219 243.179688 124.988281 L 242.960938 124.988281 L 191.558594 132.84375 L 172.570312 138.847656 C 172.570312 139.503906 172.570312 140.046875 172.570312 140.703125 C 172.570312 146.488281 171.042969 151.945312 168.53125 156.636719 L 183.046875 170.386719 L 226.15625 200.398438 C 238.703125 210.003906 248.636719 211.96875 260.640625 207.054688 C 267.515625 204.21875 268.171875 197.671875 268.714844 186.320312 C 268.933594 181.300781 269.261719 176.171875 270.355469 171.042969 C 271.554688 165.695312 273.738281 160.785156 275.917969 155.980469 C 280.832031 145.503906 283.230469 139.285156 277.882812 133.71875 Z M 277.882812 133.71875',
+        'M 159.253906 114.183594 C 164.167969 117.785156 167.988281 122.695312 170.386719 128.480469 L 190.03125 125.425781 L 239.90625 109.710938 C 255.074219 105.78125 262.824219 98.90625 266.535156 86.246094 C 268.605469 79.042969 264.023438 74.460938 255.621094 66.929688 C 251.910156 63.65625 248.199219 60.164062 244.925781 56.125 C 241.542969 51.867188 239.140625 46.957031 236.847656 42.265625 C 231.71875 32.007812 228.554688 26.222656 220.917969 26.984375 C 208.257812 28.40625 199.746094 35.0625 192.542969 49.25 L 192.433594 49.359375 L 166.457031 95.195312 Z M 159.253906 114.183594',
+        'M 141.25 180.972656 C 118.984375 180.972656 100.871094 162.855469 100.871094 140.59375 C 100.871094 118.332031 118.984375 100.214844 141.25 100.214844 C 163.511719 100.214844 181.628906 118.332031 181.628906 140.59375 C 181.628906 162.855469 163.511719 180.972656 141.25 180.972656 Z M 141.25 180.972656'];
+    function daisy(color, size) { return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 283 283" aria-hidden="true"><g fill="' + color + '">' + DAISY.map(function (d) { return '<path d="' + d + '"/>'; }).join('') + '</g></svg>'; }
+    function $(id) { return document.getElementById(id); }
+    function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+    function decode(s) { if (!s) return s; var t = document.createElement('textarea'); t.innerHTML = s; return t.value.replace(/\s+/g, ' ').trim(); }
+    function word(n) { return n === 1 ? 'nálepka' : (n >= 2 && n <= 4 ? 'nálepky' : 'nálepek'); }
+    function kindWord(n) { return n === 1 ? 'druh' : (n >= 2 && n <= 4 ? 'druhy' : 'druhů'); }
+    function fmtDate(iso) { var d = new Date(iso); return isNaN(d) ? '' : d.getDate() + '. ' + (d.getMonth() + 1) + '. ' + d.getFullYear(); }
+    var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    function decodeEntities(str) {
-        if (!str) return str;
-        const el = document.createElement('textarea');
-        el.innerHTML = str;
-        return el.value;
+    // Zmenšený náhled přes Tilda CDN (rychlejší), při chybě se vezme originál
+    function thumb(url, w) {
+        var m = /^https:\/\/static\.tildacdn\.com\/(tild[^\/]+)\/(.+)$/.exec(url || '');
+        return m ? 'https://thb.tildacdn.com/' + m[1] + '/-/resize/' + w + 'x/' + m[2] : url;
+    }
+    function setImg(img, url, w, onFail) {
+        var small = thumb(url, w);
+        img.onerror = function () {
+            if (small !== url && img.getAttribute('data-orig') !== '1') { img.setAttribute('data-orig', '1'); img.src = url; }
+            else if (onFail) onFail();
+        };
+        img.src = small;
     }
 
-    function stickerWord(n) {
-        if (n === 1) return 'nálepka';
-        if (n >= 2 && n <= 4) return 'nálepky';
-        return 'nálepek';
-    }
+    // přesuneme překryvná okna do <body>, aby je nic v Tildě neořízlo
+    ['nklReveal', 'nklShareOv'].forEach(function (id) { var el = $(id); if (el && el.parentNode !== document.body) document.body.appendChild(el); });
+    $('nklJarDaisy').innerHTML = daisy('#186ce0', 44);
+    $('nklEmptyDaisy').innerHTML = daisy('#186ce0', 56);
 
-    function getAllStickers(orders) {
-        const list = [];
-        (orders || []).forEach(function(order) {
-            const products = order.raw_payload && order.raw_payload.payment && order.raw_payload.payment.products;
+    // ---------- data ----------
+    function isCounted(o) {
+        var ps = String(o.payment_status || '');
+        return o.status !== 'cancelled' && ps.indexOf('Отменено') === -1 && ps.indexOf('Не оплачено') === -1;
+    }
+    function collect(orders) {
+        var list = [];
+        (orders || []).forEach(function (o) {
+            if (!isCounted(o)) return;
+            var products = o.raw_payload && o.raw_payload.payment && o.raw_payload.payment.products;
             if (!Array.isArray(products)) return;
-            products.forEach(function(p, idx) {
-                const name = decodeEntities(p.name);
+            var orderKey = o.order_id || o.id || o.created_at;
+            products.forEach(function (p, idx) {
+                var name = decode(p.name);
                 if (!name || !p.image_url) return;
-                const orderKey = order.order_id || order.id || order.created_at;
-                list.push({
-                    key: orderKey + '::' + idx + '::' + name,
-                    name: name,
-                    image_url: p.image_url,
-                    created_at: order.created_at
-                });
+                var base = orderKey + '::' + idx + '::' + name;   // stejný klíč jako dřív = už viděné se znovu neukazují
+                var n = Math.min(MAX_COPIES_PER_LINE, Math.max(1, parseInt(p.quantity, 10) || 1));
+                for (var c = 0; c < n; c++) list.push({ key: c ? base + '#' + c : base, base: base, name: name, url: p.image_url, at: o.created_at });
             });
         });
-        list.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+        list.sort(function (a, b) { return new Date(b.at) - new Date(a.at); });
         return list;
     }
+    function readSeen() { try { return JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'); } catch (e) { return []; } }
+    function writeSeen(keys) { try { localStorage.setItem(SEEN_KEY, JSON.stringify(keys.slice(0, 2000))); } catch (e) {} }
 
-    function getSeenKeys() {
-        try { return JSON.parse(localStorage.getItem('lk_seen_stickers') || '[]'); } catch (e) { return []; }
+    // ---------- stav ----------
+    var stickers = [], seen = {}, firstRun = true, lastSig = null, dataTimer = null;
+    var physicsReady = null; // Promise
+
+    function loadMatter() {
+        if (physicsReady) return physicsReady;
+        physicsReady = new Promise(function (resolve) {
+            if (window.Matter) return resolve(true);
+            var s = document.createElement('script');
+            s.src = MATTER_SRC; s.async = true;
+            s.onload = function () { resolve(!!window.Matter); };
+            s.onerror = function () { resolve(false); };
+            document.head.appendChild(s);
+            setTimeout(function () { resolve(!!window.Matter); }, 12000);
+        });
+        return physicsReady;
+    }
+    loadMatter(); // stahuje se souběžně s daty
+
+    function render(data) {
+        clearTimeout(dataTimer);
+        var list = collect(data && data.orders);
+        var sig = list.map(function (s) { return s.key; }).join('|');
+        if (sig === lastSig) return;
+        lastSig = sig;
+        stickers = list;
+
+        if (!list.length) { showEmpty(); return; }
+        $('nklEmpty').hidden = true; $('nklMain').hidden = false;
+
+        var seenArr = readSeen();
+        var seenSet = {}; seenArr.forEach(function (k) { seenSet[k] = true; });
+        // přechod na nálepky podle počtu balení: kopie už viděných objednávek nejsou "nové"
+        if (!localStorage.getItem('lk_seen_stickers_v2')) {
+            list.forEach(function (s) { if (seenSet[s.base]) seenSet[s.key] = true; });
+            try { localStorage.setItem('lk_seen_stickers_v2', '1'); } catch (e) {}
+        }
+        var fresh = list.filter(function (s) { return !seenSet[s.key]; });
+        seen = seenSet;
+
+        renderStats(list);
+        renderAlbum(list, fresh);
+
+        var go = function () {
+            writeSeen(list.map(function (s) { return s.key; }));
+            fillJar(list.slice(0, MAX_IN_JAR));
+        };
+        if (fresh.length > 5) revealBatch(fresh.length, go);
+        else if (fresh.length) revealOne(fresh, go);
+        else go();
+        firstRun = false;
     }
 
-    function saveSeenKeys(keys) {
-        localStorage.setItem('lk_seen_stickers', JSON.stringify(keys));
+    function showEmpty() {
+        $('nklMain').hidden = true;
+        $('nklEmpty').hidden = false;
+        $('nklStats').innerHTML = '';
+    }
+    function showError() {
+        if (lastSig !== null) return;
+        $('nklMain').hidden = true;
+        $('nklEmpty').hidden = false;
+        $('nklStats').innerHTML = '';
+        $('nklEmptyTitle').textContent = 'Sbírku se nepodařilo načíst';
+        $('nklEmptyText').textContent = 'Zkontrolujte připojení a zkuste stránku obnovit. Pokud to nepomůže, přihlaste se prosím znovu.';
+        var a = $('nklEmptyCta'); a.textContent = 'Obnovit stránku'; a.href = 'javascript:location.reload()';
     }
 
-    function spawnSparkles() {
-        const wrap = document.getElementById('lkSparkles');
-        for (let i = 0; i < 16; i++) {
-            const s = document.createElement('div');
-            const size = 2 + Math.random() * 3;
-            s.className = 'lk-spark';
-            s.style.width = size + 'px';
-            s.style.height = size + 'px';
-            s.style.left = (Math.random() * 100) + '%';
-            s.style.top = (Math.random() * 70) + '%';
-            s.style.animationDelay = (Math.random() * 2.4) + 's';
+    function renderStats(list) {
+        var kinds = {}; list.forEach(function (s) { kinds[s.name.toLowerCase()] = 1; });
+        var k = Object.keys(kinds).length;
+        $('nklStats').innerHTML =
+            '<span class="nkl-stat"><b>' + list.length + '</b> ' + word(list.length) + '</span>' +
+            '<span class="nkl-stat"><b>' + k + '</b> ' + kindWord(k) + '</span>' +
+            (list[0] ? '<span class="nkl-stat">Naposledy ' + esc(fmtDate(list[0].at)) + '</span>' : '');
+    }
+
+    function renderAlbum(list, fresh) {
+        var groups = [], by = {};
+        var freshNames = {}; fresh.forEach(function (s) { freshNames[s.name.toLowerCase()] = 1; });
+        list.forEach(function (s) {
+            var k = s.name.toLowerCase();
+            if (!by[k]) { by[k] = { name: s.name, url: s.url, count: 0, first: s.at, last: s.at }; groups.push(by[k]); }
+            var g = by[k]; g.count++;
+            if (new Date(s.at) < new Date(g.first)) g.first = s.at;
+        });
+        $('nklAlbumCount').textContent = groups.length + ' ' + kindWord(groups.length);
+        var album = $('nklAlbum');
+        album.innerHTML = '';
+        groups.forEach(function (g) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'nkl-tile' + (freshNames[g.name.toLowerCase()] ? ' new' : '');
+            b.innerHTML = '<span class="nkl-tile-img"><img alt="" loading="lazy" decoding="async" draggable="false"></span><span class="nkl-tile-name">' + esc(g.name) + '</span>' + (g.count > 1 ? '<em>×' + g.count + '</em>' : '');
+            var img = b.querySelector('img');
+            setImg(img, g.url, 200, function () { img.parentNode.innerHTML = daisy('#186ce0', 40); });
+            b.addEventListener('click', function () { showSticker(g); });
+            album.appendChild(b);
+        });
+    }
+
+    // ---------- překryvná okna ----------
+    var lockY = 0;
+    function lock(on) {
+        if (on) { lockY = window.scrollY; document.documentElement.style.overflow = 'hidden'; }
+        else { document.documentElement.style.overflow = ''; }
+    }
+    function openOv(id) { var o = $(id); o.classList.add('on'); o.setAttribute('aria-hidden', 'false'); lock(true); }
+    function closeOv(id) { var o = $(id); o.classList.remove('on'); o.setAttribute('aria-hidden', 'true'); lock(false); }
+    function pop(el) { el.classList.remove('nkl-pop'); void el.offsetWidth; el.classList.add('nkl-pop'); }
+
+    function setCard(label, url, name, meta, btn) {
+        $('nklRevLabel').textContent = label;
+        $('nklRevBig').hidden = true;
+        $('nklRevImgWrap').style.display = 'flex';
+        var img = $('nklRevImg');
+        img.removeAttribute('data-orig');
+        setImg(img, url, 400);
+        pop(img);
+        $('nklRevName').textContent = name;
+        $('nklRevMeta').textContent = meta || '';
+        $('nklRevBtn').textContent = btn;
+    }
+    function revealOne(fresh, done) {
+        var i = 0;
+        // obrázky přednačteme, ať se v okně neobjevují postupně
+        fresh.forEach(function (s) { var im = new Image(); im.src = thumb(s.url, 400); });
+        function next() {
+            if (i >= fresh.length) { closeOv('nklReveal'); done(); return; }
+            var s = fresh[i++];
+            setCard(fresh.length > 1 ? 'Nová nálepka ' + i + ' z ' + fresh.length : 'Nová nálepka!', s.url, s.name, '', i < fresh.length ? 'Další' : 'Do sklenice');
+        }
+        $('nklRevBtn').onclick = next;
+        openOv('nklReveal');
+        next();
+    }
+    function revealBatch(n, done) {
+        $('nklRevLabel').textContent = 'Nové nálepky!';
+        $('nklRevImgWrap').style.display = 'none';
+        var big = $('nklRevBig'); big.hidden = false; big.textContent = '+' + n; pop(big);
+        $('nklRevName').textContent = 'přibylo do vaší sbírky';
+        $('nklRevMeta').textContent = '';
+        $('nklRevBtn').textContent = 'Do sklenice';
+        $('nklRevBtn').onclick = function () { closeOv('nklReveal'); done(); };
+        openOv('nklReveal');
+    }
+    function showSticker(g) {
+        setCard(g.count > 1 ? 'Máte ' + g.count + '×' : 'Ve vaší sbírce', g.url, g.name, g.count > 1 ? 'Poprvé ' + fmtDate(g.first) : 'Získáno ' + fmtDate(g.first), 'Zavřít');
+        $('nklRevBtn').onclick = function () { closeOv('nklReveal'); };
+        openOv('nklReveal');
+    }
+    $('nklReveal').addEventListener('click', function (e) { if (e.target === this && $('nklRevBtn').textContent === 'Zavřít') closeOv('nklReveal'); });
+
+    // ---------- sklenice ----------
+    var jar = $('nklJar'), engine = null, items = [], inJar = {}, running = false, visible = true, rafId = 0;
+
+    (function sparks() {
+        var wrap = $('nklSparks');
+        for (var i = 0; i < 16; i++) {
+            var s = document.createElement('div'), sz = 2 + Math.random() * 3;
+            s.className = 'nkl-spark';
+            s.style.cssText = 'width:' + sz + 'px;height:' + sz + 'px;left:' + (Math.random() * 100) + '%;top:' + (Math.random() * 70) + '%;animation-delay:' + (Math.random() * 2.4) + 's';
             wrap.appendChild(s);
         }
+    })();
+
+    function stickerSize(n) {
+        var area = jar.clientWidth * jar.clientHeight;
+        return Math.max(34, Math.min(66, Math.sqrt(area * 0.42 / Math.max(1, n))));
     }
 
-    function attachShakeListener() {
-        window.addEventListener('devicemotion', function(e) {
-            const acc = e.accelerationIncludingGravity;
-            if (!acc) return;
-            const magnitude = Math.abs(acc.x || 0) + Math.abs(acc.y || 0) + Math.abs(acc.z || 0);
-            const now = Date.now();
-            if (magnitude > 35 && now - lastShakeTime > 1000) {
-                lastShakeTime = now;
-                if (window.__shakeCollection) window.__shakeCollection();
-            }
-        });
-    }
-
-    function requestMotionPermissionOnce() {
-        if (motionRequested) return;
-        motionRequested = true;
-        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-            DeviceMotionEvent.requestPermission().then(function(state) {
-                if (state === 'granted') attachShakeListener();
-            }).catch(function() {});
-        } else {
-            attachShakeListener();
-        }
-    }
-
-    function showRevealSequence(newOnes, onDone) {
-        const overlay = document.getElementById('lkStickerReveal');
-        const label = document.getElementById('lkRevealLabel');
-        const imgWrap = document.getElementById('lkRevealImgWrap');
-        const img = document.getElementById('lkRevealImg');
-        const batchEl = document.getElementById('lkRevealBatch');
-        const nameEl = document.getElementById('lkRevealName');
-        const btn = document.getElementById('lkRevealBtn');
-        let idx = 0;
-
-        label.textContent = 'Nová nálepka!';
-        imgWrap.style.display = 'flex';
-        batchEl.style.display = 'none';
-
-        function showNext() {
-            if (idx >= newOnes.length) {
-                overlay.classList.remove('active');
-                onDone();
-                return;
-            }
-            const item = newOnes[idx];
-            img.src = item.image_url;
-            nameEl.textContent = item.name;
-            img.classList.remove('lk-sticker-pop');
-            void img.offsetWidth;
-            img.classList.add('lk-sticker-pop');
-            idx++;
-        }
-
-        btn.onclick = showNext;
-        overlay.classList.add('active');
-        showNext();
-    }
-
-    function showBatchReveal(count, onDone) {
-        const overlay = document.getElementById('lkStickerReveal');
-        const label = document.getElementById('lkRevealLabel');
-        const imgWrap = document.getElementById('lkRevealImgWrap');
-        const batchEl = document.getElementById('lkRevealBatch');
-        const nameEl = document.getElementById('lkRevealName');
-        const btn = document.getElementById('lkRevealBtn');
-
-        label.textContent = 'Nové nálepky!';
-        imgWrap.style.display = 'none';
-        batchEl.style.display = 'block';
-        batchEl.textContent = '+' + count;
-        batchEl.classList.remove('lk-sticker-pop');
-        void batchEl.offsetWidth;
-        batchEl.classList.add('lk-sticker-pop');
-        nameEl.textContent = 'přibylo do vaší sbírky';
-
-        btn.onclick = function() {
-            overlay.classList.remove('active');
-            onDone();
-        };
-        overlay.classList.add('active');
-    }
-
-    function loadImageEl(src) {
-        return new Promise(function(resolve) {
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            img.onload = function() { resolve(img); };
-            img.onerror = function() { resolve(null); };
-            img.src = src;
-        });
-    }
-
-    function roundRect(ctx, x, y, w, h, r) {
-        ctx.beginPath();
-        ctx.moveTo(x + r, y);
-        ctx.arcTo(x + w, y, x + w, y + h, r);
-        ctx.arcTo(x + w, y + h, x, y + h, r);
-        ctx.arcTo(x, y + h, x, y, r);
-        ctx.arcTo(x, y, x + w, y, r);
-        ctx.closePath();
-    }
-
-    function drawCover(ctx, img, W, H) {
-        const imgRatio = img.naturalWidth / img.naturalHeight;
-        const canvasRatio = W / H;
-        let sw, sh, sx, sy;
-        if (imgRatio > canvasRatio) {
-            sh = img.naturalHeight;
-            sw = sh * canvasRatio;
-            sx = (img.naturalWidth - sw) / 2;
-            sy = 0;
-        } else {
-            sw = img.naturalWidth;
-            sh = sw / canvasRatio;
-            sx = 0;
-            sy = (img.naturalHeight - sh) / 2;
-        }
-        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, W, H);
-    }
-
-    async function buildShareCard(loadedImages, bgUrl) {
-        const logo = await loadImageEl('https://static.tildacdn.com/tild3131-3033-4536-a130-623830646536/Photoroom_20260804_1.PNG');
-        const bg = await loadImageEl(bgUrl);
-        const W = 1080, H = 1920;
-        const canvas = document.createElement('canvas');
-        canvas.width = W;
-        canvas.height = H;
-        const ctx = canvas.getContext('2d');
-
-        if (bg) {
-            drawCover(ctx, bg, W, H);
-            ctx.fillStyle = 'rgba(255,255,255,0.22)';
-            ctx.fillRect(0, 0, W, H);
-        } else {
-            ctx.fillStyle = '#eaf3fc';
-            ctx.fillRect(0, 0, W, H);
-        }
-
-        ctx.textAlign = 'center';
-
-        let headerTop = 60;
-        let logoBottom = 220;
-        let logoBoxW = 0;
-        if (logo) {
-            const logoW = 260;
-            const logoH = logoW * (logo.naturalHeight / logo.naturalWidth);
-            const padX = 26, padY = 18;
-            const boxW = logoW + padX * 2;
-            const boxH = logoH + padY * 2;
-            const boxY = 70;
-            ctx.save();
-            ctx.shadowColor = 'rgba(0,0,0,0.25)';
-            ctx.shadowBlur = 16;
-            ctx.shadowOffsetY = 5;
-            ctx.fillStyle = '#ffffff';
-            roundRect(ctx, (W - boxW) / 2, boxY, boxW, boxH, 26);
-            ctx.fill();
-            ctx.restore();
-            ctx.drawImage(logo, (W - logoW) / 2, boxY + padY, logoW, logoH);
-            logoBottom = boxY + boxH;
-            headerTop = boxY;
-            logoBoxW = boxW;
-        }
-
-        const taglineText = 'vaše kouzelná sbírka kytic';
-        ctx.font = '30px -apple-system, Arial';
-        const taglineWidth = ctx.measureText(taglineText).width;
-        const taglinePillW = taglineWidth + 60;
-        const taglinePillH = 58;
-        const taglinePillY = logoBottom + 26;
-        ctx.save();
-        ctx.shadowColor = 'rgba(0,0,0,0.25)';
-        ctx.shadowBlur = 14;
-        ctx.shadowOffsetY = 4;
-        ctx.fillStyle = '#ffffff';
-        roundRect(ctx, (W - taglinePillW) / 2, taglinePillY, taglinePillW, taglinePillH, 29);
-        ctx.fill();
-        ctx.restore();
-        ctx.fillStyle = '#186ce0';
-        ctx.fillText(taglineText, W / 2, taglinePillY + 39);
-
-        const statText = loadedImages.filter(function(img) { return img; }).length + ' nálepek';
-        ctx.font = 'bold 50px -apple-system, Arial';
-        const statWidth = ctx.measureText(statText).width;
-        const pillW = statWidth + 72;
-        const pillH = 88;
-        const pillY = taglinePillY + taglinePillH + 22;
-        ctx.save();
-        ctx.shadowColor = 'rgba(0,0,0,0.3)';
-        ctx.shadowBlur = 18;
-        ctx.shadowOffsetY = 6;
-        ctx.fillStyle = '#ffffff';
-        roundRect(ctx, (W - pillW) / 2, pillY, pillW, pillH, 44);
-        ctx.fill();
-        ctx.restore();
-        ctx.fillStyle = '#186ce0';
-        ctx.fillText(statText, W / 2, pillY + 60);
-
-        const headerBottom = pillY + pillH;
-        const exclusionHalfW = Math.max(logoBoxW, taglinePillW, pillW) / 2 + 16;
-        const exLeft = W / 2 - exclusionHalfW;
-        const exRight = W / 2 + exclusionHalfW;
-
-        const usable = loadedImages.filter(function(img) { return img; });
-        for (let i = usable.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            const tmp = usable[i]; usable[i] = usable[j]; usable[j] = tmp;
-        }
-
-        const zoneLeft = W * 0.1;
-        const zoneRight = W * 0.9;
-        const zoneTop = 40;
-        const zoneBottom = H - 130;
-        const zoneW = zoneRight - zoneLeft;
-        const zoneH = zoneBottom - zoneTop;
-
-        const cols = Math.max(1, Math.round(Math.sqrt(usable.length * (zoneW / zoneH))));
-        const rows = Math.max(1, Math.ceil(usable.length / cols));
-        const cellW = zoneW / cols;
-        const cellH = zoneH / rows;
-        const uniformDim = Math.min(cellW, cellH) * 0.9;
-
-        const placed = [];
-        usable.forEach(function(img) {
-            let bestX = zoneLeft + zoneW / 2;
-            let bestY = headerBottom + uniformDim;
-            let bestScore = -Infinity;
-            const half = uniformDim / 2;
-            for (let c = 0; c < 24; c++) {
-                const tx = Math.max(zoneLeft + half, Math.min(zoneRight - half, zoneLeft + Math.random() * zoneW));
-                const ty = Math.max(zoneTop + half, Math.min(zoneBottom - half, zoneTop + Math.random() * zoneH));
-                const overlapsHeader = (ty - half < headerBottom) && (ty + half > headerTop) && (tx + half > exLeft) && (tx - half < exRight);
-                if (overlapsHeader) continue;
-                let minDist = 999999;
-                for (let p = 0; p < placed.length; p++) {
-                    const dx = tx - placed[p].x, dy = ty - placed[p].y;
-                    const d = Math.sqrt(dx * dx + dy * dy);
-                    if (d < minDist) minDist = d;
-                }
-                if (minDist > bestScore) {
-                    bestScore = minDist;
-                    bestX = tx;
-                    bestY = ty;
-                }
-            }
-            placed.push({ x: bestX, y: bestY });
-
-            const angle = (Math.random() - 0.5) * 0.5;
-            const ratio = img.naturalWidth / img.naturalHeight;
-            let dh = uniformDim;
-            let dw = dh * ratio;
-            if (dw > uniformDim * 1.15) {
-                dw = uniformDim * 1.15;
-                dh = dw / ratio;
-            }
-
-            ctx.save();
-            ctx.translate(bestX, bestY);
-            ctx.rotate(angle);
-            ctx.shadowColor = 'rgba(0,0,0,0.55)';
-            ctx.shadowBlur = 24;
-            ctx.shadowOffsetY = 10;
-            ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
-            ctx.restore();
-        });
-
-        ctx.save();
-        ctx.fillStyle = '#ffffff';
-        ctx.shadowColor = 'rgba(0,0,0,0.55)';
-        ctx.shadowBlur = 16;
-        ctx.shadowOffsetY = 3;
-        ctx.font = 'bold 38px -apple-system, Arial';
-        ctx.fillText('vezminarin.cz', W / 2, H - 50);
-        ctx.restore();
-
-        return new Promise(function(resolve) {
-            canvas.toBlob(resolve, 'image/png');
-        });
-    }
-
-    function buildJar(stickers) {
-        const jar = document.getElementById('lkJar');
-        const shakeBtn = document.getElementById('lkShakeBtn');
-        const shareBtn = document.getElementById('lkShareBtn');
-        jar.style.display = 'block';
-        shakeBtn.style.display = 'block';
-        shareBtn.style.display = 'flex';
-        shareBtn.style.opacity = '0.5';
-        shareBtn.disabled = true;
-        spawnSparkles();
-
-        const Engine = Matter.Engine, World = Matter.World, Bodies = Matter.Bodies, Body = Matter.Body, Mouse = Matter.Mouse, MouseConstraint = Matter.MouseConstraint;
-        const w = jar.clientWidth, h = jar.clientHeight;
-        const engine = Engine.create();
-        engine.gravity.y = 0.55;
-
-        const items = [];
-        const loadedImages = [];
-        let pending = stickers.length;
-
-        function onImageDone(imgEl) {
-            loadedImages.push(imgEl);
-            pending--;
-            if (pending === 0) {
-                lastLoadedImages = loadedImages;
-                buildShareCard(loadedImages, BACKGROUNDS[selectedBgIndex]).then(function(blob) {
-                    pendingShareBlob = blob;
-                    shareBtn.style.opacity = '1';
-                    shareBtn.disabled = false;
-                });
-            }
-        }
-
-        stickers.forEach(function(sticker, index) {
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            img.onload = function() {
-                const maxDim = 60;
-                const ratio = img.naturalWidth / img.naturalHeight;
-                const dw = ratio >= 1 ? maxDim : maxDim * ratio;
-                const dh = ratio >= 1 ? maxDim / ratio : maxDim;
-                const r = Math.max(dw, dh) / 2 * 0.8;
-                const x = 30 + Math.random() * (w - 60);
-                const y = -20 - (index % 10) * 15;
-                const body = Bodies.circle(x, y, r, { restitution: 0.5, friction: 0.15, frictionAir: 0.02 });
-                World.add(engine.world, body);
-
-                const el = document.createElement('div');
-                el.style.cssText = 'position:absolute; width:' + dw + 'px; height:' + dh + 'px; pointer-events:none;';
-                const imgEl = document.createElement('img');
-                imgEl.src = sticker.image_url;
-                imgEl.style.cssText = 'width:100%; height:100%; display:block; filter: drop-shadow(0 3px 6px rgba(20,40,70,0.25)); -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;';
-                imgEl.setAttribute('draggable', 'false');
-                imgEl.setAttribute('oncontextmenu', 'return false');
-                el.appendChild(imgEl);
-                jar.appendChild(el);
-
-                items.push({ el: el, body: body, hw: dw / 2, hh: dh / 2 });
-                onImageDone(img);
-            };
-            img.onerror = function() {
-                console.warn('Sticker image failed to load:', sticker.name, sticker.image_url);
-                onImageDone(null);
-            };
-            img.src = sticker.image_url;
-        });
-
-        const wallOpts = { isStatic: true, render: { visible: false } };
-        World.add(engine.world, [
-            Bodies.rectangle(w / 2, h + 20, w + 40, 40, wallOpts),
-            Bodies.rectangle(-20, h / 2, 40, h * 3, wallOpts),
-            Bodies.rectangle(w + 20, h / 2, 40, h * 3, wallOpts),
-            Bodies.rectangle(w / 2, -220, w + 40, 40, wallOpts)
+    function initEngine() {
+        var M = window.Matter;
+        engine = M.Engine.create({ enableSleeping: true });
+        engine.gravity.y = 0.6;
+        var w = jar.clientWidth, h = jar.clientHeight, o = { isStatic: true };
+        M.Composite.add(engine.world, [
+            M.Bodies.rectangle(w / 2, h + 25, w + 100, 50, o),
+            M.Bodies.rectangle(-25, h / 2 - 200, 50, h * 3, o),
+            M.Bodies.rectangle(w + 25, h / 2 - 200, 50, h * 3, o),
+            M.Bodies.rectangle(w / 2, -400, w + 100, 50, o)
         ]);
+        var mouse = M.Mouse.create(jar);
+        // Matter jinak blokuje posouvání stránky kolečkem myši nad sklenicí
+        mouse.element.removeEventListener('mousewheel', mouse.mousewheel);
+        mouse.element.removeEventListener('DOMMouseScroll', mouse.mousewheel);
+        mouse.element.removeEventListener('wheel', mouse.mousewheel);
+        var mc = M.MouseConstraint.create(engine, { mouse: mouse, constraint: { stiffness: 0.15, render: { visible: false } } });
+        M.Composite.add(engine.world, mc);
+        M.Events.on(mc, 'startdrag', function () { $('nklHint').style.visibility = 'hidden'; });
 
-        const mouse = Mouse.create(jar);
-        const mc = MouseConstraint.create(engine, { mouse: mouse, constraint: { stiffness: 0.15 } });
-        World.add(engine.world, mc);
-
-        function loop() {
-            Engine.update(engine, 1000 / 60);
-            items.forEach(function(item) {
-                item.el.style.transform = 'translate(' + (item.body.position.x - item.hw) + 'px,' + (item.body.position.y - item.hh) + 'px) rotate(' + item.body.angle + 'rad)';
-            });
-            requestAnimationFrame(loop);
+        if ('IntersectionObserver' in window) {
+            new IntersectionObserver(function (en) { visible = en[0].isIntersecting; if (visible) start(); }, { threshold: 0 }).observe(jar);
         }
-        loop();
+        document.addEventListener('visibilitychange', function () { if (!document.hidden) start(); });
+    }
 
-        window.__shakeCollection = function() {
-            items.forEach(function(item) {
-                Body.setVelocity(item.body, { x: (Math.random() - 0.5) * 14, y: -8 - Math.random() * 10 });
-                Body.setAngularVelocity(item.body, (Math.random() - 0.5) * 0.9);
-            });
+    function start() { if (!running && engine) { running = true; rafId = requestAnimationFrame(loop); } }
+    var last = 0;
+    function loop(t) {
+        if (!visible || document.hidden) { running = false; return; }
+        var dt = last ? Math.min(33, t - last) : 16.7; last = t;
+        window.Matter.Engine.update(engine, dt);
+        var awake = false;
+        for (var i = 0; i < items.length; i++) {
+            var it = items[i], b = it.body;
+            if (!b.isSleeping) awake = true;
+            it.el.style.transform = 'translate(' + (b.position.x - it.hw) + 'px,' + (b.position.y - it.hh) + 'px) rotate(' + b.angle + 'rad)';
+        }
+        // když vše leží a nikdo nesahá, necháme procesor odpočívat, ale dotyk ho zase probudí
+        if (!awake && items.length) { running = false; last = 0; return; }
+        rafId = requestAnimationFrame(loop);
+    }
+    jar.addEventListener('pointerdown', function () {
+        if (!engine) return;
+        items.forEach(function (it) { window.Matter.Sleeping.set(it.body, false); });
+        start();
+    });
+
+    function addSticker(s, dim, delay) {
+        var M = window.Matter;
+        var img = new Image();
+        img.decoding = 'async';
+        img.draggable = false;
+        img.alt = '';
+        img.onload = function () {
+            var r = img.naturalWidth / img.naturalHeight || 1;
+            var dw = r >= 1 ? dim : dim * r, dh = r >= 1 ? dim / r : dim;
+            var el = document.createElement('div');
+            el.className = 'nkl-st';
+            el.style.width = dw + 'px'; el.style.height = dh + 'px';
+            el.style.transform = 'translate(-200px,-200px)';
+            el.appendChild(img);
+            setTimeout(function () {
+                var w = jar.clientWidth;
+                var body = M.Bodies.circle(dw / 2 + Math.random() * Math.max(1, w - dw), -dh - Math.random() * 60, Math.max(dw, dh) / 2 * 0.82,
+                    { restitution: 0.45, friction: 0.2, frictionAir: 0.018, angle: (Math.random() - .5) * 1.2 });
+                M.Composite.add(engine.world, body);
+                jar.appendChild(el);
+                items.push({ el: el, body: body, hw: dw / 2, hh: dh / 2 });
+                $('nklJarMsg').style.display = 'none';
+                start();
+            }, reduceMotion ? 0 : delay);
         };
+        var failed = 0;
+        img.onerror = function () { if (++failed === 1) img.src = s.url; };
+        img.src = thumb(s.url, 160);
     }
 
-    function renderCollection(data) {
-        const allStickers = getAllStickers(data.orders);
-        const emptyEl = document.getElementById('lkCollectionEmpty');
-        const countEl = document.getElementById('lkCollectionCount');
-
-        if (!allStickers.length) {
-            emptyEl.style.display = 'block';
-            return;
-        }
-
-        const displayed = allStickers.slice(0, MAX_STICKERS);
-        const total = allStickers.length;
-        countEl.textContent = total + ' ' + stickerWord(total) + (total > MAX_STICKERS ? ' (v bance posledních ' + MAX_STICKERS + ')' : '');
-
-        const seenKeys = getSeenKeys();
-        const seenSet = {};
-        seenKeys.forEach(function(k) { seenSet[k] = true; });
-        const newOnes = displayed.filter(function(s) { return !seenSet[s.key]; });
-
-        function startJar() {
-            saveSeenKeys(displayed.map(function(s) { return s.key; }));
-            buildJar(displayed);
-        }
-
-        if (newOnes.length > 5) {
-            showBatchReveal(newOnes.length, startJar);
-        } else if (newOnes.length > 0) {
-            showRevealSequence(newOnes, startJar);
-        } else {
-            startJar();
-        }
-    }
-
-    document.getElementById('lkShakeBtn').addEventListener('click', function() {
-        if (window.__shakeCollection) window.__shakeCollection();
-        requestMotionPermissionOnce();
-    });
-
-    document.getElementById('lkShareBtn').addEventListener('click', function() {
-        if (!pendingShareBlob) return;
-        document.getElementById('lkSharePreviewImg').src = URL.createObjectURL(pendingShareBlob);
-        document.getElementById('lkSharePreview').classList.add('active');
-    });
-
-    document.querySelectorAll('.lk-bg-swatch').forEach(function(btn, idx) {
-        btn.addEventListener('click', async function() {
-            document.querySelectorAll('.lk-bg-swatch').forEach(function(b) { b.classList.remove('active'); });
-            btn.classList.add('active');
-            selectedBgIndex = idx;
-            if (lastLoadedImages) {
-                const previewBtn = document.getElementById('lkSharePreviewBtn');
-                previewBtn.disabled = true;
-                previewBtn.style.opacity = '0.5';
-                const blob = await buildShareCard(lastLoadedImages, BACKGROUNDS[selectedBgIndex]);
-                pendingShareBlob = blob;
-                document.getElementById('lkSharePreviewImg').src = URL.createObjectURL(blob);
-                previewBtn.disabled = false;
-                previewBtn.style.opacity = '1';
+    function fillJar(list) {
+        loadMatter().then(function (ok) {
+            if (!ok) {
+                // bez knihovny fyziky: sklenici skryjeme, album zůstává
+                jar.style.display = 'none'; $('nklShake').style.display = 'none'; $('nklHint').style.display = 'none';
+                enableShare(); return;
             }
+            if (!engine) initEngine();
+            var add = list.filter(function (s) { return !inJar[s.key]; });
+            if (!add.length) { enableShare(); return; }
+            var dim = stickerSize(Object.keys(inJar).length + add.length);
+            add.slice().reverse().forEach(function (s, i) { inJar[s.key] = 1; addSticker(s, dim, i * 45); });
+            enableShare();
         });
-    });
-
-    document.getElementById('lkSharePreviewBtn').addEventListener('click', async function() {
-        if (!pendingShareBlob) return;
-        const file = new File([pendingShareBlob], 'narin-stickers.png', { type: 'image/png' });
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            try {
-                await navigator.share({ files: [file], title: 'Moje sbírka nálepek Narin', text: 'Podívejte se na mou sbírku kytičkových nálepek!' });
-            } catch (e) {}
-        } else if (navigator.share) {
-            try {
-                await navigator.share({ title: 'Moje sbírka nálepek Narin', text: 'Podívejte se na mou sbírku kytičkových nálepek!', url: 'https://vezminarin.cz/members/collection' });
-            } catch (e) {}
-        } else {
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(pendingShareBlob);
-            link.download = 'narin-stickers.png';
-            link.click();
-        }
-    });
-
-    document.getElementById('lkSharePreviewClose').addEventListener('click', function() {
-        document.getElementById('lkSharePreview').classList.remove('active');
-    });
-
-    if (window.__memberData) {
-        renderCollection(window.__memberData);
-    } else {
-        const wait = setInterval(function() {
-            if (window.__memberData) {
-                renderCollection(window.__memberData);
-                clearInterval(wait);
-            }
-        }, 300);
     }
+
+    function shake() {
+        if (!engine) return;
+        var M = window.Matter;
+        items.forEach(function (it) {
+            M.Sleeping.set(it.body, false);
+            M.Body.setVelocity(it.body, { x: (Math.random() - .5) * 14, y: -8 - Math.random() * 10 });
+            M.Body.setAngularVelocity(it.body, (Math.random() - .5) * .9);
+        });
+        start();
+    }
+    window.__shakeCollection = shake;
+
+    var motionAsked = false, lastShake = 0;
+    function listenMotion() {
+        window.addEventListener('devicemotion', function (e) {
+            var a = e.accelerationIncludingGravity; if (!a) return;
+            var m = Math.abs(a.x || 0) + Math.abs(a.y || 0) + Math.abs(a.z || 0), now = Date.now();
+            if (m > 35 && now - lastShake > 1000) { lastShake = now; shake(); }
+        });
+    }
+    $('nklShake').addEventListener('click', function () {
+        shake();
+        if (motionAsked) return;
+        motionAsked = true;
+        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+            DeviceMotionEvent.requestPermission().then(function (s) { if (s === 'granted') listenMotion(); }).catch(function () {});
+        } else listenMotion();
+    });
+
+    // ---------- sdílení (obrázek se kreslí až na požádání) ----------
+    var bgIndex = 0, shareBlob = null, shareUrl = null, building = 0;
+    function enableShare() { $('nklShare').disabled = false; }
+
+    function loadCors(src) {
+        // vlastní adresa, aby se nepoužila kopie z mezipaměti bez CORS hlaviček
+        return new Promise(function (res) {
+            var im = new Image();
+            im.crossOrigin = 'anonymous';
+            im.onload = function () { res(im); };
+            im.onerror = function () { res(null); };
+            im.src = src + (src.indexOf('?') === -1 ? '?' : '&') + 'narin-share=1';
+            setTimeout(function () { res(null); }, 10000);
+        });
+    }
+    function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+    function pill(ctx, text, font, color, cy, padX, h, shadow) {
+        ctx.font = font;
+        var w = ctx.measureText(text).width + padX * 2, W = ctx.canvas.width;
+        ctx.save(); ctx.shadowColor = 'rgba(0,0,0,' + shadow + ')'; ctx.shadowBlur = 16; ctx.shadowOffsetY = 5;
+        ctx.fillStyle = '#fff'; rr(ctx, (W - w) / 2, cy, w, h, h / 2); ctx.fill(); ctx.restore();
+        ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, W / 2, cy + h / 2 + 2);
+        return w;
+    }
+    var imgCache = {};
+    function corsCached(src) { if (!imgCache[src]) imgCache[src] = loadCors(src); return imgCache[src]; }
+
+    function buildCard() {
+        var list = stickers.slice(0, MAX_IN_JAR);
+        return Promise.all([corsCached(LOGO_SRC), corsCached(BACKGROUNDS[bgIndex])].concat(list.map(function (s) { return corsCached(s.url); }))).then(function (r) {
+            var logo = r[0], bg = r[1], imgs = r.slice(2).filter(Boolean);
+            var W = 1080, H = 1920, c = document.createElement('canvas'); c.width = W; c.height = H;
+            var ctx = c.getContext('2d');
+            if (bg) {
+                var ir = bg.naturalWidth / bg.naturalHeight, cr = W / H, sw, sh, sx, sy;
+                if (ir > cr) { sh = bg.naturalHeight; sw = sh * cr; sx = (bg.naturalWidth - sw) / 2; sy = 0; } else { sw = bg.naturalWidth; sh = sw / cr; sx = 0; sy = (bg.naturalHeight - sh) / 2; }
+                ctx.drawImage(bg, sx, sy, sw, sh, 0, 0, W, H);
+                ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(0, 0, W, H);
+            } else { ctx.fillStyle = '#eaf3fc'; ctx.fillRect(0, 0, W, H); }
+
+            var top = 70, y = top, maxW = 0;
+            if (logo) {
+                var lw = 260, lh = lw * logo.naturalHeight / logo.naturalWidth, bw = lw + 52, bh = lh + 36;
+                ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.25)'; ctx.shadowBlur = 16; ctx.shadowOffsetY = 5; ctx.fillStyle = '#fff';
+                rr(ctx, (W - bw) / 2, y, bw, bh, 26); ctx.fill(); ctx.restore();
+                ctx.drawImage(logo, (W - lw) / 2, y + 18, lw, lh);
+                y += bh + 26; maxW = bw;
+            }
+            maxW = Math.max(maxW, pill(ctx, 'vaše kouzelná sbírka květin', '30px Rubik, -apple-system, Arial', '#186ce0', y, 30, 58, .25)); y += 58 + 22;
+            var total = stickers.length;
+            maxW = Math.max(maxW, pill(ctx, total + ' ' + word(total), 'bold 50px Rubik, -apple-system, Arial', '#186ce0', y, 36, 88, .3)); y += 88;
+            var exL = W / 2 - maxW / 2 - 16, exR = W / 2 + maxW / 2 + 16;
+
+            for (var i = imgs.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = imgs[i]; imgs[i] = imgs[j]; imgs[j] = t; }
+            var zl = W * .08, zr = W * .92, zt = 40, zb = H - 130, zw = zr - zl, zh = zb - zt;
+            var cols = Math.max(1, Math.round(Math.sqrt(imgs.length * zw / zh))), rows = Math.max(1, Math.ceil(imgs.length / cols));
+            var dim = Math.min(zw / cols, zh / rows, 300) * .9, half = dim / 2, placed = [];
+            imgs.forEach(function (im) {
+                var bx = zl + zw / 2, by = y + dim, best = -1;
+                for (var k = 0; k < 30; k++) {
+                    var tx = zl + half + Math.random() * (zw - dim), ty = zt + half + Math.random() * (zh - dim);
+                    if (ty - half < y && ty + half > top && tx + half > exL && tx - half < exR) continue;
+                    var md = 1e9; placed.forEach(function (p) { var d = Math.hypot(tx - p.x, ty - p.y); if (d < md) md = d; });
+                    if (md > best) { best = md; bx = tx; by = ty; }
+                }
+                placed.push({ x: bx, y: by });
+                var r = im.naturalWidth / im.naturalHeight, dh = dim, dw = dh * r;
+                if (dw > dim * 1.15) { dw = dim * 1.15; dh = dw / r; }
+                ctx.save(); ctx.translate(bx, by); ctx.rotate((Math.random() - .5) * .5);
+                ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 24; ctx.shadowOffsetY = 10;
+                ctx.drawImage(im, -dw / 2, -dh / 2, dw, dh); ctx.restore();
+            });
+            ctx.save(); ctx.fillStyle = '#fff'; ctx.shadowColor = 'rgba(0,0,0,0.55)'; ctx.shadowBlur = 16; ctx.shadowOffsetY = 3;
+            ctx.font = 'bold 38px Rubik, -apple-system, Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+            ctx.fillText('vezminarin.cz', W / 2, H - 50); ctx.restore();
+            return new Promise(function (res) { try { c.toBlob(res, 'image/png'); } catch (e) { res(null); } });
+        });
+    }
+    function refreshShare() {
+        var my = ++building;
+        shareBlob = null;
+        $('nklShareGo').disabled = true;
+        var box = $('nklShareImg');
+        if (!box.querySelector('img')) box.textContent = 'Připravujeme obrázek…';
+        else box.querySelector('img').style.opacity = '.4';
+        buildCard().then(function (blob) {
+            if (my !== building) return;
+            if (!blob) { box.textContent = 'Obrázek se nepodařilo připravit, můžete sdílet odkaz.'; $('nklShareGo').disabled = false; return; }
+            shareBlob = blob;
+            if (shareUrl) URL.revokeObjectURL(shareUrl);
+            shareUrl = URL.createObjectURL(blob);
+            box.innerHTML = '<img alt="Náhled obrázku ke sdílení">';
+            box.querySelector('img').src = shareUrl;
+            $('nklShareGo').disabled = false;
+        });
+    }
+    BACKGROUNDS.forEach(function (u, i) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = 'nkl-bg' + (i === 0 ? ' on' : '');
+        b.setAttribute('data-bg', u);
+        b.setAttribute('aria-label', 'Pozadí ' + (i + 1));
+        b.addEventListener('click', function () {
+            if (bgIndex === i) return;
+            bgIndex = i;
+            Array.prototype.forEach.call($('nklBgs').children, function (x, k) { x.classList.toggle('on', k === i); });
+            refreshShare();
+        });
+        $('nklBgs').appendChild(b);
+    });
+    $('nklShare').addEventListener('click', function () {
+        Array.prototype.forEach.call($('nklBgs').children, function (x) { if (!x.style.backgroundImage) x.style.backgroundImage = 'url(' + x.getAttribute('data-bg') + ')'; });
+        openOv('nklShareOv'); if (!shareBlob) refreshShare(); });
+    $('nklShareClose').addEventListener('click', function () { closeOv('nklShareOv'); });
+    $('nklShareOv').addEventListener('click', function (e) { if (e.target === this) closeOv('nklShareOv'); });
+    $('nklShareGo').addEventListener('click', function () {
+        var title = 'Moje sbírka nálepek NARIN', text = 'Podívejte se na mou sbírku květinových nálepek!';
+        if (shareBlob) {
+            var file = new File([shareBlob], 'narin-nalepky.png', { type: 'image/png' });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) { navigator.share({ files: [file], title: title, text: text }).catch(function () {}); return; }
+            if (!navigator.share) { var a = document.createElement('a'); a.href = shareUrl; a.download = 'narin-nalepky.png'; document.body.appendChild(a); a.click(); a.remove(); return; }
+        }
+        if (navigator.share) navigator.share({ title: title, text: text, url: 'https://vezminarin.cz/' }).catch(function () {});
+    });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { closeOv('nklShareOv'); if ($('nklRevBtn').textContent === 'Zavřít') closeOv('nklReveal'); } });
+
+    // ---------- start ----------
+    dataTimer = setTimeout(showError, 20000);
+    if (window.narinOnMemberData) window.narinOnMemberData(render);
+    else document.addEventListener('narin:memberdata', function (e) { render(e.detail); });
 })();
 </script>
