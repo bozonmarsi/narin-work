@@ -744,7 +744,7 @@ function ProductCard({
               title="Самая дешёвая актуальная цена этого цветка у Van Vliet за 1 стебель × число стеблей в пучке × твой коэффициент, округлено до 10 — не себестоимость, а подсказка для цены на сайте"
               className="mt-1 flex items-center gap-1 text-[9px] text-zinc-400 dark:text-zinc-500"
             >
-              Van Vliet {p.vanvliet_cheapest_price} Kč × {p.order_unit_size} шт ×
+              {p.vanvliet_cheapest_price} Kč × {p.order_unit_size} шт ×
               <input
                 type="number"
                 min={1}
