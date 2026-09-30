@@ -502,7 +502,7 @@ export default function SubscriptionCatalogPage() {
           <p className="font-medium">4. Дополнительные вопросы в конструкторе</p>
           {settingsMissing && (
             <p className="text-xs text-amber-600 dark:text-amber-400">
-              Таблица настроек ещё не создана — выполните SQL из миграции 20260930000000_subscription_manager_controls. До
+              Таблица настроек ещё не создана — выполните SQL из миграции 20260930030000_subscription_manager_controls. До
               этого сайт использует стандартные значения.
             </p>
           )}
