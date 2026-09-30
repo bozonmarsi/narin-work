@@ -386,23 +386,13 @@
     var SIZE_LABELS = { small: 'S', medium: 'M', large: 'L' };
     // výchozí hodnoty; skutečné nastavení bere stránka z tabulky subscription_settings (manažerská aplikace)
     var SETTINGS = { moods: ['Romantická', 'Jasná', 'Pastelová', 'Divoká', 'Klasická', 'Minimalistická', 'Luxusní'], mood_enabled: true, exclusions_enabled: true, vase_enabled: true, vase_min_deliveries: 4 };
-    // Dočasné fotky, dokud manažer nenahraje vlastní (hero_image_url / image_url mají přednost)
-    var CAT_IMAGES = {
-        bouquet: 'https://images.unsplash.com/photo-1487070183336-b863922373d4?w=240&h=240&fit=crop',
-        armful: 'https://images.unsplash.com/photo-1502904550040-7534597429ae?w=240&h=240&fit=crop',
-        collection: 'https://images.unsplash.com/photo-1518895949257-7621c3c786d7?w=240&h=240&fit=crop'
-    };
+    // Fotky jsou jen ty, které nahraje manažer v aplikaci (Каталог и цены). Bez nich se ukáže
+    // světlá plocha s květinou — dřív tu byly náhodné fotky ze Unsplash, které k NARIN nepatřily.
     var CAT_BULLETS = {
         bouquet: ['Hotové kompozice od floristy', 'Mnoho stylů na výběr', 'Stačí dát do vázy'],
         armful: ['Víc květin, přírodní styl', 'Jednoduché balení', 'Pro domov i kancelář'],
         collection: ['Kytici si sestavíte sami', 'Sekáčky v boxu', 'Prémiový box']
     };
-    var LINE_IMAGES = [
-        'https://images.unsplash.com/photo-1518895949257-7621c3c786d7?w=480&h=360&fit=crop',
-        'https://images.unsplash.com/photo-1455659817273-f96807779a8a?w=480&h=360&fit=crop',
-        'https://images.unsplash.com/photo-1462275646964-a0e3386b89fa?w=480&h=360&fit=crop',
-        'https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=480&h=360&fit=crop'
-    ];
     var ICON = {
         scissors: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.5 15.5"/><path d="M8.5 8.5L20 20"/></svg>',
         cert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="6"/><path d="M9 13.5L7 22l5-3 5 3-2-8.5"/></svg>',
@@ -415,6 +405,7 @@
         flower: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#186ce0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="2.5"/><path d="M12 3.5a2.5 2.5 0 012.2 3.7M12 3.5a2.5 2.5 0 00-2.2 3.7M17.2 7.3a2.5 2.5 0 01-1.5 4M6.8 7.3a2.5 2.5 0 001.5 4M12 11.5V21M12 17c-2-2-4.5-2-6-1M12 17c2-2 4.5-2 6-1"/></svg>'
     };
 
+    function bigFlower() { return ICON.flower.replace('width="26" height="26"', 'width="40" height="40"'); }
     function $(id) { return document.getElementById(id); }
     function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
     function kc(n) { return Math.round(Number(n) || 0).toLocaleString('cs-CZ') + ' Kč'; }
@@ -442,7 +433,7 @@
         var ph = document.createElement('span');
         ph.className = 'ph ' + (im.className || '');
         ph.setAttribute('data-ph', '1');
-        ph.innerHTML = ICON.flower;
+        ph.innerHTML = bigFlower();
         im.replaceWith(ph);
     }, true);
 
@@ -768,9 +759,9 @@
         box.innerHTML = cat.categories.map(function (c) {
             // coming_soon = manažer přepnul kategorii na "Připravujeme"
             var has = !c.coming_soon && linesOf(c.id).length > 0, mp = has ? minPrice(c.id) : null;
-            var img = c.hero_image_url || CAT_IMAGES[c.key] || CAT_IMAGES.bouquet;
+            var img = c.hero_image_url || '';
             return '<button type="button" class="nsb-cat' + (has ? '' : ' off') + '" data-c="' + esc(c.id) + '"' + (has ? '' : ' disabled') + '>' +
-                '<img src="' + esc(img) + '" alt="" loading="lazy" decoding="async">' +
+                (img ? '<img src="' + esc(img) + '" alt="" loading="lazy" decoding="async">' : '<span class="ph">' + bigFlower() + '</span>') +
                 '<span class="nsb-cat-b"><h3>' + esc(c.name) + '</h3><ul>' + (CAT_BULLETS[c.key] || []).map(function (b) { return '<li>' + esc(b) + '</li>'; }).join('') + '</ul>' +
                 '<span class="nsb-cat-price">' + (has ? (mp != null ? '<span>od <b>' + kc(mp) + '</b> / dodávka</span>' : '<span></span>') + ICON.chev : '<span class="nsb-soon">Připravujeme</span>') + '</span></span></button>';
         }).join('');
@@ -788,7 +779,7 @@
         $('nsbConTitle').textContent = c.name;
         $('nsbConSub').textContent = c.description || '';
         $('nsbLines').innerHTML = lines.map(function (l, i) {
-            return '<button type="button" class="nsb-line" data-l="' + esc(l.id) + '"><img src="' + esc(l.image_url || LINE_IMAGES[i % LINE_IMAGES.length]) + '" alt="" loading="lazy" decoding="async"><span class="tick">' + ICON.tick + '</span><b>' + esc(l.name) + '</b><span>' + esc(l.description || '') + '</span></button>';
+            return '<button type="button" class="nsb-line" data-l="' + esc(l.id) + '">' + (l.image_url ? '<img src="' + esc(l.image_url) + '" alt="" loading="lazy" decoding="async">' : '<span class="ph">' + bigFlower() + '</span>') + '<span class="tick">' + ICON.tick + '</span><b>' + esc(l.name) + '</b><span>' + esc(l.description || '') + '</span></button>';
         }).join('');
         $('nsbMoods').innerHTML = SETTINGS.moods.map(function (m) { return '<button type="button" class="nsb-mood" data-m="' + esc(m) + '">' + esc(m) + '</button>'; }).join('');
         renderCon();
