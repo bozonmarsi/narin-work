@@ -551,7 +551,11 @@
     function listCacheKey(t) { return 'narin_sub_mylist_v2_' + (tokenEmail(t) || ''); }
     var successTries = 0;
     function loadSubs(token) {
-        if (!token) { $('nsbList').innerHTML = '<div class="nsb-fail">Pro zobrazení předplatného se prosím znovu přihlaste.</div>'; return; }
+        if (!token) {
+            // bez přihlášení nevíme, jaká předplatné má; konstruktor necháme, platba si přihlášení vyžádá
+            $('nsbList').innerHTML = '<div class="nsb-fail">Pro zobrazení předplatného se prosím znovu přihlaste.</div>';
+            return;
+        }
         if (subs === null) {
             try { var c = JSON.parse(localStorage.getItem(listCacheKey(token)) || 'null'); if (c) applySubs(c, true); } catch (e) {}
         }
@@ -927,6 +931,12 @@
     }
 
     // ---------- start ----------
+    // Dokud nevíme, jestli má klient předplatné, ukazujeme rovnou konstruktor s vysvětlením,
+    // ne prázdnou stránku. Když se načte, že předplatné má, přepne se na jeho přehled.
+    if (subs === null) {
+        view = 'new';
+        show($('nsbHome'), false); show($('nsbNew'), true); show($('nsbHow'), true);
+    }
     whenToken(loadSubs);
     if (returned === 'cancelled') {
         (cat.categories.length ? Promise.resolve() : catalogReady).then(function () { restoreDraft(); });
