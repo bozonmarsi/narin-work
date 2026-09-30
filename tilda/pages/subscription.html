@@ -194,6 +194,15 @@
 .nsb-acc b { color:var(--ink); font-weight:600; word-break:break-all; }
 .nsb-secure { display:flex; align-items:center; justify-content:center; gap:6px; font-size:12.5px; color:var(--muted); margin-top:10px; }
 .nsb-secure svg { width:14px; height:14px; }
+.nsb-how { margin:4px 0 22px; padding:18px 16px 16px; border-radius:22px; background:var(--tint); }
+.nsb-how h2 { font-size:18px; font-weight:600; margin-bottom:12px; }
+.nsb-how ol { list-style:none; margin:0; padding:0; counter-reset:how; }
+.nsb-how li { counter-increment:how; display:flex; gap:12px; align-items:flex-start; padding:8px 0; }
+.nsb-how li::before { content:counter(how); flex-shrink:0; width:28px; height:28px; border-radius:50%; background:var(--blue); color:#fff; font-size:14px; font-weight:600; display:flex; align-items:center; justify-content:center; }
+.nsb-how li b { display:block; font-size:15px; font-weight:600; }
+.nsb-how li span { display:block; font-size:13.5px; color:var(--ink-2); line-height:1.45; margin-top:1px; }
+.nsb-how a { display:inline-flex; align-items:center; gap:4px; margin-top:8px; color:var(--blue); font-size:14px; font-weight:600; }
+.nsb-how a svg { width:16px; height:16px; }
 .nsb-fail { text-align:center; padding:28px 18px; border-radius:22px; background:var(--tint); font-size:14.5px; color:var(--ink-2); margin-top:12px; }
 </style>
 
@@ -266,7 +275,7 @@
 
     <button class="nsb-danger" id="nsbCancel" type="button">Zrušit předplatné</button>
     <div class="nsb-confirm" id="nsbConfirm" hidden>
-      <p>Opravdu zrušit? Další platby se už nestrhnou a naplánované dodávky, které ještě nejsou připravené, se nedoručí.</p>
+      <p>Opravdu zrušit? Další platby se už nestrhnou. Dodávky, které máte v tomto cyklu už zaplacené, vám normálně dovezeme.</p>
       <div class="row"><button class="nsb-btn" id="nsbConfirmNo" type="button">Ponechat</button><button class="nsb-btn red" id="nsbConfirmYes" type="button">Zrušit</button></div>
       <div class="nsb-err" id="nsbCancelErr" hidden></div>
     </div>
@@ -277,6 +286,16 @@
     <div class="nsb-steps" id="nsbSteps"><div class="on"><i></i><span>Typ</span></div><div><i></i><span>Sestavení</span></div><div><i></i><span>Doručení</span></div></div>
 
     <div class="nsb-step" data-step="1">
+      <div class="nsb-how" id="nsbHow" hidden>
+        <h2>Jak předplatné funguje</h2>
+        <ol>
+          <li><div><b>Vyberete si květiny</b><span>Typ, styl, velikost a jak často. Cenu vidíte hned.</span></div></li>
+          <li><div><b>Vozíme je až k vám</b><span><i id="nsbHowFreq" style="font-style:normal;">Několikrát</i> za 4 týdny, pokaždé čerstvé podle sezóny. Nemusíte nic objednávat.</span></div></li>
+          <li><div><b>Termíny máte pod kontrolou</b><span>Datum i adresu každé dodávky změníte tady v účtu, klidně i pro někoho jiného.</span></div></li>
+          <li><div><b>Platíte jednou za 4 týdny</b><span>Kartou, automaticky. Zrušit můžete kdykoli jedním klepnutím, bez poplatků.</span></div></li>
+        </ol>
+        <a href="https://vezminarin.cz/predplatne" id="nsbHowMore">Víc o předplatném<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></a>
+      </div>
       <h2 class="nsb-h2">Co vám budeme vozit?</h2>
       <p class="nsb-sub2">Vyberte typ, detaily doladíte v dalším kroku.</p>
       <div id="nsbCats"><div class="nsb-sk" style="height:130px;margin-top:12px;"></div><div class="nsb-sk" style="height:130px;margin-top:12px;"></div><div class="nsb-sk" style="height:130px;margin-top:12px;"></div></div>
@@ -302,11 +321,11 @@
         <input type="checkbox" class="nsb-check" id="nsbVaseCheck">
       </label>
 
-      <div class="nsb-label">Nálada <span style="font-weight:400;color:var(--muted);font-size:13px;">(nepovinné)</span></div>
-      <div class="nsb-moods" id="nsbMoods" style="margin-top:8px;"></div>
+      <div id="nsbMoodWrap"><div class="nsb-label">Nálada <span style="font-weight:400;color:var(--muted);font-size:13px;">(nepovinné)</span></div>
+      <div class="nsb-moods" id="nsbMoods" style="margin-top:8px;"></div></div>
 
-      <div class="nsb-label">Co určitě nechcete vidět</div>
-      <input type="text" id="nsbExcl" placeholder="např. slunečnice, lilie" style="margin-top:8px;">
+      <div id="nsbExclWrap"><div class="nsb-label">Co určitě nechcete vidět</div>
+      <input type="text" id="nsbExcl" placeholder="např. slunečnice, lilie" style="margin-top:8px;"></div>
 
       <label class="nsb-agree"><input type="checkbox" class="nsb-check" id="nsbAgree"><span>Rozumím, že květiny se mohou mírně lišit od fotografie. Florista tvoří podle sezónní nabídky a vašich přání.</span></label>
 
@@ -362,11 +381,11 @@
     var ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxYnVybGFtdWlweG1lbnFzam54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTY2MTIsImV4cCI6MjA4ODgzMjYxMn0.NYnQoorm3z5gkjr954JdYhzDNmYfCjefzK1ddq3cflw';
     var PAGE_URL = 'https://vezminarin.cz/members/subscription';
     var TOKEN_KEY = 'lk_auth_token';
-    var CATALOG_CACHE = 'narin_sub_catalog_cache_v2';
+    var CATALOG_CACHE = 'narin_sub_catalog_cache_v3';
     var SIZES = ['small', 'medium', 'large'];
     var SIZE_LABELS = { small: 'S', medium: 'M', large: 'L' };
-    var MOODS = ['Romantická', 'Jasná', 'Pastelová', 'Divoká', 'Klasická', 'Minimalistická', 'Luxusní'];
-    var VASE_FROM = 4; // výměna váz od 4 dodávek
+    // výchozí hodnoty; skutečné nastavení bere stránka z tabulky subscription_settings (manažerská aplikace)
+    var SETTINGS = { moods: ['Romantická', 'Jasná', 'Pastelová', 'Divoká', 'Klasická', 'Minimalistická', 'Luxusní'], mood_enabled: true, exclusions_enabled: true, vase_enabled: true, vase_min_deliveries: 4 };
     // Dočasné fotky, dokud manažer nenahraje vlastní (hero_image_url / image_url mají přednost)
     var CAT_IMAGES = {
         bouquet: 'https://images.unsplash.com/photo-1487070183336-b863922373d4?w=240&h=240&fit=crop',
@@ -410,6 +429,12 @@
     function addDays(s, n) { var d = d0(s); d.setDate(d.getDate() + n); return isoLocal(d); }
     function deliveriesWord(n) { return n === 1 ? 'dodávka' : (n >= 2 && n <= 4 ? 'dodávky' : 'dodávek'); }
     function show(el, on) { el.hidden = !on; }
+    function applySettings() {
+        var st2 = cat.settings;
+        if (st2) Object.keys(SETTINGS).forEach(function (k) { if (st2[k] != null) SETTINGS[k] = st2[k]; });
+        show($('nsbMoodWrap'), SETTINGS.mood_enabled && SETTINGS.moods.length > 0);
+        show($('nsbExclWrap'), SETTINGS.exclusions_enabled);
+    }
     // rozbitá fotka → světlá plocha s květinou místo ikony rozbitého obrázku
     document.addEventListener('error', function (e) {
         var im = e.target;
@@ -501,17 +526,19 @@
     // ---------- katalog (veřejný, s mezipamětí) ----------
     try {
         var cc = JSON.parse(localStorage.getItem(CATALOG_CACHE) || 'null');
-        if (cc && cc.categories && cc.tiers) { cat = cc; }
+        if (cc && cc.categories && cc.tiers) { cat = cc; applySettings(); }
     } catch (e) {}
     var catalogReady = Promise.all([
         rest('subscription_categories', 'select=id,key,name,description,hero_image_url&order=sort_order.asc'),
         rest('subscription_lines', 'select=id,category_id,name,description,image_url&order=sort_order.asc'),
-        rest('subscription_plans', 'select=line_id,size,price_per_delivery'),
+        rest('subscription_plans', 'select=line_id,size,price_per_delivery&price_per_delivery=gt.0'),
         rest('subscription_frequency_tiers', 'select=deliveries_per_cycle,discount_percent,perk_text&active=eq.true&order=deliveries_per_cycle.asc'),
         rest('shop_weekly_closed_days', 'select=weekday').catch(function () { return [{ weekday: 0 }]; }),
-        rest('shop_closed_dates', 'select=closed_date&closed_date=gte.' + today()).catch(function () { return []; })
+        rest('shop_closed_dates', 'select=closed_date&closed_date=gte.' + today()).catch(function () { return []; }),
+        rest('subscription_settings', 'select=moods,mood_enabled,exclusions_enabled,vase_enabled,vase_min_deliveries&id=eq.1').catch(function () { return []; })
     ]).then(function (r) {
-        cat = { categories: r[0], lines: r[1], plans: r[2], tiers: r[3], closedDays: r[4].map(function (x) { return x.weekday; }), closedDates: r[5].map(function (x) { return x.closed_date; }) };
+        cat = { categories: r[0], lines: r[1], plans: r[2], tiers: r[3], closedDays: r[4].map(function (x) { return x.weekday; }), closedDates: r[5].map(function (x) { return x.closed_date; }), settings: r[6][0] || null };
+        applySettings();
         try { localStorage.setItem(CATALOG_CACHE, JSON.stringify(cat)); } catch (e) {}
         renderCats();
         if (view === 'new' && step === 2) renderCon();
@@ -544,6 +571,7 @@
     function applySubs(list, fromCache) {
         var first = subs === null;
         subs = list;
+        show($('nsbHow'), !subs.length);
         if (!subs.length) {
             show($('nsbMine'), false);
             if (first && view === 'home' && !fromCache) setView('new');
@@ -717,16 +745,19 @@
         Array.prototype.forEach.call($('nsbSteps').children, function (el, i) { el.classList.toggle('on', i < n); });
         if (view === 'new') setView('new');
     }
-    function linesOf(cid) { return cat.lines.filter(function (l) { return l.category_id === cid; }); }
+    // linie bez jediné dostupné velikosti by nešla objednat → nezobrazujeme ji
+    function linesOf(cid) { return cat.lines.filter(function (l) { return l.category_id === cid && cat.plans.some(function (p) { return p.line_id === l.id; }); }); }
     function price(lineId, size) { var p = cat.plans.filter(function (p) { return p.line_id === lineId && p.size === size; })[0]; return p ? Number(p.price_per_delivery) : null; }
     function minPrice(cid) { var m = null; linesOf(cid).forEach(function (l) { SIZES.forEach(function (sz) { var p = price(l.id, sz); if (p != null && (m == null || p < m)) m = p; }); }); return m; }
     function perks(t) {
         var p = String(t.perk_text || '').toLowerCase();
-        return { scissors: p.indexOf('sek') !== -1, cert: p.indexOf('certifik') !== -1, vase: t.deliveries_per_cycle >= VASE_FROM };
+        return { scissors: p.indexOf('sek') !== -1, cert: p.indexOf('certifik') !== -1, vase: SETTINGS.vase_enabled && t.deliveries_per_cycle >= SETTINGS.vase_min_deliveries };
     }
 
     function renderCats() {
         var box = $('nsbCats');
+        var ns = cat.tiers.map(function (t) { return t.deliveries_per_cycle + '×'; });
+        if (ns.length) $('nsbHowFreq').textContent = ns.length === 1 ? ns[0] : ns.slice(0, -1).join(', ') + ' nebo ' + ns[ns.length - 1];
         if (!cat.categories.length) return;
         box.innerHTML = cat.categories.map(function (c) {
             var has = linesOf(c.id).length > 0, mp = has ? minPrice(c.id) : null;
@@ -752,7 +783,7 @@
         $('nsbLines').innerHTML = lines.map(function (l, i) {
             return '<button type="button" class="nsb-line" data-l="' + esc(l.id) + '"><img src="' + esc(l.image_url || LINE_IMAGES[i % LINE_IMAGES.length]) + '" alt="" loading="lazy" decoding="async"><span class="tick">' + ICON.tick + '</span><b>' + esc(l.name) + '</b><span>' + esc(l.description || '') + '</span></button>';
         }).join('');
-        $('nsbMoods').innerHTML = MOODS.map(function (m) { return '<button type="button" class="nsb-mood" data-m="' + esc(m) + '">' + esc(m) + '</button>'; }).join('');
+        $('nsbMoods').innerHTML = SETTINGS.moods.map(function (m) { return '<button type="button" class="nsb-mood" data-m="' + esc(m) + '">' + esc(m) + '</button>'; }).join('');
         renderCon();
         goStep(2);
         var sel = $('nsbLines').querySelector('.on'); if (sel) sel.scrollIntoView({ block: 'nearest', inline: 'start' });
@@ -772,9 +803,15 @@
     }
     function renderCon() {
         Array.prototype.forEach.call($('nsbLines').children, function (b) { b.classList.toggle('on', b.getAttribute('data-l') === st.lineId); });
+        // velikost, kterou manažer vypnul (nebo u linie chybí cena), přepneme na nejbližší dostupnou
+        if (price(st.lineId, st.size) == null) {
+            var alt = ['medium', 'small', 'large'].filter(function (sz) { return price(st.lineId, sz) != null; })[0];
+            if (alt) st.size = alt;
+        }
         $('nsbSizes').innerHTML = SIZES.map(function (sz) {
             var p = price(st.lineId, sz);
-            return '<button type="button" class="nsb-opt' + (st.size === sz ? ' on' : '') + '" data-s="' + sz + '"' + (p == null ? ' disabled style="opacity:.4"' : '') + '><b>' + SIZE_LABELS[sz] + '</b><small>' + (p != null ? kc(p) : '–') + '</small></button>';
+            if (p == null) return '';
+            return '<button type="button" class="nsb-opt' + (st.size === sz ? ' on' : '') + '" data-s="' + sz + '"><b>' + SIZE_LABELS[sz] + '</b><small>' + kc(p) + '</small></button>';
         }).join('');
         var legend = { scissors: null, cert: null, vase: null };
         $('nsbCounts').innerHTML = cat.tiers.map(function (t) {
@@ -789,7 +826,7 @@
         if (legend.cert != null) lg.push('<span>' + ICON.cert + 'od ' + legend.cert + '× partnerský certifikát</span>');
         if (legend.vase != null) lg.push('<span>' + ICON.vase + 'od ' + legend.vase + '× výměna váz</span>');
         $('nsbLegend').innerHTML = lg.join('');
-        var vaseOk = st.count >= VASE_FROM;
+        var vaseOk = SETTINGS.vase_enabled && st.count >= SETTINGS.vase_min_deliveries;
         show($('nsbVase'), vaseOk); if (!vaseOk) $('nsbVaseCheck').checked = false;
         Array.prototype.forEach.call($('nsbMoods').children, function (b) { b.classList.toggle('on', b.getAttribute('data-m') === st.mood); });
         $('nsbNext2').disabled = !$('nsbAgree').checked;
@@ -852,7 +889,7 @@
         btn.disabled = true; btn.textContent = 'Přesměrováváme…';
         api('subscriptions', {
             action: 'create-checkout', line_id: st.lineId, size: st.size, count: st.count,
-            mood_note: st.mood || '', exclusions_note: $('nsbExcl').value.trim(), vase_exchange: $('nsbVaseCheck').checked,
+            mood_note: SETTINGS.mood_enabled ? (st.mood || '') : '', exclusions_note: SETTINGS.exclusions_enabled ? $('nsbExcl').value.trim() : '', vase_exchange: $('nsbVaseCheck').checked,
             cycle_anchor_date: f.start.value, recipient_name: f.name.value.trim(), recipient_phone: f.phone.value.trim(), address: f.addr.value.trim(),
             city: $('nsbCity').value.trim(), psk: $('nsbPsk').value.trim(), patro: $('nsbPatro').value.trim(), company_name: $('nsbCompany').value.trim(),
             cislo_bytu: $('nsbByt').value.trim(), kod_intercomu: $('nsbIntercom').value.trim(),
