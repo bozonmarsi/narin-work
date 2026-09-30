@@ -129,9 +129,12 @@ async function createCheckout(body: Record<string, unknown>) {
     .maybeSingle();
   if (lineErr || !line) return json({ error: "unknown line" }, 400);
 
-  const { data: lineCat } = await supabase.from("subscription_lines").select("category_id, subscription_categories(active)").eq("id", lineId).maybeSingle();
-  const cat = lineCat?.subscription_categories as { active: boolean } | null | undefined;
-  if (cat && cat.active === false) return json({ error: "unknown line" }, 400);
+  // (*) místo konkrétních sloupců: funguje i před spuštěním migrace s coming_soon
+  const { data: lineCat } = await supabase.from("subscription_lines").select("category_id, subscription_categories(*)").eq("id", lineId).maybeSingle();
+  const cat = lineCat?.subscription_categories as { active?: boolean; coming_soon?: boolean } | null | undefined;
+  if (cat && (cat.active === false || cat.coming_soon === true)) {
+    return json({ error: "coming_soon", message: "Tento typ předplatného připravujeme, zatím ho nejde objednat." }, 400);
+  }
   if (await isClosedDay(cycleAnchorDate)) {
     return json({ error: "closed_day", message: "V tento den nevozíme, vyberte prosím jiné datum první dodávky." }, 400);
   }

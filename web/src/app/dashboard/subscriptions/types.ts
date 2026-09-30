@@ -10,6 +10,8 @@ export type Category = {
   name: string;
   description: string | null;
   hero_image_url: string | null;
+  // «Připravujeme»: видна на сайте, но заказать нельзя (нет, пока не выполнена миграция)
+  coming_soon?: boolean;
   sort_order: number;
   active: boolean;
 };
