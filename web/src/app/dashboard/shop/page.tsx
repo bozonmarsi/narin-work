@@ -983,8 +983,6 @@ export default function ShopPage() {
   // отдельной карточке: для сета это и есть главное, ради чего его
   // вообще заводят, неудобно было бы заставлять искать карточку заново.
   const [newProductRecipe, setNewProductRecipe] = useState<{ ingredientId: string; ingredientName: string; qty: number }[]>([]);
-  const [newRecipeIngredientId, setNewRecipeIngredientId] = useState("");
-  const [newRecipeQty, setNewRecipeQty] = useState("1");
   const [addingProduct, setAddingProduct] = useState(false);
   const [addProductError, setAddProductError] = useState<string | null>(null);
   // Каталог на сайте живёт в самой Tilda — этот товар тут не создаёт
@@ -1271,18 +1269,17 @@ export default function ShopPage() {
     loadAvailability();
   }
 
-  function addStagedRecipeItem() {
-    const qty = parseFloat(newRecipeQty);
-    if (!newRecipeIngredientId || !(qty > 0)) return;
-    const ingredient = rawMaterialOptions.find((m) => m.id === newRecipeIngredientId);
-    if (!ingredient) return;
-    setNewProductRecipe((prev) => [...prev, { ingredientId: ingredient.id, ingredientName: ingredient.name, qty }]);
-    setNewRecipeIngredientId("");
-    setNewRecipeQty("1");
+  function toggleStagedRecipeItem(ingredientId: string, ingredientName: string) {
+    setNewProductRecipe((prev) =>
+      prev.some((r) => r.ingredientId === ingredientId)
+        ? prev.filter((r) => r.ingredientId !== ingredientId)
+        : [...prev, { ingredientId, ingredientName, qty: 1 }]
+    );
   }
 
-  function removeStagedRecipeItem(index: number) {
-    setNewProductRecipe((prev) => prev.filter((_, i) => i !== index));
+  function setStagedRecipeItemQty(ingredientId: string, qty: number) {
+    if (!(qty > 0)) return;
+    setNewProductRecipe((prev) => prev.map((r) => (r.ingredientId === ingredientId ? { ...r, qty } : r)));
   }
 
   async function setCategory(productId: string, category: string) {
@@ -1459,6 +1456,11 @@ export default function ShopPage() {
     () => products.filter((p) => p.category === "ohapka").map((p) => ({ id: p.id, name: p.name })),
     [products]
   );
+
+  // Сет/букет собирается из состава — под эту категорию форма "Новый
+  // товар" превращается в более широкую, с чек-листом цветов, вместо
+  // компактной карточки для охапки/darky/atelier.
+  const newProductNeedsRecipe = newProductCategory !== "" && !NO_RECIPE_CATEGORIES.has(newProductCategory);
 
   const filteredProducts = useMemo(() => {
     const q = availabilitySearch.trim().toLowerCase();
@@ -1857,98 +1859,89 @@ export default function ShopPage() {
 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
             {activeTab !== "archive" && (
-              <div className="flex flex-col gap-1.5 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-600 p-2">
-                <p className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">Новый товар</p>
-                <input
-                  value={newProductName}
-                  onChange={(e) => setNewProductName(e.target.value)}
-                  placeholder="Название"
-                  className="rounded-md border border-zinc-300 dark:border-zinc-600 px-1.5 py-1 text-[11px]"
-                />
-                <select
-                  value={newProductCategory}
-                  onChange={(e) => {
-                    const next = e.target.value;
-                    setNewProductCategory(next);
-                    if (NO_RECIPE_CATEGORIES.has(next)) setNewProductRecipe([]);
-                  }}
-                  title="Категория — лучше выбрать сразу, чтобы товар везде вёл себя правильно (рецепт, соответствие с поставщиком)"
-                  className="rounded-md border border-zinc-300 dark:border-zinc-600 px-1.5 py-1 text-[11px]"
-                >
-                  <option value="">Категория…</option>
-                  {CATEGORY_OPTIONS.map((c) => (
-                    <option key={c.value} value={c.value}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-                <label className="cursor-pointer truncate rounded-md border border-zinc-300 dark:border-zinc-600 px-1.5 py-1 text-center text-[10px] text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800">
-                  {newProductFile ? newProductFile.name : "Фото (необязательно)"}
+              <div
+                className={`flex gap-3 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-600 p-2 ${
+                  newProductNeedsRecipe ? "col-span-full flex-col sm:flex-row" : "flex-col gap-1.5"
+                }`}
+              >
+                <div className={`flex flex-col gap-1.5 ${newProductNeedsRecipe ? "sm:w-56 sm:shrink-0" : ""}`}>
+                  <p className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                    {newProductNeedsRecipe ? "Новый сет/букет" : "Новый товар"}
+                  </p>
                   <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => setNewProductFile(e.target.files?.[0] ?? null)}
+                    value={newProductName}
+                    onChange={(e) => setNewProductName(e.target.value)}
+                    placeholder="Название"
+                    className="rounded-md border border-zinc-300 dark:border-zinc-600 px-1.5 py-1 text-[11px]"
                   />
-                </label>
-                {newProductCategory && !NO_RECIPE_CATEGORIES.has(newProductCategory) && (
-                  <div className="space-y-1 rounded-md border border-zinc-200 dark:border-zinc-700 p-1.5">
-                    <p className="text-[9px] font-medium text-zinc-400 dark:text-zinc-500">Состав (необязательно, можно и позже)</p>
-                    {newProductRecipe.map((r, i) => (
-                      <div key={r.ingredientId} className="flex items-center justify-between gap-1 text-[10px]">
-                        <span className="truncate text-zinc-600 dark:text-zinc-300">
-                          {r.ingredientName} × {r.qty}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => removeStagedRecipeItem(i)}
-                          className="shrink-0 text-zinc-400 hover:text-red-600 dark:hover:text-red-400"
-                        >
-                          ✕
-                        </button>
-                      </div>
+                  <select
+                    value={newProductCategory}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      setNewProductCategory(next);
+                      if (NO_RECIPE_CATEGORIES.has(next)) setNewProductRecipe([]);
+                    }}
+                    title="Категория — лучше выбрать сразу, чтобы товар везде вёл себя правильно (рецепт, соответствие с поставщиком)"
+                    className="rounded-md border border-zinc-300 dark:border-zinc-600 px-1.5 py-1 text-[11px]"
+                  >
+                    <option value="">Категория…</option>
+                    {CATEGORY_OPTIONS.map((c) => (
+                      <option key={c.value} value={c.value}>
+                        {c.label}
+                      </option>
                     ))}
-                    <div className="flex items-center gap-1">
-                      <select
-                        value={newRecipeIngredientId}
-                        onChange={(e) => setNewRecipeIngredientId(e.target.value)}
-                        className="min-w-0 flex-1 rounded-md border border-zinc-300 dark:border-zinc-600 bg-transparent px-1 py-0.5 text-[10px]"
-                      >
-                        <option value="">Ингредиент…</option>
-                        {rawMaterialOptions
-                          .filter((m) => !newProductRecipe.some((r) => r.ingredientId === m.id))
-                          .map((m) => (
-                            <option key={m.id} value={m.id}>
-                              {m.name}
-                            </option>
-                          ))}
-                      </select>
-                      <input
-                        type="number"
-                        min={1}
-                        value={newRecipeQty}
-                        onChange={(e) => setNewRecipeQty(e.target.value)}
-                        className="w-10 rounded-md border border-zinc-300 dark:border-zinc-600 bg-transparent px-1 py-0.5 text-[10px]"
-                      />
-                      <button
-                        type="button"
-                        disabled={!newRecipeIngredientId || !(parseFloat(newRecipeQty) > 0)}
-                        onClick={addStagedRecipeItem}
-                        className="rounded-md bg-accent px-1.5 py-0.5 text-[10px] font-medium text-white disabled:opacity-40"
-                      >
-                        +
-                      </button>
+                  </select>
+                  <label className="cursor-pointer truncate rounded-md border border-zinc-300 dark:border-zinc-600 px-1.5 py-1 text-center text-[10px] text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                    {newProductFile ? newProductFile.name : "Фото (необязательно)"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => setNewProductFile(e.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                  <button
+                    onClick={addProduct}
+                    disabled={!newProductName.trim() || addingProduct}
+                    className="rounded-md bg-accent px-2 py-1.5 text-[11px] font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+                  >
+                    {addingProduct ? "Добавляю…" : "+ Добавить"}
+                  </button>
+                  {addProductError && <p className="text-[10px] text-red-600 dark:text-red-400">{addProductError}</p>}
+                </div>
+
+                {newProductNeedsRecipe && (
+                  <div className="min-w-0 flex-1 space-y-1 border-t border-zinc-200 pt-1.5 sm:border-l sm:border-t-0 sm:pl-3 sm:pt-0 dark:border-zinc-700">
+                    <p className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400">
+                      Состав — отметь 3-4 цветка{newProductRecipe.length > 0 ? ` (выбрано: ${newProductRecipe.length})` : ""}
+                    </p>
+                    <div className="grid max-h-40 grid-cols-1 gap-x-3 gap-y-0.5 overflow-y-auto pr-1 sm:grid-cols-2">
+                      {rawMaterialOptions.map((m) => {
+                        const staged = newProductRecipe.find((r) => r.ingredientId === m.id);
+                        return (
+                          <label key={m.id} className="flex items-center gap-1.5 text-[10px]">
+                            <input
+                              type="checkbox"
+                              checked={!!staged}
+                              onChange={() => toggleStagedRecipeItem(m.id, m.name)}
+                              className="h-3 w-3 shrink-0 accent-accent"
+                            />
+                            <span className="min-w-0 flex-1 truncate text-zinc-600 dark:text-zinc-300">{m.name}</span>
+                            {staged && (
+                              <input
+                                type="number"
+                                min={1}
+                                value={staged.qty}
+                                onChange={(e) => setStagedRecipeItemQty(m.id, parseFloat(e.target.value))}
+                                className="w-9 shrink-0 rounded border border-zinc-300 dark:border-zinc-600 bg-transparent px-1 py-0 text-center text-[10px]"
+                              />
+                            )}
+                          </label>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
-                <button
-                  onClick={addProduct}
-                  disabled={!newProductName.trim() || addingProduct}
-                  className="rounded-md bg-accent px-2 py-1.5 text-[11px] font-medium text-white hover:bg-accent-hover disabled:opacity-50"
-                >
-                  {addingProduct ? "Добавляю…" : "+ Добавить"}
-                </button>
-                {addProductError && <p className="text-[10px] text-red-600 dark:text-red-400">{addProductError}</p>}
               </div>
             )}
 
