@@ -35,7 +35,7 @@ html, body { overflow-x:hidden; }
 
 /* ---------- HERO ---------- */
 .nkc-hero { padding:48px 0 72px; }
-.nkc-hero-grid { display:grid; grid-template-columns:5fr 6fr; grid-template-areas:'intro chat' 'ways chat'; gap:0 56px; align-items:start; }
+.nkc-hero-grid { display:grid; grid-template-columns:5fr 6fr; grid-template-areas:'intro chat' 'ways chat'; grid-template-rows:auto 1fr; gap:0 56px; align-items:start; }
 .nkc-intro { grid-area:intro; }
 .nkc-ways-wrap { grid-area:ways; }
 #nkcChat { grid-area:chat; }
@@ -184,30 +184,37 @@ html.nkc-lock, html.nkc-lock body { overflow:hidden !important; }
 .nkc-q.is-open .nkc-a { grid-template-rows:1fr; }
 .nkc-faq-ask { margin-top:24px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; font-size:15px; color:var(--ink-2); }
 
-/* ---------- PLACE ---------- */
-.nkc-place { display:grid; grid-template-columns:6fr 5fr; gap:16px; }
-.nkc-map { position:relative; border-radius:var(--r-lg); overflow:hidden; min-height:340px; background:
-  linear-gradient(rgba(255,255,255,.55),rgba(255,255,255,.55)),
-  repeating-linear-gradient(0deg,transparent 0 38px,#dde7f5 38px 40px),
-  repeating-linear-gradient(90deg,transparent 0 38px,#dde7f5 38px 40px), #eef4fc; }
-.nkc-map-road1 { position:absolute; left:-10%; right:-10%; top:46%; height:22px; background:#fff; transform:rotate(-8deg); box-shadow:0 0 0 1px #d6e2f3; }
-.nkc-map-road2 { position:absolute; top:-10%; bottom:-10%; left:58%; width:16px; background:#fff; transform:rotate(12deg); box-shadow:0 0 0 1px #d6e2f3; }
-.nkc-pin { position:absolute; left:56%; top:42%; transform:translate(-50%,-100%); display:flex; flex-direction:column; align-items:center; }
-.nkc-pin-head { width:58px; height:58px; border-radius:50% 50% 50% 0; transform:rotate(-45deg); background:var(--blue); display:flex; align-items:center; justify-content:center; box-shadow:0 14px 26px -10px rgba(24,108,224,.6); }
-.nkc-pin-head span { transform:rotate(45deg); display:flex; }
-.nkc-pin-shadow { width:26px; height:8px; border-radius:50%; background:rgba(18,52,110,.18); margin-top:6px; animation:nkcPulse 2.4s ease-in-out infinite; }
-@keyframes nkcPulse { 50% { transform:scale(1.4); opacity:.5; } }
-.nkc-map-btn { position:absolute; left:20px; bottom:20px; background:#fff; color:var(--ink); }
-.nkc-map-btn:hover { background:#fff; border-color:var(--ink); }
-.nkc-place-info { border:1px solid var(--line); border-radius:var(--r-lg); padding:32px; display:flex; flex-direction:column; gap:26px; }
-.nkc-place-info h3 { font-size:22px; font-weight:600; }
-.nkc-place-info p { font-size:15px; color:var(--ink-2); line-height:1.55; margin-top:6px; }
-.nkc-hours { display:grid; gap:0; }
-.nkc-hours li { display:flex; justify-content:space-between; gap:16px; padding:10px 0; font-size:15px; }
-.nkc-hours li + li { border-top:1px solid var(--line); }
-.nkc-hours li span:last-child { font-weight:500; font-variant-numeric:tabular-nums; white-space:nowrap; }
-.nkc-hours li.is-today { color:var(--blue); }
-.nkc-hours li.is-today span:first-child::after { content:' · dnes'; font-weight:500; }
+/* ---------- SOCIAL ---------- */
+.nkc-social { margin-top:26px; }
+.nkc-social-t { font-size:13px; color:var(--muted); margin-bottom:10px; }
+.nkc-social-row { display:flex; flex-wrap:wrap; gap:8px; }
+.nkc-chip { display:inline-flex; align-items:center; gap:8px; height:44px; padding:0 18px 0 14px; border-radius:999px; border:1.5px solid var(--line); background:#fff; color:var(--ink); text-decoration:none; font:500 15px 'Rubik',sans-serif; transition:border-color .2s ease, background .2s ease; }
+.nkc-chip .ti { font-size:20px; color:var(--blue); }
+.nkc-chip:hover { border-color:var(--ink); }
+.nkc-chip--on-dark { border-color:rgba(255,255,255,.35); background:transparent; color:#fff; }
+.nkc-chip--on-dark .ti { color:#fff; }
+.nkc-chip--on-dark:hover { border-color:#fff; }
+
+/* ---------- STORE SOON ---------- */
+.nkc-store { position:relative; overflow:hidden; border-radius:var(--r-lg); background:var(--blue); color:#fff; padding:56px; display:grid; grid-template-columns:1fr auto; gap:40px; align-items:center; }
+.nkc-store-mark { position:absolute; right:-70px; top:50%; margin-top:-200px; opacity:.1; pointer-events:none; animation:nkcSpin 80s linear infinite; }
+@keyframes nkcSpin { to { transform:rotate(360deg); } }
+.nkc-store > div { position:relative; z-index:1; }
+.nkc-soon { display:inline-block; font-size:13px; font-weight:600; letter-spacing:.02em; color:var(--blue); background:#fff; border-radius:999px; padding:5px 12px; }
+.nkc-store h2 { font-size:40px; line-height:1.1; font-weight:600; letter-spacing:-.02em; margin-top:18px; max-width:16ch; }
+.nkc-store p { font-size:17px; line-height:1.6; color:rgba(255,255,255,.88); margin-top:14px; max-width:48ch; }
+.nkc-store-follow { margin-top:28px; }
+.nkc-store-follow .nkc-social-t { color:rgba(255,255,255,.75); }
+
+/* ---------- MORE ---------- */
+.nkc-more { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:40px; }
+.nkc-more a { display:grid; grid-template-columns:auto 1fr; grid-template-rows:auto auto; gap:2px 16px; align-items:center; padding:22px; border-radius:var(--r-lg); border:1px solid var(--line); text-decoration:none; color:var(--ink); background:#fff; transition:transform .35s cubic-bezier(.16,1,.3,1), border-color .2s ease, box-shadow .35s ease; }
+.nkc-more a:hover { transform:translateY(-4px); border-color:transparent; box-shadow:0 24px 40px -24px rgba(18,52,110,.4); }
+.nkc-more-ic { grid-row:span 2; width:48px; height:48px; border-radius:16px; background:var(--tint); color:var(--blue); display:flex; align-items:center; justify-content:center; font-size:24px; }
+.nkc-more b { font-size:17px; font-weight:600; align-self:end; }
+.nkc-more span.d { font-size:14px; color:var(--ink-2); line-height:1.4; }
+.nkc-more a.is-lead { background:var(--tint); border-color:transparent; }
+.nkc-more a.is-lead .nkc-more-ic { background:#fff; }
 
 /* ---------- LEGAL ---------- */
 .nkc-legal { padding:0 0 96px; }
@@ -219,10 +226,11 @@ html.nkc-lock, html.nkc-lock body { overflow:hidden !important; }
 
 /* ---------- RESPONSIVE ---------- */
 @media (max-width:1024px) {
-  .nkc-hero-grid { grid-template-columns:1fr; grid-template-areas:'intro' 'chat' 'ways'; gap:28px; }
+  .nkc-hero-grid { grid-template-columns:1fr; grid-template-areas:'intro' 'chat' 'ways'; grid-template-rows:none; gap:28px; }
   .nkc-ways { margin-top:0; }
-  .nkc-place, .nkc-faq-grid { grid-template-columns:1fr; gap:32px; }
-  .nkc-place { gap:16px; }
+  .nkc-faq-grid { grid-template-columns:1fr; gap:32px; }
+  .nkc-more { grid-template-columns:1fr 1fr; }
+  .nkc-store { padding:44px 32px; grid-template-columns:1fr; }
   .nkc-hero h1 { font-size:46px; }
   .nkc-legal-box { grid-template-columns:1fr; gap:18px; }
 }
@@ -255,8 +263,13 @@ html.nkc-lock, html.nkc-lock body { overflow:hidden !important; }
   .nkc-send { width:44px; height:44px; }
   #nkcSendErr { padding:0 16px 12px !important; }
   .nkc-q button { font-size:16px; }
-  .nkc-map { min-height:260px; }
-  .nkc-place-info { padding:24px 20px; }
+  .nkc-store { padding:32px 22px; border-radius:22px; }
+  .nkc-store h2 { font-size:30px; }
+  .nkc-store p { font-size:16px; }
+  .nkc-store-mark { width:300px; height:300px; right:-90px; margin-top:-150px; }
+  .nkc-more { grid-template-columns:1fr; gap:10px; margin-top:28px; }
+  .nkc-more a { padding:16px; }
+  .nkc-chip { height:42px; font-size:14px; }
   .nkc-legal dl { grid-template-columns:1fr 1fr; }
 }
 @media (prefers-reduced-motion:reduce) {
@@ -275,7 +288,10 @@ html.nkc-lock, html.nkc-lock body { overflow:hidden !important; }
         <p class="nkc-lead">Nejrychleji nás zastihnete v chatu. Odpovídá vám člověk, ne robot.</p>
         <div class="nkc-status" id="nkcStatus"><i class="dot"></i><span id="nkcStatusText"></span></div>
       </div>
-      <div class="nkc-ways-wrap nkc-r"><div class="nkc-ways" id="nkcWays"></div></div>
+      <div class="nkc-ways-wrap nkc-r">
+        <div class="nkc-ways" id="nkcWays"></div>
+        <div class="nkc-social"><div class="nkc-social-t">Sledujte nás</div><div class="nkc-social-row" id="nkcSocial"></div></div>
+      </div>
       <div class="nkc-chat nkc-r" id="nkcChat">
         <div class="nkc-chat-head">
           <div class="nkc-avatar" id="nkcTeamAvatar"></div>
@@ -346,24 +362,29 @@ html.nkc-lock, html.nkc-lock body { overflow:hidden !important; }
     </div>
   </section>
 
-  <!-- PLACE -->
+  <!-- STORE SOON -->
   <section class="nkc-sec" style="padding-top:0;">
     <div class="nkc-wrap">
-      <div class="nkc-r" style="margin-bottom:40px;">
-        <h2 class="nkc-h2">Osobní odběr</h2>
-        <p class="nkc-lead">Objednávku si můžete vyzvednout u nás. Čas odběru vyberete v košíku.</p>
-      </div>
-      <div class="nkc-place">
-        <div class="nkc-map nkc-r" aria-hidden="false">
-          <span class="nkc-map-road1"></span><span class="nkc-map-road2"></span>
-          <div class="nkc-pin"><div class="nkc-pin-head"><span id="nkcPinMark"></span></div><div class="nkc-pin-shadow"></div></div>
-          <a class="nkc-btn nkc-btn--line nkc-map-btn" id="nkcMapLink" target="_blank" rel="noopener"><i class="ti ti-map-2" aria-hidden="true"></i>Otevřít v Mapách</a>
-        </div>
-        <div class="nkc-place-info nkc-r">
-          <div><h3 id="nkcAddr"></h3><p id="nkcAddrNote"></p></div>
-          <div><h3>Otevírací doba</h3><ul class="nkc-hours" id="nkcHours" style="margin-top:10px;"></ul></div>
+      <div class="nkc-store nkc-r">
+        <span class="nkc-store-mark" id="nkcStoreMark" aria-hidden="true"></span>
+        <div>
+          <span class="nkc-soon">Už brzy</span>
+          <h2>Otevíráme první obchod NARIN</h2>
+          <p>Právě v něm probíhá rekonstrukce. Až bude hotovo, najdete tady adresu, otevírací dobu a možnost vyzvednout si objednávku osobně.</p>
+          <div class="nkc-store-follow"><div class="nkc-social-t">Datum otevření oznámíme tady</div><div class="nkc-social-row" id="nkcSocial2"></div></div>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- MORE -->
+  <section class="nkc-sec" style="padding-top:0;">
+    <div class="nkc-wrap">
+      <div class="nkc-r">
+        <h2 class="nkc-h2">Více o NARIN</h2>
+        <p class="nkc-lead">Kdo jsme, jak to u nás funguje a co všechno nabízíme.</p>
+      </div>
+      <div class="nkc-more nkc-r" id="nkcMore"></div>
     </div>
   </section>
 
@@ -384,25 +405,32 @@ html.nkc-lock, html.nkc-lock body { overflow:hidden !important; }
   var CONFIG = {
     phone: '+420 776 421 993',
     email: 'support@vezminarin.cz',
-    instagram: '',            // např. 'vezminarin' (bez @). Prázdné = nezobrazí se.
-    // Otevírací doba chatu a odběru. Pořadí: Po, Út, St, Čt, Pá, So, Ne. null = zavřeno. TODO: potvrdit.
+    // Sociální sítě. Uživatelské jméno bez @. Prázdné = tlačítko se nezobrazí.
+    instagram: '',
+    threads: '',
+    website: { label: 'narin.cz', href: 'https://narin.cz' },
+    // Otevírací doba chatu a telefonu. Pořadí: Po, Út, St, Čt, Pá, So, Ne. null = zavřeno. TODO: potvrdit.
     hours: [['9:00', '20:00'], ['9:00', '20:00'], ['9:00', '20:00'], ['9:00', '20:00'], ['9:00', '20:00'], ['10:00', '18:00'], null],
-    pickup: {
-      address: 'Rumunská 17, 120 00 Praha 2',
-      note: 'Před příchodem nám prosím dejte vědět v chatu.',
-      maps: 'https://www.google.com/maps/search/?api=1&query=Rumunsk%C3%A1+17%2C+120+00+Praha'
-    },
     owner: {
       name: '',               // jméno pod textem, např. 'Magomed, majitel NARIN'. Prázdné = "Majitel NARIN".
       photo: ''               // URL fotky majitele. Prázdné = ikona NARIN.
     },
     teamAvatar: '',           // URL fotky týmu/floristky pro hlavičku chatu. Prázdné = ikona NARIN.
+    // Odkazy na další stránky webu.
+    more: [
+      { ic: 'ti-heart-handshake', t: 'O nás', d: 'Kdo jsme a proč květiny', href: 'https://vezminarin.cz/about-us', lead: true },
+      { ic: 'ti-shopping-bag', t: 'Pro zákazníky', d: 'Doručení, platba, reklamace', href: 'https://vezminarin.cz/to-buyers' },
+      { ic: 'ti-briefcase', t: 'Pro firmy', d: 'Faktura a firemní účet', href: 'https://vezminarin.cz/b2b' },
+      { ic: 'ti-coins', t: 'Věrnostní program', d: 'Body, úrovně a samolepky', href: 'https://vezminarin.cz/bonussystem' },
+      { ic: 'ti-gift', t: 'NARIN Dárky', d: 'Plyšáci, sladkosti, přáníčka', href: 'https://vezminarin.cz/darky' },
+      { ic: 'ti-scissors', t: 'NARIN Atelier', d: 'Kenzany, vázy, nůžky', href: 'https://vezminarin.cz/atelier' }
+    ],
     // Blok FAQ je zatím vypnutý, zapne se po přepracování stránky /to-buyers.
     showFaq: false,
     // FAQ: údaje vycházejí z nastavení e-shopu. Ceny a lhůty zkontrolujte.
     faq: [
       { tab: 'Doručení', items: [
-        ['Kolik stojí doručení?', 'Doručení kurýrem po Praze stojí 159 Kč. Osobní odběr je zdarma.'],
+        ['Kolik stojí doručení?', 'Doručení kurýrem po Praze stojí 159 Kč.'],
         ['Kdy mi květiny přivezete?', 'Doručujeme v časových oknech 9-12, 12-15, 15-18 a 18-20. Okno si vyberete v košíku. U každé květiny v katalogu vidíte, jestli ji doručíme dnes, nebo zítra.'],
         ['Dá příjemce vědět, že kurýr jede?', 'Ano. Asi 10 minut před příjezdem mu přijde SMS. Kurýr navíc kytici při předání vyfotí, abyste viděli, že dorazila.'],
         ['Můžu změnit adresu nebo čas po objednání?', 'Napište nám co nejdřív do chatu s číslem objednávky. Když ještě nejsou květiny na cestě, rádi to změníme.']
@@ -468,12 +496,23 @@ html.nkc-lock, html.nkc-lock body { overflow:hidden !important; }
   // ---------- statická část stránky ----------
   function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
   var telHref = 'tel:' + CONFIG.phone.replace(/\s/g, '');
+  // "Po-Pá 9:00-20:00, So 10:00-18:00" z CONFIG.hours
+  function hoursLine() {
+    var N = ['Po', 'Út', 'St', 'Čt', 'Pá', 'So', 'Ne'], out = [], i = 0, H = CONFIG.hours;
+    var key = function (h) { return h ? h[0] + '-' + h[1] : null; };
+    while (i < 7) {
+      var k = key(H[i]), j = i;
+      while (j + 1 < 7 && key(H[j + 1]) === k) j++;
+      if (k) out.push((j > i ? N[i] + '-' + N[j] : N[i]) + ' ' + k);
+      i = j + 1;
+    }
+    return out.join(', ');
+  }
   var ways = [
     { ic: 'ti-message-circle', t: 'Chat', d: 'nejrychlejší, odpověď do 10 minut', href: '#nkcChat', chat: true },
-    { ic: 'ti-phone', t: CONFIG.phone, d: 'volejte v otevírací době', href: telHref, copy: CONFIG.phone },
+    { ic: 'ti-phone', t: CONFIG.phone, d: hoursLine() || 'volejte v otevírací době', href: telHref, copy: CONFIG.phone },
     { ic: 'ti-mail', t: CONFIG.email, d: 'odpovídáme do 24 hodin', href: 'mailto:' + CONFIG.email, copy: CONFIG.email }
   ];
-  if (CONFIG.instagram) ways.push({ ic: 'ti-brand-instagram', t: '@' + CONFIG.instagram, d: 'inspirace a novinky', href: 'https://instagram.com/' + CONFIG.instagram });
   $('nkcWays').innerHTML = ways.map(function (w, i) {
     return '<div class="nkc-way"><a class="nkc-way-ic" href="' + w.href + '"' + (w.chat ? ' data-chat="1"' : '') + ' aria-label="' + esc(w.t) + '"><i class="ti ' + w.ic + '" aria-hidden="true"></i></a>' +
       '<a href="' + w.href + '"' + (w.chat ? ' data-chat="1"' : '') + ' style="text-decoration:none;color:inherit;"><b>' + esc(w.t) + '</b><span>' + esc(w.d) + '</span></a>' +
@@ -489,7 +528,21 @@ html.nkc-lock, html.nkc-lock body { overflow:hidden !important; }
   });
 
   $('nkcTeamAvatar').innerHTML = CONFIG.teamAvatar ? '<img src="' + CONFIG.teamAvatar + '" alt="">' : daisy('#186ce0', 26);
-  $('nkcPinMark').innerHTML = daisy('#fff', 28);
+  $('nkcStoreMark').innerHTML = daisy('#fff', 400);
+  var socials = [];
+  if (CONFIG.instagram) socials.push({ ic: 'ti-brand-instagram', t: 'Instagram', href: 'https://www.instagram.com/' + CONFIG.instagram });
+  if (CONFIG.threads) socials.push({ ic: 'ti-brand-threads', t: 'Threads', href: 'https://www.threads.net/@' + CONFIG.threads });
+  if (CONFIG.website && CONFIG.website.href) socials.push({ ic: 'ti-world', t: CONFIG.website.label, href: CONFIG.website.href });
+  function socialHtml(dark) {
+    return socials.map(function (x) {
+      return '<a class="nkc-chip' + (dark ? ' nkc-chip--on-dark' : '') + '" href="' + x.href + '" target="_blank" rel="noopener"><i class="ti ' + x.ic + '" aria-hidden="true"></i>' + esc(x.t) + '</a>';
+    }).join('');
+  }
+  $('nkcSocial').innerHTML = socialHtml(false);
+  $('nkcSocial2').innerHTML = socialHtml(true);
+  $('nkcMore').innerHTML = CONFIG.more.map(function (m) {
+    return '<a href="' + m.href + '"' + (m.lead ? ' class="is-lead"' : '') + '><span class="nkc-more-ic"><i class="ti ' + m.ic + '" aria-hidden="true"></i></span><b>' + esc(m.t) + '</b><span class="d">' + esc(m.d) + '</span></a>';
+  }).join('');
 
   if (!CONFIG.showFaq) $('nkcFaqSec').remove();
   var faqTabs = $('nkcFaqTabs'), faqBox = $('nkcFaq');
@@ -510,15 +563,8 @@ html.nkc-lock, html.nkc-lock body { overflow:hidden !important; }
   showFaq(0);
   }
 
-  $('nkcAddr').textContent = CONFIG.pickup.address;
-  $('nkcAddrNote').textContent = CONFIG.pickup.note;
-  $('nkcMapLink').href = CONFIG.pickup.maps;
   var DAYS = ['Pondělí', 'Úterý', 'Středa', 'Čtvrtek', 'Pátek', 'Sobota', 'Neděle'];
   var now = new Date(), todayIdx = (now.getDay() + 6) % 7;
-  $('nkcHours').innerHTML = DAYS.map(function (d, i) {
-    var h = CONFIG.hours[i];
-    return '<li' + (i === todayIdx ? ' class="is-today"' : '') + '><span>' + d + '</span><span>' + (h ? h[0] + ' - ' + h[1] : 'zavřeno') + '</span></li>';
-  }).join('');
   (function status() {
     var h = CONFIG.hours[todayIdx], mins = now.getHours() * 60 + now.getMinutes();
     var toM = function (s) { var p = s.split(':'); return +p[0] * 60 + +p[1]; };
