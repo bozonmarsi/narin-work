@@ -88,6 +88,14 @@
 
 <script>
 (function() {
+    // Blok byl na stránce účtu omylem vložený dvakrát: druhá kopie visela na "Načítám…"
+    // a posílala stejné dotazy znovu. Pojistka: poběží jen první kopie, duplicitní HTML smažeme.
+    if (window.__narinHeaderWidget) {
+        document.querySelectorAll('.lk-top-grid').forEach(function (el, i) { if (i > 0) el.remove(); });
+        document.querySelectorAll('#lkDepositPopup').forEach(function (el, i) { if (i > 0) el.remove(); });
+        return;
+    }
+    window.__narinHeaderWidget = true;
     const SUPABASE_URL = "https://wqburlamuipxmenqsjnx.supabase.co";
     const SUPABASE_KEY = "sb_publishable_ORMmBYvVjH6i2GanWa2JyA_mWm3fTCZ";
 

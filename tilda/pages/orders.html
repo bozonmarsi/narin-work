@@ -1,406 +1,447 @@
+<!--
+  NARIN: stránka Historie objednávek (/members/orders).
+  Celý kód patří do jednoho HTML bloku T123 (nahrazuje horní lištu, seznam i skripty staré stránky).
+  Data bere ze společného zavaděče member-data (je vložený přímo tady, na stránce běží jen jednou).
+-->
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-.lk-orders-topbar { display: flex; justify-content: space-between; align-items: center; max-width: 600px; margin: 0 auto; padding: 20px; font-family: 'Rubik', sans-serif; box-sizing: border-box; }
-.lk-back-link { display: inline-flex; align-items: center; gap: 6px; color: #186ce0; text-decoration: none !important; font-size: 14px; font-weight: 500; }
-.lk-home-btn { display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 16px; border-radius: 20px; background: #ffffff; border: 1px solid #e8eaed; color: #16181d !important; text-decoration: none !important; font-size: 13px; font-weight: 500; }
+.lko { --blue:#186ce0; --blue-d:#1257b8; --tint:#f3f7fd; --tint-2:#e6effb; --ink:#16181d; --ink-2:#4a505b; --muted:#8a8f98; --line:#e9ebef;
+  --ok:#1b7a44; --ok-bg:#e7f5ec; --warn:#8a5208; --warn-bg:#fff6ea; --err:#a32d2d; --err-bg:#fdeeee;
+  font-family:'Rubik',sans-serif; color:var(--ink); max-width:640px; margin:0 auto; padding:16px 16px 48px; box-sizing:border-box; -webkit-font-smoothing:antialiased; }
+.lko *, .lko *::before, .lko *::after { box-sizing:border-box; }
+.lko h1, .lko h2, .lko p { margin:0; }
+.lko a { text-decoration:none; }
+.lko-top { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:22px; }
+.lko-back { display:inline-flex; align-items:center; gap:6px; color:var(--blue); font-size:15px; font-weight:500; }
+.lko-home { display:inline-flex; align-items:center; gap:7px; height:40px; padding:0 16px; border-radius:999px; border:1.5px solid var(--line); color:var(--ink); font-size:14px; font-weight:500; background:#fff; }
+.lko-home svg, .lko-back svg { width:18px; height:18px; }
+.lko h1 { font-size:28px; font-weight:600; letter-spacing:-.02em; }
+.lko-count { font-size:14px; color:var(--muted); margin-top:4px; min-height:18px; }
+.lko-coll { display:flex; align-items:center; gap:12px; margin:18px 0 26px; padding:12px 14px; border-radius:18px; background:var(--tint); color:var(--ink); }
+.lko-coll .lko-coll-ic { width:40px; height:40px; border-radius:12px; background:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.lko-coll-logo { display:block; width:189px; max-width:100%; height:24px; background:url('https://static.tildacdn.com/tild3365-3764-4766-b162-383862333535/Photoroom_20260804_1.PNG') no-repeat -15px -10.5px / 222px 45px; }
+.lko-coll span { display:block; font-size:13px; color:var(--ink-2); margin-top:1px; }
+.lko-coll-arrow { margin-left:auto; color:var(--muted); flex-shrink:0; }
+.lko-h2 { font-size:13px; font-weight:600; color:var(--muted); letter-spacing:.02em; margin:0 0 10px 2px; }
+.lko-section + .lko-section { margin-top:28px; }
+
+/* aktivní objednávka */
+.lko-active { border-radius:22px; background:#fff; border:1px solid var(--line); box-shadow:0 18px 40px -30px rgba(18,52,110,.35); overflow:hidden; }
+.lko-active + .lko-active { margin-top:12px; }
+.lko-a-head { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; padding:16px 18px 4px; }
+.lko-a-no { font-size:17px; font-weight:600; }
+.lko-a-date { font-size:13px; color:var(--muted); margin-top:2px; }
+.lko-pills { display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+.lko-pill { font-size:12px; font-weight:600; padding:4px 10px; border-radius:999px; white-space:nowrap; }
+.lko-when { margin:14px 18px 0; padding:12px 14px; border-radius:14px; background:var(--tint); display:flex; gap:12px; align-items:center; }
+.lko-when svg { width:22px; height:22px; color:var(--blue); flex-shrink:0; }
+.lko-when b { display:block; font-size:15px; font-weight:600; }
+.lko-when span { display:block; font-size:13px; color:var(--ink-2); margin-top:1px; }
+
+/* stepper */
+.lko-steps { padding:30px 18px 4px; }
+.lko-track { position:relative; height:6px; border-radius:6px; background:#eef1f6; margin:0 20px; }
+.lko-fill { position:absolute; inset:0 auto 0 0; border-radius:6px; background:linear-gradient(90deg,#5b9dfb,#186ce0); transition:width .9s cubic-bezier(.4,0,.2,1); overflow:hidden; }
+.lko-fill::after { content:''; position:absolute; inset:0; background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.5) 50%,transparent 70%); background-size:200% 100%; animation:lkoShimmer 2.6s linear infinite; }
+.lko-fill.done::after { display:none; }
+.lko-nodes { display:flex; justify-content:space-between; margin-top:-23px; }
+.lko-node { position:relative; width:40px; height:40px; border-radius:50%; background:#fff; box-shadow:0 3px 10px rgba(30,40,60,.09), 0 0 0 4px #fff; display:flex; align-items:center; justify-content:center; }
+.lko-node svg { width:18px; height:18px; stroke:#c3c9d4; fill:none; }
+.lko-node.on { background:linear-gradient(150deg,#4c98ff,#186ce0); }
+.lko-node.on svg { stroke:#fff; }
+.lko-node.now { animation:lkoFloat 2.6s ease-in-out infinite; }
+.lko-node.now::before { content:''; position:absolute; inset:-7px; border-radius:50%; background:radial-gradient(circle,rgba(24,108,224,.28),transparent 70%); animation:lkoGlow 2.2s ease-in-out infinite; z-index:-1; }
+.lko-node .lk-wheel { transform-box:fill-box; transform-origin:center; }
+.lko-node.now .lk-wheel { animation:lkoSpin 1.3s linear infinite; }
+.lko-labels { display:flex; justify-content:space-between; margin-top:10px; }
+.lko-labels span { width:64px; text-align:center; font-size:12px; font-weight:600; color:#b7bcc6; }
+.lko-labels span.on { color:var(--ink); }
+@keyframes lkoShimmer { 0% { background-position:200% 0; } 100% { background-position:-50% 0; } }
+@keyframes lkoFloat { 50% { transform:translateY(-3px); } }
+@keyframes lkoGlow { 50% { opacity:.9; transform:scale(1.12); } }
+@keyframes lkoSpin { to { transform:rotate(360deg); } }
+.lko-alert { margin:16px 18px 0; display:flex; gap:12px; align-items:center; padding:12px 14px; border-radius:14px; font-size:14px; font-weight:500; line-height:1.4; }
+.lko-alert.warning { background:var(--warn-bg); color:var(--ink); }
+.lko-alert.error { background:var(--err-bg); color:var(--ink); }
+.lko-alert svg { width:20px; height:20px; flex-shrink:0; fill:none; }
+.lko-alert.warning svg { stroke:var(--warn); }
+.lko-alert.error svg { stroke:var(--err); }
+
+/* samolepky */
+.lko-stickers { display:flex; flex-wrap:wrap; gap:6px; padding:16px 18px 0; }
+.lko-st { position:relative; width:56px; height:56px; border-radius:14px; background:var(--tint); display:flex; align-items:center; justify-content:center; }
+.lko-st img { width:86%; height:86%; object-fit:contain; -webkit-user-drag:none; user-select:none; -webkit-touch-callout:none; pointer-events:none; filter:drop-shadow(0 3px 5px rgba(18,52,110,.18)); }
+.lko-st em { position:absolute; right:-4px; bottom:-4px; min-width:22px; height:22px; padding:0 6px; border-radius:999px; background:var(--ink); color:#fff; font-style:normal; font-size:11px; font-weight:600; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 2px #fff; }
+
+.lko-a-foot { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:16px 18px; margin-top:16px; border-top:1px solid var(--line); }
+.lko-total { font-size:18px; font-weight:600; font-variant-numeric:tabular-nums; }
+.lko-btns { display:flex; gap:6px; }
+.lko-btn { height:38px; padding:0 14px; border-radius:999px; font:500 14px 'Rubik',sans-serif; border:1.5px solid var(--line); background:#fff; color:var(--ink); cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+.lko-btn:active { transform:scale(.97); }
+.lko-btn.primary { background:var(--blue); border-color:var(--blue); color:#fff; }
+.lko-btn svg { width:16px; height:16px; transition:transform .3s ease; }
+.lko-btn[aria-expanded="true"] svg { transform:rotate(180deg); }
+
+/* starší objednávky */
+.lko-list { border-radius:22px; border:1px solid var(--line); background:#fff; overflow:hidden; }
+.lko-row + .lko-row { border-top:1px solid var(--line); }
+.lko-row-btn { width:100%; display:grid; grid-template-columns:52px 1fr auto; gap:12px; align-items:center; padding:12px 14px; background:none; border:none; font-family:inherit; text-align:left; cursor:pointer; color:var(--ink); }
+.lko-row-img { position:relative; width:52px; height:52px; border-radius:14px; background:var(--tint); display:flex; align-items:center; justify-content:center; }
+.lko-row-img img { width:84%; height:84%; object-fit:contain; pointer-events:none; }
+.lko-row-img em { position:absolute; right:-4px; top:-4px; min-width:20px; height:20px; padding:0 5px; border-radius:999px; background:var(--blue); color:#fff; font-style:normal; font-size:11px; font-weight:600; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 2px #fff; }
+.lko-row-main { min-width:0; }
+.lko-row-main b { display:block; font-size:15px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.lko-row-main span { display:block; font-size:13px; color:var(--muted); margin-top:2px; }
+.lko-row-side { text-align:right; }
+.lko-row-side b { display:block; font-size:15px; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.lko-row-side .lko-pill { display:inline-block; margin-top:4px; font-size:11px; padding:2px 8px; }
+.lko-more { width:100%; margin-top:10px; height:46px; border-radius:999px; border:1.5px solid var(--line); background:#fff; font:500 15px 'Rubik',sans-serif; color:var(--ink); cursor:pointer; }
+
+/* detail */
+.lko-detail { display:grid; grid-template-rows:0fr; transition:grid-template-rows .35s cubic-bezier(.16,1,.3,1); }
+.lko-detail > div { overflow:hidden; }
+.lko-detail.open { grid-template-rows:1fr; }
+.lko-detail-in { padding:4px 18px 18px; }
+.lko-row .lko-detail-in { padding:0 14px 16px; }
+.lko-prod { display:grid; grid-template-columns:40px 1fr auto; gap:10px; align-items:center; padding:8px 0; font-size:14px; }
+.lko-prod-img { width:40px; height:40px; border-radius:10px; background:var(--tint); display:flex; align-items:center; justify-content:center; }
+.lko-prod-img img { width:84%; height:84%; object-fit:contain; pointer-events:none; }
+.lko-prod small { display:block; color:var(--muted); font-size:12px; margin-top:1px; }
+.lko-prod-price { font-weight:500; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.lko-sum { margin-top:8px; padding-top:10px; border-top:1px dashed var(--line); }
+.lko-kv { display:flex; justify-content:space-between; gap:16px; padding:5px 0; font-size:14px; }
+.lko-kv span:first-child { color:var(--muted); flex-shrink:0; }
+.lko-kv span:last-child { text-align:right; }
+.lko-kv.total { font-weight:600; font-size:15px; }
+.lko-points { display:inline-flex; align-items:center; gap:6px; margin:10px 0 4px; font-size:13px; font-weight:500; color:var(--ok); background:var(--ok-bg); padding:5px 12px; border-radius:999px; }
+.lko-info { margin-top:12px; padding-top:10px; border-top:1px dashed var(--line); }
+.lko-detail-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; }
+.lko-detail-actions a { flex:1 1 auto; justify-content:center; }
+
+/* načítání a prázdný stav */
+.lko-skel { border-radius:22px; background:linear-gradient(90deg,#f1f4f8 0%,#fafbfd 50%,#f1f4f8 100%); background-size:200% 100%; animation:lkoSk 1.4s ease-in-out infinite; }
+@keyframes lkoSk { to { background-position:-200% 0; } }
+.lko-empty { text-align:center; padding:40px 20px; border-radius:22px; background:var(--tint); }
+.lko-empty b { display:block; font-size:18px; font-weight:600; margin-top:12px; }
+.lko-empty p { font-size:14px; color:var(--ink-2); margin:6px 0 18px; }
+.lko-empty .lko-btn { height:46px; padding:0 22px; font-size:15px; }
+@media (prefers-reduced-motion:reduce) { .lko *, .lko *::before, .lko *::after { animation:none !important; transition:none !important; } }
 </style>
-<div class="lk-orders-topbar">
-    <a href="/members/" class="lk-back-link">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#186ce0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-        Zpět do profilu
-    </a>
-    <a href="/" class="lk-home-btn">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#186ce0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
-        Domů
-    </a>
+
+<div class="lko" id="lko">
+  <div class="lko-top">
+    <a href="/members/" class="lko-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Zpět do profilu</a>
+    <a href="/" class="lko-home"><svg viewBox="0 0 24 24" fill="none" stroke="#186ce0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Domů</a>
+  </div>
+  <h1>Moje objednávky</h1>
+  <div class="lko-count" id="lkoCount"></div>
+  <a href="https://vezminarin.cz/members/collection" class="lko-coll">
+    <span class="lko-coll-ic" id="lkoCollIc"></span>
+    <span><i class="lko-coll-logo" role="img" aria-label="NARIN Stickers"></i><span>Podívejte se, jaké květiny jste už sbírali</span></span>
+    <svg class="lko-coll-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+  </a>
+  <div id="lkoList">
+    <div class="lko-skel" style="height:260px;"></div>
+    <div class="lko-skel" style="height:76px;margin-top:12px;"></div>
+    <div class="lko-skel" style="height:76px;margin-top:8px;"></div>
+  </div>
 </div>
-
-
-
-<style>
-.lk-orders-wrap { font-family: 'Rubik', sans-serif; max-width: 600px; margin: 0 auto; padding: 0 20px 40px; box-sizing: border-box; }
-.lk-orders-title { font-size: 20px; font-weight: 600; color: #16181d; margin-bottom: 16px; }
-.lk-order-stickers { display: flex; gap: 8px; margin: 6px 0 10px; }
-.lk-order-card { padding: 16px 0; border-bottom: 1px solid #e9ebef; }
-.lk-order-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; gap:10px; }
-.lk-order-number { font-size:14px; color:#16181d; }
-.lk-order-badge { font-size:11px; padding:3px 10px; border-radius:20px; white-space:nowrap; }
-.lk-order-meta { font-size:13px; color:#8a8f98; margin-bottom:12px; }
-.lk-order-bottom { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; }
-.lk-order-amount { font-size:16px; font-weight:500; color:#16181d; }
-.lk-order-actions { display:flex; gap:8px; }
-.lk-order-btn { font-size:12px; padding:6px 12px; border-radius:20px; cursor:pointer; border:0.5px solid #d8dbe0; color:#8a8f98; background:none; }
-.lk-order-btn.primary { border-color:#186ce0; color:#186ce0; }
-.lk-order-detail { display:none; margin-top:14px; padding-top:14px; border-top:1px solid #f0f1f3; }
-.lk-order-detail.open { display:block; }
-.lk-order-detail-row { display:flex; justify-content:space-between; padding:6px 0; gap:16px; font-size:13px; border-bottom:1px dashed #f0f1f3; }
-.lk-order-detail-row:last-child { border-bottom:none; }
-.lk-order-detail-label { color:#8a8f98; flex-shrink:0; }
-.lk-order-detail-value { color:#16181d; text-align:right; }
-.lk-empty { font-size:13px; color:#8a8f98; padding:20px 0; }
-.lk-order-products { margin-bottom: 12px; }
-.lk-order-product-row { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; color: #16181d; }
-.lk-order-product-name { color: #16181d; }
-.lk-order-product-price { color: #8a8f98; }
-.lk-order-price-breakdown { border-top: 1px dashed #f0f1f3; padding-top: 8px; margin-bottom: 8px; }
-.lk-order-points-earned { font-size: 12px; color: #3b6d11; background: #eaf3de; display: inline-block; padding: 4px 10px; border-radius: 20px; margin-bottom: 12px; }
-.lk-order-stickers { display: flex; gap: 8px; margin: 6px 0 10px; flex-wrap: wrap; }
-.lk-order-sticker { height: 60px; max-width: 90px; display: inline-flex; align-items: flex-end; }
-.lk-order-sticker img { height: 100%; width: auto; max-width: 100%; display: block; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; pointer-events: none; }
-
-.lk-status-track { position: relative; height: 6px; border-radius: 6px; background: #eef1f6; margin: 20px 20px 0; }
-.lk-status-fill { position: absolute; top: 0; left: 0; height: 100%; border-radius: 6px; width: 0%; background: linear-gradient(90deg,#5b9dfb,#186ce0); transition: width 0.9s cubic-bezier(0.4,0,0.2,1), background 0.5s ease; overflow: hidden; }
-.lk-status-fill::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg,transparent 30%,rgba(255,255,255,0.5) 50%,transparent 70%); background-size: 200% 100%; animation: lkShimmer 2.6s linear infinite; transition: opacity 0.4s ease; }
-.lk-status-fill.complete { background: #186ce0; }
-.lk-status-fill.complete::after { opacity: 0; animation: none; }
-.lk-status-nodes { position: relative; display: flex; justify-content: space-between; margin: 0 20px; margin-top: -23px; }
-.lk-status-node { position: relative; width: 40px; height: 40px; border-radius: 50%; background: #ffffff; box-shadow: 0 3px 10px rgba(30,40,60,0.09), 0 0 0 4px #ffffff; display: flex; align-items: center; justify-content: center; transition: box-shadow 0.4s ease; }
-.lk-status-node svg { width: 18px; height: 18px; stroke: #c3c9d4; fill: none; transition: stroke 0.4s ease; }
-.lk-status-node.done { background: linear-gradient(150deg,#4c98ff,#186ce0); }
-.lk-status-node.done svg { stroke: #ffffff; }
-.lk-status-node.current { animation: lkFloaty 2.6s ease-in-out infinite; }
-.lk-status-node.current::before { content: ''; position: absolute; inset: -7px; border-radius: 50%; background: radial-gradient(circle, rgba(24,108,224,0.28), transparent 70%); animation: lkGlow 2.2s ease-in-out infinite; z-index: -1; }
-.lk-status-node .lk-wheel { transform-box: fill-box; transform-origin: center; }
-.lk-status-node.current .lk-wheel { animation: lkSpin 1.3s linear infinite; }
-@keyframes lkShimmer { 0% { background-position: 200% 0; } 100% { background-position: -50% 0; } }
-@keyframes lkFloaty { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
-@keyframes lkGlow { 0%, 100% { opacity: 0.45; transform: scale(1); } 50% { opacity: 0.9; transform: scale(1.12); } }
-@keyframes lkSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-.lk-status-labels { display: flex; justify-content: space-between; margin: 12px 20px 0; }
-.lk-status-labels span { font-size: 11px; font-weight: 600; color: #b7bcc6; width: 64px; text-align: center; transition: color 0.4s ease; }
-.lk-status-labels span.on { color: #16181d; }
-.lk-status-alert { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 14px; margin-bottom: 4px; }
-.lk-status-alert.warning { background: #fff6e8; border: 1px solid #f5dfb3; }
-.lk-status-alert.error { background: #fdeeee; border: 1px solid #f0c6c6; }
-.lk-status-alert-icon { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.lk-status-alert.warning .lk-status-alert-icon { background: #ffe9bd; }
-.lk-status-alert.error .lk-status-alert-icon { background: #f7d3d3; }
-.lk-status-alert-icon svg { width: 16px; height: 16px; fill: none; }
-.lk-status-alert.warning .lk-status-alert-icon svg { stroke: #a3720b; }
-.lk-status-alert.error .lk-status-alert-icon svg { stroke: #a32d2d; }
-.lk-status-alert-text { font-size: 13px; font-weight: 500; color: #16181d; line-height: 1.4; }
-
-.lk-collection-banner { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 16px; background: #ffffff; border: 1px solid #e8eaed; text-decoration: none !important; margin-bottom: 16px; }
-.lk-collection-banner-icon { width: 36px; height: 36px; border-radius: 50%; background: #eef4fc; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.lk-collection-banner-icon svg { width: 18px; height: 18px; stroke: #186ce0; }
-.lk-collection-banner-text { flex: 1; min-width: 0; }
-.lk-collection-banner-title { font-size: 14px; font-weight: 600; color: #16181d !important; }
-.lk-collection-banner-sub { font-size: 12px; color: #8a8f98 !important; margin-top: 2px; }
-.lk-collection-banner-arrow { width: 16px; height: 16px; stroke: #b7bcc6; flex-shrink: 0; }
-</style>
-
-<div class="lk-orders-wrap">
-    <div class="lk-orders-title">Historie objednávek</div>
-    <a href="https://vezminarin.cz/members/collection" class="lk-collection-banner">
-        <div class="lk-collection-banner-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#186ce0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M12 21 L7.5 12 Q12 15 16.5 12 Z" />
-                <circle cx="7" cy="7" r="1.7" />
-                <circle cx="10.5" cy="4.8" r="1.9" />
-                <circle cx="14" cy="5.2" r="1.9" />
-                <circle cx="17" cy="7.6" r="1.7" />
-                <circle cx="11.5" cy="8.5" r="1.6" />
-            </svg>
-        </div>
-        <div class="lk-collection-banner-text">
-            <div style="width:126px; height:16px; background-image:url('https://static.tildacdn.com/tild3365-3764-4766-b162-383862333535/Photoroom_20260804_1.PNG'); background-size:148px 30px; background-position:-10px -7px; background-repeat:no-repeat;" role="img" aria-label="Narin Stickers"></div>
-            <div class="lk-collection-banner-sub">Podívejte se, jaké kytice jste už sbírali</div>
-        </div>
-        <svg class="lk-collection-banner-arrow" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
-    </a>
-    <div id="lkOrdersList"></div>
-</div>
-
-
-
 <script>
-(function() {
-    const SUPABASE_URL = "https://wqburlamuipxmenqsjnx.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_ORMmBYvVjH6i2GanWa2JyA_mWm3fTCZ";
-    const TOKEN_KEY = "lk_auth_token";
+/*
+  NARIN: jediný zdroj dat pro osobní účet (/members/...).
+  Načte member-data (body, úroveň, objednávky) a uloží je do window.__memberData.
+  Ostatní bloky NEMAJÍ mít vlastní opakované dotazy ani setInterval na čekání:
+  stačí window.narinOnMemberData(function (data) { ... }), zavolá se hned,
+  jakmile data jsou, a pak znovu po každé aktualizaci.
 
-    let loaded = false;
-    let timer = null;
+  Proti dřívější verzi:
+  - běží jen jednou, i když je blok na stránce vložený víckrát (nebo i v profile-header),
+  - obnovuje data jen když je stránka vidět (skrytá záložka nic nestahuje),
+  - interval 30 s místo 15 s, po návratu do záložky se data hned obnoví,
+  - kontrola, že token patří právě přihlášenému účtu (jinak by se ukázala cizí data).
+*/
+(function () {
+    if (window.__narinMemberPoller) return;
+    window.__narinMemberPoller = true;
 
-    function getStoredToken() {
+    var SUPABASE_URL = "https://wqburlamuipxmenqsjnx.supabase.co";
+    var SUPABASE_KEY = "sb_publishable_ORMmBYvVjH6i2GanWa2JyA_mWm3fTCZ";
+    var TOKEN_KEY = "lk_auth_token";
+    var REFRESH_MS = 30000;        // jak často obnovovat data, když je stránka vidět
+    var TOKEN_WAIT_MS = 700;       // jak často se podívat, jestli už je token (bez sítě)
+    var TOKEN_WAIT_MAX_MS = 180000; // po 3 minutách bez tokenu přestaneme čekat
+
+    var listeners = [];
+    var timer = null, lastFetch = 0, inFlight = false, waitedFor = 0;
+
+    // Veřejné API pro ostatní bloky
+    window.narinOnMemberData = function (cb) {
+        listeners.push(cb);
+        if (window.__memberData) { try { cb(window.__memberData); } catch (e) { console.error(e); } }
+    };
+
+    function getTildaEmail() {
         try {
-            const raw = localStorage.getItem(TOKEN_KEY);
+            for (var key in localStorage) {
+                if (key.indexOf("tilda_members_profile") === 0 && key.indexOf("_timestamp") === -1) {
+                    try {
+                        var p = JSON.parse(localStorage.getItem(key));
+                        var em = p && (p.login || p.email);
+                        if (em) return String(em).trim().toLowerCase();
+                    } catch (e) {}
+                }
+            }
+        } catch (e) {}
+        return null;
+    }
+    function tokenEmail(token) {
+        try { var pl = JSON.parse(atob(String(token).split('.')[0])); return pl.email ? String(pl.email).trim().toLowerCase() : null; } catch (e) { return null; }
+    }
+    function getToken() {
+        try {
+            var raw = localStorage.getItem(TOKEN_KEY);
             if (!raw) return null;
-            const data = JSON.parse(raw);
-            if (!data.token || !data.exp || data.exp < Date.now()) return null;
-            return data.token;
-        } catch (e) {
-            return null;
-        }
+            var d = JSON.parse(raw);
+            if (!d.token || !d.exp || d.exp < Date.now()) return null;
+            var te = getTildaEmail(), ke = tokenEmail(d.token);
+            if (te && ke && te !== ke) { localStorage.removeItem(TOKEN_KEY); return null; }
+            return d.token;
+        } catch (e) { return null; }
     }
 
-    // lkAuthGateOverlay (vloženo globálně na celý web) ověří e-mail a
-    // uloží lk_auth_token dřív, než se člověk vůbec dostane na tuto
-    // stránku — tady jen čekáme, až se objeví, žádnou vlastní obrazovku
-    // potvrzení nepotřebujeme.
-    async function loadMemberData() {
-        const token = getStoredToken();
+    function publish(data) {
+        window.__memberData = data;
+        document.querySelectorAll(".user-balance").forEach(function (el) { el.textContent = data.balance; });
+        listeners.forEach(function (cb) { try { cb(data); } catch (e) { console.error(e); } });
+        try { document.dispatchEvent(new CustomEvent('narin:memberdata', { detail: data })); } catch (e) {}
+    }
+
+    async function load() {
+        if (inFlight) return;
+        var token = getToken();
         if (!token) {
-            scheduleNext();
+            // token ještě nemáme (lk-auth-gate teprve ověřuje e-mail), čekáme bez dotazů na server
+            if (waitedFor < TOKEN_WAIT_MAX_MS) { waitedFor += TOKEN_WAIT_MS; schedule(TOKEN_WAIT_MS); }
             return;
         }
+        inFlight = true;
         try {
-            const res = await fetch(SUPABASE_URL + "/functions/v1/member-data", {
+            var res = await fetch(SUPABASE_URL + "/functions/v1/member-data", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    apikey: SUPABASE_KEY,
-                    Authorization: "Bearer " + SUPABASE_KEY
-                },
+                headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
                 body: JSON.stringify({ token: token })
             });
-            const data = await res.json();
-
-            if (data.error) {
-                // "token required" (chybí token) nebo "invalid_token"
-                // (expiroval, nebo ho jiný widget smazal po zjištění
-                // neshody s aktuálně přihlášeným Tilda účtem) — v obou
-                // případech nic neukládáme, lkAuthGateOverlay token při
-                // dalším načtení stránky obnoví.
-                loaded = false;
-                scheduleNext();
-                return;
-            }
-
-            window.__memberData = data;
-            loaded = true;
+            var data = await res.json();
+            lastFetch = Date.now();
+            if (data && !data.error) publish(data);
         } catch (e) {
-            console.log("member-data ошибка:", e);
+            console.log("member-data chyba:", e);
         }
-        scheduleNext();
+        inFlight = false;
+        schedule(REFRESH_MS);
     }
 
-    function scheduleNext() {
+    function schedule(ms) {
         clearTimeout(timer);
-        const delay = loaded ? 15000 : 400;
-        timer = setTimeout(loadMemberData, delay);
+        timer = setTimeout(function () { if (!document.hidden) load(); else timer = null; }, ms);
     }
 
-    loadMemberData();
+    document.addEventListener('visibilitychange', function () {
+        if (document.hidden) return;
+        // návrat do záložky: když jsou data starší než interval, obnovíme je hned
+        if (!timer || Date.now() - lastFetch > REFRESH_MS) load();
+    });
+
+    load();
 })();
 </script>
-
 <script>
-(function() {
-    const STATUS_MAP = {
-        '🟢 Оплачено': { label: 'Zaplaceno', bg: '#eaf3de', color: '#3b6d11' },
-        '🟠 Ожидает оплаты': { label: 'Čeká na platbu', bg: '#faeeda', color: '#854f0b' },
-        'Отменено': { label: 'Zrušeno', bg: '#f1efe8', color: '#5f5e5a' }
-    };
-    const PAYMENT_LABELS = { stripe: 'Platební kartou (online)', cash: 'Hotově' };
-    const DEFAULT_STICKER = 'ССЫЛКА_НА_ДЕФОЛТНЫЙ_ЦВЕТОК';
-
-    function getStatus(order) {
-        if (order.payment_status && order.payment_status.indexOf('Оплачено') !== -1) return { label: 'Zaplaceno', bg: '#eaf3de', color: '#3b6d11' };
-        if (order.payment_status === '🔴 Не оплачено' && order.payment_method === 'cash') return { label: 'Platba při doručení', bg: '#e6f1fb', color: '#0c447c' };
-        if (order.payment_status === '🔴 Не оплачено') return { label: 'Nezaplaceno', bg: '#fcebeb', color: '#a32d2d' };
-        return STATUS_MAP[order.payment_status] || { label: order.payment_status || '—', bg: '#f1efe8', color: '#5f5e5a' };
-    }
-
-    function formatDate(iso) {
-        const d = new Date(iso);
-        if (isNaN(d)) return '';
-        const pad = n => String(n).padStart(2, '0');
-        return pad(d.getDate()) + '. ' + pad(d.getMonth() + 1) + '. ' + d.getFullYear();
-    }
-
-    function esc(str) {
-        const div = document.createElement('div');
-        div.textContent = str || '';
-        return div.innerHTML;
-    }
-
-    function decodeEntities(str) {
-        if (!str) return str;
-        const el = document.createElement('textarea');
-        el.innerHTML = str;
-        return el.value;
-    }
-
-    function detailRow(label, value) {
-        if (!value && value !== 0) return '';
-        return '<div class="lk-order-detail-row"><span class="lk-order-detail-label">' + esc(label) + '</span><span class="lk-order-detail-value">' + esc(value) + '</span></div>';
-    }
-
-    function renderProductsList(order) {
-        const products = order.raw_payload && order.raw_payload.payment && order.raw_payload.payment.products;
-        if (!products || !products.length) {
-            return '<div class="lk-order-product-row"><span>' + esc(order.products_text) + '</span></div>';
-        }
-        return products.map(function(p) {
-            const price = parseFloat(p.price) || 0;
-            const qty = p.quantity || 1;
-            return '<div class="lk-order-product-row">' +
-                '<span class="lk-order-product-name">' + esc(decodeEntities(p.name)) + ' × ' + qty + '</span>' +
-                '<span class="lk-order-product-price">' + (price * qty) + ' Kč</span>' +
-            '</div>';
-        }).join('');
-    }
-
-    function renderStickers(order) {
-        const products = order.raw_payload && order.raw_payload.payment && order.raw_payload.payment.products;
-        if (!products || !products.length) return '';
-        let html = '';
-        products.forEach(function(p) {
-            const src = p.image_url || DEFAULT_STICKER;
-            const bundleSize = p.portion ? parseInt(p.portion) : 1;
-            const count = Math.max(1, Math.round((p.quantity || 1) / bundleSize));
-            for (let i = 0; i < count; i++) {
-                html += '<span class="lk-order-sticker"><img src="' + src + '" alt="" draggable="false" oncontextmenu="return false"></span>';
-            }
-        });
-        return html;
-    }
-
-    function renderStatusStepper(order) {
-    const status = order.status;
-
-    const ALERTS = {
-        problem: { level: 'warning', text: 'Nastal problém s doručením — brzy vás budeme kontaktovat.' },
-        not_home: { level: 'warning', text: 'Kurýr vás doma nezastihl — čekejte na kontakt ohledně nového doručení.' },
+(function () {
+    var CATALOG_URL = 'https://vezminarin.cz/page118819546.html';
+    var CHAT_URL = 'https://vezminarin.cz/contacts';
+    var PAGE_SIZE = 6;
+    var PAYMENT_LABELS = { stripe: 'Kartou online', cash: 'Hotově' };
+    var ALERTS = {
+        problem: { level: 'warning', text: 'Nastal problém s doručením. Brzy vás budeme kontaktovat.' },
+        not_home: { level: 'warning', text: 'Kurýr vás doma nezastihl. Ozveme se kvůli novému doručení.' },
         transfer_pending: { level: 'warning', text: 'Předání zásilky kurýrovi se zpracovává.' },
         cancelled: { level: 'error', text: 'Objednávka byla zrušena.' }
     };
-
-    if (ALERTS[status]) {
-        const a = ALERTS[status];
-        const icon = a.level === 'error'
-            ? '<circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/>'
-            : '<path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>';
-        return '<div class="lk-status-alert ' + a.level + '">' +
-            '<div class="lk-status-alert-icon"><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">' + icon + '</svg></div>' +
-            '<div class="lk-status-alert-text">' + a.text + '</div>' +
-        '</div>';
-    }
-
-    const STAGE_LEVEL = { confirmed: 1, in_transit: 2, arriving: 2, delivered: 3 };
-    const level = STAGE_LEVEL[status] || 0;
-    const fillWidth = level === 0 ? 0 : (level - 1) * 50;
-    const complete = level === 3;
-
-    const STEPS = [
+    var STEPS = [
         { name: 'Potvrzeno', icon: '<polyline points="20 6 9 17 4 12"/>' },
         { name: 'Na cestě', icon: '<rect x="2" y="9" width="11" height="8" rx="2.5"/><circle cx="5.5" cy="7" r="1.3"/><circle cx="8" cy="6" r="1.3"/><circle cx="10.2" cy="7.2" r="1.3"/><line x1="8" y1="8.5" x2="8" y2="9"/><path d="M13 11h4c0.9 0 1.3 0.15 1.9 0.75l2 2c0.4 0.4 0.6 0.85 0.6 1.45V17h-8.5z"/><circle class="lk-wheel" cx="6" cy="18.5" r="1.8"/><circle class="lk-wheel" cx="16.5" cy="18.5" r="1.8"/>' },
         { name: 'Doručeno', icon: '<rect x="4" y="10" width="16" height="10" rx="2.5"/><line x1="4" y1="14" x2="20" y2="14"/><line x1="12" y1="10" x2="12" y2="20"/><path d="M9 10c0-2 1.5-3.5 3-3.5S15 8 15 10"/><circle cx="12" cy="6" r="1.2"/>' }
     ];
+    var STAGE_LEVEL = { new: 1, confirmed: 1, courier_assigned: 1, assembling: 1, assembled: 1, in_transit: 2, arriving: 2, delivered: 3 };
 
-    const nodesHtml = STEPS.map(function(step, i) {
-        const n = i + 1;
-        const done = level >= n;
-        const current = level === n && level < 3;
-        let cls = 'lk-status-node';
-        if (done) cls += ' done';
-        if (current) cls += ' current';
-        return '<div class="' + cls + '"><svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none">' + step.icon + '</svg></div>';
-    }).join('');
+    var DAISY = ['M 159.691406 91.921875 L 178.789062 42.375 C 185.230469 27.75 184.792969 17.382812 177.480469 6.578125 C 173.335938 0.359375 166.894531 1.230469 155.871094 3.195312 C 151.070312 4.066406 146.050781 4.941406 140.921875 4.941406 C 135.574219 4.941406 130.335938 3.851562 125.316406 2.757812 C 114.292969 0.359375 107.855469 -0.625 103.707031 5.921875 C 96.722656 16.945312 96.503906 27.859375 102.941406 42.375 L 103.050781 42.59375 L 122.042969 91.921875 L 131.972656 109.492188 C 134.808594 108.617188 137.757812 108.179688 140.8125 108.179688 C 143.976562 108.179688 146.921875 108.617188 149.871094 109.492188 Z M 159.691406 91.921875',
+        'M 41.828125 109.601562 L 42.046875 109.601562 L 91.703125 125.207031 L 111.347656 128.261719 C 113.636719 122.476562 117.566406 117.566406 122.476562 114.074219 L 115.164062 95.195312 L 89.082031 49.140625 C 81.878906 34.953125 73.695312 28.839844 60.816406 27.859375 C 60.488281 27.859375 60.164062 27.859375 59.945312 27.859375 C 53.179688 27.859375 49.902344 33.425781 44.773438 43.027344 C 42.484375 47.394531 39.972656 51.867188 36.808594 56.015625 C 33.425781 60.273438 29.386719 63.765625 25.347656 67.148438 C 16.617188 74.460938 11.816406 79.042969 14.328125 86.355469 C 18.472656 98.578125 26.660156 105.5625 41.828125 109.601562 Z M 41.828125 109.601562',
+        'M 55.359375 200.070312 L 98.25 170.277344 L 112.875 156.527344 C 110.363281 151.835938 108.835938 146.488281 108.835938 140.8125 C 108.835938 140.15625 108.835938 139.503906 108.945312 138.847656 L 89.957031 132.738281 L 38.335938 124.769531 C 34.296875 124.003906 30.695312 123.570312 27.3125 123.570312 C 17.929688 123.570312 10.835938 126.953125 4.394531 134.15625 C -0.625 139.722656 1.667969 145.941406 5.921875 156.417969 C 7.777344 161.003906 9.742188 165.804688 10.945312 170.933594 C 12.144531 176.28125 12.253906 181.738281 12.363281 186.976562 C 12.582031 198.542969 13.015625 205.09375 20.21875 207.710938 C 32.226562 212.078125 42.703125 209.785156 55.25 200.179688 Z M 55.359375 200.070312',
+        'M 119.3125 164.820312 L 102.941406 176.28125 L 64.636719 212.511719 C 52.742188 222.769531 48.703125 232.265625 50.667969 245.363281 C 51.757812 252.78125 57.980469 254.855469 68.675781 258.023438 C 73.367188 259.332031 78.277344 260.75 82.863281 263.042969 C 87.664062 265.441406 91.921875 268.714844 96.066406 271.992188 C 105.015625 278.976562 110.363281 282.792969 116.910156 278.648438 C 127.714844 271.773438 132.519531 262.058594 132.953125 246.125 L 132.953125 245.90625 L 136.882812 192.976562 L 135.355469 172.789062 C 129.242188 171.695312 123.789062 168.859375 119.3125 164.820312 Z M 119.3125 164.820312',
+        'M 216.660156 212.511719 L 216.550781 212.402344 L 178.464844 176.390625 L 161.984375 164.929688 C 157.507812 168.96875 152.054688 171.804688 145.941406 172.789062 L 144.414062 192.976562 L 148.34375 246.125 C 148.777344 262.058594 153.582031 271.226562 164.820312 277.773438 C 171.261719 281.484375 176.71875 277.882812 185.773438 271.226562 C 189.703125 268.28125 193.851562 265.332031 198.542969 263.042969 C 203.34375 260.640625 208.585938 259.332031 213.605469 258.128906 C 224.625 255.402344 230.847656 253.4375 231.71875 245.6875 C 233.03125 232.703125 228.554688 222.878906 216.660156 212.511719 Z M 216.660156 212.511719',
+        'M 277.882812 133.71875 C 268.933594 124.441406 258.457031 121.824219 243.179688 124.988281 L 242.960938 124.988281 L 191.558594 132.84375 L 172.570312 138.847656 C 172.570312 139.503906 172.570312 140.046875 172.570312 140.703125 C 172.570312 146.488281 171.042969 151.945312 168.53125 156.636719 L 183.046875 170.386719 L 226.15625 200.398438 C 238.703125 210.003906 248.636719 211.96875 260.640625 207.054688 C 267.515625 204.21875 268.171875 197.671875 268.714844 186.320312 C 268.933594 181.300781 269.261719 176.171875 270.355469 171.042969 C 271.554688 165.695312 273.738281 160.785156 275.917969 155.980469 C 280.832031 145.503906 283.230469 139.285156 277.882812 133.71875 Z M 277.882812 133.71875',
+        'M 159.253906 114.183594 C 164.167969 117.785156 167.988281 122.695312 170.386719 128.480469 L 190.03125 125.425781 L 239.90625 109.710938 C 255.074219 105.78125 262.824219 98.90625 266.535156 86.246094 C 268.605469 79.042969 264.023438 74.460938 255.621094 66.929688 C 251.910156 63.65625 248.199219 60.164062 244.925781 56.125 C 241.542969 51.867188 239.140625 46.957031 236.847656 42.265625 C 231.71875 32.007812 228.554688 26.222656 220.917969 26.984375 C 208.257812 28.40625 199.746094 35.0625 192.542969 49.25 L 192.433594 49.359375 L 166.457031 95.195312 Z M 159.253906 114.183594',
+        'M 141.25 180.972656 C 118.984375 180.972656 100.871094 162.855469 100.871094 140.59375 C 100.871094 118.332031 118.984375 100.214844 141.25 100.214844 C 163.511719 100.214844 181.628906 118.332031 181.628906 140.59375 C 181.628906 162.855469 163.511719 180.972656 141.25 180.972656 Z M 141.25 180.972656'];
+    function daisy(color, size) { return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 283 283" aria-hidden="true"><g fill="' + color + '">' + DAISY.map(function (d) { return '<path d="' + d + '"/>'; }).join('') + '</g></svg>'; }
 
-    const labelsHtml = STEPS.map(function(step, i) {
-        const n = i + 1;
-        const on = level >= n;
-        return '<span' + (on ? ' class="on"' : '') + '>' + step.name + '</span>';
-    }).join('');
+    function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+    function decode(s) { var t = document.createElement('textarea'); t.innerHTML = s || ''; return t.value; }
+    function kc(n) { return String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' Kč'; }
+    function dShort(v) { var d = new Date(v); return isNaN(d) ? '' : d.getDate() + '. ' + (d.getMonth() + 1) + '. ' + d.getFullYear(); }
+    function dLong(v) { var d = new Date(v); return isNaN(d) ? String(v || '') : d.toLocaleDateString('cs-CZ', { weekday: 'long', day: 'numeric', month: 'long' }); }
+    function products(o) { var p = o.raw_payload && o.raw_payload.payment && o.raw_payload.payment.products; return Array.isArray(p) ? p : []; }
+    // Kolik kusů produktu klient koupil: Tilda posílá v quantity počet balení (náručí), ne stonků.
+    function qtyOf(p) { var q = parseInt(p.quantity, 10); return q > 0 ? q : 1; }
 
-    return '<div class="lk-status-track"><div class="lk-status-fill' + (complete ? ' complete' : '') + '" style="width:' + fillWidth + '%;"></div></div>' +
-        '<div class="lk-status-nodes">' + nodesHtml + '</div>' +
-        '<div class="lk-status-labels">' + labelsHtml + '</div>';
+    function payPill(o) {
+        var ps = o.payment_status || '';
+        if (o.status === 'cancelled' || ps.indexOf('Отменено') !== -1) return ['Zrušeno', '#f1f2f4', '#5f5e5a'];
+        if (ps.indexOf('Оплачено') !== -1) return ['Zaplaceno', '#e7f5ec', '#1b7a44'];
+        if (o.payment_method === 'cash') return ['Hotově při převzetí', '#e6effb', '#1257b8'];
+        if (ps.indexOf('Ожидает') !== -1) return ['Čeká na platbu', '#fff6ea', '#8a5208'];
+        if (ps.indexOf('Не оплачено') !== -1) return ['Nezaplaceno', '#fdeeee', '#a32d2d'];
+        return [ps || 'Přijato', '#f1f2f4', '#5f5e5a'];
+    }
+    function pill(p, extra) { return '<span class="lko-pill" style="background:' + p[1] + ';color:' + p[2] + (extra || '') + '">' + esc(p[0]) + '</span>'; }
+    function isActive(o) { return o.status !== 'delivered' && o.status !== 'cancelled'; }
 
+    function stickerImg(p, size) {
+        return p.image_url ? '<img src="' + esc(p.image_url) + '" alt="" draggable="false" loading="lazy">' : daisy('#186ce0', size);
+    }
+    function stickersHtml(o) {
+        var list = products(o);
+        if (!list.length) return '';
+        return '<div class="lko-stickers">' + list.map(function (p) {
+            // 1 produkt = 1 nálepka, bez ohledu na počet kusů
+            return '<span class="lko-st" title="' + esc(decode(p.name)) + '">' + stickerImg(p, 26) + '</span>';
+        }).join('') + '</div>';
     }
 
-    function renderOrder(order, index) {
-        const status = getStatus(order);
-        const payment = (order.raw_payload && order.raw_payload.payment) || {};
-        const deliveryPrice = payment.delivery_price || 0;
-        const deliveryLabel = (order.delivery_type || '').split('=')[0].trim();
-        const address = [order.address, order.city, order.psk].filter(Boolean).join(', ');
-        const floorApt = [order.patro ? ('patro ' + order.patro) : '', order.cislo_bytu ? ('byt ' + order.cislo_bytu) : ''].filter(Boolean).join(', ');
-        const deliveryWhen = [formatDate(order.delivery_date), order.delivery_time_raw || order.delivery_slot].filter(Boolean).join(' · ');
-        const paymentLabel = PAYMENT_LABELS[order.payment_method] || order.payment_method;
-        const postcard = order.postcard_comment ? ('"' + order.postcard_comment + '" (' + (order.senders_name_postcard || 'anonymně') + ')') : '';
-        const customerDiffers = order.customer_name !== order.recipient_name;
-        const isSubscription = !!order.subscription_id;
-
-        const subscriptionNote = isSubscription
-            ? '<div class="lk-order-detail-row"><span class="lk-order-detail-label">Předplatné</span><span class="lk-order-detail-value">Tato dodávka je součástí vašeho předplatného, je již uhrazena.</span></div>'
-            : '';
-
-        const detailHtml =
-            '<div class="lk-order-products">' + renderProductsList(order) + '</div>' +
-            '<div class="lk-order-price-breakdown">' +
-                detailRow('Zboží', order.goods_total + ' Kč') +
-                (deliveryPrice ? detailRow('Doprava', deliveryPrice + ' Kč') : '') +
-                (order.used_points ? detailRow('Použito bodů', '−' + order.used_points + ' b.') : '') +
-                detailRow('Celkem', order.order_total + ' Kč') +
-            '</div>' +
-            (order.earned_points ? '<div class="lk-order-points-earned">+ ' + order.earned_points + ' bodů za tuto objednávku</div>' : '') +
-            subscriptionNote +
-            detailRow('Příjemce', order.recipient_name + (order.recipient_phone ? ' · ' + order.recipient_phone : '')) +
-            (customerDiffers ? detailRow('Objednal(a)', order.customer_name + (order.customer_phone ? ' · ' + order.customer_phone : '')) : '') +
-            detailRow('Doprava', deliveryLabel) +
-            detailRow('Termín doručení', deliveryWhen) +
-            detailRow('Adresa', address) +
-            detailRow('Patro / byt', floorApt) +
-            detailRow('Vstupní kód', order.kod_intercomu) +
-            detailRow('Firma', order.company_name) +
-            detailRow('Způsob platby', paymentLabel) +
-            detailRow('Poznámka', order.comments) +
-            detailRow('Text na pohlednici', postcard);
-
-        return '' +
-        '<div class="lk-order-card">' +
-            '<div class="lk-order-top">' +
-                '<span class="lk-order-number">Objednávka č. ' + esc(order.order_id) + '</span>' +
-                '<span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">' +
-                (isSubscription ? '<span class="lk-order-badge" style="background:#e6f1fb;color:#0c447c;">🔁 Předplatné</span>' : '') +
-                '<span class="lk-order-badge" style="background:' + status.bg + ';color:' + status.color + ';">' + status.label + '</span>' +
-                '</span>' +
-            '</div>' +
-            renderStatusStepper(order) +
-            '<div class="lk-order-stickers">' + renderStickers(order) + '</div>' +
-            '<div class="lk-order-meta">' + formatDate(order.created_at) + '</div>' +
-            '<div class="lk-order-bottom">' +
-                '<span class="lk-order-amount">' + order.order_total + ' Kč</span>' +
-                '<div class="lk-order-actions">' +
-                    '<button class="lk-order-btn" data-toggle="' + index + '">Detail</button>' +
-                    (isSubscription ? '' : '<button class="lk-order-btn primary" data-reorder="' + index + '">Objednat znovu</button>') +
-                '</div>' +
-            '</div>' +
-            '<div class="lk-order-detail" id="lkOrderDetail' + index + '">' + detailHtml + '</div>' +
-        '</div>';
+    function stepper(o) {
+        var a = ALERTS[o.status];
+        if (a) {
+            var ic = a.level === 'error' ? '<circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/>' : '<path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>';
+            return '<div class="lko-alert ' + a.level + '"><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + ic + '</svg>' + a.text + '</div>';
+        }
+        var level = STAGE_LEVEL[o.status] || 1;
+        return '<div class="lko-steps"><div class="lko-track"><div class="lko-fill' + (level === 3 ? ' done' : '') + '" style="width:' + ((level - 1) * 50) + '%"></div></div>' +
+            '<div class="lko-nodes">' + STEPS.map(function (s, i) {
+                var n = i + 1;
+                return '<div class="lko-node' + (level >= n ? ' on' : '') + (level === n && level < 3 ? ' now' : '') + '"><svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + s.icon + '</svg></div>';
+            }).join('') + '</div><div class="lko-labels">' + STEPS.map(function (s, i) { return '<span' + (level >= i + 1 ? ' class="on"' : '') + '>' + s.name + '</span>'; }).join('') + '</div></div>';
     }
+
+    function kv(k, v, cls) { return (v || v === 0) ? '<div class="lko-kv' + (cls ? ' ' + cls : '') + '"><span>' + esc(k) + '</span><span>' + esc(v) + '</span></div>' : ''; }
+    function detailHtml(o) {
+        var pay = (o.raw_payload && o.raw_payload.payment) || {};
+        var list = products(o);
+        var prods = list.length ? list.map(function (p) {
+            var q = qtyOf(p), price = (parseFloat(p.price) || 0) * q;
+            return '<div class="lko-prod"><span class="lko-prod-img">' + stickerImg(p, 20) + '</span><span>' + esc(decode(p.name)) + '<small>' + q + ' ks</small></span><span class="lko-prod-price">' + kc(price) + '</span></div>';
+        }).join('') : '<div class="lko-prod"><span class="lko-prod-img">' + daisy('#186ce0', 20) + '</span><span>' + esc(o.products_text || 'Květiny') + '</span><span></span></div>';
+        var addr = [o.address, o.city, o.psk].filter(Boolean).join(', ');
+        var floor = [o.patro ? 'patro ' + o.patro : '', o.cislo_bytu ? 'byt ' + o.cislo_bytu : ''].filter(Boolean).join(', ');
+        var when = [o.delivery_date ? dLong(o.delivery_date) : '', o.delivery_time_raw || o.delivery_slot].filter(Boolean).join(', ');
+        var postcard = o.postcard_comment ? '„' + o.postcard_comment + '“' + (o.senders_name_postcard ? ' (' + o.senders_name_postcard + ')' : '') : '';
+        return '<div class="lko-detail-in">' + prods +
+            '<div class="lko-sum">' +
+                (o.goods_total ? kv('Zboží', kc(o.goods_total)) : '') +
+                (pay.delivery_price ? kv('Doprava', kc(pay.delivery_price)) : '') +
+                (o.used_points ? kv('Zaplaceno body', '−' + o.used_points + ' b.') : '') +
+                kv('Celkem', kc(o.order_total), 'total') +
+            '</div>' +
+            (o.earned_points ? '<div class="lko-points">' + daisy('#1b7a44', 14) + '+' + o.earned_points + ' bodů za tuto objednávku</div>' : '') +
+            '<div class="lko-info">' +
+                (o.subscription_id ? kv('Předplatné', 'Součást předplatného, již uhrazeno') : '') +
+                kv('Příjemce', [o.recipient_name, o.recipient_phone].filter(Boolean).join(', ')) +
+                (o.customer_name && o.customer_name !== o.recipient_name ? kv('Objednal(a)', [o.customer_name, o.customer_phone].filter(Boolean).join(', ')) : '') +
+                kv('Doprava', (o.delivery_type || '').split('=')[0].trim()) +
+                kv('Termín', when) +
+                kv('Adresa', addr) +
+                kv('Patro / byt', floor) +
+                kv('Kód u vchodu', o.kod_intercomu) +
+                kv('Firma', o.company_name) +
+                kv('Platba', PAYMENT_LABELS[o.payment_method] || o.payment_method) +
+                kv('Poznámka', o.comments) +
+                kv('Přání', postcard) +
+            '</div>' +
+            '<div class="lko-detail-actions">' +
+                (o.subscription_id ? '' : '<a class="lko-btn primary" href="' + CATALOG_URL + '">Objednat znovu</a>') +
+                '<a class="lko-btn" href="' + CHAT_URL + '">Pomoc s objednávkou</a>' +
+            '</div></div>';
+    }
+
+    function activeCard(o) {
+        var when = o.delivery_date ? dLong(o.delivery_date) : '';
+        var slot = o.delivery_time_raw || o.delivery_slot || '';
+        var pickup = /odb[eě]r|vyzvednut|pickup/i.test(o.delivery_type || '');
+        return '<div class="lko-active" data-id="' + esc(o.order_id) + '">' +
+            '<div class="lko-a-head"><div><div class="lko-a-no">Objednávka č. ' + esc(o.order_id) + '</div><div class="lko-a-date">Vytvořena ' + dShort(o.created_at) + '</div></div>' +
+            '<div class="lko-pills">' + (o.subscription_id ? pill(['Předplatné', '#e6effb', '#1257b8']) : '') + pill(payPill(o)) + '</div></div>' +
+            (when ? '<div class="lko-when"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span><b>' + esc(when) + '</b><span>' + (pickup ? 'Vyzvednutí' : 'Doručení') + (slot ? ' ' + esc(slot) : '') + (o.recipient_name && !pickup ? ' · pro ' + esc(o.recipient_name) : '') + '</span></span></div>' : '') +
+            stepper(o) + stickersHtml(o) +
+            '<div class="lko-a-foot"><span class="lko-total">' + kc(o.order_total) + '</span><div class="lko-btns"><button type="button" class="lko-btn" data-toggle aria-expanded="false">Detail<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button></div></div>' +
+            '<div class="lko-detail"><div>' + detailHtml(o) + '</div></div></div>';
+    }
+
+    function row(o) {
+        var list = products(o), first = list[0] || {};
+        var names = list.length ? list.map(function (p) { return decode(p.name); }).join(', ') : (o.products_text || 'Květiny');
+        var st = o.status === 'cancelled' ? ['Zrušeno', '#f1f2f4', '#5f5e5a'] : ['Doručeno', '#e7f5ec', '#1b7a44'];
+        return '<div class="lko-row" data-id="' + esc(o.order_id) + '"><button type="button" class="lko-row-btn" data-toggle aria-expanded="false">' +
+            '<span class="lko-row-img">' + stickerImg(first, 24) + (list.length > 1 ? '<em>' + list.length + '</em>' : '') + '</span>' +
+            '<span class="lko-row-main"><b>' + esc(names) + '</b><span>č. ' + esc(o.order_id) + ' · ' + dShort(o.created_at) + '</span></span>' +
+            '<span class="lko-row-side"><b>' + kc(o.order_total) + '</b>' + pill(st) + '</span></button>' +
+            '<div class="lko-detail"><div>' + detailHtml(o) + '</div></div></div>';
+    }
+
+    var root = document.getElementById('lko'), box = document.getElementById('lkoList');
+    document.getElementById('lkoCollIc').innerHTML = daisy('#186ce0', 22);
+    var shown = PAGE_SIZE, lastSig = null, openIds = {};
 
     function render(data) {
-        const container = document.getElementById('lkOrdersList');
-        if (!data.orders || !data.orders.length) {
-            container.innerHTML = '<div class="lk-empty">Zatím žádné objednávky.</div>';
+        var orders = (data && data.orders) || [];
+        var sig = JSON.stringify(orders.map(function (o) { return [o.order_id, o.status, o.payment_status]; })) + shown;
+        if (sig === lastSig) return;
+        lastSig = sig;
+        document.getElementById('lkoCount').textContent = orders.length ? orders.length + (orders.length === 1 ? ' objednávka' : orders.length < 5 ? ' objednávky' : ' objednávek') : '';
+        if (!orders.length) {
+            box.innerHTML = '<div class="lko-empty">' + daisy('#186ce0', 48) + '<b>Zatím žádné objednávky</b><p>Až si u nás něco objednáte, uvidíte to tady i se stavem doručení.</p><a class="lko-btn primary" href="' + CATALOG_URL + '">Vybrat květiny</a></div>';
             return;
         }
-        container.innerHTML = data.orders.map(renderOrder).join('');
-        container.querySelectorAll('[data-toggle]').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                const idx = this.getAttribute('data-toggle');
-                document.getElementById('lkOrderDetail' + idx).classList.toggle('open');
-            });
+        var active = orders.filter(isActive);
+        var past = orders.filter(function (o) { return !isActive(o); });
+        var html = '';
+        if (active.length) html += '<div class="lko-section"><div class="lko-h2">Právě řešíme</div>' + active.map(activeCard).join('') + '</div>';
+        if (past.length) {
+            html += '<div class="lko-section"><div class="lko-h2">' + (active.length ? 'Dřívější objednávky' : 'Vaše objednávky') + '</div><div class="lko-list">' + past.slice(0, shown).map(row).join('') + '</div>' +
+                (past.length > shown ? '<button type="button" class="lko-more" id="lkoMore">Zobrazit další (' + (past.length - shown) + ')</button>' : '') + '</div>';
+        }
+        box.innerHTML = html;
+        // obnovení rozbalených detailů po překreslení
+        box.querySelectorAll('[data-id]').forEach(function (card) {
+            if (openIds[card.getAttribute('data-id')]) toggle(card, true);
         });
-        container.querySelectorAll('[data-reorder]').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                window.location.href = '/';
-            });
-        });
+        var more = document.getElementById('lkoMore');
+        if (more) more.addEventListener('click', function () { shown += PAGE_SIZE; lastSig = null; render(window.__memberData); });
     }
+    function toggle(card, force) {
+        var det = card.querySelector('.lko-detail'), btn = card.querySelector('[data-toggle]');
+        var open = force === undefined ? !det.classList.contains('open') : force;
+        det.classList.toggle('open', open);
+        if (btn) btn.setAttribute('aria-expanded', open);
+        openIds[card.getAttribute('data-id')] = open;
+    }
+    box.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-toggle]'); if (!btn) return;
+        toggle(btn.closest('[data-id]'));
+    });
 
-    if (window.__memberData) {
-        render(window.__memberData);
-    } else {
-        const wait = setInterval(function() {
-            if (window.__memberData) {
-                render(window.__memberData);
-                clearInterval(wait);
-            }
-        }, 300);
-    }
+    if (window.narinOnMemberData) window.narinOnMemberData(render);
+    else document.addEventListener('narin:memberdata', function (e) { render(e.detail); });
+    // když se nepodaří načíst ani po 20 s (chybí přihlášení), nenecháme viset šedé zástupné bloky
+    setTimeout(function () {
+        if (!window.__memberData) box.innerHTML = '<div class="lko-empty">' + daisy('#186ce0', 48) + '<b>Objednávky se nepodařilo načíst</b><p>Zkuste stránku obnovit. Když to nepomůže, napište nám.</p><a class="lko-btn primary" href="' + CHAT_URL + '">Napsat do chatu</a></div>';
+    }, 20000);
 })();
 </script>

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { formatDateTime } from "@/lib/format";
-import { generateOccurrenceDates } from "@/lib/subscriptionDates";
+import { generateOccurrenceDates, nextCycleAnchor } from "@/lib/subscriptionDates";
 import { generateOrderForOccurrence } from "@/lib/subscriptionOrders";
 import type { Category, Line, Plan, Tier, Subscription, Occurrence, SubHistoryRow, SubscriptionSize } from "./types";
 import { RECIPIENT_FIELDS } from "./types";
@@ -173,6 +173,26 @@ export function SubscriptionEditModal({
       note: `Изменены поля: ${changedFields.join(", ")}`,
     });
 
+    // Новая цена цикла → та же сумма и в Stripe (со следующего списания, без доплат)
+    if ("cycle_price_snapshot" in payload && subscription.stripe_subscription_id && subscription.status === "active") {
+      const { data: syncRes, error: syncErr } = await supabase.functions.invoke("subscriptions", {
+        body: { action: "manager-sync-price", subscription_id: subscription.id },
+      });
+      if (syncErr || syncRes?.error) {
+        setError(
+          "Сохранено у нас, но цену в Stripe обновить не удалось: " + (syncRes?.message ?? syncRes?.error ?? syncErr?.message) +
+            ". Проверьте подписку в Stripe вручную.",
+        );
+        setSaving(false);
+        return;
+      }
+      await supabase.from("subscription_history").insert({
+        subscription_id: subscription.id,
+        changed_by: user.id,
+        note: `Цена в Stripe обновлена: ${cyclePrice} Kč за 4 недели (со следующего списания)`,
+      });
+    }
+
     setSaving(false);
     onSaved();
   }
@@ -183,10 +203,24 @@ export function SubscriptionEditModal({
       data: { user },
     } = await createClient().auth.getUser();
     const supabase = createClient();
-    await supabase
-      .from("subscriptions")
-      .update({ status: "cancelled", cancelled_at: new Date().toISOString() })
-      .eq("id", subscription.id);
+    setError(null);
+    if (subscription.stripe_subscription_id) {
+      // Отмена через функцию: она останавливает и списания в Stripe. Раньше менялся
+      // только статус у нас, а Stripe продолжал списывать деньги каждые 4 недели.
+      const { data: res, error: fnErr } = await supabase.functions.invoke("subscriptions", {
+        body: { action: "manager-cancel", subscription_id: subscription.id },
+      });
+      if (fnErr || res?.error) {
+        setError("Не удалось отменить в Stripe: " + (res?.message ?? res?.error ?? fnErr?.message) + ". Подписка осталась активной.");
+        setCancelling(false);
+        return;
+      }
+    } else {
+      await supabase
+        .from("subscriptions")
+        .update({ status: "cancelled", cancelled_at: new Date().toISOString() })
+        .eq("id", subscription.id);
+    }
     await supabase.from("subscription_history").insert({
       subscription_id: subscription.id,
       changed_by: user?.id,
@@ -205,10 +239,8 @@ export function SubscriptionEditModal({
     const closedWeekdays = new Set((weeklyRes.data ?? []).map((r) => r.weekday));
     const closedDates = new Set((datesRes.data ?? []).map((r) => r.closed_date));
 
-    const lastDate = occurrences.length > 0 ? occurrences[occurrences.length - 1].occurrence_date : subscription.cycle_anchor_date;
-    const nextAnchor = new Date(lastDate + "T00:00:00Z");
-    nextAnchor.setUTCDate(nextAnchor.getUTCDate() + 1);
-    const nextAnchorStr = nextAnchor.toISOString().slice(0, 10);
+    const lastDate = occurrences.length > 0 ? occurrences[occurrences.length - 1].occurrence_date : null;
+    const nextAnchorStr = nextCycleAnchor(subscription.cycle_anchor_date, lastDate);
 
     const dates = generateOccurrenceDates(nextAnchorStr, subscription.deliveries_per_cycle, closedWeekdays, closedDates);
     const { data: inserted, error: insErr } = await supabase
@@ -289,13 +321,15 @@ export function SubscriptionEditModal({
                   Отменить подписку
                 </button>
               ))}
+            {error && cancelConfirm && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
           </section>
 
           <section className="space-y-3">
             <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">План</h3>
             <p className="text-xs text-amber-600 dark:text-amber-400">
-              Изменение здесь не влияет на списания в активной Stripe-подписке — только на нашу запись. Чтобы изменить
-              реальную оплату, нужно менять её напрямую в Stripe.
+              {subscription.stripe_subscription_id
+                ? "Если поменять линейку, размер или число доставок, новая цена сама уйдёт в Stripe и будет списываться со следующего платежа (без доплат за текущий цикл). Уже созданные даты и заказы не меняются."
+                : "Подписка создана вручную, без Stripe — цена здесь только для учёта."}
             </p>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Категория">
@@ -396,6 +430,11 @@ export function SubscriptionEditModal({
                 + Сгенерировать следующий цикл
               </button>
             </div>
+            <p className="text-xs text-zinc-400 dark:text-zinc-500">
+              {subscription.stripe_subscription_id
+                ? "Следующий цикл создаётся сам, когда Stripe списывает очередной платёж (раз в 4 недели). Кнопка — только если что-то пошло не так."
+                : "Подписка без Stripe: следующий цикл нужно создавать этой кнопкой после оплаты."}
+            </p>
             {loadingSub ? (
               <p className="text-sm text-zinc-400 dark:text-zinc-500">Загрузка…</p>
             ) : (

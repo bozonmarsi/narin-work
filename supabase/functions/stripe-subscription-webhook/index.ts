@@ -10,7 +10,8 @@
 // the order-payments webhook endpoint and has its own signing secret; this
 // function needs its own endpoint in Stripe with its own signing secret.
 // Events to enable on the Stripe side: checkout.session.completed,
-// customer.subscription.deleted.
+// customer.subscription.deleted, invoice.paid (automatické prodloužení —
+// bez něj Stripe každé 4 týdny strhne platbu, ale nové dodávky nevzniknou).
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import Stripe from "npm:stripe@17";
@@ -252,6 +253,69 @@ async function generateOrderForOccurrence(
   await supabase.from("subscription_occurrences").update({ order_id: newOrder.id, status: "generated" }).eq("id", occ.id);
 }
 
+// Stripe strhl platbu za další 4 týdny → vytvoříme další cyklus dodávek a objednávky.
+// Dřív to musel manažer udělat ručně tlačítkem, a když zapomněl, klient zaplatil
+// a nic nedostal. První platba (billing_reason = subscription_create) se přeskakuje,
+// tu už vyřídil checkout.session.completed.
+async function handleInvoicePaid(invoice: Stripe.Invoice) {
+  if (invoice.billing_reason !== "subscription_cycle" || !invoice.subscription) return;
+  const stripeSubId = typeof invoice.subscription === "string" ? invoice.subscription : invoice.subscription.id;
+
+  const { data: sub } = await supabase.from("subscriptions").select("*").eq("stripe_subscription_id", stripeSubId).maybeSingle();
+  if (!sub || sub.status !== "active") return;
+  if (sub.last_renewed_invoice_id === invoice.id) return; // opakované doručení stejné události
+
+  // "zabereme" fakturu dřív, než cokoli vytvoříme — dvě souběžná doručení nevytvoří cyklus dvakrát
+  const { data: claimed } = await supabase
+    .from("subscriptions")
+    .update({ last_renewed_invoice_id: invoice.id })
+    .eq("id", sub.id)
+    .or(`last_renewed_invoice_id.is.null,last_renewed_invoice_id.neq.${invoice.id}`)
+    .select("id");
+  if (!claimed || claimed.length === 0) return;
+
+  const { data: lastOcc } = await supabase
+    .from("subscription_occurrences")
+    .select("occurrence_date")
+    .eq("subscription_id", sub.id)
+    .order("occurrence_date", { ascending: false })
+    .limit(1);
+  const nextAnchor = nextCycleAnchor(sub.cycle_anchor_date, lastOcc?.[0]?.occurrence_date ?? null);
+
+  const { closedWeekdays, closedDates } = await loadClosedCalendar();
+  const dates = generateOccurrenceDates(nextAnchor, sub.deliveries_per_cycle, closedWeekdays, closedDates);
+  const { data: insertedOccs, error: occErr } = await supabase
+    .from("subscription_occurrences")
+    .upsert(dates.map((d) => ({ subscription_id: sub.id, occurrence_date: d, status: "planned" })), {
+      onConflict: "subscription_id,occurrence_date",
+      ignoreDuplicates: true,
+    })
+    .select("*");
+  if (occErr) {
+    console.error("failed to insert renewal occurrences", occErr);
+    return;
+  }
+  for (const occ of insertedOccs ?? []) {
+    if (!occ.order_id) await generateOrderForOccurrence(sub, occ);
+  }
+  await supabase.from("subscription_history").insert({
+    subscription_id: sub.id,
+    note: `Automaticky prodlouženo po platbě ve Stripe: ${dates.length} dodávek od ${dates[0]}`,
+  });
+}
+
+// Cykly jdou po 28 dnech od původního data startu. Další cyklus začíná na prvním
+// takovém dni po poslední dodávce — ne "den po poslední dodávce", jinak by se
+// termíny každý měsíc posouvaly (týdenní dodávky: 1., 8., 15., 22. → další od 23.).
+function nextCycleAnchor(anchorStr: string, lastOccStr: string | null) {
+  const anchor = new Date(anchorStr + "T00:00:00Z");
+  if (!lastOccStr) return anchorStr;
+  const last = new Date(lastOccStr + "T00:00:00Z");
+  let next = anchor;
+  while (next.getTime() <= last.getTime()) next = addDays(next, CYCLE_DAYS);
+  return toKey(next);
+}
+
 Deno.serve(async (req) => {
   const signature = req.headers.get("stripe-signature");
   const body = await req.text();
@@ -270,6 +334,8 @@ Deno.serve(async (req) => {
       if (session.mode === "subscription") {
         await handleCheckoutCompleted(session);
       }
+    } else if (event.type === "invoice.paid") {
+      await handleInvoicePaid(event.data.object as Stripe.Invoice);
     } else if (event.type === "customer.subscription.deleted") {
       const sub = event.data.object as Stripe.Subscription;
       await supabase

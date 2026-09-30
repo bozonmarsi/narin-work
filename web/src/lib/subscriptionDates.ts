@@ -54,3 +54,15 @@ export function generateOccurrenceDates(
   }
   return result;
 }
+
+// Циклы идут по 28 дней от исходной даты старта. Следующий цикл начинается в
+// первый такой день после последней доставки. Раньше брался "день после последней
+// доставки", и даты уезжали каждый месяц (1., 8., 15., 22. → следующий цикл с 23.).
+// Та же логика — в stripe-subscription-webhook (автопродление).
+export function nextCycleAnchor(anchorDateStr: string, lastOccurrenceStr: string | null): string {
+  if (!lastOccurrenceStr) return anchorDateStr;
+  const last = new Date(lastOccurrenceStr + "T00:00:00Z");
+  let next = new Date(anchorDateStr + "T00:00:00Z");
+  while (next.getTime() <= last.getTime()) next = addDays(next, CYCLE_DAYS);
+  return toKey(next);
+}

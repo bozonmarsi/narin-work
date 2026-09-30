@@ -1,0 +1,47 @@
+<script>
+/*
+  NARIN: odemčení stránky účtu. Tilda Members při načítání zamkne posouvání a ukáže loader,
+  dokud nezjistí, že je uživatel přihlášený. Tenhle skript zámek sundá, jakmile je profil
+  v localStorage. Dřív se profil hledal každých 300 ms a pojistka čekala až 8 s, takže
+  stránka občas "visela". Teď se kontroluje každých 100 ms a pojistka je 3 s.
+*/
+(function() {
+    function isLoggedIn() {
+        try {
+            for (var key in localStorage) {
+                if (key.indexOf("tilda_members_profile") === 0 && key.indexOf("_timestamp") === -1) {
+                    try {
+                        var profile = JSON.parse(localStorage.getItem(key));
+                        if (profile && (profile.login || profile.name)) return true;
+                    } catch (e) {}
+                }
+            }
+        } catch (e) {}
+        return false;
+    }
+
+    var done = false;
+    function unstick() {
+        if (done) return;
+        done = true;
+        var hideStyle = document.querySelector('style.tn-members-records');
+        if (hideStyle) hideStyle.remove();
+        document.body.style.overflowY = '';
+        document.body.style.paddingRight = '';
+        document.documentElement.style.overflow = '';
+        var loader = document.getElementById('tlk-loader');
+        if (loader) loader.remove();
+    }
+
+    if (isLoggedIn()) { unstick(); return; }
+    var interval = setInterval(function() {
+        if (isLoggedIn()) { clearInterval(interval); unstick(); }
+    }, 100);
+    // pojistka: stránka nesmí zůstat zamčená, i kdyby se profil nenašel
+    setTimeout(function() { clearInterval(interval); unstick(); }, 3000);
+})();
+</script>
+<style>
+#app { display: none !important; height: 0 !important; overflow: hidden !important; }
+body, .t-body { background-color: #ffffff !important; }
+</style>

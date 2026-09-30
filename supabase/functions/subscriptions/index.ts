@@ -24,6 +24,33 @@ const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY_TEST")!, {
   httpClient: Stripe.createFetchHttpClient(),
 });
 
+// Identita klienta = HMAC-token (lk_auth_token z auth-verify), stejně jako
+// member-data / personal-dates. E-mail z těla požadavku se už nebere:
+// dřív šlo poslat cizí e-mail a číst/rušit cizí předplatné.
+const encoder = new TextEncoder();
+async function emailFromToken(token: unknown): Promise<string | null> {
+  const parts = String(token ?? "").split(".");
+  if (parts.length !== 2) return null;
+  const [payloadB64, sigB64] = parts;
+  const key = await crypto.subtle.importKey("raw", encoder.encode(Deno.env.get("AUTH_TOKEN_SECRET")!), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sigBuf = await crypto.subtle.sign("HMAC", key, encoder.encode(payloadB64));
+  if (btoa(String.fromCharCode(...new Uint8Array(sigBuf))) !== sigB64) return null;
+  try {
+    const payload = JSON.parse(atob(payloadB64));
+    if (!payload.exp || payload.exp < Date.now() || !payload.email) return null;
+    return String(payload.email).trim().toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
+// Stripe přesměrování jen zpět na náš web (jinak by šlo podstrčit cizí adresu)
+const SITE = "https://vezminarin.cz/";
+function safeUrl(u: unknown, fallback: string) {
+  const s = String(u ?? "");
+  return s.startsWith(SITE) ? s : fallback;
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -39,6 +66,16 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json();
     const action = body.action;
+
+    // Akce z manažerské aplikace: přihlášení manažera (Supabase session), ne token klienta
+    if (action === "manager-cancel" || action === "manager-sync-price") {
+      if (!(await isManager(req))) return json({ error: "forbidden" }, 403);
+      return action === "manager-cancel" ? await managerCancel(body) : await managerSyncPrice(body);
+    }
+
+    const email = await emailFromToken(body.token);
+    if (!email) return json({ error: "invalid_token" }, 401);
+    body.email = email;
 
     if (action === "create-checkout") {
       return await createCheckout(body);
@@ -72,11 +109,16 @@ async function createCheckout(body: Record<string, unknown>) {
   const recipientName = String(body.recipient_name ?? "").trim();
   const recipientPhone = String(body.recipient_phone ?? "").trim();
   const address = String(body.address ?? "").trim();
-  const successUrl = String(body.success_url ?? "");
-  const cancelUrl = String(body.cancel_url ?? "");
+  const successUrl = safeUrl(body.success_url, SITE + "members/subscription?status=success");
+  const cancelUrl = safeUrl(body.cancel_url, SITE + "members/subscription?status=cancelled");
 
   if (!email || !lineId || !size || !count || !cycleAnchorDate || !recipientName || !recipientPhone || !address || !successUrl || !cancelUrl) {
     return json({ error: "missing required fields" }, 400);
+  }
+
+  const anchorMs = new Date(cycleAnchorDate + "T00:00:00Z").getTime();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(cycleAnchorDate) || Number.isNaN(anchorMs) || anchorMs < Date.now() - 24 * 3600 * 1000) {
+    return json({ error: "invalid_date", message: "Datum první dodávky musí být v budoucnosti." }, 400);
   }
 
   const { data: line, error: lineErr } = await supabase
@@ -86,6 +128,13 @@ async function createCheckout(body: Record<string, unknown>) {
     .eq("active", true)
     .maybeSingle();
   if (lineErr || !line) return json({ error: "unknown line" }, 400);
+
+  const { data: lineCat } = await supabase.from("subscription_lines").select("category_id, subscription_categories(active)").eq("id", lineId).maybeSingle();
+  const cat = lineCat?.subscription_categories as { active: boolean } | null | undefined;
+  if (cat && cat.active === false) return json({ error: "unknown line" }, 400);
+  if (await isClosedDay(cycleAnchorDate)) {
+    return json({ error: "closed_day", message: "V tento den nevozíme, vyberte prosím jiné datum první dodávky." }, 400);
+  }
 
   const { data: plan, error: planErr } = await supabase
     .from("subscription_plans")
@@ -123,7 +172,7 @@ async function createCheckout(body: Record<string, unknown>) {
     cycle_anchor_date: cycleAnchorDate,
     mood_note: String(body.mood_note ?? ""),
     exclusions_note: String(body.exclusions_note ?? ""),
-    vase_exchange: body.vase_exchange ? "true" : "false",
+    vase_exchange: body.vase_exchange && (await vaseAllowed(count)) ? "true" : "false",
     recipient_name: recipientName,
     recipient_phone: recipientPhone,
     address,
@@ -210,7 +259,7 @@ async function billingInfo(body: Record<string, unknown>) {
   const stripeSub = await stripe.subscriptions.retrieve(sub.stripe_subscription_id);
   const portalSession = await stripe.billingPortal.sessions.create({
     customer: sub.stripe_customer_id,
-    return_url: String(body.return_url ?? ""),
+    return_url: safeUrl(body.return_url, SITE + "members/subscription"),
   });
 
   return json({
@@ -230,6 +279,9 @@ async function updateOccurrence(body: Record<string, unknown>) {
   if (!occ) return json({ error: "not found" }, 404);
   const sub = await loadOwnedSubscription(email, occ.subscription_id);
   if (!sub) return json({ error: "not found" }, 404);
+  if (new Date(occ.occurrence_date + "T23:59:59Z").getTime() < Date.now()) {
+    return json({ error: "past", message: "Tato dodávka už proběhla, nelze ji upravit." }, 400);
+  }
 
   const payload: Record<string, unknown> = {};
   for (const f of ["recipient_name", "recipient_phone", "address", "city", "psk"]) {
@@ -248,6 +300,9 @@ async function updateOccurrence(body: Record<string, unknown>) {
     const targetDateMs = new Date(newDate + "T00:00:00Z").getTime();
     if (!newDate || Number.isNaN(targetDateMs) || targetDateMs - now < cutoffMs) {
       return json({ error: "invalid_date", message: `Nov\u00e9 datum mus\u00ed b\u00fdt alespo\u0148 ${RESCHEDULE_CUTOFF_HOURS} hodin dop\u0159edu.` }, 400);
+    }
+    if (await isClosedDay(newDate)) {
+      return json({ error: "closed_day", message: "V tento den nevozíme, vyberte prosím jiné datum." }, 400);
     }
     payload.occurrence_date = newDate;
   }
@@ -288,4 +343,75 @@ async function cancelSubscription(body: Record<string, unknown>) {
   if (error) return json({ error: error.message }, 500);
 
   return json({ ok: true });
+}
+
+async function isClosedDay(dateStr: string) {
+  const d = new Date(dateStr + "T00:00:00Z");
+  if (Number.isNaN(d.getTime())) return false;
+  const [{ data: weekly }, { data: closed }] = await Promise.all([
+    supabase.from("shop_weekly_closed_days").select("weekday").eq("weekday", d.getUTCDay()),
+    supabase.from("shop_closed_dates").select("closed_date").eq("closed_date", dateStr),
+  ]);
+  return (weekly?.length ?? 0) > 0 || (closed?.length ?? 0) > 0;
+}
+
+async function vaseAllowed(count: number) {
+  const { data } = await supabase.from("subscription_settings").select("vase_enabled, vase_min_deliveries").eq("id", 1).maybeSingle();
+  if (!data) return count >= 4; // tabulka nastavení ještě neexistuje → původní pravidlo
+  return data.vase_enabled && count >= data.vase_min_deliveries;
+}
+
+// ---------- manažer ----------
+async function isManager(req: Request) {
+  const jwt = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
+  if (!jwt) return false;
+  const { data } = await supabase.auth.getUser(jwt);
+  if (!data?.user) return false;
+  const { data: profile } = await supabase.from("users").select("role").eq("id", data.user.id).maybeSingle();
+  return profile?.role === "manager";
+}
+
+// Zrušení z aplikace: dřív se změnil jen stav u nás a Stripe dál strhával peníze.
+async function managerCancel(body: Record<string, unknown>) {
+  const subscriptionId = String(body.subscription_id ?? "");
+  const { data: sub } = await supabase.from("subscriptions").select("*").eq("id", subscriptionId).maybeSingle();
+  if (!sub) return json({ error: "not found" }, 404);
+  if (sub.stripe_subscription_id) {
+    try {
+      await stripe.subscriptions.cancel(sub.stripe_subscription_id);
+    } catch (err) {
+      // už zrušené ve Stripe = v pořádku, jinak chybu vrátíme a nic neměníme
+      const code = (err as { code?: string }).code;
+      if (code !== "resource_missing") return json({ error: "stripe", message: String(err) }, 502);
+    }
+  }
+  await supabase.from("subscriptions").update({ status: "cancelled", cancelled_at: new Date().toISOString() }).eq("id", subscriptionId);
+  return json({ ok: true });
+}
+
+// Změna linie/velikosti/počtu v aplikaci → nová cena i ve Stripe (od příští platby, bez doplatků).
+async function managerSyncPrice(body: Record<string, unknown>) {
+  const subscriptionId = String(body.subscription_id ?? "");
+  const { data: sub } = await supabase.from("subscriptions").select("*").eq("id", subscriptionId).maybeSingle();
+  if (!sub) return json({ error: "not found" }, 404);
+  if (!sub.stripe_subscription_id || sub.status !== "active") return json({ ok: true, skipped: true });
+
+  const stripeSub = await stripe.subscriptions.retrieve(sub.stripe_subscription_id);
+  const item = stripeSub.items.data[0];
+  if (!item) return json({ error: "no_item" }, 400);
+  const amount = Math.round(Number(sub.cycle_price_snapshot) * 100);
+  if (item.price.unit_amount === amount) return json({ ok: true, unchanged: true });
+
+  const productId = typeof item.price.product === "string" ? item.price.product : item.price.product.id;
+  await stripe.products.update(productId, {
+    name: `${sub.line_name_snapshot} \u00b7 ${sub.size} \u00b7 ${sub.deliveries_per_cycle}x/m\u011bs\u00edc`,
+  });
+  await stripe.subscriptions.update(sub.stripe_subscription_id, {
+    items: [{
+      id: item.id,
+      price_data: { currency: "czk", product: productId, unit_amount: amount, recurring: { interval: "week", interval_count: 4 } },
+    }],
+    proration_behavior: "none",
+  });
+  return json({ ok: true, amount: sub.cycle_price_snapshot });
 }

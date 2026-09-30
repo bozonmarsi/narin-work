@@ -9,8 +9,19 @@ export type Category = {
   key: string;
   name: string;
   description: string | null;
+  hero_image_url: string | null;
   sort_order: number;
   active: boolean;
+};
+
+// Одна строка (id = 1) с настройками конструктора на сайте
+export type SubscriptionSettings = {
+  id: number;
+  moods: string[];
+  mood_enabled: boolean;
+  exclusions_enabled: boolean;
+  vase_enabled: boolean;
+  vase_min_deliveries: number;
 };
 
 export type Line = {
