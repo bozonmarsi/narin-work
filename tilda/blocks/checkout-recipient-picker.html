@@ -172,6 +172,29 @@
                 fillRecipientFields(r.name, r.phone);
             });
         });
+
+        // Příchod z připomínky ("Vybrat květiny" v e-mailu / na Důležitých dnech):
+        // /members/occasions si zapamatoval příjemce → tady ho rovnou vybereme.
+        try {
+            const pre = JSON.parse(localStorage.getItem('narin_occ_preselect') || 'null');
+            if (pre && pre.exp > Date.now() && pre.id) {
+                const idx = recipients.findIndex(function(r) { return r.id === pre.id; });
+                if (idx !== -1) {
+                    const chip = chipsWrap.querySelector('[data-idx="' + idx + '"]');
+                    // pole pokladny se vykreslují postupně — chvilku počkáme, ať je máme kam vyplnit
+                    setTimeout(function() { if (chip) chip.click(); }, 600);
+                    if (pre.date) {
+                        const d = new Date(pre.date + 'T12:00:00');
+                        const note = document.createElement('div');
+                        note.className = 'occ-cp-nudge';
+                        note.style.marginTop = '8px';
+                        note.innerHTML = '<span>📅</span><span>Objednáváte pro <b>' + esc(recipients[idx].name) + '</b> na <b>' + d.getDate() + '. ' + (d.getMonth() + 1) + '.</b> Nezapomeňte vybrat tento den doručení.</span>';
+                        wrap.appendChild(note);
+                    }
+                }
+                localStorage.removeItem('narin_occ_preselect');
+            }
+        } catch (e) {}
     }
 
     init();
