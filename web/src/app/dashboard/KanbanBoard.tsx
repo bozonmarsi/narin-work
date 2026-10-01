@@ -76,7 +76,13 @@ export function KanbanBoard({
                   {order.assigned_courier?.full_name && (
                     <p className="text-zinc-500 dark:text-zinc-400">Курьер: {order.assigned_courier.full_name}</p>
                   )}
-                  {order.status === "new" && (
+                  {order.gift_status && order.gift_status !== "awaiting_input" && (
+                    <p className="text-xs text-pink-600 dark:text-pink-300">🎁 Подарок: адрес указал {order.gift_status === "sender_manual" ? "отправитель" : "получатель"}</p>
+                  )}
+                  {order.status === "new" && order.gift_status === "awaiting_input" && (
+                    <div className="mt-2"><p className="rounded-md bg-pink-50 dark:bg-pink-500/10 px-2 py-1 text-xs text-pink-700 dark:text-pink-300">🎁 Ждём адрес от получателя — подтвердить можно после</p></div>
+                  )}
+                  {order.status === "new" && order.gift_status !== "awaiting_input" && (
                     <div className="mt-2" onClick={(e) => e.stopPropagation()}>
                       <OrderActions orderId={order.id} onDone={onDone} />
                     </div>

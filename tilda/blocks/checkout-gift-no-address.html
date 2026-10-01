@@ -1,0 +1,274 @@
+<!--
+  NARIN: "Dárek bez adresy" na pokladně (/payment).
+  Vložit do HTML elementu v Zero Blocku kroku "02. Doručení" (nad "Způsob převzetí"),
+  výška elementu cca 72 px, šířka jako formulář.
+
+  Co dělá, když zákazník zapne "Ať si adresu zadá příjemce":
+  * zeptá se (v okně) na jméno příjemce, kde mu napíšeme (telefon, WhatsApp, Telegram,
+    Instagram) a jestli smí vědět, od koho dárek je; kontakt ověří proti seznamu
+    odmítnutí (edge funkce gift-link → check);
+  * vybere doručení kurýrem a vyplní adresu, datum a čas ZÁSTUPNÝMI hodnotami, aby prošla
+    povinná pole Tildy; tato pole zašedne (skutečnou adresu a čas zadá příjemce);
+  * do formuláře přidá skrytá pole gift-no-address / gift-channel / gift-handle /
+    gift-recipient-name / gift-sender-visible — podle nich tilda-webhook založí
+    dárek, zástupné hodnoty zahodí a pošle manažerovi úkol.
+  Když to zákazník vypne, vrátí pole do původního stavu.
+-->
+<style>
+.ngf-card { font-family: 'Rubik', sans-serif; box-sizing: border-box; width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: #fff7fa; border: 1.5px dashed #f2b8cb; }
+.ngf-card.on { background: #eef6ff; border: 1.5px solid #b9d4f7; }
+.ngf-card .ic { flex: 0 0 auto; font-size: 22px; line-height: 1; }
+.ngf-card .tx { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 600; color: #16181d; line-height: 1.3; }
+.ngf-card .tx small { display: block; font-size: 11.5px; font-weight: 400; color: #6b707a; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ngf-card button { flex: 0 0 auto; height: 36px; padding: 0 14px; border-radius: 999px; border: none; background: #e0607e; color: #fff; font: 600 13px 'Rubik', sans-serif; cursor: pointer; white-space: nowrap; }
+.ngf-card.on button { background: #fff; color: #186ce0; border: 1px solid #c9dbf5; }
+.ngf-card .x { background: none !important; border: none !important; color: #8a8f98 !important; padding: 0 4px !important; font-size: 18px !important; }
+
+.ngf-dim { opacity: .38 !important; pointer-events: none !important; filter: grayscale(1); }
+
+.ngf-pop { position: fixed; inset: 0; z-index: 100001; background: rgba(16,24,40,.55); display: none; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; font-family: 'Rubik', sans-serif; }
+.ngf-pop.on { display: flex; }
+.ngf-box { position: relative; width: 100%; max-width: 400px; max-height: 92vh; overflow-y: auto; background: #fff; border-radius: 24px; padding: 22px 20px 20px; box-sizing: border-box; }
+.ngf-close { position: absolute; top: 14px; right: 14px; width: 30px; height: 30px; border-radius: 50%; border: none; background: rgba(0,0,0,.06); cursor: pointer; font-size: 16px; color: #4a505b; }
+.ngf-h { font-size: 19px; font-weight: 700; color: #16181d; margin: 4px 0 6px; }
+.ngf-lead { font-size: 13.5px; color: #5f6672; line-height: 1.5; margin: 0 0 14px; }
+.ngf-steps { list-style: none; margin: 0 0 16px; padding: 12px 14px; background: #f7f8fa; border-radius: 14px; }
+.ngf-steps li { display: flex; gap: 10px; font-size: 12.5px; color: #4a505b; line-height: 1.4; padding: 4px 0; }
+.ngf-steps b { flex: 0 0 20px; height: 20px; border-radius: 50%; background: #186ce0; color: #fff; font-size: 11px; display: flex; align-items: center; justify-content: center; }
+.ngf-lbl { display: block; font-size: 12.5px; font-weight: 600; color: #4a505b; margin: 12px 2px 6px; }
+.ngf-in { width: 100%; height: 46px; border: 1.5px solid #e3e5e9; border-radius: 12px; padding: 0 12px; font: 400 16px 'Rubik', sans-serif; color: #16181d; box-sizing: border-box; outline: none; }
+.ngf-in:focus { border-color: #186ce0; }
+.ngf-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ngf-chip { height: 36px; padding: 0 13px; border-radius: 999px; border: 1.5px solid #e3e5e9; background: #fff; font: 500 13px 'Rubik', sans-serif; color: #16181d; cursor: pointer; }
+.ngf-chip.on { background: #186ce0; border-color: #186ce0; color: #fff; }
+.ngf-check { display: flex; gap: 10px; align-items: flex-start; margin-top: 14px; font-size: 13px; color: #16181d; line-height: 1.4; cursor: pointer; }
+.ngf-check input { width: 20px; height: 20px; margin: 0; flex: 0 0 auto; accent-color: #186ce0; }
+.ngf-check small { display: block; color: #8a8f98; font-size: 11.5px; }
+.ngf-note { font-size: 11.5px; color: #8a8f98; line-height: 1.45; margin: 12px 2px 0; }
+.ngf-note a { color: #186ce0; font-weight: 600; text-decoration: none; }
+.ngf-err { font-size: 12.5px; color: #b3261e; margin-top: 10px; }
+.ngf-row { display: flex; gap: 8px; margin-top: 16px; }
+.ngf-btn { flex: 1; height: 48px; border-radius: 999px; border: 1.5px solid #e3e5e9; background: #fff; font: 600 14.5px 'Rubik', sans-serif; color: #16181d; cursor: pointer; }
+.ngf-btn.pri { flex: 1.5; border-color: #186ce0; background: #186ce0; color: #fff; }
+.ngf-btn:disabled { opacity: .55; }
+</style>
+
+<div class="ngf-card" id="ngfCard">
+    <div class="ic">🎁</div>
+    <div class="tx" id="ngfTx">Neznáte adresu příjemce?<small>Pošleme mu odkaz, adresu a čas si zadá sám</small></div>
+    <button type="button" id="ngfBtn">Ať ji zadá sám</button>
+</div>
+
+<div class="ngf-pop" id="ngfPop" role="dialog" aria-modal="true" aria-labelledby="ngfH">
+    <div class="ngf-box">
+        <button type="button" class="ngf-close" id="ngfClose" aria-label="Zavřít">✕</button>
+        <div style="font-size:30px;">🎁</div>
+        <div class="ngf-h" id="ngfH">Dárek bez adresy</div>
+        <p class="ngf-lead">Neznáte adresu nebo chcete překvapit? Nevadí. Příjemci napíšeme a on si sám vybere, kam a kdy mu kytici přivezeme.</p>
+        <ol class="ngf-steps">
+            <li><b>1</b>Objednáte a zaplatíte jako obvykle.</li>
+            <li><b>2</b>Příjemci osobně napíšeme a pošleme odkaz. Žádný robot.</li>
+            <li><b>3</b>Zadá adresu a čas, nejdřív na zítřek. Když to do 48 hodin neudělá nebo dárek odmítne, vrátíme vám peníze.</li>
+        </ol>
+        <label class="ngf-lbl" for="ngfName">Jméno příjemce</label>
+        <input class="ngf-in" id="ngfName" type="text" autocomplete="off" placeholder="např. Jana">
+        <span class="ngf-lbl">Kde mu máme napsat?</span>
+        <div class="ngf-chips" id="ngfCh">
+            <button type="button" class="ngf-chip on" data-c="phone">📱 SMS / telefon</button>
+            <button type="button" class="ngf-chip" data-c="whatsapp">WhatsApp</button>
+            <button type="button" class="ngf-chip" data-c="telegram">Telegram</button>
+            <button type="button" class="ngf-chip" data-c="instagram">Instagram</button>
+        </div>
+        <input class="ngf-in" id="ngfHandle" type="text" autocomplete="off" inputmode="tel" placeholder="+420 777 123 456" style="margin-top:8px;">
+        <label class="ngf-check"><input type="checkbox" id="ngfVisible" checked><span>Příjemce může vědět, že je dárek ode mě<small>Když ne, napíšeme jen „někdo vám posílá květiny“.</small></span></label>
+        <p class="ngf-note">Kontakt použijeme jen kvůli tomuto doručení a po 30 dnech ho smažeme. <a href="https://vezminarin.cz/darek-bez-adresy" target="_blank" rel="noopener">Jak to funguje</a></p>
+        <div class="ngf-err" id="ngfErr" hidden></div>
+        <div class="ngf-row">
+            <button type="button" class="ngf-btn" id="ngfCancel">Zpět</button>
+            <button type="button" class="ngf-btn pri" id="ngfOk">Pokračovat</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var SUPABASE_URL = 'https://wqburlamuipxmenqsjnx.supabase.co';
+    var SUPABASE_KEY = 'sb_publishable_ORMmBYvVjH6i2GanWa2JyA_mWm3fTCZ';
+    var RECIPIENT_SECTION = '#rec1935176163';          // krok "Příjemce" (stejně jako checkout-recipient-picker)
+    var PLACEHOLDER = { adres: 'Adresu zadá příjemce', city: 'Praha', psc: '110 00' };
+    var CHANNEL_LABEL = { phone: 'SMS', whatsapp: 'WhatsApp', telegram: 'Telegram', instagram: 'Instagram' };
+    var CHANNEL_PH = { phone: '+420 777 123 456', whatsapp: '+420 777 123 456', telegram: '@jmeno nebo telefon', instagram: '@jmeno' };
+
+    var pop = document.getElementById('ngfPop');
+    document.body.appendChild(pop);   // mimo Zero Block (overflow/transform by okno ořízly)
+    var state = null;                 // { name, channel, handle, visible } když je zapnuto
+    var saved = {};                   // původní hodnoty polí, abychom je při vypnutí vrátili
+    var channel = 'phone';
+
+    function $(id) { return document.getElementById(id); }
+    function form() { var a = document.querySelector('input[name="adres"]'); return a && a.closest('form'); }
+    function field(name) { var f = form(); return f ? f.querySelector('[name="' + name + '"]') : document.querySelector('[name="' + name + '"]'); }
+    function group(el) { return el && (el.closest('.t-input-group') || el.closest('.t-input-block') || el.parentElement); }
+    function fire(el) { ['input', 'change'].forEach(function (t) { el.dispatchEvent(new Event(t, { bubbles: true })); }); }
+    function setVal(name, v) {
+        var el = field(name); if (!el) return;
+        if (!(name in saved)) saved[name] = el.value;
+        el.value = v; fire(el);
+        var g = group(el); if (g) { g.classList.add('ngf-dim'); g.classList.remove('t-input-group_error'); }
+    }
+    function restore() {
+        Object.keys(saved).forEach(function (name) {
+            var el = field(name); if (!el) return;
+            el.value = saved[name]; fire(el);
+            var g = group(el); if (g) g.classList.remove('ngf-dim');
+        });
+        saved = {};
+        document.querySelectorAll('.ngf-dim').forEach(function (g) { g.classList.remove('ngf-dim'); });
+    }
+
+    // datum ve formátu, jaký má Tilda datepicker (dd-mm-yyyy, dd.mm.yyyy, yyyy-mm-dd…)
+    function fmtDate(d, fmt) {
+        fmt = (fmt || 'dd-mm-yyyy').toLowerCase();
+        var dd = ('0' + d.getDate()).slice(-2), mm = ('0' + (d.getMonth() + 1)).slice(-2), yy = String(d.getFullYear());
+        return fmt.replace('dd', dd).replace('mm', mm).replace('yyyy', yy);
+    }
+
+    function hidden(name, value) {
+        var f = form(); if (!f) return;
+        var el = f.querySelector('input[type="hidden"][name="' + name + '"]');
+        if (value == null) { if (el) el.remove(); return; }
+        if (!el) { el = document.createElement('input'); el.type = 'hidden'; el.name = name; f.appendChild(el); }
+        el.value = value;
+    }
+
+    function apply() {
+        if (!state) return;
+        // doručení kurýrem
+        var courier = Array.prototype.filter.call(document.querySelectorAll('input[name="delivery"]'), function (r) { return /kurýr/i.test(r.value); })[0];
+        if (courier && !courier.checked) courier.click();
+        setVal('adres', PLACEHOLDER.adres);
+        setVal('city', PLACEHOLDER.city);
+        setVal('psc', PLACEHOLDER.psc);
+        ['floor', 'apartment-number', 'intercom'].forEach(function (n) { var el = field(n); if (el) { var g = group(el); if (g) g.classList.add('ngf-dim'); } });
+        var dateEl = field('date');
+        if (dateEl && !('date' in saved)) {
+            var tm = new Date(); tm.setDate(tm.getDate() + 1);
+            setVal('date', fmtDate(tm, dateEl.getAttribute('data-dateformat') || dateEl.getAttribute('data-date-format')));
+        }
+        // čas: první volný interval (zástupně — skutečný vybere příjemce)
+        var slots = document.querySelectorAll('input[name="delivery-time"]');
+        if (slots.length && !Array.prototype.some.call(slots, function (r) { return r.checked; })) {
+            for (var i = 0; i < slots.length; i++) {
+                slots[i].click();                       // zavřený slot checkout-slot-blocker odmítne
+                if (slots[i].checked) break;
+            }
+        }
+        slots.forEach(function (r) { var g = r.closest('.t-radio__wrapper') || r.closest('.t-input-group'); if (g) g.classList.add('ngf-dim'); });
+
+        // příjemce: jméno (a telefon, když píšeme na telefon/WhatsApp), jen pokud je prázdné
+        var sec = document.querySelector(RECIPIENT_SECTION) || document;
+        var same = sec.querySelector('input[name="recipient-customer"]');
+        if (same && same.checked) same.click();
+        var rn = sec.querySelector('input[name="recipients-name"]');
+        if (rn && !rn.value) { rn.value = state.name; fire(rn); }
+        var rp = sec.querySelector('input.t-input-phonemask') || sec.querySelector('input[name="recipients-phone-number"]');
+        if (rp && !rp.value && /^(phone|whatsapp)$/.test(state.channel)) {
+            rp.value = state.handle; fire(rp);
+            rp.dispatchEvent(new Event('focus', { bubbles: true })); rp.dispatchEvent(new Event('blur', { bubbles: true }));
+        }
+
+        hidden('gift-no-address', 'yes');
+        hidden('gift-channel', state.channel);
+        hidden('gift-handle', state.handle);
+        hidden('gift-recipient-name', state.name);
+        hidden('gift-sender-visible', state.visible ? 'yes' : 'no');
+        render();
+    }
+
+    function turnOff() {
+        state = null;
+        restore();
+        ['gift-no-address', 'gift-channel', 'gift-handle', 'gift-recipient-name', 'gift-sender-visible'].forEach(function (n) { hidden(n, null); });
+        render();
+    }
+
+    function render() {
+        var card = $('ngfCard'), tx = $('ngfTx'), btn = $('ngfBtn');
+        card.classList.toggle('on', !!state);
+        if (state) {
+            tx.innerHTML = 'Adresu zadá ' + esc(state.name) + '<small>Napíšeme přes ' + CHANNEL_LABEL[state.channel] + ': ' + esc(state.handle) + (state.visible ? '' : ' · anonymně') + '</small>';
+            btn.textContent = 'Změnit';
+            if (!card.querySelector('.x')) {
+                var x = document.createElement('button'); x.type = 'button'; x.className = 'x'; x.setAttribute('aria-label', 'Zrušit dárek bez adresy'); x.textContent = '✕';
+                x.onclick = turnOff; card.appendChild(x);
+            }
+        } else {
+            tx.innerHTML = 'Neznáte adresu příjemce?<small>Pošleme mu odkaz, adresu a čas si zadá sám</small>';
+            btn.textContent = 'Ať ji zadá sám';
+            var old = card.querySelector('.x'); if (old) old.remove();
+        }
+    }
+    function esc(s) { return String(s || '').replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+    function setChannel(c) {
+        channel = c;
+        document.querySelectorAll('#ngfCh .ngf-chip').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-c') === c); });
+        var h = $('ngfHandle');
+        h.placeholder = CHANNEL_PH[c];
+        h.inputMode = c === 'instagram' ? 'text' : (c === 'telegram' ? 'text' : 'tel');
+    }
+    function validHandle(c, v) {
+        var digits = v.replace(/\D/g, '');
+        if (c === 'phone' || c === 'whatsapp') return digits.length >= 9 && digits.length <= 15 && !/[a-z]/i.test(v);
+        if (c === 'telegram') return /^@?[A-Za-z0-9_]{4,32}$/.test(v) || (digits.length >= 9 && !/[a-z]/i.test(v));
+        return /^@?[A-Za-z0-9._]{2,30}$/.test(v);
+    }
+    function showErr(m) { var e = $('ngfErr'); e.textContent = m || ''; e.hidden = !m; }
+
+    function openPop() {
+        showErr('');
+        if (state) { $('ngfName').value = state.name; $('ngfHandle').value = state.handle; $('ngfVisible').checked = state.visible; setChannel(state.channel); }
+        else {
+            var rn = (document.querySelector(RECIPIENT_SECTION) || document).querySelector('input[name="recipients-name"]');
+            if (rn && rn.value && !$('ngfName').value) $('ngfName').value = rn.value;
+        }
+        pop.classList.add('on');
+        setTimeout(function () { $('ngfName').focus(); }, 60);
+    }
+    function closePop() { pop.classList.remove('on'); }
+
+    $('ngfBtn').addEventListener('click', openPop);
+    $('ngfClose').addEventListener('click', closePop);
+    $('ngfCancel').addEventListener('click', closePop);
+    pop.addEventListener('click', function (e) { if (e.target === pop) closePop(); });
+    ['ngfName', 'ngfHandle'].forEach(function (id) { $(id).addEventListener('input', function () { showErr(''); }); });
+    $('ngfCh').addEventListener('click', function (e) { var b = e.target.closest('[data-c]'); if (b) setChannel(b.getAttribute('data-c')); });
+
+    $('ngfOk').addEventListener('click', function () {
+        var name = $('ngfName').value.trim(), handle = $('ngfHandle').value.trim();
+        if (name.length < 2) return showErr('Napište prosím jméno příjemce.');
+        if (!validHandle(channel, handle)) return showErr(channel === 'instagram' || (channel === 'telegram' && /[a-z]/i.test(handle)) ? 'Zkontrolujte prosím uživatelské jméno.' : 'Zkontrolujte prosím telefonní číslo (aspoň 9 číslic).');
+        if (!form()) return showErr('Formulář se ještě načítá, zkuste to prosím za chvilku.');
+        var ok = $('ngfOk'); ok.disabled = true; ok.textContent = 'Ověřujeme…';
+        fetch(SUPABASE_URL + '/functions/v1/gift-link', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY },
+            body: JSON.stringify({ action: 'check', contact: handle })
+        }).then(function (r) { return r.json(); }).catch(function () { return {}; }).then(function (r) {
+            ok.disabled = false; ok.textContent = 'Pokračovat';
+            if (r && r.blocked) return showErr('Tomuto kontaktu bohužel nemůžeme dárek bez adresy poslat. Zadejte prosím adresu sami.');
+            state = { name: name.slice(0, 60), channel: channel, handle: handle.slice(0, 60), visible: $('ngfVisible').checked };
+            apply();
+            closePop();
+        });
+    });
+
+    // Tilda někdy pole překreslí (přepnutí kroku, maska) — držet hodnoty a skrytá pole
+    setInterval(function () {
+        if (!state) return;
+        var a = field('adres');
+        if (a && a.value !== PLACEHOLDER.adres) { delete saved.adres; setVal('adres', PLACEHOLDER.adres); }
+        var f = form(); if (f && !f.querySelector('input[name="gift-no-address"]')) apply();
+    }, 1500);
+})();
+</script>

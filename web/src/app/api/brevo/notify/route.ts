@@ -9,7 +9,10 @@ type NotifyPayload = {
     | "delivered"
     | "arriving_sms"
     | "occasion_reminder"
-    | "occasion_last_call";
+    | "occasion_last_call"
+    | "gift_sender_fallback"
+    | "gift_confirmed"
+    | "gift_cancelled";
   order_id: string; // human-readable Tilda order number, e.g. "1948856243"
   email?: string;
   phone?: string;
@@ -22,6 +25,10 @@ type NotifyPayload = {
   // occasion_reminder / occasion_last_call (SQL send_occasion_reminders)
   days?: number;
   items?: OccasionItem[];
+  // dárek bez adresy (SQL gift_tick / gift_close, edge funkce gift-link)
+  sender_link?: string;
+  expires_at?: string;
+  reason?: "expired" | "opted_out";
 };
 
 type OccasionItem = {
@@ -417,6 +424,68 @@ export async function POST(request: Request) {
       if (email && Array.isArray(payload.items) && payload.items.length) {
         const { subject, html } = occasionEmail(payload.items, Number(payload.days) || 3, event === "occasion_last_call");
         await sendBrevoEmail(email, subject, html);
+      }
+      break;
+
+    // ---------- dárek bez adresy: e-maily odesílateli ----------
+    case "gift_sender_fallback":
+      if (email && payload.sender_link) {
+        const who = recipient_name ? esc(recipient_name) : "Příjemce";
+        await sendBrevoEmail(
+          email,
+          `${recipient_name ?? "Příjemce"} zatím adresu nezadal(a) — znáte ji?`,
+          emailShell({
+            preheader: `Dárek č. ${order_id} čeká na adresu.`,
+            badgeEmoji: "🎁",
+            badgeBg: "#fde9f0",
+            headline: `${who} zatím adresu nezadal(a)`,
+            bodyHtml: `Napsali jsme a připomněli se, ale adresa zatím nepřišla. Když ji mezitím zjistíte, můžete ji zadat sami a kytici doručíme. Odkaz platí do ${esc(payload.expires_at ?? "")}; pak objednávku zrušíme a peníze vám vrátíme.`,
+            ctaLabel: "Zadat adresu sám",
+            ctaUrl: payload.sender_link,
+            footNote: "Když adresu neznáte, nemusíte nic dělat. Dáme vám vědět, jak to dopadlo.",
+          }),
+        );
+      }
+      break;
+
+    case "gift_confirmed":
+      if (email) {
+        await sendBrevoEmail(
+          email,
+          `${recipient_name ?? "Příjemce"} si vybral(a), kam doručit 🎉`,
+          emailShell({
+            preheader: `Dárek č. ${order_id}: adresa je zadaná.`,
+            badgeEmoji: "🎉",
+            badgeBg: ACCENT_BG,
+            headline: `Hotovo, ${recipient_name ? esc(recipient_name) : "příjemce"} zadal(a) adresu`,
+            bodyHtml: `Kytici doručíme tam a tehdy, kdy se to příjemci hodí. Adresu kvůli soukromí příjemce neukazujeme, jen termín.`,
+            extraHtml: deliveryWhenLine(delivery_date, delivery_time),
+            ctaLabel: "Zobrazit objednávku",
+            ctaUrl: ORDERS_URL,
+          }),
+        );
+      }
+      break;
+
+    case "gift_cancelled":
+      if (email) {
+        const why = payload.reason === "opted_out"
+          ? "Příjemce se rozhodl dárek nepřijmout."
+          : "Příjemce do 48 hodin adresu nezadal.";
+        await sendBrevoEmail(
+          email,
+          `Dárek jsme nedoručili, peníze vám vrátíme`,
+          emailShell({
+            preheader: `Objednávka č. ${order_id} je zrušená.`,
+            badgeEmoji: "🤍",
+            badgeBg: "#f4f5f7",
+            headline: "Dárek jsme bohužel nedoručili",
+            bodyHtml: `${why} Objednávku jsme zrušili a${order_total ? ` ${Math.round(order_total).toLocaleString("cs-CZ")} Kč` : " peníze"} vám vrátíme na kartu do několika pracovních dní. Uplatněné body jsou už zpátky na vašem účtu.`,
+            ctaLabel: "Poslat kytici jinak",
+            ctaUrl: "https://vezminarin.cz/page118819546.html",
+            footNote: "Kdybyste chtěli kytici poslat znovu s adresou, rádi pomůžeme.",
+          }),
+        );
       }
       break;
 

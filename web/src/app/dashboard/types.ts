@@ -71,6 +71,7 @@ export type OrderRow = {
   postcard_comment: string | null;
   created_at: string | null;
   subscription_id: string | null;
+  gift_status: string | null; // dárek bez adresy: awaiting_input / confirmed / sender_manual / expired / opted_out
   assigned_courier: { full_name: string | null } | null;
 };
 

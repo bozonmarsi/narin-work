@@ -1,0 +1,175 @@
+<!--
+  NARIN: propagační stránka "Dárek bez adresy" (/darek-bez-adresy). Celý kód do jednoho bloku T123.
+  Funkce samotná je na pokladně (tilda/blocks/checkout-gift-no-address.html).
+-->
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+.ngp { --blue:#186ce0; --pink:#e0607e; --ink:#16181d; --ink2:#4a505b; --muted:#8a8f98; --line:#e9ebef;
+  font-family:'Rubik',sans-serif; color:var(--ink); overflow-x:hidden; }
+.ngp *, .ngp *::before, .ngp *::after { box-sizing:border-box; }
+.ngp-wrap { max-width:1040px; margin:0 auto; padding:0 18px; }
+.ngp-hero { padding:44px 0 36px; background:radial-gradient(120% 90% at 85% 0%,#ffe3ec 0%,rgba(255,227,236,0) 60%),radial-gradient(120% 90% at 0% 100%,#e2eeff 0%,rgba(226,238,255,0) 55%); }
+.ngp-hero-grid { display:grid; grid-template-columns:1.1fr .9fr; gap:34px; align-items:center; }
+.ngp-tag { display:inline-flex; align-items:center; gap:6px; height:30px; padding:0 12px; border-radius:999px; background:#fff; border:1px solid #f4c8d6; color:var(--pink); font-size:13px; font-weight:600; }
+.ngp h1 { font-size:46px; line-height:1.08; font-weight:700; letter-spacing:-.02em; margin:16px 0 14px; }
+.ngp h1 em { font-style:normal; color:var(--pink); }
+.ngp-lead { font-size:17px; line-height:1.55; color:var(--ink2); margin:0 0 24px; max-width:34ch; }
+.ngp-cta { display:inline-flex; align-items:center; justify-content:center; height:54px; padding:0 28px; border-radius:999px; background:var(--blue); color:#fff !important; font-size:16px; font-weight:600; text-decoration:none !important; }
+.ngp-cta.ghost { background:#fff; color:var(--blue) !important; border:1.5px solid #c9dbf5; margin-left:8px; }
+.ngp-mini { font-size:13px; color:var(--muted); margin-top:14px; }
+
+/* telefon s ukázkou zprávy a stránky příjemce */
+.ngp-phone { position:relative; width:280px; margin:0 auto; border-radius:38px; background:#16181d; padding:12px; box-shadow:0 30px 60px rgba(24,108,224,.18); }
+.ngp-screen { border-radius:28px; background:#f6f8fb; padding:18px 14px 20px; min-height:440px; }
+.ngp-msg { background:#fff; border-radius:18px 18px 18px 6px; padding:12px 13px; font-size:12.5px; line-height:1.45; color:var(--ink2); box-shadow:0 2px 8px rgba(0,0,0,.05); }
+.ngp-msg b { color:var(--ink); }
+.ngp-msg a { color:var(--blue); font-weight:600; text-decoration:none; }
+.ngp-time { font-size:10.5px; color:var(--muted); margin:6px 0 14px 4px; }
+.ngp-page { background:#fff; border-radius:18px; padding:14px; box-shadow:0 2px 8px rgba(0,0,0,.05); }
+.ngp-page .h { font-size:14px; font-weight:700; margin:6px 0 10px; text-align:center; }
+.ngp-fake { height:34px; border-radius:10px; border:1.5px solid var(--line); margin-bottom:7px; font-size:11.5px; color:var(--muted); display:flex; align-items:center; padding:0 10px; }
+.ngp-days { display:flex; gap:6px; margin:8px 0; }
+.ngp-days span { flex:1; text-align:center; border-radius:10px; border:1.5px solid var(--line); font-size:11px; padding:5px 0; }
+.ngp-days span.on { background:var(--blue); border-color:var(--blue); color:#fff; }
+.ngp-btnf { height:36px; border-radius:999px; background:var(--blue); color:#fff; font-size:12px; font-weight:600; display:flex; align-items:center; justify-content:center; margin-top:8px; }
+
+.ngp-sec { padding:56px 0; }
+.ngp-label { font-size:13px; font-weight:600; color:var(--pink); text-transform:uppercase; letter-spacing:.08em; margin-bottom:8px; }
+.ngp h2 { font-size:32px; line-height:1.15; font-weight:700; letter-spacing:-.01em; margin:0 0 12px; }
+.ngp-sub { font-size:16px; color:var(--ink2); line-height:1.55; margin:0 0 28px; max-width:56ch; }
+.ngp-steps { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; counter-reset:s; }
+.ngp-step { background:#fff; border:1px solid var(--line); border-radius:22px; padding:20px 18px; }
+.ngp-step .n { width:34px; height:34px; border-radius:50%; background:#eef4fc; color:var(--blue); font-weight:700; display:flex; align-items:center; justify-content:center; margin-bottom:12px; }
+.ngp-step b { display:block; font-size:16px; margin-bottom:6px; }
+.ngp-step p { font-size:14px; color:var(--ink2); line-height:1.5; margin:0; }
+.ngp-uses { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+.ngp-use { border-radius:22px; padding:22px 20px; background:#f7f8fb; }
+.ngp-use .e { font-size:28px; }
+.ngp-use b { display:block; font-size:16.5px; margin:10px 0 6px; }
+.ngp-use p { font-size:14px; color:var(--ink2); line-height:1.5; margin:0; }
+.ngp-safe { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.ngp-safe div { display:flex; gap:12px; padding:18px; border-radius:20px; border:1px solid var(--line); background:#fff; }
+.ngp-safe i { font-style:normal; font-size:22px; }
+.ngp-safe b { display:block; font-size:15px; margin-bottom:4px; }
+.ngp-safe p { font-size:13.5px; color:var(--ink2); line-height:1.5; margin:0; }
+.ngp-faq { max-width:760px; }
+.ngp-q { border-bottom:1px solid var(--line); }
+.ngp-q button { width:100%; display:flex; justify-content:space-between; align-items:center; gap:14px; background:none; border:none; padding:18px 2px; font:600 16px 'Rubik',sans-serif; color:var(--ink); text-align:left; cursor:pointer; }
+.ngp-q button span { flex:0 0 auto; font-size:22px; color:var(--blue); transition:transform .2s; }
+.ngp-q.open button span { transform:rotate(45deg); }
+.ngp-q p { display:none; font-size:14.5px; color:var(--ink2); line-height:1.6; margin:0 2px 18px; }
+.ngp-q.open p { display:block; }
+.ngp-final { margin:20px 0 56px; border-radius:30px; padding:40px 24px; text-align:center; background:linear-gradient(135deg,#186ce0,#4d8ff0); color:#fff; }
+.ngp-final h2 { color:#fff; }
+.ngp-final p { color:rgba(255,255,255,.88); font-size:16px; margin:0 0 22px; }
+.ngp-final .ngp-cta { background:#fff; color:var(--blue) !important; }
+@media (max-width:860px) {
+  .ngp-hero-grid { grid-template-columns:1fr; }
+  .ngp h1 { font-size:36px; }
+  .ngp-steps { grid-template-columns:1fr 1fr; }
+  .ngp-uses, .ngp-safe { grid-template-columns:1fr; }
+  .ngp h2 { font-size:27px; }
+}
+@media (max-width:480px) {
+  .ngp-steps { grid-template-columns:1fr; }
+  .ngp-cta { width:100%; }
+  .ngp-cta.ghost { margin:8px 0 0; }
+}
+</style>
+
+<div class="ngp">
+  <section class="ngp-hero">
+    <div class="ngp-wrap ngp-hero-grid">
+      <div>
+        <span class="ngp-tag">🎁 Novinka NARIN</span>
+        <h1>Pošlete květiny,<br>i když <em>neznáte adresu</em></h1>
+        <p class="ngp-lead">Stačí telefon, WhatsApp, Telegram nebo Instagram. Příjemci napíšeme a on si sám vybere, kam a kdy mu kytici přivezeme.</p>
+        <a class="ngp-cta" href="https://vezminarin.cz/page118819546.html">Vybrat kytici</a><a class="ngp-cta ghost" href="#jak">Jak to funguje</a>
+        <div class="ngp-mini">Když příjemce do 48 hodin adresu nezadá, vrátíme vám peníze.</div>
+      </div>
+      <div>
+        <div class="ngp-phone"><div class="ngp-screen">
+          <div class="ngp-msg">Dobrý den, tady květinářství <b>NARIN</b> 💐 <b>Tomáš</b> vám posílá kytici. Kam a kdy vám ji máme přivézt? <a>vezminarin.cz/prijem-daru</a></div>
+          <div class="ngp-time">NARIN · 10:24</div>
+          <div class="ngp-page">
+            <div style="text-align:center;font-size:26px;">💐</div>
+            <div class="h">Jano, Tomáš vám posílá květiny</div>
+            <div class="ngp-fake">Ulice a číslo popisné</div>
+            <div class="ngp-fake">Praha · 120 00</div>
+            <div class="ngp-days"><span>pá 3</span><span class="on">so 4</span><span>po 6</span></div>
+            <div class="ngp-days"><span class="on">9–12</span><span>12–15</span><span>15–18</span></div>
+            <div class="ngp-btnf">Potvrdit doručení</div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="ngp-sec" id="jak">
+    <div class="ngp-wrap">
+      <div class="ngp-label">Jak to funguje</div>
+      <h2>Čtyři kroky a žádné vyptávání</h2>
+      <p class="ngp-sub">Překvapení zůstane překvapením. Adresu se nemusíte nikde shánět ani se na ni ptát.</p>
+      <div class="ngp-steps">
+        <div class="ngp-step"><div class="n">1</div><b>Vyberete kytici</b><p>Na pokladně v kroku Doručení klepnete na „🎁 Ať ji zadá sám“.</p></div>
+        <div class="ngp-step"><div class="n">2</div><b>Napíšete kontakt</b><p>Telefon, WhatsApp, Telegram nebo Instagram. A jestli smí vědět, od koho dárek je.</p></div>
+        <div class="ngp-step"><div class="n">3</div><b>Napíšeme mu my</b><p>Osobně, ne robot. Pošleme odkaz, kde si vybere adresu, den i čas.</p></div>
+        <div class="ngp-step"><div class="n">4</div><b>Doručíme</b><p>Nejdřív další den, v čase, který si sám zvolil. Vy dostanete e-mail, že je vše domluvené.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="ngp-sec" style="padding-top:0">
+    <div class="ngp-wrap">
+      <div class="ngp-label">Kdy se to hodí</div>
+      <h2>Pro chvíle, kdy adresu prostě nemáte</h2>
+      <div class="ngp-uses">
+        <div class="ngp-use"><div class="e">💌</div><b>Tajný obdivovatel</b><p>Pošlete kytici anonymně. Příjemce uvidí jen „někdo vám posílá květiny“.</p></div>
+        <div class="ngp-use"><div class="e">🏢</div><b>Kolega nebo klient</b><p>Máte jen číslo z vizitky? Stačí. Doručíme do kanceláře i domů, podle toho, co si vybere.</p></div>
+        <div class="ngp-use"><div class="e">📱</div><b>Kamarádka z Instagramu</b><p>Znáte se jen online? Napíšeme jí do zpráv a domluvíme se za vás.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="ngp-sec" style="padding-top:0">
+    <div class="ngp-wrap">
+      <div class="ngp-label">Bez rizika</div>
+      <h2>Férově k vám i k příjemci</h2>
+      <div class="ngp-safe">
+        <div><i>💸</i><span><b>Peníze zpět</b><p>Když příjemce do 48 hodin adresu nezadá nebo dárek odmítne, objednávku zrušíme a peníze vám vrátíme.</p></span></div>
+        <div><i>📮</i><span><b>Po 24 hodinách se ozveme vám</b><p>Když příjemce mlčí, pošleme vám odkaz, kde můžete adresu zadat sami, pokud ji mezitím zjistíte.</p></span></div>
+        <div><i>🔒</i><span><b>Kontakt jen pro doručení</b><p>Číslo nebo profil příjemce použijeme jen na tuto jednu zprávu a po 30 dnech ho smažeme. Žádné reklamy.</p></span></div>
+        <div><i>🙅</i><span><b>Příjemce může odmítnout</b><p>Jedním klepnutím. Pak mu už nikdy nenapíšeme a vy dostanete peníze zpět.</p></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="ngp-sec" style="padding-top:0">
+    <div class="ngp-wrap">
+      <div class="ngp-label">Otázky</div>
+      <h2>Na co se často ptáte</h2>
+      <div class="ngp-faq" id="ngpFaq"></div>
+      <div class="ngp-final">
+        <h2>Udělejte radost ještě dnes</h2>
+        <p>Vyberte kytici, zbytek domluvíme my.</p>
+        <a class="ngp-cta" href="https://vezminarin.cz/page118819546.html">Vybrat kytici</a>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var FAQ = [
+    ['Kolik to stojí navíc?', 'Nic. Platíte kytici a běžné doručení kurýrem po Praze, jako u každé objednávky.'],
+    ['Kdy kytici doručíte?', 'Nejdřív další den po tom, co příjemce zadá adresu, v čase, který si sám vybere (9–12, 12–15, 15–18 nebo 18–20).'],
+    ['Dozví se příjemce, od koho dárek je?', 'Jen když to na pokladně povolíte. Jinak mu napíšeme jen, že mu někdo posílá květiny. Text na přání je samozřejmě na vás.'],
+    ['Co když příjemce neodpoví?', 'Připomeneme se mu. Po 24 hodinách vám pošleme odkaz, kde můžete adresu zadat sami. Když se do 48 hodin nic nestane, objednávku zrušíme a peníze vrátíme.'],
+    ['Kam doručujete?', 'Po celé Praze. Kdyby příjemce potřeboval jinam, napíše nám a domluvíme se.'],
+    ['Co se stane s kontaktem příjemce?', 'Použijeme ho jen na zprávu kvůli tomuto doručení a po 30 dnech ho smažeme. Když dárek odmítne, zapamatujeme si jen nevratný otisk kontaktu, abychom věděli, že mu už nemáme psát.']
+  ];
+  var box = document.getElementById('ngpFaq');
+  box.innerHTML = FAQ.map(function (q) { return '<div class="ngp-q"><button type="button">' + q[0] + '<span>+</span></button><p>' + q[1] + '</p></div>'; }).join('');
+  box.addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) b.parentElement.classList.toggle('open'); });
+})();
+</script>

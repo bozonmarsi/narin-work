@@ -1,0 +1,235 @@
+<!--
+  NARIN: stránka příjemce dárku (/prijem-daru). Celý kód do jednoho bloku T123.
+  Odkaz posílá manažer ručně: /prijem-daru?t=<token>. Po 24 h dostane odesílatel
+  e-mailem /prijem-daru?s=<token> a může adresu zadat sám.
+  Všechno jde přes edge funkci gift-link (get / confirm / optout) — stránka
+  nikdy nečte databázi napřímo.
+  Stránku v Tildě nastavte jako skrytou pro vyhledávače (noindex).
+-->
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+.ngr { --blue:#186ce0; --pink:#e0607e; --ink:#16181d; --ink2:#4a505b; --muted:#8a8f98; --line:#e6e8ec; --tint:#f4f7fc;
+  font-family:'Rubik',sans-serif; color:var(--ink); max-width:520px; margin:0 auto; padding:28px 18px 48px; box-sizing:border-box; }
+.ngr *, .ngr *::before, .ngr *::after { box-sizing:border-box; }
+.ngr-logo { display:block; width:120px; height:auto; margin:0 auto 22px; }
+.ngr-hero { text-align:center; padding:26px 18px 22px; border-radius:26px; background:linear-gradient(160deg,#fff4f7,#eef5ff); margin-bottom:18px; }
+.ngr-hero .big { font-size:46px; line-height:1; }
+.ngr-hero h1 { font-size:24px; line-height:1.25; font-weight:700; margin:14px 0 8px; }
+.ngr-hero p { font-size:14.5px; line-height:1.5; color:var(--ink2); margin:0; }
+.ngr-card { background:#fff; border:1px solid var(--line); border-radius:22px; padding:18px 16px; margin-bottom:14px; }
+.ngr-h { font-size:16px; font-weight:600; margin:0 0 12px; display:flex; align-items:center; gap:8px; }
+.ngr-h i { font-style:normal; width:26px; height:26px; border-radius:50%; background:var(--blue); color:#fff; font-size:13px; display:inline-flex; align-items:center; justify-content:center; }
+.ngr-in { width:100%; height:48px; border:1.5px solid var(--line); border-radius:13px; padding:0 13px; font:400 16px 'Rubik',sans-serif; color:var(--ink); outline:none; background:#fff; margin-bottom:8px; }
+.ngr-in:focus { border-color:var(--blue); }
+textarea.ngr-in { height:78px; padding:11px 13px; resize:vertical; }
+.ngr-row { display:flex; gap:8px; }
+.ngr-row .ngr-in { flex:1; min-width:0; }
+.ngr-hint { font-size:12px; color:var(--muted); margin:2px 2px 0; line-height:1.4; }
+.ngr-dates { display:flex; gap:8px; overflow-x:auto; padding:2px 0 6px; -webkit-overflow-scrolling:touch; }
+.ngr-dates::-webkit-scrollbar { display:none; }
+.ngr-date { flex:0 0 auto; width:64px; padding:9px 0; border-radius:16px; border:1.5px solid var(--line); background:#fff; text-align:center; cursor:pointer; font-family:'Rubik',sans-serif; color:var(--ink); }
+.ngr-date small { display:block; font-size:11px; color:var(--muted); text-transform:uppercase; }
+.ngr-date b { display:block; font-size:20px; font-weight:600; margin:2px 0 0; }
+.ngr-date span { display:block; font-size:11px; color:var(--muted); }
+.ngr-date.on { background:var(--blue); border-color:var(--blue); color:#fff; }
+.ngr-date.on small, .ngr-date.on span { color:rgba(255,255,255,.8); }
+.ngr-slots { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+.ngr-slot { height:46px; border-radius:13px; border:1.5px solid var(--line); background:#fff; font:500 15px 'Rubik',sans-serif; color:var(--ink); cursor:pointer; }
+.ngr-slot.on { background:var(--blue); border-color:var(--blue); color:#fff; }
+.ngr-slot:disabled { opacity:.35; cursor:not-allowed; text-decoration:line-through; }
+.ngr-btn { display:flex; align-items:center; justify-content:center; width:100%; height:54px; border-radius:999px; border:none; background:var(--blue); color:#fff !important; font:600 16px 'Rubik',sans-serif; cursor:pointer; text-decoration:none; margin-top:6px; }
+.ngr-btn:disabled { opacity:.5; cursor:default; }
+.ngr-btn.ghost { background:#fff; color:var(--blue) !important; border:1.5px solid #c9dbf5; }
+.ngr-err { font-size:13px; color:#b3261e; margin:10px 2px 0; line-height:1.45; }
+.ngr-no { display:block; margin:18px auto 0; background:none; border:none; color:var(--muted); font:500 13.5px 'Rubik',sans-serif; text-decoration:underline; cursor:pointer; }
+.ngr-legal { font-size:11.5px; color:var(--muted); line-height:1.5; text-align:center; margin-top:18px; }
+.ngr-legal a { color:var(--muted); }
+.ngr-state { text-align:center; padding:30px 18px; }
+.ngr-state .big { font-size:52px; }
+.ngr-state h2 { font-size:22px; margin:12px 0 8px; }
+.ngr-state p { font-size:14.5px; color:var(--ink2); line-height:1.55; margin:0 0 6px; }
+.ngr-sum { background:var(--tint); border-radius:16px; padding:14px; margin:16px 0; font-size:14.5px; line-height:1.5; }
+.ngr-reg { margin-top:22px; padding:18px; border-radius:20px; background:#fff7e8; text-align:left; }
+.ngr-reg b { display:block; font-size:15.5px; margin-bottom:4px; }
+.ngr-reg p { font-size:13.5px !important; margin:0 0 12px !important; }
+.ngr-skel { height:120px; border-radius:22px; background:linear-gradient(90deg,#f1f3f6 25%,#e8ebf0 37%,#f1f3f6 63%); background-size:400% 100%; animation:ngrSk 1.3s ease infinite; margin-bottom:14px; }
+@keyframes ngrSk { 0% { background-position:100% 50%; } 100% { background-position:0 50%; } }
+.ngr-dlg { position:fixed; inset:0; z-index:99999; background:rgba(16,24,40,.55); display:none; align-items:center; justify-content:center; padding:18px; }
+.ngr-dlg.on { display:flex; }
+.ngr-dlg > div { background:#fff; border-radius:22px; padding:22px 18px 18px; max-width:380px; width:100%; }
+.ngr-dlg h3 { font-size:18px; margin:0 0 8px; }
+.ngr-dlg p { font-size:14px; color:var(--ink2); line-height:1.5; margin:0 0 14px; }
+.pac-container { border-radius:14px; border:1px solid #e7edf7; box-shadow:0 12px 32px rgba(25,111,227,.16); margin-top:6px; padding:6px; z-index:99999 !important; font-family:'Rubik',sans-serif; }
+.pac-item { padding:10px; font-size:15px; border:none !important; border-radius:9px; cursor:pointer; }
+.pac-item:hover, .pac-item-selected { background:#eef4ff; }
+</style>
+
+<div class="ngr" id="ngr">
+    <img class="ngr-logo" src="https://static.tildacdn.com/tild3131-3033-4536-a130-623830646536/Photoroom_20260804_1.PNG" alt="NARIN">
+    <div id="ngrBody"><div class="ngr-skel"></div><div class="ngr-skel" style="height:220px"></div></div>
+    <p class="ngr-legal">NARIN — květinový atelier, Praha. Váš kontakt jsme dostali od odesílatele dárku a použijeme ho jen pro toto doručení.
+        <a href="https://vezminarin.cz/ochrana-osobnich-udaju" target="_blank" rel="noopener">Ochrana osobních údajů</a></p>
+</div>
+
+<div class="ngr-dlg" id="ngrDlg"><div>
+    <h3>Opravdu dárek nechcete?</h3>
+    <p>Kytici nedoručíme, odesílateli vrátíme peníze a na tento kontakt už vám dárky bez adresy posílat nebudeme.</p>
+    <div class="ngr-row"><button type="button" class="ngr-btn ghost" id="ngrDlgNo" style="margin:0">Zpět</button><button type="button" class="ngr-btn" id="ngrDlgYes" style="margin:0;background:#b3261e">Nechci</button></div>
+</div></div>
+
+<script>
+(function () {
+    var API = 'https://wqburlamuipxmenqsjnx.supabase.co/functions/v1/gift-link';
+    var KEY = 'sb_publishable_ORMmBYvVjH6i2GanWa2JyA_mWm3fTCZ';
+    var MAPS_KEY = 'AIzaSyDEuFdJdQRQSrxlkZO_hc2hvZAhGACJ3IU';
+    var DOW = ['ne', 'po', 'út', 'st', 'čt', 'pá', 'so'];
+    var MON = ['ledna', 'února', 'března', 'dubna', 'května', 'června', 'července', 'srpna', 'září', 'října', 'listopadu', 'prosince'];
+
+    var qs = new URLSearchParams(location.search);
+    var auth = qs.get('t') ? { t: qs.get('t') } : qs.get('s') ? { s: qs.get('s') } : null;
+    var body = document.getElementById('ngrBody');
+    var G = null, pick = { date: null, slot: null }, geo = { lat: null, lng: null };
+
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+    function api(action, extra) {
+        return fetch(API, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', apikey: KEY, Authorization: 'Bearer ' + KEY },
+            body: JSON.stringify(Object.assign({ action: action }, auth, extra || {}))
+        }).then(function (r) { return r.json(); });
+    }
+    function d0(iso) { var p = iso.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+    function niceDate(iso) { var d = d0(iso); return ['neděle', 'pondělí', 'úterý', 'středa', 'čtvrtek', 'pátek', 'sobota'][d.getDay()] + ' ' + d.getDate() + '. ' + MON[d.getMonth()]; }
+    function slotTxt(s) { return s.replace('-', ':00–') + ':00'; }
+
+    function state(icon, title, text, extra) {
+        body.innerHTML = '<div class="ngr-card ngr-state"><div class="big">' + icon + '</div><h2>' + title + '</h2>' + text + (extra || '') + '</div>';
+    }
+
+    if (!auth) { state('🔗', 'Odkaz je neúplný', '<p>Zkontrolujte prosím, že jste otevřeli celý odkaz ze zprávy.</p>'); return; }
+
+    api('get').then(function (r) {
+        G = r || {};
+        if (G.state === 'invalid') return state('🔗', 'Odkaz neplatí', '<p>Tento odkaz neznáme. Zkontrolujte prosím, že jste ho zkopírovali celý.</p>');
+        if (G.state === 'expired') return state('⌛', 'Odkaz už vypršel', '<p>Adresu se nepodařilo zadat do 48 hodin, takže jsme objednávku zrušili a odesílateli vrátíme peníze.</p>');
+        if (G.state === 'opted_out') return state('🤍', 'Rozumíme', '<p>Dárek nedoručíme a už vám nebudeme psát.</p>');
+        if (G.state === 'confirmed') return done(G.delivery_date, G.slot, false);
+        form();
+    }).catch(function () { state('😕', 'Něco se pokazilo', '<p>Nepodařilo se načíst dárek. Zkuste prosím stránku obnovit.</p>'); });
+
+    function form() {
+        var sender = G.mode === 'sender';
+        var who = G.recipient_name ? esc(G.recipient_name) + ', ' : '';
+        var from = G.sender_name ? '<b>' + esc(G.sender_name) + '</b> vám posílá' : 'Někdo vám posílá';
+        var hero = sender
+            ? '<div class="ngr-hero"><div class="big">📦</div><h1>Zadejte prosím adresu sami</h1><p>' + (G.recipient_name ? esc(G.recipient_name) + ' zatím' : 'Příjemce zatím') + ' adresu nevyplnil(a). Když ji znáte, zadejte ji a kytici doručíme.</p></div>'
+            : '<div class="ngr-hero"><div class="big">💐</div><h1>' + who + from + ' květiny</h1><p>Řekněte nám, kam a kdy vám je máme přivézt. Zabere to minutu.</p></div>';
+        var dates = (G.dates || []).filter(function (d) { return d.slots.some(function (s) { return s.open; }); });
+        body.innerHTML = hero +
+            '<div class="ngr-card"><div class="ngr-h"><i>1</i>Kam doručit</div>' +
+                '<input class="ngr-in" id="nA" placeholder="Ulice a číslo popisné" autocomplete="street-address">' +
+                '<div class="ngr-row"><input class="ngr-in" id="nC" placeholder="Město" value="Praha"><input class="ngr-in" id="nP" placeholder="PSČ" inputmode="numeric" style="flex:0 0 108px"></div>' +
+                '<div class="ngr-row"><input class="ngr-in" id="nF" placeholder="Patro"><input class="ngr-in" id="nB" placeholder="Č. bytu"><input class="ngr-in" id="nI" placeholder="Zvonek"></div>' +
+                '<input class="ngr-in" id="nPh" type="tel" placeholder="Telefon pro kurýra' + (sender ? ' (příjemce)' : '') + '" autocomplete="tel">' +
+                '<textarea class="ngr-in" id="nN" placeholder="Poznámka pro kurýra (např. recepce, kód brány)"></textarea>' +
+                '<p class="ngr-hint">Doručujeme po celé Praze.</p></div>' +
+            '<div class="ngr-card"><div class="ngr-h"><i>2</i>Kdy</div>' +
+                (dates.length
+                    ? '<div class="ngr-dates" id="nD">' + dates.map(function (d) { var x = d0(d.date); return '<button type="button" class="ngr-date" data-d="' + d.date + '"><small>' + DOW[x.getDay()] + '</small><b>' + x.getDate() + '</b><span>' + MON[x.getMonth()].slice(0, 3) + '</span></button>'; }).join('') + '</div><div class="ngr-slots" id="nS"></div>'
+                    : '<p class="ngr-hint">Teď nemáme volný termín. Napište nám prosím přes <a href="https://vezminarin.cz/contacts">kontakty</a>.</p>') +
+            '</div>' +
+            '<button type="button" class="ngr-btn" id="nGo">' + (sender ? 'Uložit adresu' : 'Potvrdit doručení') + '</button>' +
+            '<div class="ngr-err" id="nE" hidden></div>' +
+            (sender ? '' : '<button type="button" class="ngr-no" id="nNo">Dárek nechci, nekontaktujte mě</button>');
+
+        var dBox = document.getElementById('nD');
+        if (dBox) {
+            dBox.addEventListener('click', function (e) {
+                var b = e.target.closest('[data-d]'); if (!b) return;
+                pick.date = b.getAttribute('data-d'); pick.slot = null;
+                dBox.querySelectorAll('.ngr-date').forEach(function (x) { x.classList.toggle('on', x === b); });
+                renderSlots();
+            });
+            dBox.querySelector('.ngr-date').click();
+        }
+        document.getElementById('nGo').addEventListener('click', submit);
+        var no = document.getElementById('nNo');
+        if (no) no.addEventListener('click', function () { document.getElementById('ngrDlg').classList.add('on'); });
+        loadPlaces();
+    }
+
+    function renderSlots() {
+        var day = (G.dates || []).filter(function (d) { return d.date === pick.date; })[0];
+        var box = document.getElementById('nS');
+        box.innerHTML = day.slots.map(function (s) {
+            return '<button type="button" class="ngr-slot' + (pick.slot === s.label ? ' on' : '') + '" data-s="' + s.label + '"' + (s.open ? '' : ' disabled title="Obsazeno"') + '>' + slotTxt(s.label) + '</button>';
+        }).join('');
+        box.onclick = function (e) { var b = e.target.closest('[data-s]'); if (!b || b.disabled) return; pick.slot = b.getAttribute('data-s'); renderSlots(); };
+    }
+
+    function err(m) { var e = document.getElementById('nE'); e.textContent = m || ''; e.hidden = !m; }
+    function val(id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; }
+
+    function submit() {
+        err('');
+        var a = val('nA'), c = val('nC'), p = val('nP').replace(/\s/g, '');
+        if (!a || !c || !p) return err('Vyplňte prosím ulici, město a PSČ.');
+        if (!/^1\d{4}$/.test(p)) return err('Doručujeme jen po Praze (PSČ začíná 1). Když potřebujete jinam, napište nám prosím přes kontakty na vezminarin.cz.');
+        if (!pick.date || !pick.slot) return err('Vyberte prosím den a čas doručení.');
+        var btn = document.getElementById('nGo'); btn.disabled = true; btn.textContent = 'Ukládáme…';
+        api('confirm', { address: a, city: c, psc: p.slice(0, 3) + ' ' + p.slice(3), lat: geo.lat, lng: geo.lng, floor: val('nF'), apartment: val('nB'), intercom: val('nI'), note: val('nN'), phone: val('nPh'), date: pick.date, slot: pick.slot })
+            .then(function (r) {
+                if (r && r.ok) return done(r.delivery_date, r.slot, G.mode !== 'sender');
+                btn.disabled = false; btn.textContent = G.mode === 'sender' ? 'Uložit adresu' : 'Potvrdit doručení';
+                var m = { outside_zone: 'Doručujeme jen po Praze.', slot_unavailable: 'Tento čas se mezitím obsadil. Vyberte prosím jiný.', not_open: 'Adresa už byla zadána nebo odkaz vypršel. Obnovte prosím stránku.' };
+                err(m[r && r.error] || 'Nepodařilo se uložit. Zkuste to prosím znovu.');
+            })
+            .catch(function () { btn.disabled = false; err('Nepodařilo se uložit. Zkontrolujte připojení a zkuste to znovu.'); });
+    }
+
+    function done(date, slot, offerReg) {
+        var reg = offerReg
+            ? '<div class="ngr-reg"><b>🌼 Udělejte radost i vy</b><p>Zaregistrujte se v NARIN a hned získáte 150 bodů na první objednávku a sbírku květinových samolepek.</p><a class="ngr-btn" href="https://vezminarin.cz/members/login" style="margin:0">Získat 150 bodů</a></div>'
+            : '';
+        state('🎉', G.mode === 'sender' ? 'Hotovo, adresa je uložená' : 'Hotovo, těšte se!',
+            '<div class="ngr-sum">Doručíme <b>' + (date ? niceDate(date) : '') + '</b><br>mezi <b>' + (slot ? slotTxt(slot) : '') + '</b></div>' +
+            '<p>Kurýr vám zavolá, až bude blízko. Kdyby se něco změnilo, napište nám přes <a href="https://vezminarin.cz/contacts" style="color:#186ce0">kontakty</a>.</p>', reg);
+    }
+
+    document.getElementById('ngrDlgNo').onclick = function () { document.getElementById('ngrDlg').classList.remove('on'); };
+    document.getElementById('ngrDlgYes').onclick = function () {
+        this.disabled = true;
+        api('optout').then(function () {
+            document.getElementById('ngrDlg').classList.remove('on');
+            state('🤍', 'Rozumíme', '<p>Dárek nedoručíme, odesílateli vrátíme peníze a na tento kontakt už vám nic posílat nebudeme.</p>');
+        });
+    };
+
+    // Google Places (stejný klíč a nastavení jako na pokladně)
+    function loadPlaces() {
+        window.ngrPlaces = function () {
+            var input = document.getElementById('nA'); if (!input || !window.google) return;
+            var ac = new google.maps.places.Autocomplete(input, { componentRestrictions: { country: 'cz' }, fields: ['address_components', 'geometry'], types: ['address'] });
+            ac.addListener('place_changed', function () {
+                var pl = ac.getPlace(); if (!pl.address_components) return;
+                var route = '', num = '', city = '', psc = '';
+                pl.address_components.forEach(function (c) {
+                    var t = c.types;
+                    if (t.indexOf('route') !== -1) route = c.long_name;
+                    if (t.indexOf('street_number') !== -1) num = c.long_name;
+                    if (t.indexOf('locality') !== -1 || t.indexOf('postal_town') !== -1) city = c.long_name;
+                    if (t.indexOf('postal_code') !== -1) psc = c.long_name;
+                });
+                input.value = (route + ' ' + num).trim();
+                if (city) document.getElementById('nC').value = city;
+                if (psc) document.getElementById('nP').value = psc;
+                if (pl.geometry && pl.geometry.location) { geo.lat = pl.geometry.location.lat(); geo.lng = pl.geometry.location.lng(); }
+            });
+        };
+        if (window.google && window.google.maps && window.google.maps.places) return window.ngrPlaces();
+        var sc = document.createElement('script');
+        sc.src = 'https://maps.googleapis.com/maps/api/js?key=' + MAPS_KEY + '&libraries=places&language=cs&region=CZ&callback=ngrPlaces';
+        sc.async = true; document.head.appendChild(sc);
+    }
+})();
+</script>
