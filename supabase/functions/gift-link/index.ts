@@ -122,12 +122,7 @@ Deno.serve(async (req) => {
       if (phone) patch.recipient_phone = phone
       await supabase.from('tilda_orders').update(patch).eq('order_id', g.order_id)
 
-      await supabase.rpc('notify_telegram_role', {
-        p_role: 'manager',
-        p_message: `✅ <b>Адрес для подарка указан</b> (${mode === 'recipient' ? 'получатель' : 'отправитель'})\n` +
-          `Заказ <code>${esc(g.order_id)}</code>\n${esc(address)}, ${esc(psc)} ${esc(city)}\n${esc(date)} · ${esc(slot)}\n` +
-          `Подтвердите заказ в приложении — дальше как обычно.`,
-      })
+      // zprávu manažerům posílá trigger gift_links_after_confirm (migrace 20261006000000)
       const senderEmail = g.sender_email || order?.customer_email
       if (senderEmail && mode === 'recipient') {
         await supabase.rpc('notify_brevo', {
