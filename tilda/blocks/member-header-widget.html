@@ -3,14 +3,17 @@
 .lk-widget-tile { position: relative; height: 52px; border-radius: 16px; background: #ffffff; border: 1px solid #e8eaed; overflow: hidden; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 6px 12px; box-sizing: border-box; }
 .lk-widget-tile-badge { position: absolute; top: 6px; right: 6px; width: 9px; height: 9px; border-radius: 50%; background: #e0392c; display: none; border: 2px solid #ffffff; }
 .lk-widget-tile-badge.lk-show { display: block; }
-#lkDatesIconWrap { flex-shrink: 0; width: 26px; height: 26px; }
-.lk-widget-icon { width: 26px; height: 26px; border-radius: 50%; background: #eef4fc; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-sizing: border-box; }
-.lk-widget-icon svg { width: 14px; height: 14px; stroke: #186ce0; overflow: visible; }
-.lk-dates-cart-link { width: 26px; height: 26px; border-radius: 50%; background: #186ce0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; text-decoration: none; box-sizing: border-box; }
-.lk-dates-cart-link svg { width: 14px; height: 14px; stroke: #ffffff; overflow: visible; }
-.lk-widget-text { font-size: 11.5px; font-weight: 600; color: #16181d !important; line-height: 1.28; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.lk-widget-text b { color: #186ce0; }
-.lk-widget-who { font-size: 10.5px; color: #8a8f98; font-weight: 500; }
+.lk-occ-ic { flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; line-height: 1; }
+.lk-widget-text { flex: 1; min-width: 0; font-size: 12px; font-weight: 600; color: #16181d !important; line-height: 1.25; }
+.lk-widget-text .l1 { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lk-widget-text .l1 b { color: #186ce0; font-weight: 700; }
+.lk-widget-text .l2 { display: block; font-size: 11px; color: #8a8f98; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.lk-widget-tile.is-soon { border-color: #c9dbf5; background: linear-gradient(135deg, #ffffff 55%, #eef4fc); }
+.lk-widget-tile.is-today { border-color: #186ce0; }
+.lk-widget-text .l2 b { color: #186ce0; font-weight: 600; }
+@media (max-width: 420px) { .lk-widget-tile { padding: 6px 8px 6px 10px; gap: 6px; } .lk-widget-tile.has-go .lk-occ-ic { display: none; } }
+.lk-occ-go { flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; background: #186ce0; display: flex; align-items: center; justify-content: center; text-decoration: none; }
+.lk-occ-go svg { width: 14px; height: 14px; stroke: #ffffff; }
 
 .lk-icon-row { display: flex; gap: 8px; height: 52px; }
 .lk-icon-btn { position: relative; flex: 0 0 52px; width: 52px; height: 100%; border-radius: 16px; background: #ffffff; border: 1px solid #e8eaed; display: flex; align-items: center; justify-content: center; cursor: pointer; text-decoration: none; box-sizing: border-box; }
@@ -30,15 +33,38 @@
 .lk-popup-bullet { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: #44464b; margin-bottom: 8px; }
 .lk-popup-bullet svg { width: 16px; height: 16px; stroke: #186ce0; flex-shrink: 0; }
 
-.lk-deposit-balance-card { background: #eef4fc; border-radius: 18px; padding: 18px; text-align: center; margin-bottom: 14px; }
+.lk-deposit-balance-card { background: #eef4fc; border-radius: 18px; padding: 16px; text-align: center; margin-bottom: 14px; }
 .lk-deposit-balance-label { font-size: 11.5px; font-weight: 600; color: #186ce0; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
 .lk-deposit-balance-amount { font-size: 30px; font-weight: 700; color: #16181d; }
+.lk-tu-h { font-size: 13px; font-weight: 600; color: #4a505b; margin: 14px 0 8px; }
+.lk-tu-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.lk-tu-chip { height: 36px; padding: 0 13px; border-radius: 999px; border: 1.5px solid #e8eaed; background: #fff; font: 600 13.5px 'Rubik', sans-serif; color: #16181d; cursor: pointer; }
+.lk-tu-chip.on { background: #186ce0; border-color: #186ce0; color: #fff; }
+.lk-tu-amount { width: 100%; height: 44px; border-radius: 12px; border: 1.5px solid #e8eaed; padding: 0 12px; font: 16px 'Rubik', sans-serif; margin-top: 8px; box-sizing: border-box; -webkit-appearance: none; appearance: none; }
+.lk-tu-tabs { display: flex; gap: 4px; background: #f1f3f6; border-radius: 999px; padding: 4px; }
+.lk-tu-tab { flex: 1; height: 34px; border: none; border-radius: 999px; background: none; font: 600 12.5px 'Rubik', sans-serif; color: #4a505b; cursor: pointer; }
+.lk-tu-tab.on { background: #fff; color: #186ce0; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.lk-tu-panel { margin-top: 12px; }
+.lk-tu-qr { display: flex; justify-content: center; margin-bottom: 10px; }
+.lk-tu-qr svg, .lk-tu-qr img { width: 168px; height: 168px; border-radius: 12px; }
+.lk-tu-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid #f1f2f4; font-size: 13px; }
+.lk-tu-row:last-of-type { border-bottom: none; }
+.lk-tu-row span { color: #8a8f98; flex-shrink: 0; }
+.lk-tu-row b { color: #16181d; font-weight: 600; text-align: right; word-break: break-all; }
+.lk-tu-copy { flex-shrink: 0; border: none; background: #eef4fc; color: #186ce0; border-radius: 999px; height: 26px; padding: 0 10px; font: 600 11.5px 'Rubik', sans-serif; cursor: pointer; }
+.lk-tu-btn[hidden], .lk-tu-note[hidden] { display: none !important; }
+.lk-tu-btn { width: 100%; height: 46px; border-radius: 999px; border: none; background: #186ce0; color: #fff !important; font: 600 14.5px 'Rubik', sans-serif; cursor: pointer; margin-top: 12px; display: flex; align-items: center; justify-content: center; text-decoration: none; }
+.lk-tu-btn.ghost { background: #eef4fc; color: #186ce0 !important; }
+.lk-tu-btn[disabled] { opacity: .55; }
+.lk-tu-note { font-size: 12.5px; color: #8a8f98; line-height: 1.45; margin-top: 8px; }
+.lk-tu-ok { font-size: 13px; color: #1b7a44; background: #e7f5ec; border-radius: 12px; padding: 10px 12px; margin-top: 10px; line-height: 1.45; }
 </style>
 
 <div class="lk-top-grid">
     <div class="lk-widget-tile" id="lkWidgetTile">
-        <div id="lkDatesIconWrap"></div>
-        <div class="lk-widget-text" id="lkDatesText">Načítám…</div>
+        <span class="lk-occ-ic" id="lkOccIc" style="background:#eef4fc;">📅</span>
+        <div class="lk-widget-text" id="lkDatesText"><span class="l1">Načítám…</span></div>
+        <span id="lkOccGoWrap"></span>
         <span class="lk-widget-tile-badge" id="lkWidgetTileBadge"></span>
     </div>
 
@@ -68,19 +94,31 @@
                 <div class="lk-deposit-balance-label">Váš zůstatek</div>
                 <div class="lk-deposit-balance-amount" id="lkDepositPopupAmount">0 Kč</div>
             </div>
-            <div class="lk-popup-lead">Depozit už teď můžete dobít v hotovosti přímo v naší kamenné prodejně. Dobíjení kartou online chystáme, brzy bude k dispozici.</div>
-            <div class="lk-popup-lead">Až bude depozit plně spuštěný, budete moct:</div>
-            <div class="lk-popup-bullet">
-                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a2 2 0 012-2h14a2 2 0 012 2v1.5a1.5 1.5 0 000 3V15a2 2 0 01-2 2H5a2 2 0 01-2-2v-1.5a1.5 1.5 0 000-3V9z"/><path d="M9 7v10" stroke-dasharray="2 2"/></svg>
-                Kupovat dárkové poukazy za svůj depozit
+            <div class="lk-popup-lead" style="margin-bottom:6px;">Z depozitu zaplatíte objednávky na webu a dárky, které za vás pohlídá autopilot v <a href="https://vezminarin.cz/members/occasions" style="color:#186ce0;font-weight:600;text-decoration:none;">Důležitých dnech</a>.</div>
+
+            <div class="lk-tu-h">Kolik chcete dobít</div>
+            <div class="lk-tu-chips" id="lkTuChips"></div>
+            <input type="number" inputmode="numeric" min="100" step="100" class="lk-tu-amount" id="lkTuAmount" placeholder="Jiná částka v Kč">
+
+            <div class="lk-tu-h">Jak</div>
+            <div class="lk-tu-tabs" id="lkTuTabs">
+                <button type="button" class="lk-tu-tab on" data-m="bank">Převodem</button>
+                <button type="button" class="lk-tu-tab" data-m="cash">V prodejně</button>
+                <button type="button" class="lk-tu-tab" data-m="chat">Napsat nám</button>
             </div>
-            <div class="lk-popup-bullet">
-                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><rect x="5" y="12" width="14" height="9" rx="1"/><path d="M12 8v13"/><path d="M12 8C10.5 4.5 6 4.5 6 7s3 1 6 1z"/><path d="M12 8c1.5-3.5 6-3.5 6-1s-3 1-6 1z"/></svg>
-                Darovat je svým blízkým
+            <div class="lk-tu-panel" data-p="bank">
+                <div class="lk-tu-qr" id="lkTuQr"></div>
+                <div id="lkTuRows"></div>
+                <button type="button" class="lk-tu-btn" id="lkTuPaid">Zaplatil(a) jsem</button>
+                <div class="lk-tu-note" id="lkTuNote">Naskenujte QR kód v bankovní aplikaci, nebo údaje opište. Peníze připíšeme, jakmile dorazí na účet, obvykle do 1–2 pracovních dnů.</div>
+                <div id="lkTuDone"></div>
             </div>
-            <div class="lk-popup-bullet">
-                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9.5" r="2.3"/><path d="M3.5 20c0-3.5 2.7-5.5 5.5-5.5s5.5 2 5.5 5.5"/><path d="M15 15c2.5 0 5.5 1.5 5.5 5"/></svg>
-                Skládat se s přáteli na společné květinové dárky
+            <div class="lk-tu-panel" data-p="cash" hidden>
+                <div class="lk-popup-lead" style="margin:0;">Depozit dobijete hotově přímo v naší prodejně, stačí říct e-mail, se kterým se přihlašujete. Kde nás najdete a kdy máme otevřeno, je v <a href="https://vezminarin.cz/contacts" style="color:#186ce0;font-weight:600;text-decoration:none;">Kontaktech</a>.</div>
+            </div>
+            <div class="lk-tu-panel" data-p="chat" hidden>
+                <div class="lk-popup-lead" style="margin:0;">Napište nám, kolik chcete dobít a jak vám to vyhovuje. Domluvíme se v chatu.</div>
+                <a class="lk-tu-btn ghost" href="https://vezminarin.cz/contacts">Otevřít chat</a>
             </div>
         </div>
     </div>
@@ -180,47 +218,55 @@
     function isoToday() { const n = new Date(); return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0'); }
     function daysUntil(iso) { return Math.round((new Date(iso + 'T12:00:00') - new Date(isoToday() + 'T12:00:00')) / 86400000); }
 
+    let namedays = { enabled: false, today: [], tomorrow: [] };
+    const KIND = {
+        birthday: { e: '🎂', bg: '#fde9ef' }, nameday: { e: '🌼', bg: '#fff3dc' }, holiday: { e: '💐', bg: '#eef4fc' },
+        general: { e: '💐', bg: '#eef4fc' }, date: { e: '📅', bg: '#e7f5ec' }
+    };
+
     function getNextOccasion() {
         if (!upcoming.length) return null;
-        // своё (люди, даты) в ближайшие 30 дней важнее общего праздника
+        // své (lidé, data, vybrané jmeniny) v příštích 30 dnech má přednost před obecným svátkem
         const own = upcoming.filter(function (it) { return it.kind !== 'general' && daysUntil(it.occasion_date) <= 30; })[0];
         const it = own || upcoming[0];
         let name = it.title;
         if (it.kind === 'birthday' && it.years) name = it.years + '. narozeniny';
-        return { name: name, who: it.person, days: daysUntil(it.occasion_date), recipientId: it.recipient_id, date: it.occasion_date };
+        else if (it.kind === 'date' && it.years) name = it.title + ' (' + it.years + '.)';
+        return { name: name, kind: it.kind, who: it.person, days: daysUntil(it.occasion_date), recipientId: it.recipient_id, date: it.occasion_date };
     }
 
     function orderUrl(next) {
         return 'https://vezminarin.cz/members/occasions?objednat=' + encodeURIComponent(next.recipientId || '') + '&datum=' + next.date;
     }
 
-    function dateIconHtml(daysLeft, href) {
-        if (daysLeft <= 5) {
-            return '<a class="lk-dates-cart-link" href="' + (href || '/') + '" aria-label="Objednat">' +
-                '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/><path d="M3 4h2l2.6 12.4a2 2 0 002 1.6h7.7a2 2 0 002-1.6L21 8H6"/></svg>' +
-                '</a>';
-        }
-        return '<div class="lk-widget-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>';
-    }
-
     function renderDates() {
         const next = getNextOccasion();
-        const iconWrap = document.getElementById('lkDatesIconWrap');
+        const tile = document.getElementById('lkWidgetTile');
+        const ic = document.getElementById('lkOccIc');
         const textEl = document.getElementById('lkDatesText');
+        const go = document.getElementById('lkOccGoWrap');
+        const nd = namedays.enabled && namedays.today.length ? '🌼 Svátek má ' + namedays.today.join(', ') : '';
         if (!next) {
-            iconWrap.innerHTML = dateIconHtml(99);
-            textEl.textContent = 'Přidat termín';
+            ic.textContent = '📅'; ic.style.background = '#eef4fc'; go.innerHTML = '';
+            textEl.innerHTML = '<span class="l1">Důležité dny</span><span class="l2">' + escHtml(nd || 'Přidejte své blízké') + '</span>';
             return;
         }
-
-        iconWrap.innerHTML = dateIconHtml(next.days, orderUrl(next));
-        const link = iconWrap.querySelector('a');
-        if (link) link.addEventListener('click', function(e) { e.stopPropagation(); });
-
-        // "Za 3 dny · Den matek" (dřív "3 dny do Den matek" — špatný pád u svátků)
-        const when = next.days === 0 ? 'Dnes' : next.days === 1 ? 'Zítra' : 'Za ' + next.days + ' ' + daysWord(next.days);
-        textEl.innerHTML = '<b>' + when + '</b> · ' + escHtml(next.name) + (next.days === 0 ? ' 🌸' : '') +
-            (next.who ? '<div class="lk-widget-who">' + escHtml(next.who) + '</div>' : '');
+        const k = KIND[next.kind] || KIND.general;
+        ic.textContent = k.e; ic.style.background = k.bg;
+        tile.classList.toggle('is-soon', next.days <= 7);
+        tile.classList.toggle('is-today', next.days === 0);
+        // dlaždice je úzká: nahoře kdo (nebo svátek), dole kdy + co. Typ dne říká emoji.
+        const when = next.days === 0 ? 'dnes' : next.days === 1 ? 'zítra' : 'za ' + next.days + ' ' + daysWord(next.days);
+        const l1 = next.who || next.name;
+        const l2 = '<b>' + when + '</b>' + (next.who ? ' · ' + escHtml(next.name.charAt(0).toLowerCase() + next.name.slice(1)) : (nd && next.days > 1 ? ' · ' + escHtml(nd) : ''));
+        textEl.innerHTML = '<span class="l1">' + escHtml(l1) + '</span><span class="l2">' + l2 + '</span>';
+        tile.title = l1 + ' – ' + when + (next.who ? ' (' + next.name + ')' : '');
+        go.innerHTML = next.days <= 3
+            ? '<a class="lk-occ-go" href="' + orderUrl(next) + '" aria-label="Objednat"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/><path d="M3 4h2l2.6 12.4a2 2 0 002 1.6h7.7a2 2 0 002-1.6L21 8H6"/></svg></a>'
+            : '';
+        tile.classList.toggle('has-go', next.days <= 3);
+        const link = go.querySelector('a');
+        if (link) link.addEventListener('click', function (e) { e.stopPropagation(); });
     }
 
     async function api(payload) {
@@ -246,6 +292,7 @@
         try {
             const res = await api({ action: 'upcoming', days: 370 });
             if (res && Array.isArray(res.items)) { upcoming = res.items; loaded = true; }
+            if (res && res.namedays) namedays = res.namedays;
         } catch (e) {}
         renderDates();
         updateTileBadge();
@@ -255,9 +302,98 @@
         window.location.href = 'https://vezminarin.cz/members/occasions';
     });
 
-    document.getElementById('lkDepositTile').addEventListener('click', function() {
-        document.getElementById('lkDepositPopup').classList.add('active');
+    // ---------- dobití depozitu (bez platební brány: převod / hotově / chat) ----------
+    // ⚠️ DOPLNIT: číslo účtu NARIN. Bez něj se převod neukáže (zůstane jen hotově a chat).
+    const BANK = { account: '', iban: '', name: 'NARIN' };
+    const AMOUNTS = [1000, 2000, 3000, 5000];
+    let tuAmount = 2000;
+
+    // Variabilní symbol = stálý pro každého klienta (z e-mailu), podle něj manažer pozná platbu
+    function variableSymbol() {
+        const email = decodeTokenEmail(getAuthToken() || '') || getTildaEmail() || '';
+        let h = 2166136261;
+        for (let i = 0; i < email.length; i++) { h ^= email.charCodeAt(i); h = Math.imul(h, 16777619); }
+        return String(1000000000 + ((h >>> 0) % 8999999999)).slice(0, 10);
+    }
+    function loadQrLib() {
+        return new Promise(function (res) {
+            if (window.qrcode) return res(true);
+            const sc = document.createElement('script');
+            sc.src = 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js';
+            sc.onload = function () { res(!!window.qrcode); }; sc.onerror = function () { res(false); };
+            document.head.appendChild(sc);
+        });
+    }
+    function renderTopup() {
+        document.getElementById('lkTuChips').innerHTML = AMOUNTS.map(function (a) {
+            return '<button type="button" class="lk-tu-chip' + (a === tuAmount ? ' on' : '') + '" data-a="' + a + '">' + formatKc(a) + '</button>';
+        }).join('');
+        const vs = variableSymbol();
+        const rows = document.getElementById('lkTuRows'), qr = document.getElementById('lkTuQr');
+        if (!BANK.account) {
+            rows.innerHTML = '<div class="lk-popup-lead" style="margin:0;">Převodem to brzy půjde i tady. Zatím nám prosím napište (záložka „Napsat nám“), pošleme vám číslo účtu.</div>';
+            qr.innerHTML = ''; document.getElementById('lkTuPaid').hidden = true; document.getElementById('lkTuNote').hidden = true;
+            return;
+        }
+        document.getElementById('lkTuPaid').hidden = false; document.getElementById('lkTuNote').hidden = false;
+        const row = function (l, v) { return '<div class="lk-tu-row"><span>' + l + '</span><b>' + escHtml(v) + '</b><button type="button" class="lk-tu-copy" data-copy="' + escHtml(v) + '">Kopírovat</button></div>'; };
+        rows.innerHTML = row('Částka', formatKc(tuAmount).replace(/\s/g, ' ')) + row('Číslo účtu', BANK.account) + row('Variabilní symbol', vs) + row('Zpráva', 'NARIN depozit');
+        if (BANK.iban) {
+            // QR platba (český standard SPD), načte ji každá česká banka
+            const spd = 'SPD*1.0*ACC:' + BANK.iban.replace(/\s/g, '') + '*AM:' + tuAmount.toFixed(2) + '*CC:CZK*X-VS:' + vs + '*MSG:NARIN DEPOZIT';
+            loadQrLib().then(function (ok) {
+                if (!ok) { qr.innerHTML = ''; return; }
+                const q = window.qrcode(0, 'M'); q.addData(spd); q.make();
+                qr.innerHTML = q.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+            });
+        }
+    }
+    document.getElementById('lkTuChips').addEventListener('click', function (e) {
+        const b = e.target.closest('[data-a]'); if (!b) return;
+        tuAmount = +b.getAttribute('data-a'); document.getElementById('lkTuAmount').value = ''; renderTopup();
     });
+    document.getElementById('lkTuAmount').addEventListener('change', function () {
+        const v = Math.round(+this.value); if (v >= 100) { tuAmount = v; renderTopup(); }
+    });
+    document.getElementById('lkTuTabs').addEventListener('click', function (e) {
+        const b = e.target.closest('[data-m]'); if (!b) return;
+        this.querySelectorAll('.lk-tu-tab').forEach(function (t) { t.classList.toggle('on', t === b); });
+        document.querySelectorAll('#lkDepositPopup .lk-tu-panel').forEach(function (p) { p.hidden = p.getAttribute('data-p') !== b.getAttribute('data-m'); });
+    });
+    document.getElementById('lkTuRows').addEventListener('click', function (e) {
+        const b = e.target.closest('[data-copy]'); if (!b) return;
+        const v = b.getAttribute('data-copy');
+        (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject()).then(function () { b.textContent = 'Zkopírováno'; setTimeout(function () { b.textContent = 'Kopírovat'; }, 1400); }).catch(function () {});
+    });
+    document.getElementById('lkTuPaid').addEventListener('click', async function () {
+        const btn = this, token = getAuthToken(); if (!token) return;
+        btn.disabled = true; btn.textContent = 'Posíláme…';
+        try {
+            // jde do chatu s námi — manažer po připsání peněz dobije depozit v "Klienti"
+            const r = await fetch(SUPABASE_URL + "/functions/v1/support-chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+                body: JSON.stringify({ action: 'send', token: token, body: '💳 Dobití depozitu převodem: ' + formatKc(tuAmount) + ', VS ' + variableSymbol() + '. Prosím připište, až dorazí.' })
+            }).then(function (x) { return x.json(); });
+            if (r && !r.error) {
+                document.getElementById('lkTuDone').innerHTML = '<div class="lk-tu-ok">Díky! Jakmile platba dorazí, připíšeme ji a dáme vám vědět v chatu.</div>';
+                btn.hidden = true;
+            } else throw new Error();
+        } catch (e) {
+            btn.disabled = false; btn.textContent = 'Zaplatil(a) jsem';
+            document.getElementById('lkTuDone').innerHTML = '<div class="lk-popup-lead" style="color:#a32d2d;margin-top:8px;">Nepodařilo se odeslat, napište nám prosím do chatu.</div>';
+        }
+    });
+    function openDeposit(amount) {
+        if (amount >= 100) tuAmount = Math.round(amount);
+        renderTopup();
+        document.getElementById('lkDepositPopup').classList.add('active');
+    }
+    window.narinOpenTopup = openDeposit;
+
+    document.getElementById('lkDepositTile').addEventListener('click', function() { openDeposit(); });
+    // odkaz z Důležitých dnů / chatu: /members/?dobit=1500
+    try { const q = new URLSearchParams(location.search).get('dobit'); if (q !== null) setTimeout(function () { openDeposit(+q); }, 300); } catch (e) {}
     document.getElementById('lkDepositPopupClose').addEventListener('click', function() {
         document.getElementById('lkDepositPopup').classList.remove('active');
     });

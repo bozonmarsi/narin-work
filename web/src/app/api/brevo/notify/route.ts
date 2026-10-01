@@ -233,17 +233,17 @@ function occasionEmail(items: OccasionItem[], days: number, lastCall: boolean) {
   const headline = lastCall
     ? one ? `${occTitle(first)} je už ${when}` : `Už ${when} slavíte ${items.length}×`
     : one ? `${occTitle(first)} ${first.person ? `– ${esc(first.person)} ` : ""}${when}` : `Blíží se ${items.length} důležité dny`;
-  // Autopilot: den před svátkem ráno dostanou úkol manažeři (SQL send_occasion_reminders, krok 3),
-  // takže klient má na vlastní výběr čas do konce dne o dva dny dřív.
+  // Autopilot: 2 dny před svátkem ráno vznikne objednávka (SQL send_occasion_reminders, krok 2),
+  // takže klient má na vlastní výběr čas do večera 3 dny předem.
   const auto = lastCall ? [] : items.filter((it) => it.autopilot && it.person);
   const cutoff = auto.length
-    ? czDate(new Date(new Date(auto[0].date + "T12:00:00Z").getTime() - 2 * 86400000).toISOString().slice(0, 10))
+    ? czDate(new Date(new Date(auto[0].date + "T12:00:00Z").getTime() - 3 * 86400000).toISOString().slice(0, 10))
     : "";
   const autoNote = auto.length
     ? `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:${COURIER_BG};border-radius:12px;margin-bottom:18px;"><tr>
         <td style="padding:12px 14px;font-size:20px;width:36px;vertical-align:top;">🤝</td>
         <td style="padding:12px 14px 12px 0;font-size:12.5px;line-height:1.55;color:${INK};font-family:'Rubik',Arial,sans-serif;">
-          <b>Máte zapnutý autopilot.</b> Pokud pro ${esc(auto.map((a) => a.person).join(", "))} nic nevyberete do ${cutoff} večera, připravíme dárek podle vašich přání sami a zaplatíte ho z depozitu před doručením.
+          <b>Máte zapnutý autopilot.</b> Pokud pro ${esc(auto.map((a) => a.person).join(", "))} nic nevyberete do ${cutoff} večera, připravíme dárek podle vašich přání sami a zaplatíte ho z depozitu. Změnit nebo zrušit to můžete odpovědí v chatu.
         </td></tr></table>`
     : "";
   const bodyHtml = lastCall
