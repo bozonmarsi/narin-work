@@ -35,6 +35,8 @@ type OccasionItem = {
   budget?: number | null;
   gift_prefs?: string[];
   autopilot?: boolean;
+  // konkrétní dárky skladem (SQL occ_gift_suggestions): oblíbené první, pak do rozpočtu
+  suggestions?: { name: string; price: number | null; photo_url: string | null; product_url: string | null; picked?: boolean }[];
 };
 
 const LOGO_URL = "https://static.tildacdn.com/tild3131-3033-4536-a130-623830646536/Photoroom_20260804_1.PNG";
@@ -192,11 +194,35 @@ function occTitle(it: OccasionItem) {
 }
 // Odkaz "Vybrat květiny": přes /members/occasions, který si zapamatuje příjemce
 // a datum a přesměruje do katalogu; na pokladně se příjemce sám předvybere.
-function occOrderUrl(it: OccasionItem) {
+function occOrderUrl(it: OccasionItem, productUrl?: string | null) {
   const q = new URLSearchParams({ objednat: it.recipient_id ?? "", datum: it.date });
+  if (productUrl) q.set("produkt", productUrl);
   return `${OCCASIONS_URL}?${q.toString()}`;
 }
-const GIFT_LABELS: Record<string, string> = { kytice: "kytice", dort: "dort", jahody: "jahody v čokoládě", plysak: "plyšák", na_vas: "na vašem výběru" };
+const GIFT_LABELS: Record<string, string> = {
+  kytice: "kytice", prani: "přání", sladkosti: "sladkosti", hracky: "hračky", nadobi: "nádobí", textil: "textil", doplnky: "doplňky", na_vas: "na vašem výběru",
+};
+// 1–3 dárky skladem s fotkou; klik vede přes Důležité dny (zapamatuje příjemce) na kartu produktu
+function giftCards(it: OccasionItem) {
+  const list = (it.suggestions ?? []).slice(0, 3);
+  if (!list.length) return "";
+  const cells = list
+    .map((g) => {
+      const href = occOrderUrl(it, g.product_url);
+      const img = g.photo_url
+        ? `<img src="${esc(g.photo_url)}" alt="" width="148" height="148" style="display:block;width:100%;max-width:148px;height:148px;object-fit:cover;border-radius:12px;border:0;">`
+        : `<div style="height:96px;border-radius:12px;background:${CHIP_BG};text-align:center;line-height:96px;font-size:30px;">🎁</div>`;
+      return `<td width="33%" style="vertical-align:top;padding:0 4px;">
+        <a href="${href}" style="text-decoration:none;color:${INK};font-family:'Rubik',Arial,sans-serif;">${img}
+          <div style="font-size:12.5px;font-weight:600;margin-top:6px;line-height:1.3;">${g.picked ? "❤️ " : ""}${esc(g.name)}</div>
+          ${g.price ? `<div style="font-size:12px;color:${ACCENT};font-weight:600;margin-top:2px;">${Math.round(g.price).toLocaleString("cs-CZ")} Kč</div>` : ""}
+        </a></td>`;
+    })
+    .join("");
+  const pad = list.length < 3 ? `<td width="${(3 - list.length) * 33}%"></td>` : "";
+  return `<div style="font-size:12px;color:${MUTED};margin:12px 0 8px;">K tomu můžeme přidat (máme skladem):</div>
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:0 -4px;"><tr>${cells}${pad}</tr></table>`;
+}
 function giftLine(it: OccasionItem) {
   const prefs = (it.gift_prefs ?? []).filter((g) => g !== "na_vas").map((g) => GIFT_LABELS[g] ?? g);
   const bits = [];
@@ -219,7 +245,7 @@ function occasionRows(items: OccasionItem[]) {
           <td style="vertical-align:middle;text-align:right;white-space:nowrap;">
             <a href="${occOrderUrl(it)}" style="display:inline-block;padding:8px 14px;border-radius:999px;background:${ACCENT_BG};color:${ACCENT};font-size:12.5px;font-weight:600;text-decoration:none;font-family:'Rubik',Arial,sans-serif;">Vybrat květiny</a>
           </td>
-        </tr></table>
+        </tr></table>${giftCards(it)}
       </td></tr>`;
     })
     .join("");

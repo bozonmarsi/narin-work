@@ -23,6 +23,7 @@ type Product = {
   rawName: string;
   image_url: string | null;
   category: string | null;
+  gift_subcategory: string | null;
   archived: boolean;
   special_order: boolean;
   flower_type: string[];
@@ -102,6 +103,17 @@ const CATEGORY_OPTIONS = [
 // рецепта, Dárky (открытки, сладости и т.п.) — не цветы вообще, там
 // рецепту взяться неоткуда.
 const NO_RECIPE_CATEGORIES = new Set(["ohapka", "atelier", "darky"]);
+
+// Podkategorie dárků — taby na /darky a "Co posílat" v Důležitých dnech
+// (stejné klíče jako CHECK v product_stickers.gift_subcategory a occasion_gift_types).
+const GIFT_SUBCATEGORY_OPTIONS = [
+  { value: "prani", label: "Открытки" },
+  { value: "sladkosti", label: "Сладости" },
+  { value: "hracky", label: "Игрушки" },
+  { value: "nadobi", label: "Посуда" },
+  { value: "textil", label: "Текстиль" },
+  { value: "doplnky", label: "Аксессуары" },
+];
 
 function categoryLabel(value: string | null) {
   return CATEGORY_OPTIONS.find((c) => c.value === value)?.label ?? null;
@@ -382,6 +394,7 @@ function ProductCard({
   rawMaterials,
   onToggleAvailable,
   onSetCategory,
+  onSetGiftSubcategory,
   onToggleFlowerType,
   onToggleColor,
   onSetHeight,
@@ -416,6 +429,7 @@ function ProductCard({
   rawMaterials: { id: string; name: string }[];
   onToggleAvailable: (name: string) => void;
   onSetCategory: (id: string, category: string) => void;
+  onSetGiftSubcategory: (id: string, sub: string) => void;
   onToggleFlowerType: (id: string, type: string) => void;
   onToggleColor: (id: string, color: string) => void;
   onSetHeight: (id: string, height: string) => void;
@@ -520,6 +534,21 @@ function ProductCard({
               </option>
             ))}
           </select>
+          {p.category === "darky" && (
+            <select
+              value={p.gift_subcategory ?? ""}
+              onChange={(e) => onSetGiftSubcategory(p.id, e.target.value)}
+              className={`w-full rounded-md border px-1 py-0.5 text-[10px] ${p.gift_subcategory ? "border-zinc-300 dark:border-zinc-600 text-zinc-600 dark:text-zinc-300" : "border-amber-400 text-amber-700 dark:text-amber-400"}`}
+              title="Вкладка на /darky и в «Důležité dny»"
+            >
+              <option value="">Подкатегория?</option>
+              {GIFT_SUBCATEGORY_OPTIONS.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
       </div>
 
@@ -1154,7 +1183,7 @@ export default function ShopPage() {
       supabase
         .from("product_stickers")
         .select(
-          "id, product_name, image_url, category, archived, special_order, flower_type, color, height, fragrant, badge_text, badge_color, quantity, order_unit_size, default_vase_life_days, vanvliet_in_stock, manually_hidden, added_to_tilda, price, pending_review, vanvliet_cheapest_price, price_markup_multiplier, auto_special_order",
+          "id, product_name, image_url, category, gift_subcategory, archived, special_order, flower_type, color, height, fragrant, badge_text, badge_color, quantity, order_unit_size, default_vase_life_days, vanvliet_in_stock, manually_hidden, added_to_tilda, price, pending_review, vanvliet_cheapest_price, price_markup_multiplier, auto_special_order",
         )
         .order("product_name", { ascending: true }),
       supabase.from("product_availability").select("product_name"),
@@ -1168,6 +1197,7 @@ export default function ShopPage() {
           rawName: p.product_name,
           image_url: p.image_url ?? null,
           category: p.category ?? null,
+          gift_subcategory: p.gift_subcategory ?? null,
           archived: p.archived ?? false,
           special_order: p.special_order ?? false,
           flower_type: p.flower_type ?? [],
@@ -1418,6 +1448,15 @@ export default function ShopPage() {
     await supabase
       .from("product_stickers")
       .update({ category: category || null })
+      .eq("id", productId);
+    loadAvailability();
+  }
+
+  async function setGiftSubcategory(productId: string, sub: string) {
+    const supabase = createClient();
+    await supabase
+      .from("product_stickers")
+      .update({ gift_subcategory: sub || null })
       .eq("id", productId);
     loadAvailability();
   }
@@ -1942,6 +1981,7 @@ export default function ShopPage() {
                   onSetMarkup={setMarkup}
                   onToggleAvailable={toggleAvailable}
                   onSetCategory={setCategory}
+                  onSetGiftSubcategory={setGiftSubcategory}
                   onToggleFlowerType={toggleFlowerType}
                   onToggleColor={toggleColor}
                   onSetHeight={setHeight}
@@ -2280,6 +2320,7 @@ export default function ShopPage() {
                 onSetMarkup={setMarkup}
                 onToggleAvailable={toggleAvailable}
                 onSetCategory={setCategory}
+                onSetGiftSubcategory={setGiftSubcategory}
                 onToggleFlowerType={toggleFlowerType}
                 onToggleColor={toggleColor}
                 onSetHeight={setHeight}
