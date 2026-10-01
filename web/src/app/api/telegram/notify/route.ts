@@ -13,11 +13,19 @@ export async function POST(request: Request) {
     return Response.json({ error: "Не авторизован" }, { status: 401 });
   }
 
-  const { chat_id, text } = (await request.json()) as { chat_id: number; text: string };
+  const { chat_id, text, parse_mode, reply_markup } = (await request.json()) as {
+    chat_id: number;
+    text: string;
+    parse_mode?: "HTML"; // notify_telegram_html (dárek bez adresy): formátování + tlačítka
+    reply_markup?: unknown;
+  };
   if (!chat_id || !text) {
     return Response.json({ error: "chat_id и text обязательны" }, { status: 400 });
   }
 
-  await sendTelegramMessage(chat_id, text);
+  await sendTelegramMessage(chat_id, text, {
+    ...(parse_mode === "HTML" ? { parse_mode } : {}),
+    ...(reply_markup ? { reply_markup } : {}),
+  });
   return Response.json({ ok: true });
 }
