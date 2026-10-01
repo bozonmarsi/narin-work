@@ -99,18 +99,12 @@
     const SUPABASE_URL = "https://wqburlamuipxmenqsjnx.supabase.co";
     const SUPABASE_KEY = "sb_publishable_ORMmBYvVjH6i2GanWa2JyA_mWm3fTCZ";
 
-    // Те же ключи и даты, что на странице /members/occasions — иначе плитка
-    // и страница показывали бы разные "ближайшие" поводы.
-    const PERSON_HOLIDAYS = [
-        { key: 'valentyn',    name: 'Valentýn',    date: function(y) { return new Date(y, 1, 14); } },
-        { key: 'mdz',         name: 'MDŽ',         date: function(y) { return new Date(y, 2, 8); } },
-        { key: 'den_ucitelu', name: 'Den učitelů', date: function(y) { return new Date(y, 2, 28); } },
-        { key: 'den_matek',   name: 'Den matek',   date: function(y) { return nthWeekday(y, 5, 0, 2); } },
-        { key: 'vanoce',      name: 'Vánoce',      date: function(y) { return new Date(y, 11, 24); } }
-    ];
-
-    let personalDates = [];
-    let recipients = [];
+    // Ближайший повод берём с сервера (personal-dates → upcoming) — та же SQL-функция,
+    // что считает страницу /members/occasions и ежедневные письма-напоминания,
+    // поэтому плитка, страница и письма всегда совпадают (паки праздников, именины,
+    // дни рождения людей). Свои поводы приоритетнее общих праздников.
+    let upcoming = [];
+    let loaded = false;
 
     // Čte, kdo je momentálně přihlášený přes Tilda Members (nezávisle na
     // lk_auth_token, který žije samostatně 60 dní v localStorage).
@@ -182,119 +176,27 @@
         return 'dní';
     }
 
-    function nthWeekday(year, month, weekday, n) {
-        const date = new Date(year, month - 1, 1);
-        const offset = (weekday - date.getDay() + 7) % 7;
-        return new Date(year, month - 1, 1 + offset + (n - 1) * 7);
-    }
+    function escHtml(v) { const d = document.createElement('div'); d.textContent = v == null ? '' : String(v); return d.innerHTML; }
+    function isoToday() { const n = new Date(); return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0'); }
+    function daysUntil(iso) { return Math.round((new Date(iso + 'T12:00:00') - new Date(isoToday() + 'T12:00:00')) / 86400000); }
 
-    function getEasterSunday(year) {
-        const a = year % 19;
-        const b = Math.floor(year / 100);
-        const c = year % 100;
-        const d = Math.floor(b / 4);
-        const e = b % 4;
-        const f = Math.floor((b + 8) / 25);
-        const g = Math.floor((b - f + 1) / 3);
-        const h = (19 * a + b - d - g + 15) % 30;
-        const i = Math.floor(c / 4);
-        const k = c % 4;
-        const l = (32 + 2 * e + 2 * i - h - k) % 7;
-        const m = Math.floor((a + 11 * h + 22 * l) / 451);
-        const month = Math.floor((h + l - 7 * m + 114) / 31);
-        const day = ((h + l - 7 * m + 114) % 31) + 1;
-        return new Date(year, month - 1, day);
-    }
-
-    // Общий календарь — показываем только тем, у кого ещё ничего своего нет.
-    function buildOccasions(year) {
-        const easterMonday = new Date(getEasterSunday(year).getTime() + 86400000);
-        return [
-            { name: 'Den růží', date: new Date(year, 1, 7) },
-            { name: 'Valentýn', date: new Date(year, 1, 14) },
-            { name: 'Mezinárodní den žen', date: new Date(year, 2, 8) },
-            { name: 'Den učitelů', date: new Date(year, 2, 28) },
-            { name: 'Velikonoční pondělí', date: easterMonday },
-            { name: 'Den matek', date: nthWeekday(year, 5, 0, 2) },
-            { name: 'Mezinárodní den rodiny', date: new Date(year, 4, 15) },
-            { name: 'Den otců', date: nthWeekday(year, 6, 0, 3) },
-            { name: 'Začátek školního roku', date: new Date(year, 8, 1) },
-            { name: 'Den seniorů', date: new Date(year, 9, 1) },
-            { name: 'Dušičky', date: new Date(year, 10, 2) },
-            { name: 'Vánoce', date: new Date(year, 11, 24) },
-            { name: 'Silvestr', date: new Date(year, 11, 31) }
-        ];
-    }
-
-    function today() {
-        const n = new Date();
-        n.setHours(0, 0, 0, 0);
-        return n;
-    }
-
-    function nextByMonthDay(month, day) {
-        const now = today();
-        let c = new Date(now.getFullYear(), month, day);
-        if (c < now) c = new Date(now.getFullYear() + 1, month, day);
-        return c;
-    }
-
-    function nextDateOf(pd) {
-        const raw = new Date(pd.event_date + 'T00:00:00');
-        if (pd.recurrence === 'yearly') return nextByMonthDay(raw.getMonth(), raw.getDate());
-        if (pd.recurrence === 'monthly') {
-            const now = today();
-            let c = new Date(now.getFullYear(), now.getMonth(), raw.getDate());
-            if (c < now) c = new Date(now.getFullYear(), now.getMonth() + 1, raw.getDate());
-            return c;
-        }
-        return raw;
-    }
-
-    function nextHolidayDate(h) {
-        const now = today();
-        let d = h.date(now.getFullYear());
-        if (d < now) d = h.date(now.getFullYear() + 1);
-        return d;
-    }
-
-    // Свои поводы приоритетнее общих: если человек что-то сохранил, плитка
-    // говорит о его людях, а не про Den růží.
     function getNextOccasion() {
-        const now = today();
-        const mine = [];
-
-        personalDates.forEach(function(pd) {
-            const person = pd.recipient_id ? recipients.find(function(r) { return r.id === pd.recipient_id; }) : null;
-            mine.push({ name: pd.label, who: person ? person.name : null, date: nextDateOf(pd) });
-        });
-
-        recipients.forEach(function(r) {
-            (r.holidays || []).forEach(function(key) {
-                const h = PERSON_HOLIDAYS.find(function(x) { return x.key === key; });
-                if (h) mine.push({ name: h.name, who: r.name, date: nextHolidayDate(h) });
-            });
-        });
-
-        let pool = mine;
-        if (!pool.length) {
-            const y = now.getFullYear();
-            pool = buildOccasions(y).concat(buildOccasions(y + 1)).map(function(o) {
-                return { name: o.name, who: null, date: o.date };
-            });
-        }
-
-        pool = pool.filter(function(o) { return o.date >= now; });
-        pool.sort(function(a, b) { return a.date - b.date; });
-
-        const next = pool[0];
-        if (!next) return null;
-        return { name: next.name, who: next.who, days: Math.round((next.date - now) / 86400000) };
+        if (!upcoming.length) return null;
+        // своё (люди, даты) в ближайшие 30 дней важнее общего праздника
+        const own = upcoming.filter(function (it) { return it.kind !== 'general' && daysUntil(it.occasion_date) <= 30; })[0];
+        const it = own || upcoming[0];
+        let name = it.title;
+        if (it.kind === 'birthday' && it.years) name = it.years + '. narozeniny';
+        return { name: name, who: it.person, days: daysUntil(it.occasion_date), recipientId: it.recipient_id, date: it.occasion_date };
     }
 
-    function dateIconHtml(daysLeft) {
+    function orderUrl(next) {
+        return 'https://vezminarin.cz/members/occasions?objednat=' + encodeURIComponent(next.recipientId || '') + '&datum=' + next.date;
+    }
+
+    function dateIconHtml(daysLeft, href) {
         if (daysLeft <= 5) {
-            return '<a class="lk-dates-cart-link" href="/" aria-label="Objednat">' +
+            return '<a class="lk-dates-cart-link" href="' + (href || '/') + '" aria-label="Objednat">' +
                 '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/><path d="M3 4h2l2.6 12.4a2 2 0 002 1.6h7.7a2 2 0 002-1.6L21 8H6"/></svg>' +
                 '</a>';
         }
@@ -311,14 +213,14 @@
             return;
         }
 
-        iconWrap.innerHTML = dateIconHtml(next.days);
+        iconWrap.innerHTML = dateIconHtml(next.days, orderUrl(next));
         const link = iconWrap.querySelector('a');
         if (link) link.addEventListener('click', function(e) { e.stopPropagation(); });
 
-        const head = next.days === 0
-            ? 'Dnes je ' + next.name + '! 🌸'
-            : '<b>' + next.days + ' ' + daysWord(next.days) + '</b> do ' + next.name;
-        textEl.innerHTML = head + (next.who ? '<div class="lk-widget-who">' + next.who + '</div>' : '');
+        // "Za 3 dny · Den matek" (dřív "3 dny do Den matek" — špatný pád u svátků)
+        const when = next.days === 0 ? 'Dnes' : next.days === 1 ? 'Zítra' : 'Za ' + next.days + ' ' + daysWord(next.days);
+        textEl.innerHTML = '<b>' + when + '</b> · ' + escHtml(next.name) + (next.days === 0 ? ' 🌸' : '') +
+            (next.who ? '<div class="lk-widget-who">' + escHtml(next.who) + '</div>' : '');
     }
 
     async function api(payload) {
@@ -333,18 +235,17 @@
     }
 
     function updateTileBadge() {
-        const empty = personalDates.length === 0 && recipients.length === 0;
+        // červená tečka = klient ještě nemá uložené nikoho ani nic svého
+        const empty = loaded && !upcoming.some(function (it) { return it.kind !== 'general'; });
         document.getElementById('lkWidgetTileBadge').classList.toggle('lk-show', empty);
     }
 
     async function loadOccasions() {
+        // token může ještě chvíli chybět (lk-auth-gate ověřuje e-mail) — zkusíme znovu
+        for (let i = 0; i < 40 && !getAuthToken(); i++) await new Promise(function (r) { setTimeout(r, 700); });
         try {
-            const [dRes, rRes] = await Promise.all([
-                api({ action: 'list' }),
-                api({ action: 'listRecipients' })
-            ]);
-            personalDates = (dRes && dRes.dates) || [];
-            recipients = (rRes && rRes.recipients) || [];
+            const res = await api({ action: 'upcoming', days: 370 });
+            if (res && Array.isArray(res.items)) { upcoming = res.items; loaded = true; }
         } catch (e) {}
         renderDates();
         updateTileBadge();

@@ -7,7 +7,9 @@ type NotifyPayload = {
     | "pickup_ready"
     | "courier_out"
     | "delivered"
-    | "arriving_sms";
+    | "arriving_sms"
+    | "occasion_reminder"
+    | "occasion_last_call";
   order_id: string; // human-readable Tilda order number, e.g. "1948856243"
   email?: string;
   phone?: string;
@@ -17,6 +19,22 @@ type NotifyPayload = {
   order_total?: number | null;
   delivery_date?: string | null;
   delivery_time?: string | null;
+  // occasion_reminder / occasion_last_call (SQL send_occasion_reminders)
+  days?: number;
+  items?: OccasionItem[];
+};
+
+type OccasionItem = {
+  key: string;
+  date: string; // YYYY-MM-DD
+  kind: "date" | "holiday" | "birthday" | "nameday" | "general";
+  title: string;
+  person: string | null;
+  recipient_id: string | null;
+  years: number | null;
+  budget?: number | null;
+  gift_prefs?: string[];
+  autopilot?: boolean;
 };
 
 const LOGO_URL = "https://static.tildacdn.com/tild3131-3033-4536-a130-623830646536/Photoroom_20260804_1.PNG";
@@ -51,8 +69,9 @@ function emailShell(opts: {
   ctaUrl: string;
   secondaryCtaLabel?: string;
   secondaryCtaUrl?: string;
+  footNote?: string; // místo věty o průběhu objednávky (u připomínek nedává smysl)
 }) {
-  const { preheader, badgeEmoji, badgeBg, headline, bodyHtml, extraHtml = "", ctaLabel, ctaUrl, secondaryCtaLabel, secondaryCtaUrl } = opts;
+  const { preheader, badgeEmoji, badgeBg, headline, bodyHtml, extraHtml = "", ctaLabel, ctaUrl, secondaryCtaLabel, secondaryCtaUrl, footNote } = opts;
 
   const secondaryCta = secondaryCtaLabel && secondaryCtaUrl
     ? `<a href="${secondaryCtaUrl}" style="display:inline-block;margin-left:10px;padding:11px 20px;border-radius:999px;border:1px solid ${LINE};color:${ACCENT};font-size:13px;font-weight:600;text-decoration:none;font-family:'Rubik',Arial,sans-serif;">${secondaryCtaLabel}</a>`
@@ -86,7 +105,7 @@ function emailShell(opts: {
         <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 18px;">
           <tr>
             <td style="font-size:12px;color:${MUTED};font-family:'Rubik',Arial,sans-serif;">
-              Průběh objednávky sledujte kdykoliv ve <a href="${ORDERS_URL}" style="color:${ACCENT};text-decoration:none;font-weight:500;">svém profilu</a>.
+              ${footNote ?? `Průběh objednávky sledujte kdykoliv ve <a href="${ORDERS_URL}" style="color:${ACCENT};text-decoration:none;font-weight:500;">svém profilu</a>.`}
             </td>
           </tr>
         </table>
@@ -151,6 +170,102 @@ function deliveryWhenLine(date?: string | null, time?: string | null) {
   const parts = [date, time].filter(Boolean);
   if (!parts.length) return "";
   return `<p style="margin:0 0 14px;font-size:12.5px;color:${MUTED};">Termín doručení: <b style="color:${INK};">${parts.join(" · ")}</b></p>`;
+}
+
+// ---------- Occasions: připomínky důležitých dnů ----------
+const OCCASIONS_URL = "https://vezminarin.cz/members/occasions";
+const CZ_DAYS = ["neděle", "pondělí", "úterý", "středa", "čtvrtek", "pátek", "sobota"];
+const CZ_MONTHS = ["ledna", "února", "března", "dubna", "května", "června", "července", "srpna", "září", "října", "listopadu", "prosince"];
+const OCC_EMOJI: Record<OccasionItem["kind"], string> = { birthday: "🎂", nameday: "🌼", holiday: "💐", general: "💐", date: "📅" };
+
+function esc(s: unknown) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+}
+function czDate(iso: string) {
+  const d = new Date(iso + "T12:00:00Z");
+  return `${CZ_DAYS[d.getUTCDay()]} ${d.getUTCDate()}. ${CZ_MONTHS[d.getUTCMonth()]}`;
+}
+function occTitle(it: OccasionItem) {
+  if (it.kind === "birthday" && it.years) return `${it.years}. narozeniny`;
+  if (it.kind === "date" && it.years) return `${it.title} (${it.years}. výročí)`;
+  return it.title;
+}
+// Odkaz "Vybrat květiny": přes /members/occasions, který si zapamatuje příjemce
+// a datum a přesměruje do katalogu; na pokladně se příjemce sám předvybere.
+function occOrderUrl(it: OccasionItem) {
+  const q = new URLSearchParams({ objednat: it.recipient_id ?? "", datum: it.date });
+  return `${OCCASIONS_URL}?${q.toString()}`;
+}
+const GIFT_LABELS: Record<string, string> = { kytice: "kytice", dort: "dort", jahody: "jahody v čokoládě", plysak: "plyšák", na_vas: "na vašem výběru" };
+function giftLine(it: OccasionItem) {
+  const prefs = (it.gift_prefs ?? []).filter((g) => g !== "na_vas").map((g) => GIFT_LABELS[g] ?? g);
+  const bits = [];
+  if (prefs.length) bits.push(prefs.join(", "));
+  if (it.budget) bits.push(`do ${it.budget.toLocaleString("cs-CZ")} Kč`);
+  return bits.length ? `<div style="font-size:12.5px;color:${ACCENT};margin-top:3px;">Tip: ${esc(bits.join(" · "))}</div>` : "";
+}
+
+function occasionRows(items: OccasionItem[]) {
+  return items
+    .map((it) => {
+      const who = it.person ? `<div style="font-size:12.5px;color:${MUTED};margin-top:2px;">pro <b style="color:${INK};">${esc(it.person)}</b></div>` : "";
+      return `<tr><td style="padding:12px 0;border-bottom:1px solid ${LINE};">
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%"><tr>
+          <td style="width:44px;vertical-align:top;font-size:22px;line-height:30px;">${OCC_EMOJI[it.kind] ?? "💐"}</td>
+          <td style="vertical-align:top;font-family:'Rubik',Arial,sans-serif;">
+            <div style="font-size:14.5px;font-weight:600;color:${INK};">${esc(occTitle(it))}</div>${who}
+            <div style="font-size:12.5px;color:${MUTED};margin-top:2px;">${czDate(it.date)}</div>${giftLine(it)}
+          </td>
+          <td style="vertical-align:middle;text-align:right;white-space:nowrap;">
+            <a href="${occOrderUrl(it)}" style="display:inline-block;padding:8px 14px;border-radius:999px;background:${ACCENT_BG};color:${ACCENT};font-size:12.5px;font-weight:600;text-decoration:none;font-family:'Rubik',Arial,sans-serif;">Vybrat květiny</a>
+          </td>
+        </tr></table>
+      </td></tr>`;
+    })
+    .join("");
+}
+function occasionEmail(items: OccasionItem[], days: number, lastCall: boolean) {
+  const first = items[0];
+  const when = days === 1 ? "zítra" : `za ${days} ${days >= 2 && days <= 4 ? "dny" : "dní"}`;
+  const one = items.length === 1;
+  const label = one ? `${occTitle(first)}${first.person ? ` – ${first.person}` : ""}` : `${items.length} důležité dny`;
+  const subject = lastCall ? `Poslední šance: ${label} je ${when} 💐` : `${when.charAt(0).toUpperCase() + when.slice(1)}: ${label} 💐`;
+  const headline = lastCall
+    ? one ? `${occTitle(first)} je už ${when}` : `Už ${when} slavíte ${items.length}×`
+    : one ? `${occTitle(first)} ${first.person ? `– ${esc(first.person)} ` : ""}${when}` : `Blíží se ${items.length} důležité dny`;
+  // Autopilot: den před svátkem ráno dostanou úkol manažeři (SQL send_occasion_reminders, krok 3),
+  // takže klient má na vlastní výběr čas do konce dne o dva dny dřív.
+  const auto = lastCall ? [] : items.filter((it) => it.autopilot && it.person);
+  const cutoff = auto.length
+    ? czDate(new Date(new Date(auto[0].date + "T12:00:00Z").getTime() - 2 * 86400000).toISOString().slice(0, 10))
+    : "";
+  const autoNote = auto.length
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:${COURIER_BG};border-radius:12px;margin-bottom:18px;"><tr>
+        <td style="padding:12px 14px;font-size:20px;width:36px;vertical-align:top;">🤝</td>
+        <td style="padding:12px 14px 12px 0;font-size:12.5px;line-height:1.55;color:${INK};font-family:'Rubik',Arial,sans-serif;">
+          <b>Máte zapnutý autopilot.</b> Pokud pro ${esc(auto.map((a) => a.person).join(", "))} nic nevyberete do ${cutoff} večera, připravíme dárek podle vašich přání sami a zaplatíte ho z depozitu před doručením.
+        </td></tr></table>`
+    : "";
+  const bodyHtml = lastCall
+    ? `Ještě to stihneme. Objednejte dnes a kytici doručíme přesně na den.`
+    : `Ozýváme se včas, ať máte klid. Vyberte květiny teď a my je doručíme přesně v ten den.`;
+  const list = `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-top:1px solid ${LINE};margin-bottom:18px;">${occasionRows(items)}</table>`;
+  return {
+    subject,
+    html: emailShell({
+      preheader: lastCall ? `Poslední šance objednat včas: ${label}` : `${label} – ${czDate(first.date)}`,
+      badgeEmoji: lastCall ? "⏰" : OCC_EMOJI[first.kind] ?? "💐",
+      badgeBg: lastCall ? PREPARING_BG : ACCENT_BG,
+      headline,
+      bodyHtml,
+      extraHtml: list + autoNote,
+      ctaLabel: one ? "Vybrat květiny" : "Do katalogu",
+      ctaUrl: one ? occOrderUrl(first) : "https://vezminarin.cz/page118819546.html",
+      secondaryCtaLabel: "Upravit připomínky",
+      secondaryCtaUrl: OCCASIONS_URL,
+      footNote: `Tyto připomínky jste si nastavili v <a href="${OCCASIONS_URL}" style="color:${ACCENT};text-decoration:none;font-weight:500;">Důležitých dnech</a>. Kolik dní předem, nebo je úplně vypnout, změníte tamtéž.`,
+    }),
+  };
 }
 
 // Called by a Postgres trigger (via pg_net) — same pattern as the Telegram
@@ -268,6 +383,14 @@ export async function POST(request: Request) {
             ctaUrl: ORDERS_URL,
           }),
         );
+      }
+      break;
+
+    case "occasion_reminder":
+    case "occasion_last_call":
+      if (email && Array.isArray(payload.items) && payload.items.length) {
+        const { subject, html } = occasionEmail(payload.items, Number(payload.days) || 3, event === "occasion_last_call");
+        await sendBrevoEmail(email, subject, html);
       }
       break;
 

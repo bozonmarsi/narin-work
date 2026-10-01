@@ -51,6 +51,30 @@ function cleanText(value: unknown, max = 200): string | null {
   return trimmed ? trimmed.slice(0, max) : null
 }
 
+// Den a měsíc (rok nepovinný) — narozeniny a ručně upravené jmeniny
+function cleanDay(v: unknown): number | null {
+  const n = Number(v)
+  return Number.isInteger(n) && n >= 1 && n <= 31 ? n : null
+}
+function cleanMonth(v: unknown): number | null {
+  const n = Number(v)
+  return Number.isInteger(n) && n >= 1 && n <= 12 ? n : null
+}
+function cleanYear(v: unknown): number | null {
+  const n = Number(v)
+  return Number.isInteger(n) && n >= 1900 && n <= new Date().getFullYear() ? n : null
+}
+
+const LEAD_OPTIONS = [1, 2, 3, 5, 7, 14]
+const GIFT_KEYS = ['kytice', 'dort', 'jahody', 'plysak', 'na_vas']
+function cleanGiftPrefs(v: unknown): string[] {
+  return Array.isArray(v) ? [...new Set(v.filter((x) => GIFT_KEYS.includes(String(x))).map(String))] : []
+}
+function cleanBudget(v: unknown): number | null {
+  const n = Math.round(Number(v))
+  return Number.isFinite(n) && n > 0 && n <= 100000 ? n : null
+}
+
 function cleanHolidays(value: unknown): string[] {
   if (!Array.isArray(value)) return []
   return value
@@ -93,6 +117,18 @@ Deno.serve(async (req) => {
         .ilike('owner_email', email)
         .maybeSingle()
       return !!data
+    }
+
+    // Jmeniny: výslovně zadané (ruční oprava) mají přednost, jinak podle jména z kalendáře
+    async function namedayPatch(name: string, b: Record<string, unknown>) {
+      if ('nameday_day' in b || 'nameday_month' in b) {
+        const d = cleanDay(b.nameday_day), m = cleanMonth(b.nameday_month)
+        return d && m ? { nameday_day: d, nameday_month: m } : { nameday_day: null, nameday_month: null }
+      }
+      if (!name) return {}
+      const { data } = await supabase.rpc('cz_nameday_for', { p_name: name })
+      const row = Array.isArray(data) ? data[0] : null
+      return row ? { nameday_day: row.day, nameday_month: row.month } : { nameday_day: null, nameday_month: null }
     }
 
     // ---------- предложенные получатели из истории заказов ----------
@@ -157,6 +193,43 @@ Deno.serve(async (req) => {
       return json({ suggestions: Array.from(byKey.values()).slice(0, 10) })
     }
 
+    // ---------- nastavení připomínek ----------
+
+    if (action === 'getSettings') {
+      const { data } = await supabase.from('occasion_settings').select('*').eq('email', normalizedEmail.toLowerCase()).maybeSingle()
+      return json({
+        settings: data ?? { lead_days: 3, email_enabled: true, pack_basic: true, pack_cz: false, namedays: false },
+        saved: !!data,
+      })
+    }
+
+    if (action === 'saveSettings') {
+      const row: Record<string, unknown> = { email: normalizedEmail.toLowerCase(), updated_at: new Date().toISOString() }
+      if ('lead_days' in body) row.lead_days = LEAD_OPTIONS.includes(Number(body.lead_days)) ? Number(body.lead_days) : 3
+      for (const f of ['email_enabled', 'pack_basic', 'pack_cz', 'namedays']) {
+        if (f in body) row[f] = !!body[f]
+      }
+      const { data, error } = await supabase.from('occasion_settings').upsert(row).select('*').single()
+      if (error) return json({ error: error.message }, 500)
+      return json({ settings: data, saved: true })
+    }
+
+    // Jediný zdroj "co se kdy slaví" — stejná SQL funkce jako denní rozesílka,
+    // takže stránka, widget v hlavičce i e-maily ukazují totéž.
+    if (action === 'upcoming') {
+      const days = Math.min(400, Math.max(1, Number(body.days) || 400))
+      const { data, error } = await supabase.rpc('occasion_upcoming', { p_email: normalizedEmail, p_days: days })
+      if (error) return json({ error: error.message }, 500)
+      return json({ items: (data ?? []).slice(0, 80) })
+    }
+
+    // Náhled jmenin při psaní jména (bez uložení)
+    if (action === 'namedayFor') {
+      const { data } = await supabase.rpc('cz_nameday_for', { p_name: cleanText(body.name, 80) ?? '' })
+      const row = Array.isArray(data) ? data[0] : null
+      return json({ nameday: row ? { month: row.month, day: row.day, name: row.name } : null })
+    }
+
     // ---------- даты ----------
 
     if (action === 'list') {
@@ -215,12 +288,42 @@ Deno.serve(async (req) => {
     if (action === 'listRecipients') {
       const { data, error } = await supabase
         .from('recipients')
-        .select('id, name, relation, phone, address, address_lat, address_lng, note, holidays, created_at')
+        .select('id, name, relation, phone, address, address_lat, address_lng, note, holidays, created_at, birthday_day, birthday_month, birthday_year, nameday_day, nameday_month, budget, gift_prefs, autopilot')
         .ilike('owner_email', normalizedEmail)
         .order('created_at', { ascending: true })
 
       if (error) return json({ error: error.message }, 500)
-      return json({ recipients: data })
+
+      // Co už tomu člověku přišlo — podle jména příjemce v objednávkách klienta.
+      // Pomáhá nevybrat podruhé totéž ("Minule: Pivoňky, 12. 3.").
+      const { data: orders } = await supabase
+        .from('tilda_orders')
+        .select('delivery_date, created_at, recipient_name, order_total, status, raw_payload')
+        .ilike('customer_email', normalizedEmail)
+        .neq('status', 'cancelled')
+        .order('created_at', { ascending: false })
+        .limit(300)
+      const norm = (v: unknown) => String(v ?? '').replace(/\s+/g, ' ').trim().toLowerCase()
+      const enriched = (data ?? []).map((r) => {
+        const target = norm(r.name)
+        const single = !target.includes(' ')
+        const last_orders = (orders ?? [])
+          .filter((o) => {
+            const p = (o.raw_payload ?? {}) as Record<string, unknown>
+            const first = norm(p['recipients-name'])
+            const full = norm([p['recipients-name'], p['recipients-lastname']].filter(Boolean).join(' ')) || norm(o.recipient_name)
+            return !!target && (full === target || (single && first === target))
+          })
+          .slice(0, 3)
+          .map((o) => {
+            const products = ((o.raw_payload as { payment?: { products?: { name?: string }[] } })?.payment?.products ?? [])
+              .map((x) => String(x.name ?? '').replace(/&amp;/g, '&'))
+              .filter(Boolean)
+            return { date: o.delivery_date ?? String(o.created_at).slice(0, 10), products, total: o.order_total }
+          })
+        return { ...r, last_orders }
+      })
+      return json({ recipients: enriched })
     }
 
     if (action === 'addRecipient') {
@@ -248,6 +351,13 @@ Deno.serve(async (req) => {
           address_lng: typeof body.address_lng === 'number' ? body.address_lng : null,
           note: cleanText(body.note, 300),
           holidays: cleanHolidays(body.holidays),
+          birthday_day: cleanDay(body.birthday_day),
+          birthday_month: cleanMonth(body.birthday_month),
+          birthday_year: cleanYear(body.birthday_year),
+          budget: cleanBudget(body.budget),
+          gift_prefs: cleanGiftPrefs(body.gift_prefs),
+          autopilot: !!body.autopilot,
+          ...(await namedayPatch(name, body)),
         })
         .select()
         .single()
@@ -274,6 +384,21 @@ Deno.serve(async (req) => {
       if ('address_lng' in body) patch.address_lng = typeof body.address_lng === 'number' ? body.address_lng : null
       if ('note' in body) patch.note = cleanText(body.note, 300)
       if ('holidays' in body) patch.holidays = cleanHolidays(body.holidays)
+      if ('budget' in body) patch.budget = cleanBudget(body.budget)
+      if ('gift_prefs' in body) patch.gift_prefs = cleanGiftPrefs(body.gift_prefs)
+      if ('autopilot' in body) patch.autopilot = !!body.autopilot
+      if ('birthday_day' in body || 'birthday_month' in body) {
+        patch.birthday_day = cleanDay(body.birthday_day)
+        patch.birthday_month = cleanMonth(body.birthday_month)
+        patch.birthday_year = cleanYear(body.birthday_year)
+        if (!patch.birthday_day || !patch.birthday_month) {
+          patch.birthday_day = null; patch.birthday_month = null; patch.birthday_year = null
+        }
+      }
+      // nové jméno → přepočítat jmeniny (pokud je klient výslovně neupravil)
+      if ('nameday_day' in body || 'nameday_month' in body || typeof patch.name === 'string') {
+        Object.assign(patch, await namedayPatch(String(patch.name ?? ''), body))
+      }
 
       if (!Object.keys(patch).length) return json({ error: 'nothing to update' }, 400)
 
