@@ -84,7 +84,12 @@ export default function DashboardPage() {
       setLoadError(ordersRes.error.message);
     } else {
       setLoadError(null);
-      setOrders((ordersRes.data as unknown as OrderRow[]) ?? []);
+      const rows = (ordersRes.data as unknown as OrderRow[]) ?? [];
+      // Статус подарка без адреса берём отдельным запросом, а не колонкой в
+      // ORDER_COLUMNS: если SQL ещё не запущен, канбан всё равно загрузится.
+      const { data: gifts } = await supabase.from("gift_links").select("order_id, status");
+      const giftByOrder = new Map((gifts ?? []).map((g: { order_id: string; status: string }) => [g.order_id, g.status]));
+      setOrders(rows.map((o) => ({ ...o, gift_status: giftByOrder.get(o.order_id ?? "") ?? null })));
     }
 
     if (!couriersRes.error) {

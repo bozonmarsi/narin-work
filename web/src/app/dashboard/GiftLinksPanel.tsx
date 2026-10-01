@@ -77,6 +77,8 @@ export function GiftLinksPanel() {
   const [gifts, setGifts] = useState<GiftLink[]>([]);
   const [copied, setCopied] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
 
   const load = useCallback(async () => {
     const { data, error } = await createClient()
@@ -86,7 +88,15 @@ export function GiftLinksPanel() {
       )
       .eq("status", "awaiting_input")
       .order("created_at", { ascending: true });
-    if (!error) setGifts((data ?? []) as GiftLink[]);
+    if (error) {
+      // чаще всего — ещё не запущен SQL 20261004000000_gift_without_address
+      setLoadError(/gift_links/.test(error.message) || error.code === "42P01" || error.code === "PGRST205"
+        ? "Таблица gift_links не найдена — запустите SQL «Dárek bez adresy» в Supabase."
+        : error.message);
+      return;
+    }
+    setLoadError(null);
+    setGifts((data ?? []) as GiftLink[]);
   }, []);
 
   useEffect(() => {
@@ -113,7 +123,30 @@ export function GiftLinksPanel() {
     }
   }
 
-  if (!gifts.length) return null;
+  if (loadError) {
+    return (
+      <section className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-300">
+        🎁 Подарки без адреса: {loadError}
+      </section>
+    );
+  }
+
+  if (!gifts.length) {
+    return (
+      <section className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-3 text-sm">
+        <button onClick={() => setOpen((v) => !v)} className="flex w-full items-center justify-between text-left">
+          <span className="font-medium">🎁 Подарки без адреса</span>
+          <span className="text-xs text-zinc-500">нет новых {open ? "▲" : "▼"}</span>
+        </button>
+        {open && (
+          <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-400">
+            Когда клиент на оплате выберет «🎁 Ať ji zadá sám», заказ появится здесь: кнопка написать получателю, готовый текст со
+            ссылкой и «Отправил». Пока адрес не указан, заказ в канбане нельзя подтвердить.
+          </p>
+        )}
+      </section>
+    );
+  }
 
   // неотправленные — наверх, дольше ждущие выше
   const sorted = [...gifts].sort((a, b) => {
