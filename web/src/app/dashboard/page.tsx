@@ -12,6 +12,7 @@ import { decodeHtmlEntities } from "@/lib/format";
 import { CourierView } from "./courier/CourierView";
 import { WarehouseView } from "./warehouse/WarehouseView";
 import { useRealtimeRefresh } from "@/lib/useRealtimeRefresh";
+import { GiftLinksPanel } from "./GiftLinksPanel";
 import type { OrderRow, CourierOption, ProductOption } from "./types";
 
 export default function DashboardPage() {
@@ -176,6 +177,8 @@ export default function DashboardPage() {
           </div>
         </section>
       )}
+
+      <GiftLinksPanel />
 
       <CalendarView onSelect={setSelectedOrder} refreshSignal={refreshSignal} />
 

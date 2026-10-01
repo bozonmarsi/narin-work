@@ -53,6 +53,24 @@ async function verifyToken(token: string, secret: string): Promise<string | null
   }
 }
 
+// Dárek bez adresy (tilda/blocks/checkout-gift-no-address.html přidá do formuláře
+// skrytá pole gift-*): adresa a termín jsou jen zástupné, zadá je příjemce
+// přes odkaz, který mu manažer ručně pošle (viz migrace 20261004000000).
+const GIFT_CHANNELS = ['telegram', 'whatsapp', 'instagram', 'phone'];
+function randomToken(bytes = 18): string {
+  const a = new Uint8Array(bytes);
+  crypto.getRandomValues(a);
+  return btoa(String.fromCharCode(...a)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function giftContactUrl(channel: string, handle: string): string {
+  const digits = handle.replace(/\D/g, '');
+  const phone = digits.length === 9 ? '420' + digits : digits;
+  if (channel === 'whatsapp') return `https://wa.me/${phone}`;
+  if (channel === 'telegram') return /[A-Za-z]/.test(handle) ? `https://t.me/${handle.replace(/^@/, '')}` : `https://t.me/+${phone}`;
+  if (channel === 'instagram') return `https://instagram.com/${handle.replace(/^@/, '')}`;
+  return `tel:+${phone}`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
 
@@ -165,7 +183,17 @@ Deno.serve(async (req) => {
       }
     }
 
-    const orderData = {
+    // --- DÁREK BEZ ADRESY ---
+    const isGift = String(data["gift-no-address"] || "").toLowerCase() === "yes";
+    const giftChannel = GIFT_CHANNELS.includes(String(data["gift-channel"])) ? String(data["gift-channel"]) : "phone";
+    const giftHandle = String(data["gift-handle"] || data["recipients-phone-number"] || "").trim().slice(0, 80);
+    let giftExisting: { status: string } | null = null;
+    if (isGift && oid !== "no_id") {
+      const { data: gl } = await supabase.from("gift_links").select("status").eq("order_id", oid).maybeSingle();
+      giftExisting = gl;
+    }
+
+    const orderData: Record<string, any> = {
       order_id: oid,
       customer_name: data.name || "",
       customer_last_name: data.lastname || data["last-name"] || "",
@@ -201,6 +229,16 @@ Deno.serve(async (req) => {
       payment_method: data.paymentsystem || "",
       raw_payload: data
     };
+    if (isGift) {
+      // zástupná adresa/termín z pokladny nepatří do objednávky; když už příjemce
+      // adresu zadal (opakovaný webhook), nic nepřepisovat
+      if (giftExisting && giftExisting.status !== "awaiting_input") {
+        for (const k of ["address", "city", "psk", "patro", "cislo_bytu", "kod_intercomu", "delivery_date", "delivery_slot", "delivery_time_raw", "recipient_phone", "gift_status"]) delete orderData[k];
+      } else {
+        Object.assign(orderData, { address: "", city: "", psk: "", patro: "", cislo_bytu: "", kod_intercomu: "", delivery_date: null, delivery_slot: "", delivery_time_raw: "", gift_status: "awaiting_input" });
+        if (data["gift-recipient-name"] && !orderData.recipient_name) orderData.recipient_name = String(data["gift-recipient-name"]).slice(0, 80);
+      }
+    }
     // ВАЖНО: Добавляем проверку ошибки при записи
     const { error: dbError } = await supabase.from("tilda_orders").upsert(orderData, { onConflict: 'order_id' });
     if (dbError) {
@@ -210,6 +248,42 @@ Deno.serve(async (req) => {
     }
     // Сохраняем или обновляем данные заказа
     await supabase.from("tilda_orders").upsert(orderData, { onConflict: 'order_id' });
+
+    // gift_links + úkol manažerům (jen poprvé; kontakt jde jen manažerům osobně, ne do skupiny)
+    let giftLine = "";
+    if (isGift && oid !== "no_id" && !giftExisting && giftHandle) {
+      const { data: hash } = await supabase.rpc("gift_contact_hash", { p_handle: giftHandle });
+      const { data: blocked } = hash
+        ? await supabase.from("gift_do_not_contact").select("id").eq("contact_hash", hash).maybeSingle()
+        : { data: null };
+      const token = randomToken();
+      const recipientName = String(data["gift-recipient-name"] || data["recipients-name"] || "").trim().slice(0, 80) || null;
+      const senderName = String(data["senders-name-postcard"] || data.name || "").trim().slice(0, 80) || null;
+      const { data: minDate } = await supabase.rpc("gift_min_date", { p_order_id: oid });
+      await supabase.from("gift_links").upsert({
+        order_id: oid,
+        token,
+        sender_token: randomToken(),
+        recipient_channel: giftChannel,
+        recipient_handle: giftHandle,
+        recipient_name: recipientName,
+        contact_hash: hash,
+        sender_name: senderName,
+        sender_name_visible: String(data["gift-sender-visible"] || "yes") !== "no",
+        sender_email: cleanEmail || null,
+        min_delivery_date: minDate,
+      }, { onConflict: "order_id", ignoreDuplicates: true });
+      const link = `https://vezminarin.cz/prijem-daru?t=${token}`;
+      await supabase.rpc("notify_telegram_role", {
+        p_role: "manager",
+        p_message: (blocked ? "⛔️ <b>ВНИМАНИЕ: этот контакт раньше отказался от подарков без адреса!</b> Не пишите ему — свяжитесь с отправителем.\n\n" : "") +
+          `🎁 <b>Подарок без адреса</b> — заказ <code>${oid}</code>\n` +
+          `Напишите получателю${recipientName ? ` (${recipientName})` : ""} в <b>${giftChannel}</b>: ${giftContactUrl(giftChannel, giftHandle)}\n` +
+          `Ссылка для него: ${link}\n` +
+          `Готовый текст — в приложении (Подарки без адреса). После отправки нажмите там «Отправил».`,
+      });
+      giftLine = blocked ? "⛔️ ПОДАРОК БЕЗ АДРЕСА — контакт в списке отказов!" : "🎁 ПОДАРОК БЕЗ АДРЕСА — адрес укажет получатель (контакт у менеджеров в приложении)";
+    }
 
     // --- ЛОГИКА А: СПИСАНИЕ БАЛЛОВ (Redemption) ---
     // Срабатывает сразу, если в заказе использован промокод на баллы
@@ -283,13 +357,18 @@ Deno.serve(async (req) => {
     // Собираем время (проверяем оба возможных поля)
     const deliveryTime = data["delivery-time"] || data.time || "не указано";
 
+    if (isGift) rows.push(`<b>${giftLine || "🎁 ПОДАРОК БЕЗ АДРЕСА"}</b>\n`);
     rows.push(`📍 <b>ИНФО О ПОЛУЧЕНИИ:</b>`);
     rows.push(`Способ: ${deliveryDisplay}`);
-    if (data.date) rows.push(`Дата: ${data.date}`);
-    rows.push(`Время: ${deliveryTime}`);
+    if (isGift) {
+      rows.push(`Дата, время и адрес: укажет получатель`);
+    } else {
+      if (data.date) rows.push(`Дата: ${data.date}`);
+      rows.push(`Время: ${deliveryTime}`);
+    }
 
     // Если это доставка, показываем адрес
-    if (deliveryDisplay.includes("курьером")) {
+    if (deliveryDisplay.includes("курьером") && !isGift) {
       if (data.city) rows.push(`Город: ${data.city}`);
       if (data.adres) rows.push(`Адрес: ${data.adres}`);
       if (data.floor) rows.push(`Этаж: ${data.floor}`);

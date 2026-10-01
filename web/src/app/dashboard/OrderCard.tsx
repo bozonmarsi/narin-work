@@ -82,7 +82,8 @@ export function OrderCard({
         </button>
 
         <div className="flex shrink-0 flex-col items-stretch gap-2 sm:items-end">
-          {order.status === "new" && <OrderActions orderId={order.id} onDone={onDone} />}
+          {order.status === "new" && order.gift_status === "awaiting_input" && <p className="rounded-md bg-pink-50 dark:bg-pink-500/10 px-2 py-1 text-xs text-pink-700 dark:text-pink-300">🎁 Ждём адрес от получателя — подтвердить можно после</p>}
+          {order.status === "new" && order.gift_status !== "awaiting_input" && <OrderActions orderId={order.id} onDone={onDone} />}
           {order.status === "confirmed" && !order.assigned_courier_id && (
             <AssignCourier orderId={order.id} couriers={couriers} onDone={onDone} />
           )}
