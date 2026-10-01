@@ -202,9 +202,16 @@
       <div class="noc-chips" id="nocLead"></div>
       <label class="noc-pack" style="margin-top:12px;"><div><b>Posílat připomínky e-mailem</b><span>Jeden souhrnný e-mail a den předem ještě krátké „nezapomeňte“, pokud jste mezitím neobjednali.</span></div><span class="noc-switch"><input type="checkbox" id="nocEmailOn"><i></i></span></label>
       <div class="noc-lbl" style="margin-top:16px;">Svátky</div>
-      <label class="noc-pack"><div><b>Obvyklé svátky</b><span>Valentýn 14. 2., MDŽ 8. 3., Den matek (SNS, poslední neděle v listopadu), Vánoce 24. 12. a pravoslavné Vánoce 7. 1.</span></div><span class="noc-switch"><input type="checkbox" id="nocPackBasic"><i></i></span></label>
-      <label class="noc-pack"><div><b>České svátky</b><span>Den matek (2. neděle v květnu), Den učitelů 28. 3., Den otců (3. neděle v červnu).</span></div><span class="noc-switch"><input type="checkbox" id="nocPackCz"><i></i></span></label>
-      <label class="noc-pack"><div><b>Jmeniny</b><span>Podle českého kalendáře u lidí, které máte uložené. Datum doplníme podle jména.</span></div><span class="noc-switch"><input type="checkbox" id="nocNamedays"><i></i></span></label>
+      <div class="noc-pack" style="cursor:default;"><div><b>💐 Svátky, kdy se dávají květiny</b><span>Valentýn, MDŽ, Den matek (SNS), 1. září, Vánoce a pravoslavné Vánoce. Uvidíte je vždycky ve widgetu i tady.</span></div></div>
+      <label class="noc-pack"><div><b>🇨🇿 České svátky</b><span>Nový rok, Den učitelů, Velikonoce, 1. máj, Den vítězství, Den matek (květen), Den otců, Cyril a Metoděj, Jan Hus, sv. Václav, 28. října, Dušičky, 17. listopadu.</span></div><span class="noc-switch"><input type="checkbox" id="nocPackCz"><i></i></span></label>
+      <label class="noc-pack"><div><b>🌼 Jmeniny</b><span>Každý den uvidíte, kdo má svátek. A vyberete si jména, na která vás máme upozornit předem.</span></div><span class="noc-switch"><input type="checkbox" id="nocNamedays"><i></i></span></label>
+      <div id="nocNdBox" hidden style="margin-top:8px;background:#fff;border-radius:16px;padding:12px 14px;">
+        <p class="noc-hint" id="nocNdToday" style="margin:0 0 10px;"></p>
+        <div class="noc-lbl" style="margin-left:0;">Upozorňovat na jmeniny</div>
+        <div class="noc-chips" id="nocNdChosen"></div>
+        <input type="text" id="nocNdSearch" placeholder="Napište jméno, např. Jana" autocomplete="off" style="margin-top:8px;">
+        <div class="noc-chips" id="nocNdResults" style="margin-top:8px;"></div>
+      </div>
       <div class="noc-err" id="nocSetErr" hidden></div>
     </div>
   </div>
@@ -223,7 +230,6 @@
   <div class="noc-card" id="nocAddForm" hidden style="margin-top:10px;">
     <div class="noc-lbl">Jméno</div>
     <input type="text" id="nocAddName" placeholder="např. Máma Jana" autocomplete="off">
-    <p class="noc-hint" id="nocAddNd"></p>
     <div class="noc-lbl" style="margin-top:14px;">Kdo to je</div>
     <div class="noc-chips" id="nocAddRel"></div>
     <p class="noc-hint">Podle toho rovnou zapneme svátky. Narozeniny a další doplníte potom.</p>
@@ -288,11 +294,17 @@
         { key: 'valentyn', name: 'Valentýn', pack: 'basic' },
         { key: 'mdz', name: 'MDŽ', pack: 'basic' },
         { key: 'den_matek_sns', name: 'Den matek (SNS)', pack: 'basic' },
-        { key: 'den_matek', name: 'Den matek (CZ)', pack: 'cz' },
-        { key: 'den_ucitelu', name: 'Den učitelů', pack: 'cz' },
-        { key: 'den_otcu', name: 'Den otců', pack: 'cz' },
+        { key: 'skolni_rok', name: '1. září', pack: 'basic' },
         { key: 'vanoce', name: 'Vánoce', pack: 'basic' },
-        { key: 'vanoce_prav', name: 'Pravoslavné Vánoce', pack: 'basic' }
+        { key: 'vanoce_prav', name: 'Pravoslavné Vánoce', pack: 'basic' },
+        { key: 'den_matek', name: 'Den matek (CZ)', pack: 'cz' },
+        { key: 'den_otcu', name: 'Den otců', pack: 'cz' },
+        { key: 'den_ucitelu', name: 'Den učitelů', pack: 'cz' },
+        { key: 'prvni_maj', name: '1. máj', pack: 'cz' },
+        { key: 'velikonoce', name: 'Velikonoce', pack: 'cz' },
+        { key: 'novy_rok', name: 'Nový rok', pack: 'cz' },
+        { key: 'svaty_vaclav', name: 'Svatý Václav', pack: 'cz' },
+        { key: 'dusicky', name: 'Dušičky', pack: 'cz' }
     ];
     // Vztah → svátky, které rovnou zapneme (Den matek podle toho, jaký balíček klient používá)
     var RELATIONS = [
@@ -301,13 +313,14 @@
         { key: 'partner', label: 'Partner', h: ['valentyn'] },
         { key: 'babicka', label: 'Babička', h: ['MOTHER', 'mdz'] },
         { key: 'tata', label: 'Táta', h: ['FATHER'] },
-        { key: 'ucitelka', label: 'Učitel(ka)', h: ['den_ucitelu'] },
+        { key: 'ucitelka', label: 'Učitel(ka)', h: ['skolni_rok', 'TEACHER'] },
         { key: 'kolegyne', label: 'Kolega/yně', h: ['mdz'] },
         { key: 'kamarad', label: 'Kamarád(ka)', h: [] },
         { key: 'jine', label: 'Jiné', h: [] }
     ];
-    var LEADS = [1, 2, 3, 5, 7, 14];
-    var GIFTS = [{ k: 'kytice', l: '💐 Kytice' }, { k: 'dort', l: '🎂 Dort' }, { k: 'jahody', l: '🍓 Jahody v čokoládě' }, { k: 'plysak', l: '🧸 Plyšák' }, { k: 'na_vas', l: '✨ Nechám na vás' }];
+    var LEADS = [1, 3, 7];
+    // typy dárků bere stránka z tabulky occasion_gift_types (getSettings); neaktivní = „brzy“
+    var GIFTS_FALLBACK = [{ key: 'kytice', label: 'Kytice', emoji: '💐', active: true }, { key: 'na_vas', label: 'Nechám na vás', emoji: '✨', active: true }];
     var KIND_EMOJI = { birthday: '🎂', nameday: '🌼', holiday: '💐', general: '💐', date: '📅' };
     var AV_COLORS = [['#e6effb', '#186ce0'], ['#fde9ef', '#b3264a'], ['#e7f5ec', '#1b7a44'], ['#fff3dc', '#8a5a00'], ['#efe9fb', '#5b3fb3'], ['#e6f6f8', '#0b6f7c']];
     var MONTHS = ['leden', 'únor', 'březen', 'duben', 'květen', 'červen', 'červenec', 'srpen', 'září', 'říjen', 'listopad', 'prosinec'];
@@ -373,7 +386,7 @@
     }
 
     // ---------- stav ----------
-    var S = { settings: { lead_days: 3, email_enabled: true, pack_basic: true, pack_cz: false, namedays: false }, items: [], people: [], dates: [], openId: null, showAll: false };
+    var S = { gifts: GIFTS_FALLBACK, namedaysToday: [], settings: { lead_days: 3, email_enabled: true, pack_basic: true, pack_cz: false, namedays: false, nameday_names: [] }, items: [], people: [], dates: [], openId: null, showAll: false };
 
     // ---------- nastavení ----------
     function renderSettings() {
@@ -383,9 +396,13 @@
             : 'E-mailové připomínky máte <b>vypnuté</b>. Důležité dny uvidíte jen tady a v účtu.';
         $('nocLead').innerHTML = LEADS.map(function (n) { return '<button type="button" class="noc-chip' + (s.lead_days === n ? ' on' : '') + '" data-n="' + n + '">' + (n === 1 ? 'den' : n + ' ' + daysWord(n)) + '</button>'; }).join('');
         $('nocEmailOn').checked = !!s.email_enabled;
-        $('nocPackBasic').checked = !!s.pack_basic;
         $('nocPackCz').checked = !!s.pack_cz;
         $('nocNamedays').checked = !!s.namedays;
+        show($('nocNdBox'), !!s.namedays);
+        $('nocNdToday').textContent = S.namedaysToday.length ? '🌼 Dnes má svátek ' + S.namedaysToday.join(', ') + '.' : '';
+        $('nocNdChosen').innerHTML = (s.nameday_names || []).length
+            ? s.nameday_names.map(function (n) { return '<button type="button" class="noc-chip on" data-nd-del="' + esc(n) + '">' + esc(n) + ' ✕</button>'; }).join('')
+            : '<span class="noc-hint" style="margin:0;">Zatím žádná. Vyhledejte jméno níže.</span>';
     }
     function saveSettings(patch) {
         var prev = Object.assign({}, S.settings);
@@ -401,14 +418,39 @@
     });
     $('nocLead').addEventListener('click', function (e) { var b = e.target.closest('[data-n]'); if (b) saveSettings({ lead_days: +b.getAttribute('data-n') }); });
     $('nocEmailOn').addEventListener('change', function () { saveSettings({ email_enabled: this.checked }); });
-    $('nocPackBasic').addEventListener('change', function () { saveSettings({ pack_basic: this.checked }); });
     $('nocPackCz').addEventListener('change', function () { saveSettings({ pack_cz: this.checked }); });
     $('nocNamedays').addEventListener('change', function () { saveSettings({ namedays: this.checked }); });
+    // výběr jmen pro jmeniny
+    var ndT = null;
+    $('nocNdSearch').addEventListener('input', function () {
+        clearTimeout(ndT); var q = this.value.trim();
+        if (q.length < 2) { $('nocNdResults').innerHTML = ''; return; }
+        ndT = setTimeout(function () {
+            api({ action: 'namedaySearch', q: q }).then(function (r) {
+                var chosen = S.settings.nameday_names || [];
+                var list = ((r && r.results) || []).filter(function (x) { return chosen.indexOf(x.name) === -1; });
+                $('nocNdResults').innerHTML = list.length
+                    ? list.map(function (x) { return '<button type="button" class="noc-chip" data-nd-add="' + esc(x.name) + '">+ ' + esc(x.name) + ' · ' + dm(x.day, x.month) + '</button>'; }).join('')
+                    : '<span class="noc-hint" style="margin:0;">Takové jméno v kalendáři není.</span>';
+            });
+        }, 250);
+    });
+    $('nocNdResults').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-nd-add]'); if (!b) return;
+        saveSettings({ nameday_names: (S.settings.nameday_names || []).concat([b.getAttribute('data-nd-add')]) });
+        $('nocNdSearch').value = ''; this.innerHTML = '';
+    });
+    $('nocNdChosen').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-nd-del]'); if (!b) return;
+        var n = b.getAttribute('data-nd-del');
+        saveSettings({ nameday_names: (S.settings.nameday_names || []).filter(function (x) { return x !== n; }) });
+    });
 
     // ---------- nadchází ----------
     function loadUpcoming() {
         return api({ action: 'upcoming', days: 370 }).then(function (r) {
             if (r && Array.isArray(r.items)) { S.items = r.items; renderUpcoming(); }
+            if (r && r.namedays) { S.namedaysToday = r.namedays.today || []; renderSettings(); }
             else if (!S.items.length) $('nocUp').innerHTML = '<div class="noc-empty">Nepodařilo se načíst. Zkuste stránku obnovit.</div>';
         });
     }
@@ -445,7 +487,6 @@
         var rel = RELATIONS.filter(function (x) { return x.key === p.relation; })[0];
         if (rel) bits.push(rel.label);
         if (p.birthday_day) bits.push('🎂 ' + dm(p.birthday_day, p.birthday_month));
-        if (S.settings.namedays && p.nameday_day) bits.push('🌼 ' + dm(p.nameday_day, p.nameday_month));
         var own = S.dates.filter(function (d) { return d.recipient_id === p.id; }).length + (p.holidays || []).length;
         if (own) bits.push(own + (own === 1 ? ' svátek' : own < 5 ? ' svátky' : ' svátků'));
         if (p.autopilot) bits.push('🤝 autopilot');
@@ -476,6 +517,24 @@
     function dayOpts(sel) { var h = '<option value="">den</option>'; for (var i = 1; i <= 31; i++) h += '<option value="' + i + '"' + (+sel === i ? ' selected' : '') + '>' + i + '.</option>'; return h; }
     function monthOpts(sel) { var h = '<option value="">měsíc</option>'; for (var i = 1; i <= 12; i++) h += '<option value="' + i + '"' + (+sel === i ? ' selected' : '') + '>' + MONTHS_GEN[i - 1] + '</option>'; return h; }
 
+    function autopilotHtml(p) {
+        var need = [!p.budget ? 'rozpočet' : '', !p.address ? 'adresu' : '', !p.phone ? 'telefon' : ''].filter(Boolean);
+        var dep = S.deposit == null ? '' : 'Na depozitu máte <span style="font-weight:700;color:var(--ink,#1a1a1a);">' + S.deposit.toLocaleString('cs-CZ') + ' Kč</span>. ';
+        var topup = 'https://vezminarin.cz/members/?dobit=' + (p.budget || 1000);
+        if (p.autopilot) {
+            return '<div class="noc-auto" style="cursor:default;"><div style="flex:1;"><b>🤝 Autopilot je zapnutý</b><span class="t">Když si nic nevyberete do večera 3 dny předem, připravíme dárek sami' + (p.budget ? ' do ' + p.budget.toLocaleString('cs-CZ') + ' Kč' : '') + ' a zaplatíte ho z depozitu. ' + dep +
+                (S.deposit != null && p.budget && S.deposit < p.budget ? '<a href="' + topup + '" style="color:#186ce0;font-weight:600;">Dobít depozit</a>' : '') + '</span>' +
+                '<button type="button" class="noc-link" data-act="auto-off" style="margin-top:8px;font-size:13px;color:#a32d2d !important;">Vypnout autopilot</button></div></div>' +
+                (need.length ? '<div class="noc-warn">Doplňte prosím ' + need.join(', ') + ' (níže), ať můžeme doručit bez ptaní.</div>' : '');
+        }
+        return '<button type="button" class="noc-btn block" data-act="auto-on" style="margin-top:12px;border-color:#bfe3cb;background:#e7f5ec;color:#1b7a44;">🤝 Zapnout autopilot</button>' +
+            '<div class="noc-auto" data-auto-terms hidden style="cursor:default;display:block;"><b>Autopilot: nikdy nezapomenete</b>' +
+            '<span class="t" style="margin-top:6px;">Jste v letadle, na poradě nebo jste to prostě nestihli? Postaráme se o to za vás:</span>' +
+            '<span class="t">1. Tři dny předem vám jako vždy pošleme připomínku s tipem na dárek.<br>2. Když si do té doby nic nevyberete, florista sám připraví ' + (p.gift_prefs && p.gift_prefs.length ? 'to, co jste vybrali výše' : 'dárek na své uvážení') + (p.budget ? ', do ' + p.budget.toLocaleString('cs-CZ') + ' Kč' : '') + '.<br>3. Zaplatíte z depozitu. Když na něm nebude dost, napíšeme vám do chatu.<br>4. Změnit nebo zrušit to jde kdykoli odpovědí v chatu.</span>' +
+            '<span class="t" style="margin-top:6px;">' + dep + (S.deposit == null || !p.budget || S.deposit < p.budget ? 'Depozit dobijete převodem nebo v prodejně: <a href="' + topup + '" style="color:#186ce0;font-weight:600;">dobít</a>.' : '') + '</span>' +
+            '<div class="noc-row" style="margin-top:10px;"><button type="button" class="noc-btn" data-act="auto-no" style="flex:1;">Teď ne</button><button type="button" class="noc-btn primary" data-act="auto-yes" style="flex:1.4;background:#1b7a44;border-color:#1b7a44;">Zapnout</button></div></div>';
+    }
+
     function editorHtml(p) {
         var own = S.dates.filter(function (d) { return d.recipient_id === p.id; });
         var gift = (p.last_orders || [])[0];
@@ -483,23 +542,22 @@
         return (gift ? '<div class="noc-pb-sec"><div class="noc-gift">Minule jste poslali: <b>' + esc((gift.products || []).join(', ') || 'květiny') + '</b>, ' + esc(dm(d0(gift.date).getDate(), d0(gift.date).getMonth() + 1) + d0(gift.date).getFullYear()) + '</div></div>' : '') +
             '<div class="noc-pb-sec"><a class="noc-btn primary block" href="' + orderUrl(p.id, null) + '">💐 Poslat květiny</a></div>' +
             '<div class="noc-pb-sec"><div class="noc-lbl">🎁 Co posílat</div><div class="noc-chips">' +
-                GIFTS.map(function (g) { return '<button type="button" class="noc-chip' + ((p.gift_prefs || []).indexOf(g.k) !== -1 ? ' on' : '') + '" data-gift="' + g.k + '">' + g.l + '</button>'; }).join('') +
+                S.gifts.map(function (g) {
+                    var on = (p.gift_prefs || []).indexOf(g.key) !== -1;
+                    return g.active
+                        ? '<button type="button" class="noc-chip' + (on ? ' on' : '') + '" data-gift="' + esc(g.key) + '">' + esc(g.emoji + ' ' + g.label) + '</button>'
+                        : '<button type="button" class="noc-chip" disabled title="Brzy v katalogu NARIN Dárky">' + esc(g.emoji + ' ' + g.label) + ' · brzy</button>';
+                }).join('') +
             '</div><div class="noc-lbl" style="margin-top:12px;">Rozpočet na dárek</div>' +
                 '<div class="noc-row"><input type="number" data-f="budget" inputmode="numeric" min="0" step="100" placeholder="např. 1500" value="' + (p.budget || '') + '" style="flex:1;"><span style="flex:0 0 auto;color:var(--muted);font-size:15px;">Kč</span></div>' +
-                '<label class="noc-auto"><div><b>🤝 Autopilot</b><span class="t">Když do 2 dnů před svátkem nic nevyberete, připravíme dárek podle těchto přání sami a zaplatíte ho z depozitu před doručením.</span></div><span class="noc-switch"><input type="checkbox" data-f="auto"' + (p.autopilot ? ' checked' : '') + '><i></i></span></label>' +
-                (p.autopilot && (!p.address || !p.phone || !p.budget) ? '<div class="noc-warn">Pro autopilot doplňte ' + [!p.budget ? 'rozpočet' : '', !p.address ? 'adresu' : '', !p.phone ? 'telefon' : ''].filter(Boolean).join(', ') + ', ať můžeme doručit bez ptaní.</div>' : '') +
+                autopilotHtml(p) +
             '</div>' +
             '<div class="noc-pb-sec"><div class="noc-lbl">🎂 Narozeniny</div><div class="noc-row">' +
                 '<select data-f="bd" style="flex:0 0 84px;">' + dayOpts(p.birthday_day) + '</select>' +
                 '<select data-f="bm" style="flex:1;">' + monthOpts(p.birthday_month) + '</select>' +
                 '<input type="number" data-f="by" inputmode="numeric" placeholder="rok" value="' + (p.birthday_year || '') + '" style="flex:0 0 86px;">' +
             '</div><p class="noc-hint">Rok nemusíte vyplnit. Když ho znáte, připomeneme i kulaté narozeniny.</p></div>' +
-            (S.settings.namedays
-                ? '<div class="noc-pb-sec"><div class="noc-lbl">🌼 Jmeniny</div>' +
-                    (p.nameday_day ? '<div class="noc-nd"><span>Slaví <b>' + dm(p.nameday_day, p.nameday_month) + '</b></span><button type="button" class="noc-link" data-act="nd-edit">Změnit</button></div>'
-                                   : '<p class="noc-hint" style="margin-top:0;">Podle jména „' + esc(p.name) + '“ jsme jmeniny nenašli. Zadejte datum ručně, nebo do jména připište křestní jméno (např. „Máma Jana“).</p>') +
-                    '<div class="noc-row" data-nd-form ' + (p.nameday_day ? 'hidden' : '') + ' style="margin-top:8px;"><select data-f="nd" style="flex:0 0 84px;">' + dayOpts(p.nameday_day) + '</select><select data-f="nm" style="flex:1;">' + monthOpts(p.nameday_month) + '</select></div></div>'
-                : '') +
+
             '<div class="noc-pb-sec"><div class="noc-lbl">💐 Svátky, kdy připomenout</div><div class="noc-chips">' +
                 hol.map(function (h) { return '<button type="button" class="noc-chip' + ((p.holidays || []).indexOf(h.key) !== -1 ? ' on' : '') + '" data-hol="' + h.key + '">' + h.name + '</button>'; }).join('') +
             '</div></div>' +
@@ -547,12 +605,6 @@
         }
         ['bd', 'bm'].forEach(function (k) { f(k).addEventListener('change', saveBirthday); });
         f('by').addEventListener('change', saveBirthday);
-        if (f('nd')) {
-            var saveNd = function () { var d = +f('nd').value || null, m = +f('nm').value || null; if (d && m) patchPerson({ nameday_day: d, nameday_month: m }, function () { renderPeople(); }); };
-            f('nd').addEventListener('change', saveNd); f('nm').addEventListener('change', saveNd);
-            var ndEdit = wrap.querySelector('[data-act="nd-edit"]');
-            if (ndEdit) ndEdit.onclick = function () { show(wrap.querySelector('[data-nd-form]'), true); ndEdit.hidden = true; };
-        }
         wrap.querySelectorAll('[data-gift]').forEach(function (b) {
             b.onclick = function () {
                 b.classList.toggle('on');
@@ -561,7 +613,14 @@
             };
         });
         f('budget').addEventListener('change', function () { patchPerson({ budget: +this.value || null }, function () { if (p.autopilot) renderPeople(); }); });
-        f('auto').addEventListener('change', function () { var on = this.checked; patchPerson({ autopilot: on }, function (ok) { if (!ok) f('auto').checked = !on; renderPeople(); }); });
+        // autopilot: zapnutí jen po přečtení a potvrzení podmínek
+        var autoBtn = wrap.querySelector('[data-act="auto-on"]'), autoOff = wrap.querySelector('[data-act="auto-off"]');
+        if (autoBtn) autoBtn.onclick = function () { show(wrap.querySelector('[data-auto-terms]'), true); autoBtn.hidden = true; };
+        var autoYes = wrap.querySelector('[data-act="auto-yes"]');
+        if (autoYes) autoYes.onclick = function () { patchPerson({ autopilot: true }, function () { renderPeople(); }); };
+        var autoNo = wrap.querySelector('[data-act="auto-no"]');
+        if (autoNo) autoNo.onclick = function () { show(wrap.querySelector('[data-auto-terms]'), false); autoBtn.hidden = false; };
+        if (autoOff) autoOff.onclick = function () { patchPerson({ autopilot: false }, function () { renderPeople(); }); };
         wrap.querySelectorAll('[data-hol]').forEach(function (b) {
             b.onclick = function () {
                 b.classList.toggle('on');
@@ -609,7 +668,7 @@
     }
 
     // ---------- přidat člověka ----------
-    var addRel = null, ndTimer = null;
+    var addRel = null;
     $('nocAddRel').innerHTML = RELATIONS.map(function (r) { return '<button type="button" class="noc-chip" data-rel="' + r.key + '">' + r.label + '</button>'; }).join('');
     $('nocAddRel').addEventListener('click', function (e) {
         var b = e.target.closest('[data-rel]'); if (!b) return;
@@ -618,24 +677,15 @@
     });
     $('nocAddBtn').addEventListener('click', function () { show($('nocAddForm'), true); show(this, false); $('nocAddName').focus(); });
     $('nocAddCancel').addEventListener('click', resetAdd);
-    function resetAdd() { show($('nocAddForm'), false); show($('nocAddBtn'), true); $('nocAddName').value = ''; addRel = null; $('nocAddNd').textContent = ''; errBox($('nocAddErr'), ''); Array.prototype.forEach.call($('nocAddRel').children, function (x) { x.classList.remove('on'); }); }
-    $('nocAddName').addEventListener('input', function () {
-        clearTimeout(ndTimer);
-        var v = this.value.trim();
-        if (!S.settings.namedays || v.length < 2) { $('nocAddNd').textContent = ''; return; }
-        ndTimer = setTimeout(function () {
-            api({ action: 'namedayFor', name: v }).then(function (r) {
-                $('nocAddNd').textContent = r && r.nameday ? '🌼 Jmeniny: ' + dm(r.nameday.day, r.nameday.month) + ' (' + r.nameday.name + ')' : '';
-            });
-        }, 350);
-    });
+    function resetAdd() { show($('nocAddForm'), false); show($('nocAddBtn'), true); $('nocAddName').value = ''; addRel = null; errBox($('nocAddErr'), ''); Array.prototype.forEach.call($('nocAddRel').children, function (x) { x.classList.remove('on'); }); }
     $('nocAddSave').addEventListener('click', function () {
         var name = $('nocAddName').value.trim(), btn = this;
         if (!name) { errBox($('nocAddErr'), 'Napište jméno.'); return; }
         var rel = RELATIONS.filter(function (x) { return x.key === addRel; })[0];
         var hol = (rel ? rel.h : []).map(function (k) {
-            if (k === 'MOTHER') return S.settings.pack_cz && !S.settings.pack_basic ? 'den_matek' : 'den_matek_sns';
+            if (k === 'MOTHER') return S.settings.pack_cz ? 'den_matek' : 'den_matek_sns';
             if (k === 'FATHER') return S.settings.pack_cz ? 'den_otcu' : null;
+            if (k === 'TEACHER') return S.settings.pack_cz ? 'den_ucitelu' : null;
             return k;
         }).filter(Boolean);
         btn.disabled = true; btn.textContent = 'Přidáváme…';
@@ -826,7 +876,13 @@
             $('nocPeople').innerHTML = ''; $('nocSetTxt').textContent = 'Po přihlášení si nastavíte připomínky.';
             return;
         }
-        api({ action: 'getSettings' }).then(function (r) { if (r && r.settings) { S.settings = r.settings; renderSettings(); renderPeople(); } });
+        api({ action: 'getSettings' }).then(function (r) {
+            if (r && r.settings) S.settings = r.settings;
+            if (r && Array.isArray(r.gift_types) && r.gift_types.length) S.gifts = r.gift_types;
+            renderSettings(); renderPeople();
+        });
+        // zůstatek depozitu (pro autopilot)
+        apiFn('customer-deposit', { action: 'get' }).then(function (r) { if (r && typeof r.balance === 'number') { S.deposit = r.balance; renderPeople(); } });
         loadUpcoming();
         loadPeople();
         loadSuggestions();
