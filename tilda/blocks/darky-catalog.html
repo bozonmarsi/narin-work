@@ -1,0 +1,143 @@
+<!--
+  NARIN Dárky: katalog dárků (/darky). Nahrazuje darky-soon.html, až budou dárky v Tilda Store.
+  Na stránce: blok Tilda Store s produkty dárků + tento T123 blok (kdekoli na stránce).
+
+  Co dělá:
+  * taby podle podkategorie (Přání, Sladkosti, Hračky, Nádobí, Textil, Doplňky) — podkategorii
+    nastavuje manager v aplikaci (Магазин → категория «Dárky» → подкатегория);
+  * schová, co není skladem (zásoba 0 nebo ručně schované), stejně jako katalog květin;
+  * odkaz /darky#sladkosti rovnou otevře tab (používají ho Důležité dny a e-maily);
+  * fotku a odkaz z Tilda karty pošle do Supabase (sync_product_media), aby je Důležité dny,
+    e-maily s tipy a autopilot ukázaly u konkrétního dárku. Manager nic navíc nevyplňuje.
+-->
+<style>
+.ndc-nav { margin: 16px 0 6px; font-family: 'Rubik', sans-serif; }
+.ndc-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 0 4px 6px 8px; margin: 0 -4px; -webkit-overflow-scrolling: touch; }
+.ndc-tabs::-webkit-scrollbar { display: none; }
+.ndc-tab { flex: 0 0 auto; padding: 10px 18px; border-radius: 24px; border: 1px solid #e0e2e6; background: #fff; font: 600 14px 'Rubik', sans-serif; white-space: nowrap; cursor: pointer; color: #16181d; }
+.ndc-tab.active { background: #186ce0; border-color: #186ce0; color: #fff; }
+.ndc-tab small { font-weight: 500; opacity: .7; margin-left: 4px; }
+.ndc-empty { font-family: 'Rubik', sans-serif; font-size: 14px; color: #8a8f98; padding: 24px 8px; }
+.js-store-grid-cont [data-ndc-hidden="1"] { display: none !important; }
+.js-store-grid-cont .t-clear { display: none !important; }
+</style>
+
+<script>
+(function () {
+    var SUPABASE_URL = 'https://wqburlamuipxmenqsjnx.supabase.co';
+    var SUPABASE_KEY = 'sb_publishable_ORMmBYvVjH6i2GanWa2JyA_mWm3fTCZ';
+    // pořadí a názvy tabů (klíče = product_stickers.gift_subcategory)
+    var SUBS = [
+        { key: 'prani', label: 'Přání', emoji: '💌' },
+        { key: 'sladkosti', label: 'Sladkosti', emoji: '🍫' },
+        { key: 'hracky', label: 'Hračky', emoji: '🧸' },
+        { key: 'nadobi', label: 'Nádobí', emoji: '🍽️' },
+        { key: 'textil', label: 'Textil', emoji: '🧣' },
+        { key: 'doplnky', label: 'Doplňky', emoji: '🎀' }
+    ];
+
+    var byName = {};          // název → { sub, available, photo_url, product_url }
+    // jen náš klíč z hashe (Tilda používá hash i pro otevřenou kartu: #!/tproduct/…)
+    function hashKey() { var k = (location.hash || '').replace('#', ''); return SUBS.some(function (s) { return s.key === k; }) ? k : null; }
+    var active = hashKey() || '';
+    var grid = null, synced = {};
+
+    function rpc(fn, body) {
+        return fetch(SUPABASE_URL + '/rest/v1/rpc/' + fn, {
+            method: 'POST',
+            headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+            body: JSON.stringify(body || {})
+        });
+    }
+    // data hned (souběžně s načítáním stránky), karty až budou v DOM
+    var dataPromise = rpc('get_gift_catalog').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+
+    var decoder = document.createElement('textarea');
+    function norm(t) { decoder.innerHTML = t || ''; return decoder.value.replace(/\s+/g, ' ').trim(); }
+
+    function cardName(card) { var el = card.querySelector('.js-product-name'); return el ? norm(el.textContent) : ''; }
+    function cardPhoto(card) {
+        var el = card.querySelector('.js-product-img, .t-store__card__bgimg, .t-bgimg');
+        var url = el && (el.getAttribute('data-original') || '');
+        if (!url && el) { var m = /url\(["']?([^"')]+)/.exec(el.style.backgroundImage || ''); url = m ? m[1] : ''; }
+        if (!url) { var img = card.querySelector('img'); url = img ? (img.getAttribute('data-original') || img.src || '') : ''; }
+        return /^https:\/\/[a-z0-9.-]*tildacdn\.(com|one|pro|net)\//.test(url) ? url : null;
+    }
+    function cardLink(card) {
+        var a = card.querySelector('a[href*="/tproduct/"]') || card.querySelector('a[href^="https://vezminarin.cz/"]');
+        var href = a ? a.href.split('#')[0] : '';
+        return /^https:\/\/(www\.)?vezminarin\.cz\//.test(href) ? href : null;
+    }
+
+    // fotka a odkaz z karty → Supabase (jen když se liší; jednou za návštěvu na produkt)
+    function syncMedia(card, name) {
+        var row = byName[name];
+        if (!row || synced[name]) return;
+        var photo = cardPhoto(card), link = cardLink(card);
+        if ((photo && photo !== row.photo_url) || (link && link !== row.product_url)) {
+            synced[name] = true;
+            rpc('sync_product_media', { p_product_name: name, p_photo_url: photo, p_product_url: link }).catch(function () {});
+        }
+    }
+
+    function counts() {
+        var c = {};
+        Object.keys(byName).forEach(function (n) { var r = byName[n]; if (r.available && r.sub) c[r.sub] = (c[r.sub] || 0) + 1; });
+        return c;
+    }
+
+    function renderTabs() {
+        var bar = document.querySelector('.ndc-tabs'); if (!bar) return;
+        var c = counts();
+        var tabs = [{ key: '', label: 'Vše', emoji: '' }].concat(SUBS.filter(function (s) { return c[s.key]; }));
+        if (active && !c[active]) active = '';
+        bar.innerHTML = tabs.map(function (t) {
+            return '<button type="button" class="ndc-tab' + (t.key === active ? ' active' : '') + '" data-k="' + t.key + '">' +
+                (t.emoji ? t.emoji + ' ' : '') + t.label + (t.key ? '<small>' + c[t.key] + '</small>' : '') + '</button>';
+        }).join('');
+    }
+
+    function renderPass() {
+        if (!grid) return;
+        var shown = 0;
+        grid.querySelectorAll('.t-store__card').forEach(function (card) {
+            var name = cardName(card), row = byName[name];
+            // neznámý produkt (ještě není v aplikaci) ukážeme jen ve "Vše"
+            var hide = row ? (!row.available || (active && row.sub !== active)) : !!active;
+            if (hide) card.setAttribute('data-ndc-hidden', '1'); else { card.removeAttribute('data-ndc-hidden'); shown++; }
+            if (row) syncMedia(card, name);
+        });
+        var empty = document.querySelector('.ndc-empty');
+        if (empty) empty.hidden = shown > 0;
+    }
+
+    function init() {
+        dataPromise.then(function (data) {
+            if (!data) return;
+            (data.products || []).forEach(function (p) { byName[norm(p.name)] = p; });
+            grid = document.querySelector('.js-store-grid-cont');
+            if (!grid) return;
+            if (!document.querySelector('.ndc-nav')) {
+                var nav = document.createElement('div');
+                nav.className = 'ndc-nav';
+                nav.innerHTML = '<div class="ndc-tabs"></div><div class="ndc-empty" hidden>Tady teď nic skladem nemáme. Mrkněte prosím do jiné kategorie.</div>';
+                grid.parentElement.insertBefore(nav, grid);
+                nav.querySelector('.ndc-tabs').addEventListener('click', function (e) {
+                    var b = e.target.closest('[data-k]'); if (!b) return;
+                    active = b.getAttribute('data-k');
+                    try { history.replaceState(null, '', active ? '#' + active : location.pathname + location.search); } catch (err) {}
+                    renderTabs(); renderPass();
+                });
+            }
+            renderTabs(); renderPass();
+            // Tilda karty dokresluje později (stejně jako v katalogu květin)
+            [1200, 3000, 6000].forEach(function (d) { setTimeout(renderPass, d); });
+            var pending = null;
+            new MutationObserver(function () { clearTimeout(pending); pending = setTimeout(renderPass, 150); })
+                .observe(grid, { childList: true, subtree: true });
+        });
+    }
+    window.addEventListener('hashchange', function () { var k = hashKey(); if (k === null && location.hash) return; active = k || ''; renderTabs(); renderPass(); });
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
+</script>

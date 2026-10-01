@@ -194,11 +194,46 @@ Deno.serve(async (req) => {
     // ---------- nastavení připomínek ----------
 
     if (action === 'getSettings') {
+      // typ dárku je "active" jen když v něm teď něco máme skladem (occ_gift_types_live)
       const [{ data }, { data: gifts }] = await Promise.all([
         supabase.from('occasion_settings').select('*').eq('email', normalizedEmail.toLowerCase()).maybeSingle(),
-        supabase.from('occasion_gift_types').select('key, label, emoji, active, catalog_url').order('sort_order'),
+        supabase.rpc('occ_gift_types_live'),
       ])
-      return json({ settings: { ...DEFAULT_SETTINGS, ...(data ?? {}) }, saved: !!data, gift_types: gifts ?? [] })
+      const gift_types = (gifts ?? []).map((g: { key: string; label: string; emoji: string; catalog_url: string | null; available: boolean; in_stock: number }) =>
+        ({ key: g.key, label: g.label, emoji: g.emoji, catalog_url: g.catalog_url, active: g.available, in_stock: g.in_stock }))
+      return json({ settings: { ...DEFAULT_SETTINGS, ...(data ?? {}) }, saved: !!data, gift_types })
+    }
+
+    // ---------- NARIN Dárky: co je skladem + oblíbené u člověka ----------
+
+    if (action === 'giftCatalog') {
+      const { data, error } = await supabase.rpc('gift_products')
+      if (error) return json({ error: error.message }, 500)
+      const products = (data ?? [])
+        .filter((g: { available: boolean; sub: string | null }) => g.available && g.sub)
+        .map((g: { name: string; sub: string; price: number | null; photo_url: string | null; product_url: string | null }) =>
+          ({ name: g.name, sub: g.sub, price: g.price, photo_url: g.photo_url, product_url: g.product_url }))
+      return json({ products })
+    }
+
+    if (action === 'togglePick') {
+      const rid = String(body.id ?? '')
+      const productName = cleanText(body.product_name, 200)
+      if (!rid || !productName) return json({ error: 'id and product_name required' }, 400)
+      if (!(await ownsRecipient(rid, normalizedEmail))) return json({ error: 'recipient_not_found' }, 404)
+      if (body.on) {
+        const { data: prod } = await supabase.rpc('gift_products')
+        if (!(prod ?? []).some((g: { name: string }) => g.name === productName)) return json({ error: 'unknown_product' }, 400)
+        const { count } = await supabase.from('recipient_gift_picks').select('*', { count: 'exact', head: true }).eq('recipient_id', rid)
+        if ((count ?? 0) >= 12) return json({ error: 'too_many' }, 400)
+        const { error } = await supabase.from('recipient_gift_picks').upsert({ recipient_id: rid, product_name: productName })
+        if (error) return json({ error: error.message }, 500)
+      } else {
+        const { error } = await supabase.from('recipient_gift_picks').delete().eq('recipient_id', rid).eq('product_name', productName)
+        if (error) return json({ error: error.message }, 500)
+      }
+      const { data: picks } = await supabase.from('recipient_gift_picks').select('product_name').eq('recipient_id', rid).order('created_at')
+      return json({ picks: (picks ?? []).map((x: { product_name: string }) => x.product_name) })
     }
 
     if (action === 'saveSettings') {
@@ -321,6 +356,10 @@ Deno.serve(async (req) => {
         .neq('status', 'cancelled')
         .order('created_at', { ascending: false })
         .limit(300)
+      const ids = (data ?? []).map((r) => r.id)
+      const { data: pickRows } = ids.length
+        ? await supabase.from('recipient_gift_picks').select('recipient_id, product_name').in('recipient_id', ids).order('created_at')
+        : { data: [] }
       const norm = (v: unknown) => String(v ?? '').replace(/\s+/g, ' ').trim().toLowerCase()
       const enriched = (data ?? []).map((r) => {
         const target = norm(r.name)
@@ -339,7 +378,8 @@ Deno.serve(async (req) => {
               .filter(Boolean)
             return { date: o.delivery_date ?? String(o.created_at).slice(0, 10), products, total: o.order_total }
           })
-        return { ...r, last_orders }
+        const picks = (pickRows ?? []).filter((x: { recipient_id: string }) => x.recipient_id === r.id).map((x: { product_name: string }) => x.product_name)
+        return { ...r, last_orders, picks }
       })
       return json({ recipients: enriched })
     }

@@ -106,6 +106,20 @@
 .noc textarea { height:auto; min-height:70px; padding:11px 13px; resize:vertical; line-height:1.4; }
 .noc select { padding-right:30px; background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8f98' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center / 16px; }
 .noc input:focus, .noc select:focus, .noc textarea:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(24,108,224,.12); }
+.noc-gal { display:flex; gap:10px; overflow-x:auto; padding:2px 2px 8px; margin:10px -2px 0; scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch; }
+.noc-gal::-webkit-scrollbar { display:none; }
+.noc-gc { flex:0 0 128px; position:relative; border:1.5px solid var(--line); border-radius:14px; overflow:hidden; background:#fff; scroll-snap-align:start; }
+.noc-gc.on { border-color:#e0395a; }
+.noc-gc a { display:block; text-decoration:none; color:inherit; }
+.noc-gc img, .noc-gc .ph { width:100%; height:112px; object-fit:cover; display:block; background:#f4f5f7; text-align:center; line-height:112px; font-size:32px; }
+.noc-gc .nm { font-size:12.5px; font-weight:600; padding:7px 9px 0; line-height:1.3; min-height:33px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; color:var(--ink); }
+.noc-gc .pr { font-size:12.5px; color:var(--blue); font-weight:600; padding:3px 9px 9px; }
+.noc-heart { position:absolute; top:6px; right:6px; width:32px; height:32px; border-radius:50%; border:none; background:rgba(255,255,255,.94); font-size:15px; line-height:32px; text-align:center; padding:0; cursor:pointer; box-shadow:0 1px 4px rgba(0,0,0,.12); }
+.noc-tips { display:flex; gap:6px; margin-top:8px; overflow-x:auto; }
+.noc-tips::-webkit-scrollbar { display:none; }
+.noc-tip { flex:0 0 auto; display:flex; align-items:center; gap:7px; max-width:190px; padding:4px 11px 4px 4px; border:1px solid var(--line); border-radius:999px; text-decoration:none; color:var(--ink) !important; font-size:12.5px; font-weight:500; background:#fff; }
+.noc-tip img, .noc-tip i { width:26px; height:26px; border-radius:50%; object-fit:cover; flex-shrink:0; background:#f4f5f7; font-style:normal; text-align:center; line-height:26px; font-size:14px; }
+.noc-up-b .noc-tip span { display:block; margin:0; font-size:12.5px; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .noc-hint { font-size:13px; color:var(--muted); margin:6px 2px 0; line-height:1.4; }
 .noc-btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; height:46px; padding:0 20px; border-radius:999px; border:1.5px solid var(--line); background:#fff; color:var(--ink); font-size:15px; font-weight:500; cursor:pointer; }
 .noc-btn.primary { background:var(--blue); border-color:var(--blue); color:#fff; font-weight:600; }
@@ -286,7 +300,9 @@
         try {
             localStorage.setItem(PRESELECT_KEY, JSON.stringify({ id: qs.get('objednat') || null, date: qs.get('datum') || null, exp: Date.now() + 6 * 3600000 }));
         } catch (e) {}
-        location.replace(CATALOG_URL);
+        // z e-mailu může přijít i konkrétní dárek (karta produktu na našem webu)
+        var prod = qs.get('produkt') || '';
+        location.replace(/^https:\/\/(www\.)?vezminarin\.cz\//.test(prod) ? prod : CATALOG_URL);
     })();
 
     // Klíče stejné jako v SQL (occ_holiday_next) a recipients.holidays
@@ -320,6 +336,7 @@
     ];
     var LEADS = [1, 3, 7];
     // typy dárků bere stránka z tabulky occasion_gift_types (getSettings); neaktivní = „brzy“
+    var DARKY_URL = 'https://vezminarin.cz/darky';
     var GIFTS_FALLBACK = [{ key: 'kytice', label: 'Kytice', emoji: '💐', active: true }, { key: 'na_vas', label: 'Nechám na vás', emoji: '✨', active: true }];
     var KIND_EMOJI = { birthday: '🎂', nameday: '🌼', holiday: '💐', general: '💐', date: '📅' };
     var AV_COLORS = [['#e6effb', '#186ce0'], ['#fde9ef', '#b3264a'], ['#e7f5ec', '#1b7a44'], ['#fff3dc', '#8a5a00'], ['#efe9fb', '#5b3fb3'], ['#e6f6f8', '#0b6f7c']];
@@ -344,10 +361,11 @@
         if (it.kind === 'date' && it.years) return it.title + ' · ' + it.years + '. výročí';
         return it.title;
     }
-    function orderUrl(recipientId, date) {
+    function orderUrl(recipientId, date, productUrl) {
         var q = new URLSearchParams();
         q.set('objednat', recipientId || '');
         if (date) q.set('datum', date);
+        if (productUrl) q.set('produkt', productUrl);
         return 'https://vezminarin.cz/members/occasions?' + q.toString();
     }
     function errBox(el, msg) { el.textContent = msg || ''; show(el, !!msg); }
@@ -386,7 +404,7 @@
     }
 
     // ---------- stav ----------
-    var S = { gifts: GIFTS_FALLBACK, namedaysToday: [], settings: { lead_days: 3, email_enabled: true, pack_basic: true, pack_cz: false, namedays: false, nameday_names: [] }, items: [], people: [], dates: [], openId: null, showAll: false };
+    var S = { catalog: [], gifts: GIFTS_FALLBACK, namedaysToday: [], settings: { lead_days: 3, email_enabled: true, pack_basic: true, pack_cz: false, namedays: false, nameday_names: [] }, items: [], people: [], dates: [], openId: null, showAll: false };
 
     // ---------- nastavení ----------
     function renderSettings() {
@@ -454,6 +472,54 @@
             else if (!S.items.length) $('nocUp').innerHTML = '<div class="noc-empty">Nepodařilo se načíst. Zkuste stránku obnovit.</div>';
         });
     }
+    // ---------- NARIN Dárky ----------
+    // Tipy pro člověka: oblíbené skladem, pak zvolené podkategorie do rozpočtu (stejně jako SQL occ_gift_suggestions)
+    function suggestFor(p, limit) {
+        if (!p || !S.catalog.length) return [];
+        var picks = p.picks || [], prefs = p.gift_prefs || [];
+        var fav = S.catalog.filter(function (g) { return picks.indexOf(g.name) !== -1; });
+        var more = S.catalog.filter(function (g) {
+            return picks.indexOf(g.name) === -1 && prefs.indexOf(g.sub) !== -1 && (!p.budget || !g.price || g.price <= p.budget);
+        }).sort(function (a, b) { return (b.price || 0) - (a.price || 0); });
+        return fav.concat(more).slice(0, limit);
+    }
+    function priceTxt(v) { return v ? Math.round(v).toLocaleString('cs-CZ') + ' Kč' : ''; }
+    function tipsHtml(it, n) {
+        if (!it.recipient_id || n > 14) return '';
+        var p = S.people.filter(function (x) { return x.id === it.recipient_id; })[0];
+        var list = suggestFor(p, 3);
+        if (!list.length) return '';
+        return '<div class="noc-tips">' + list.map(function (g) {
+            return '<a class="noc-tip" href="' + esc(orderUrl(it.recipient_id, it.occasion_date, g.product_url)) + '">' +
+                (g.photo_url ? '<img src="' + esc(g.photo_url) + '" alt="" loading="lazy">' : '<i>🎁</i>') +
+                '<span>' + ((p.picks || []).indexOf(g.name) !== -1 ? '❤️ ' : '') + esc(g.name) + (g.price ? ' · ' + priceTxt(g.price) : '') + '</span></a>';
+        }).join('') + '</div>';
+    }
+    function galleryInner(p) {
+        var picks = p.picks || [];
+        var subs = (p.gift_prefs || []).filter(function (k) { return S.catalog.some(function (g) { return g.sub === k; }); });
+        var list = S.catalog.filter(function (g) { return !subs.length || subs.indexOf(g.sub) !== -1 || picks.indexOf(g.name) !== -1; })
+            .sort(function (a, b) { return (picks.indexOf(b.name) !== -1) - (picks.indexOf(a.name) !== -1); });
+        var gone = picks.filter(function (nm) { return !S.catalog.some(function (g) { return g.name === nm; }); });
+        return '<div class="noc-gal">' + list.map(function (g) {
+                var on = picks.indexOf(g.name) !== -1;
+                return '<div class="noc-gc' + (on ? ' on' : '') + '"><a href="' + esc(g.product_url || DARKY_URL) + '" target="_blank" rel="noopener">' +
+                    (g.photo_url ? '<img src="' + esc(g.photo_url) + '" alt="" loading="lazy">' : '<div class="ph">🎁</div>') +
+                    '<div class="nm">' + esc(g.name) + '</div><div class="pr">' + priceTxt(g.price) + '</div></a>' +
+                    '<button type="button" class="noc-heart" data-pick="' + esc(g.name) + '" aria-label="' + (on ? 'Odebrat z oblíbených' : 'Přidat do oblíbených') + '">' + (on ? '❤️' : '🤍') + '</button></div>';
+            }).join('') + '</div>' +
+            (gone.length ? '<div class="noc-chips" style="margin-top:6px;">' + gone.map(function (nm) {
+                return '<button type="button" class="noc-chip" data-unpick="' + esc(nm) + '" style="height:32px;font-size:12.5px;">❤️ ' + esc(nm) + ' · teď není skladem ✕</button>';
+            }).join('') + '</div>' : '') +
+            '<a href="' + DARKY_URL + '" target="_blank" rel="noopener" class="noc-link" style="display:inline-block;margin-top:8px;font-size:13px;text-decoration:none;">Všechny dárky NARIN →</a>';
+    }
+    function galleryHtml(p) {
+        if (!S.catalog.length && !(p.picks || []).length) return '';
+        return '<div class="noc-lbl" style="margin:16px 2px 0;">❤️ Oblíbené dárky</div>' +
+            '<p class="noc-hint" style="margin:2px 2px 0;">Označte srdíčkem, co by udělalo radost. Připomeneme to v e-mailu a autopilot to pošle, když to bude skladem.</p>' +
+            '<div data-gal>' + galleryInner(p) + '</div>';
+    }
+
     function renderUpcoming() {
         var list = S.items, box = $('nocUp');
         $('nocUpCount').textContent = list.length ? list.length + ' v příštích 12 měsících' : '';
@@ -465,7 +531,7 @@
             var soon = n <= Math.max(7, S.settings.lead_days);
             html += '<div class="noc-up' + (n <= 3 ? ' soon' : '') + '">' +
                 '<div class="noc-day"><b>' + d.getDate() + '</b><small>' + DOW[d.getDay()] + '</small></div>' +
-                '<div class="noc-up-b"><b>' + (KIND_EMOJI[it.kind] || '') + ' ' + esc(itemTitle(it)) + '</b><span>' + (it.person ? esc(it.person) + ' · ' : '') + '<em>' + inDays(n) + '</em></span></div>' +
+                '<div class="noc-up-b"><b>' + (KIND_EMOJI[it.kind] || '') + ' ' + esc(itemTitle(it)) + '</b><span>' + (it.person ? esc(it.person) + ' · ' : '') + '<em>' + inDays(n) + '</em></span>' + tipsHtml(it, n) + '</div>' +
                 (soon ? '<a class="noc-order' + (n > 3 ? ' ghost' : '') + '" href="' + orderUrl(it.recipient_id, it.occasion_date) + '">Objednat</a>' : '') +
                 '</div>';
         });
@@ -544,11 +610,11 @@
             '<div class="noc-pb-sec"><div class="noc-lbl">🎁 Co posílat</div><div class="noc-chips">' +
                 S.gifts.map(function (g) {
                     var on = (p.gift_prefs || []).indexOf(g.key) !== -1;
-                    return g.active
+                    return g.active || on
                         ? '<button type="button" class="noc-chip' + (on ? ' on' : '') + '" data-gift="' + esc(g.key) + '">' + esc(g.emoji + ' ' + g.label) + '</button>'
                         : '<button type="button" class="noc-chip" disabled title="Brzy v katalogu NARIN Dárky">' + esc(g.emoji + ' ' + g.label) + ' · brzy</button>';
                 }).join('') +
-            '</div><div class="noc-lbl" style="margin-top:12px;">Rozpočet na dárek</div>' +
+            '</div>' + galleryHtml(p) + '<div class="noc-lbl" style="margin-top:16px;">Rozpočet na dárek</div>' +
                 '<div class="noc-row"><input type="number" data-f="budget" inputmode="numeric" min="0" step="100" placeholder="např. 1500" value="' + (p.budget || '') + '" style="flex:1;"><span style="flex:0 0 auto;color:var(--muted);font-size:15px;">Kč</span></div>' +
                 autopilotHtml(p) +
             '</div>' +
@@ -591,7 +657,7 @@
         function patchPerson(patch, done) {
             api(Object.assign({ action: 'updateRecipient', id: id }, patch)).then(function (r) {
                 if (r && r.recipient) {
-                    var keep = p.last_orders; Object.assign(p, r.recipient); p.last_orders = keep;
+                    var keep = p.last_orders, keepPicks = p.picks; Object.assign(p, r.recipient); p.last_orders = keep; p.picks = keepPicks;
                     errBox(err, ''); if (done) done(true); loadUpcoming();
                 } else { errBox(err, 'Nepodařilo se uložit. Zkuste to prosím znovu.'); if (done) done(false); }
             });
@@ -609,10 +675,26 @@
             b.onclick = function () {
                 b.classList.toggle('on');
                 var keys = Array.prototype.map.call(wrap.querySelectorAll('[data-gift].on'), function (x) { return x.getAttribute('data-gift'); });
-                patchPerson({ gift_prefs: keys }, function (ok) { if (!ok) b.classList.toggle('on'); });
+                patchPerson({ gift_prefs: keys }, function (ok) { if (!ok) b.classList.toggle('on'); else renderGallery(); });
             };
         });
         f('budget').addEventListener('change', function () { patchPerson({ budget: +this.value || null }, function () { if (p.autopilot) renderPeople(); }); });
+        // oblíbené dárky (srdíčko) — překreslí se jen galerie, ne celý editor
+        function renderGallery() { var g = wrap.querySelector('[data-gal]'); if (g) g.innerHTML = galleryInner(p); }
+        var galBox = wrap.querySelector('[data-gal]');
+        if (galBox) galBox.onclick = function (e) {
+            var b = e.target.closest('[data-pick],[data-unpick]'); if (!b) return;
+            var nm = b.getAttribute('data-pick') || b.getAttribute('data-unpick');
+            var on = b.hasAttribute('data-pick') && (p.picks || []).indexOf(nm) === -1;
+            var prev = (p.picks || []).slice();
+            p.picks = on ? prev.concat([nm]) : prev.filter(function (x) { return x !== nm; });
+            renderGallery();
+            api({ action: 'togglePick', id: p.id, product_name: nm, on: on }).then(function (r) {
+                if (r && Array.isArray(r.picks)) { p.picks = r.picks; errBox(err, ''); if (S.items.length) renderUpcoming(); }
+                else { p.picks = prev; errBox(err, r && r.error === 'too_many' ? 'Oblíbených může být nejvýš 12.' : 'Nepodařilo se uložit. Zkuste to prosím znovu.'); }
+                renderGallery();
+            });
+        };
         // autopilot: zapnutí jen po přečtení a potvrzení podmínek
         var autoBtn = wrap.querySelector('[data-act="auto-on"]'), autoOff = wrap.querySelector('[data-act="auto-off"]');
         if (autoBtn) autoBtn.onclick = function () { show(wrap.querySelector('[data-auto-terms]'), true); autoBtn.hidden = true; };
@@ -884,8 +966,11 @@
         // zůstatek depozitu (pro autopilot)
         apiFn('customer-deposit', { action: 'get' }).then(function (r) { if (r && typeof r.balance === 'number') { S.deposit = r.balance; renderPeople(); } });
         loadUpcoming();
-        loadPeople();
+        loadPeople().then(function () { if (S.items.length) renderUpcoming(); });
         loadSuggestions();
+        api({ action: 'giftCatalog' }).then(function (r) {
+            if (r && Array.isArray(r.products)) { S.catalog = r.products; renderPeople(); if (S.items.length) renderUpcoming(); }
+        });
     });
 })();
 </script>
