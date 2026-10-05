@@ -207,7 +207,9 @@ html.narin-cat-loading .js-store-grid-cont { opacity: 0 !important; }
     }
 
     function addAvailBadge(card, type) {
-        if (card.querySelector('.narin-avail-badge')) return;
+        var old = card.querySelector('.narin-avail-badge');
+        if (old && old.classList.contains(type) && (type !== 'special' || old.getAttribute('data-d') === specialDateLabel)) return;
+        if (old) old.remove();  // наличие изменилось (фоновое обновление) — перерисовать
         var textWrapper = card.querySelector('.t-store__card__textwrapper');
         if (!textWrapper) return;
         var badge = document.createElement('div');
@@ -219,13 +221,16 @@ html.narin-cat-loading .js-store-grid-cont { opacity: 0 !important; }
         // не раз ломались при копипасте этого файла в редактор Tilda.
         var DORUCIME = 'Doru' + String.fromCharCode(269) + String.fromCharCode(237) + 'me';
         label.textContent = type === 'today' ? DORUCIME + ' dnes' : type === 'special' ? DORUCIME + ' ' + specialDateLabel : DORUCIME + ' z' + String.fromCharCode(237) + 'tra';
+        badge.setAttribute('data-d', specialDateLabel);
         badge.appendChild(dot);
         badge.appendChild(label);
         textWrapper.insertBefore(badge, textWrapper.firstChild);
     }
 
     function addCustomBadge(card, text, color) {
-        if (card.querySelector('.narin-custom-badge')) return;
+        var old = card.querySelector('.narin-custom-badge');
+        if (old && old.textContent === text && old.getAttribute('data-c') === (color || '#186ce0')) return;
+        if (old) old.remove();
         if (window.getComputedStyle(card).position === 'static') {
             card.style.position = 'relative';
         }
@@ -233,6 +238,7 @@ html.narin-cat-loading .js-store-grid-cont { opacity: 0 !important; }
         badge.className = 'narin-custom-badge';
         badge.textContent = text;
         badge.style.background = color || '#186ce0';
+        badge.setAttribute('data-c', color || '#186ce0');
         card.appendChild(badge);
     }
 
@@ -379,9 +385,12 @@ html.narin-cat-loading .js-store-grid-cont { opacity: 0 !important; }
             }
 
             var badgeRow = badgeMap[name];
-            if (badgeRow) {
-                var resolved = resolveCustomBadge(badgeRow);
-                if (resolved) addCustomBadge(card, resolved.text, resolved.color);
+            var resolved = badgeRow ? resolveCustomBadge(badgeRow) : null;
+            if (resolved) {
+                addCustomBadge(card, resolved.text, resolved.color);
+            } else {
+                var stale = card.querySelector('.narin-custom-badge');
+                if (stale) stale.remove();
             }
         });
 
@@ -549,23 +558,30 @@ html.narin-cat-loading .js-store-grid-cont { opacity: 0 !important; }
         try { localStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), data: data })); } catch (e) {}
     }
 
-    // Запрос с таймаутом и повтором: раньше один медленный или упавший
-    // ответ Supabase означал, что каталог так и оставался без вкладок и
-    // фильтров до перезагрузки — то самое "то работает, то нет".
+    // Основной источник — narin-work.vercel.app/api/catalog: ответ лежит в
+    // CDN Vercel по всему миру (обновляется раз в 20 с), отдаётся за
+    // десятки миллисекунд и не зависит от того, отвечает ли база прямо
+    // сейчас. Запасной — тот же RPC напрямую в Supabase. Простой GET без
+    // своих заголовков — браузер не делает лишний предварительный запрос.
+    var SOURCES = [
+        function () { return { url: 'https://narin-work.vercel.app/api/catalog', opts: {} }; },
+        function () {
+            return { url: SUPABASE_URL + '/rest/v1/rpc/get_catalog_page_data', opts: {
+                method: 'POST',
+                headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+                body: '{}',
+            } };
+        },
+    ];
+
+    // attempt 0 → Vercel, 1 → Supabase, 2 → Vercel ещё раз; на каждый 8 с.
     function fetchData(attempt) {
         attempt = attempt || 0;
+        var src = SOURCES[attempt % SOURCES.length]();
         var ctrl = window.AbortController ? new AbortController() : null;
         var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 8000) : null;
-        return fetch(SUPABASE_URL + '/rest/v1/rpc/get_catalog_page_data', {
-            method: 'POST',
-            headers: {
-                'apikey': SUPABASE_ANON_KEY,
-                'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-                'Content-Type': 'application/json',
-            },
-            body: '{}',
-            signal: ctrl ? ctrl.signal : undefined,
-        }).then(function (r) {
+        if (ctrl) src.opts.signal = ctrl.signal;
+        return fetch(src.url, src.opts).then(function (r) {
             if (timer) clearTimeout(timer);
             if (!r.ok) throw new Error('HTTP ' + r.status);
             return r.json();
@@ -575,7 +591,7 @@ html.narin-cat-loading .js-store-grid-cont { opacity: 0 !important; }
         }).catch(function (err) {
             if (timer) clearTimeout(timer);
             if (attempt >= 2) throw err;
-            return new Promise(function (res) { setTimeout(res, attempt ? 3000 : 1000); })
+            return new Promise(function (res) { setTimeout(res, attempt ? 1500 : 0); })
                 .then(function () { return fetchData(attempt + 1); });
         });
     }
@@ -663,6 +679,25 @@ html.narin-cat-loading .js-store-grid-cont { opacity: 0 !important; }
                 console.error('narin catalog engine', err);
                 reveal();
             });
+
+        // Пока каталог открыт — наличие и плашки обновляются сами: раз в
+        // минуту и сразу при возврате на вкладку. Перерисовка только если
+        // данные правда изменились, чтобы карточки не дёргались.
+        var lastJson = null;
+        function refresh() {
+            if (document.hidden) return;
+            fetchData().then(function (data) {
+                var json = JSON.stringify(data);
+                if (json === lastJson) return;
+                lastJson = json;
+                writeCache(data);
+                applyData(data);
+                if (started) { renderSubBar(); renderPass(); }
+            }).catch(function () {});
+        }
+        dataPromise.then(function (d) { lastJson = JSON.stringify(d); }, function () {});
+        setInterval(refresh, 60000);
+        document.addEventListener('visibilitychange', function () { if (!document.hidden) refresh(); });
     }
 
     if (document.readyState === 'loading') {
