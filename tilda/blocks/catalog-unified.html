@@ -53,6 +53,14 @@
 .js-store-grid-cont [data-narin-hidden="1"] { display: none !important; }
 .js-store-grid-cont .t-clear { display: none !important; }
 
+/* Пока карточки не отфильтрованы, сетку не показываем: иначе человек
+   видит ВСЕ товары (подарки, распроданное, другие категории), а через
+   секунду они пропадают и прыгают — выглядит как "сломалось". Класс
+   снимается сразу после первого рендера или по страховке через 4 с,
+   даже если база не ответила (тогда лучше показать всё, чем пустоту). */
+html.narin-cat-loading .js-store-grid-cont { opacity: 0 !important; }
+.js-store-grid-cont { transition: opacity .2s ease; }
+
 .narin-avail-badge { display: inline-flex; align-items: center; gap: 5px; margin-bottom: 3px; font-family: 'Rubik', sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 0.2px; white-space: nowrap; }
 .narin-avail-badge .narin-avail-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 .narin-avail-badge.today { color: #0a8a3a; }
@@ -85,6 +93,12 @@
 </style>
 <script>
 (function () {
+    // Блок вставлен на страницу дважды (или вместе со старой копией) —
+    // два движка начинают переставлять одни и те же карточки друг за
+    // другом. Работает только первый.
+    if (window.__narinCatalogEngine) return;
+    window.__narinCatalogEngine = true;
+
     var SUPABASE_URL = 'https://wqburlamuipxmenqsjnx.supabase.co';
     var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxYnVybGFtdWlweG1lbnFzam54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTY2MTIsImV4cCI6MjA4ODgzMjYxMn0.NYnQoorm3z5gkjr954JdYhzDNmYfCjefzK1ddq3cflw';
 
@@ -339,6 +353,14 @@
         for (var p = 0; p < existingPromos.length; p++) existingPromos[p].remove();
 
         var cards = grid.querySelectorAll('.t-store__card');
+        // Tilda ещё не дорисовала товары (они приходят с её сервера
+        // отдельно и позже) — нечего фильтровать. Раньше здесь сразу
+        // появлялось "nic jsme nenašli" и "0 produktů", пока товары не
+        // подгрузятся, — со стороны каталог выглядел пустым и сломанным.
+        if (!cards.length) {
+            if (observer) observer.observe(grid, { childList: true, subtree: true });
+            return;
+        }
         var visibleCards = [];
         cards.forEach(function (card) {
             var nameEl = card.querySelector('.js-product-name');
@@ -384,7 +406,12 @@
         var countEl = document.querySelector('.narin-cat-count');
         if (countEl) countEl.textContent = visibleCards.length + (visibleCards.length === 1 ? ' produkt' : cz(' produkt&#367;'));
 
+        reveal();
         if (grid && observer) observer.observe(grid, { childList: true, subtree: true });
+    }
+
+    function reveal() {
+        document.documentElement.classList.remove('narin-cat-loading');
     }
 
     function switchTab(key) {
@@ -501,74 +528,141 @@
         return d.getUTCDate() + '. ' + (d.getUTCMonth() + 1) + '.';
     }
 
-    // Запрос к базе стартует СРАЗУ, как только браузер дошёл до этого
-    // тега <script> при разборе страницы — не дожидаясь события
-    // DOMContentLoaded (та часть страницы, что выше этого блока, к тому
-    // моменту уже может грузиться секунду-другую сама по себе: фото,
-    // остальные скрипты). Пока сеть едет, это всё равно параллельно
-    // остальной загрузке страницы — просто раньше стартует. Применение
-    // к карточкам (ниже, в init) по-прежнему ждёт готовности DOM, сеть
-    // здесь ни при чём не тормозит.
-    var dataPromise = fetch(SUPABASE_URL + '/rest/v1/rpc/get_catalog_page_data', {
-        method: 'POST',
-        headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-            'Content-Type': 'application/json',
-        },
-        body: '{}',
-    }).then(function (r) { return r.ok ? r.json() : null; });
+    // Данные каталога (категории, наличие, плашки) меняются редко, а
+    // ждать базу при КАЖДОМ открытии — это и было "долго грузится".
+    // Последний ответ лежит в localStorage и применяется сразу, без сети;
+    // свежий запрос идёт параллельно и, когда придёт, тихо пересчитывает
+    // карточки. Старше суток кэш не используем.
+    var CACHE_KEY = 'narin_catalog_data_v1';
+    var CACHE_MAX_AGE = 24 * 60 * 60 * 1000;
+
+    function readCache() {
+        try {
+            var raw = localStorage.getItem(CACHE_KEY);
+            if (!raw) return null;
+            var c = JSON.parse(raw);
+            if (!c || !c.data || Date.now() - c.t > CACHE_MAX_AGE) return null;
+            return c.data;
+        } catch (e) { return null; }
+    }
+    function writeCache(data) {
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), data: data })); } catch (e) {}
+    }
+
+    // Запрос с таймаутом и повтором: раньше один медленный или упавший
+    // ответ Supabase означал, что каталог так и оставался без вкладок и
+    // фильтров до перезагрузки — то самое "то работает, то нет".
+    function fetchData(attempt) {
+        attempt = attempt || 0;
+        var ctrl = window.AbortController ? new AbortController() : null;
+        var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 8000) : null;
+        return fetch(SUPABASE_URL + '/rest/v1/rpc/get_catalog_page_data', {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+                'Content-Type': 'application/json',
+            },
+            body: '{}',
+            signal: ctrl ? ctrl.signal : undefined,
+        }).then(function (r) {
+            if (timer) clearTimeout(timer);
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
+        }).then(function (data) {
+            if (!data || !data.tags) throw new Error('empty response');
+            return data;
+        }).catch(function (err) {
+            if (timer) clearTimeout(timer);
+            if (attempt >= 2) throw err;
+            return new Promise(function (res) { setTimeout(res, attempt ? 3000 : 1000); })
+                .then(function () { return fetchData(attempt + 1); });
+        });
+    }
+
+    var cached = readCache();
+    // Без кэша (первый визит) — прячем сетку до первого рендера, с кэшем
+    // рендер будет мгновенным, но правило то же.
+    document.documentElement.classList.add('narin-cat-loading');
+    setTimeout(reveal, cached ? 2500 : 4000);
+
+    // Сеть стартует сразу, как браузер дошёл до этого тега, не дожидаясь
+    // DOMContentLoaded.
+    var dataPromise = fetchData();
+
+    function applyData(data) {
+        tagMap = {};
+        badgeMap = {};
+        (data.tags || []).forEach(function (row) {
+            tagMap[normalize(row.product_name)] = row;
+        });
+        unsourceableNames = new Set((data.unsourceable || []).map(normalize));
+        availableNames = new Set((data.available || []).map(normalize));
+        specialNames = new Set((data.special || []).map(normalize));
+        (data.badges || []).forEach(function (row) {
+            badgeMap[normalize(row.product_name)] = row;
+        });
+        specialDateLabel = computeSpecialOrderDate(new Set(data.closed_weekdays || []), new Set(data.closed_dates || []));
+    }
+
+    var started = false;
+    function start() {
+        grid = document.querySelector('.js-store-grid-cont');
+        if (!grid) return false;
+        if (grid.parentElement && !document.querySelector('.narin-cat-nav')) {
+            grid.parentElement.insertBefore(buildNav(), grid);
+        }
+        renderTabBar();
+        renderSubBar();
+        if (!started) {
+            started = true;
+            var pending = null;
+            observer = new MutationObserver(function () {
+                if (pending) clearTimeout(pending);
+                pending = setTimeout(renderPass, 150);
+            });
+            // Tilda сама дорисовывает/переотрисовывает карточки поздним
+            // проходом; renderPass идемпотентен — эти перерасчёты только
+            // возвращают бейджи, если Tilda их унесла.
+            [1200, 3000, 6000].forEach(function (delay) { setTimeout(renderPass, delay); });
+        }
+        renderPass();
+        observer.observe(grid, { childList: true, subtree: true });
+        return true;
+    }
+
+    // Сетка товаров у Tilda может появиться в DOM позже DOMContentLoaded.
+    // Раньше в этом случае движок молча не запускался вообще (ни вкладок,
+    // ни фильтра) — ждём её до 20 с.
+    function startWhenGridReady() {
+        if (start()) return;
+        var mo = new MutationObserver(function () {
+            if (document.querySelector('.js-store-grid-cont')) { mo.disconnect(); start(); }
+        });
+        mo.observe(document.body, { childList: true, subtree: true });
+        setTimeout(function () { mo.disconnect(); }, 20000);
+    }
 
     function init() {
+        if (cached) {
+            applyData(cached);
+            startWhenGridReady();
+        }
         dataPromise
             .then(function (data) {
-                if (!data) throw new Error('empty response');
-
-                (data.tags || []).forEach(function (row) {
-                    tagMap[normalize(row.product_name)] = row;
-                });
-                unsourceableNames = new Set((data.unsourceable || []).map(normalize));
-                availableNames = new Set((data.available || []).map(normalize));
-                specialNames = new Set((data.special || []).map(normalize));
-                (data.badges || []).forEach(function (row) {
-                    badgeMap[normalize(row.product_name)] = row;
-                });
-                var closedWeekdays = new Set(data.closed_weekdays || []);
-                var closedDates = new Set(data.closed_dates || []);
-                specialDateLabel = computeSpecialOrderDate(closedWeekdays, closedDates);
-
-                grid = document.querySelector('.js-store-grid-cont');
-                if (grid && grid.parentElement && !document.querySelector('.narin-cat-nav')) {
-                    grid.parentElement.insertBefore(buildNav(), grid);
-                }
-
-                renderTabBar();
-                renderSubBar();
-                renderPass();
-
-                // Tilda сама дорисовывает/переотрисовывает карточки товаров
-                // отдельным, более поздним проходом (обнаружено вживую).
-                // Раньше это лечили setInterval раз в секунду НАВСЕГДА —
-                // больше не нужно, потому что скрытие теперь идёт через
-                // атрибут+CSS, а не инлайн-стиль, и Tilda его не трогает.
-                // Эти несколько отложенных перерасчётов нужны только на
-                // случай, если тот поздний проход Tilda всё-таки унесёт с
-                // собой наш бейдж (вставленный DOM-узел, а не атрибут) —
-                // renderPass идемпотентен, просто добавит его заново.
-                [1200, 3000, 6000].forEach(function (delay) {
-                    setTimeout(renderPass, delay);
-                });
-
-                if (grid) {
-                    var pending = null;
-                    observer = new MutationObserver(function () {
-                        if (pending) clearTimeout(pending);
-                        pending = setTimeout(renderPass, 150);
-                    });
-                    observer.observe(grid, { childList: true, subtree: true });
+                writeCache(data);
+                applyData(data);
+                if (started) {
+                    renderSubBar();
+                    renderPass();
+                } else {
+                    startWhenGridReady();
                 }
             })
-            .catch(function (err) { console.error('narin catalog engine', err); });
+            .catch(function (err) {
+                console.error('narin catalog engine', err);
+                reveal();
+            });
     }
 
     if (document.readyState === 'loading') {
