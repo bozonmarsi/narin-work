@@ -30,6 +30,7 @@ type Purchase = {
   target_date: string | null;
   created_at: string;
   picked_up: boolean;
+  cart_product_key: number | null;
 };
 
 type Candidate = {
@@ -301,7 +302,10 @@ export function VanVlietPanel() {
     const supabase = createClient();
     const { data } = await supabase
       .from("vanvliet_purchases")
-      .select("id, product_name, color, quantity, price_per_unit, total_price, target_date, created_at, picked_up")
+      .select("id, product_name, color, quantity, price_per_unit, total_price, target_date, created_at, picked_up, cart_product_key")
+      // Невзятое сначала — иначе при накоплении истории свежие позиции
+      // "забрать" могли бы не попасть в первые 50 строк и пропасть из списка.
+      .order("picked_up", { ascending: true })
       .order("target_date", { ascending: true })
       .limit(50);
     setPurchases((data ?? []) as Purchase[]);
@@ -318,6 +322,52 @@ export function VanVlietPanel() {
   const [rightTab, setRightTab] = useState<"cart" | "supply" | "aliases">("cart");
   const [markingPickedUp, setMarkingPickedUp] = useState<string | null>(null);
   const pendingPickup = purchases.filter((p) => !p.picked_up);
+
+  // Ручные позиции — то, что заказано мимо нашей системы (например, в
+  // Нидерландах) и всё равно надо не забыть забрать на базе. Лежат в той
+  // же таблице и в том же списке; от записей, созданных через "Купить"
+  // (у них есть cart_product_key), отличаются его отсутствием.
+  const [manualName, setManualName] = useState("");
+  const [manualQty, setManualQty] = useState("1");
+  const [manualDate, setManualDate] = useState(DATE_OPTIONS[1].value);
+  const [manualBusy, setManualBusy] = useState(false);
+  const [manualError, setManualError] = useState<string | null>(null);
+
+  async function addManualPickup() {
+    const name = manualName.trim();
+    const qty = parseFloat(manualQty);
+    if (!name || !(qty > 0) || !manualDate) return;
+    setManualBusy(true);
+    setManualError(null);
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const { error: insertErr } = await supabase.from("vanvliet_purchases").insert({
+        product_name: name,
+        quantity: qty,
+        target_date: manualDate,
+        ordered_by: user?.id ?? null,
+      });
+      if (insertErr) {
+        setManualError(insertErr.message);
+        return;
+      }
+      setManualName("");
+      setManualQty("1");
+      await loadPurchases();
+    } finally {
+      setManualBusy(false);
+    }
+  }
+
+  async function deleteManualPickup(id: string) {
+    if (!confirm("Удалить эту позицию из списка?")) return;
+    const supabase = createClient();
+    await supabase.from("vanvliet_purchases").delete().eq("id", id);
+    await loadPurchases();
+  }
 
   async function markPickedUp(id: string) {
     setMarkingPickedUp(id);
@@ -1078,6 +1128,7 @@ export function VanVlietPanel() {
               {p.color && <span className="text-zinc-400"> · {p.color}</span>} — {p.quantity} шт
               {p.total_price != null && <> за {p.total_price} Kč</>}
               {p.target_date && <> на {p.target_date}</>}
+              {p.cart_product_key == null && <span className="ml-1 text-zinc-400">✍️ вручную</span>}
             </div>
           ))
         )}
@@ -1335,6 +1386,48 @@ export function VanVlietPanel() {
 
     {pickupModalOpen && (
       <Modal title="Забрать со склада" onClose={() => setPickupModalOpen(false)}>
+        <div className="mb-4 space-y-2 rounded-lg border border-dashed border-zinc-300 p-3 dark:border-zinc-600">
+          <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+            ✍️ Добавить вручную — например, то, что заказано мимо системы (Нидерланды) и надо забрать
+          </p>
+          <input
+            list="manual-pickup-names"
+            value={manualName}
+            onChange={(e) => setManualName(e.target.value)}
+            placeholder="Что забрать (можно выбрать из своих или вписать любое)"
+            className="w-full rounded-md border border-zinc-300 bg-transparent px-2 py-1.5 text-sm dark:border-zinc-600"
+          />
+          <datalist id="manual-pickup-names">
+            {materials.map((m) => (
+              <option key={m.id} value={decodeHtmlEntities(m.product_name)} />
+            ))}
+          </datalist>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="number"
+              min={1}
+              value={manualQty}
+              onChange={(e) => setManualQty(e.target.value)}
+              className="w-20 rounded-md border border-zinc-300 bg-transparent px-2 py-1.5 text-sm dark:border-zinc-600"
+            />
+            <span className="text-sm text-zinc-400">шт на</span>
+            <input
+              type="date"
+              value={manualDate}
+              onChange={(e) => setManualDate(e.target.value)}
+              className="rounded-md border border-zinc-300 bg-transparent px-2 py-1.5 text-sm dark:border-zinc-600"
+            />
+            <button
+              onClick={addManualPickup}
+              disabled={manualBusy || !manualName.trim() || !(parseFloat(manualQty) > 0) || !manualDate}
+              className="ml-auto rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white disabled:opacity-40"
+            >
+              {manualBusy ? "Добавляю…" : "+ Добавить"}
+            </button>
+          </div>
+          {manualError && <p className="text-xs text-red-500">{manualError}</p>}
+        </div>
+
         <p className="mb-3 text-xs text-zinc-400">
           Отметь то, что реально забрала на оптовой базе — исчезнет из списка "Что уже заказано".
         </p>
@@ -1366,11 +1459,25 @@ export function VanVlietPanel() {
                           onChange={() => markPickedUp(p.id)}
                           className="h-4 w-4 shrink-0 accent-accent"
                         />
-                        <span>
+                        <span className="min-w-0 flex-1">
                           <span className="font-medium">{p.product_name}</span>
                           {p.color && <span className="text-zinc-400"> · {p.color}</span>} — {p.quantity} шт
                           {p.total_price != null && <> за {p.total_price} Kč</>}
+                          {p.cart_product_key == null && <span className="ml-1 text-xs text-zinc-400">✍️ вручную</span>}
                         </span>
+                        {p.cart_product_key == null && (
+                          <button
+                            type="button"
+                            title="Удалить эту ручную позицию"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              deleteManualPickup(p.id);
+                            }}
+                            className="shrink-0 text-zinc-400 hover:text-red-500"
+                          >
+                            ✕
+                          </button>
+                        )}
                       </label>
                     ))}
                   </div>
