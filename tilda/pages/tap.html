@@ -1,7 +1,7 @@
 <!--
   NARIN tap (vezminarin.cz/tap) — celá stránka v jednom HTML bloku (T123).
   Obrázky: narin-work.vercel.app/tap/*.webp (web/public/tap). Kontakty a otevírací doba: CONFIG ve <script>.
-  Dostupnost kytic a zavřené dny: /api/catalog (stejný zdroj jako katalog).
+  Počty druhů v kategoriích a zavřené dny: /api/catalog (stejný zdroj jako katalog).
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -163,6 +163,31 @@
 @keyframes nudge { 0%, 100% { transform: none; } 50% { transform: translateX(4px); } }
 .st img.big { max-height: 58px; }
 @media (prefers-reduced-motion: reduce) { .ticker .run, .ticket .shine, .cta::after, .cta svg, .dz > svg, .wordmark, .tag, .sub, .status, .ticker, .cta, .ticket, .seq > * { animation: none !important; } }
+
+/* ---------- categories ---------- */
+.cats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
+.cat { position: relative; min-width: 0; border-radius: var(--r-xl); padding: 14px 14px 14px; display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; min-height: 230px; box-shadow: var(--lift); overflow: visible; isolation: isolate;
+  transform: perspective(700px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)); transition: transform .25s cubic-bezier(.2,.8,.2,1); }
+.cat::before { content: ''; position: absolute; inset: 0; border-radius: inherit; background: var(--cbg); z-index: -2; }
+.cat img { position: absolute; left: 50%; top: -22px; width: 82%; transform: translateX(-50%) rotate(var(--tilt, 0deg)); z-index: -1; filter: drop-shadow(0 10px 14px rgba(16,33,63,.22)); transition: transform .35s cubic-bezier(.2,1.3,.3,1); }
+.cat:hover img, .cat:active img { transform: translateX(-50%) rotate(0) translateY(-6px) scale(1.04); }
+.cat b { font: 900 22px var(--display); letter-spacing: -.01em; line-height: 1; }
+.cat small { font: 600 12.5px var(--body); line-height: 1.3; opacity: .85; }
+.cat .cnt { margin-top: 6px; align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; font: 700 11px var(--body); background: rgba(255,255,255,.85); color: var(--ink); white-space: nowrap; }
+.cat .cnt i { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+.cat .cnt[hidden] { display: none; }
+.cat.k { grid-column: span 2; min-height: 210px; --cbg: linear-gradient(150deg, #2a7bf0, var(--blue) 55%, var(--blue-deep)); color: #fff; padding-right: 48%; }
+.cat.k img { left: auto; right: -8px; top: -30px; width: 52%; transform: rotate(6deg); }
+.cat.k:hover img, .cat.k:active img { transform: rotate(2deg) translateY(-6px) scale(1.04); }
+.cat.k .new-chip { position: static; align-self: flex-start; margin-bottom: 6px; }
+.cat.v { --cbg: #f2f5f8; color: var(--ink); padding-top: 150px; --tilt: -4deg; }
+.cat.n { --cbg: #eaf2ff; color: var(--ink); padding-top: 150px; }
+.cat.n img.a { width: 62%; left: 36%; top: -16px; --tilt: -9deg; }
+.cat.n img.b { width: 58%; left: 66%; top: -26px; --tilt: 8deg; z-index: -1; }
+.cat-more { margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; height: 50px; border-radius: 16px; border: 1.5px solid var(--line); font: 800 14px var(--display); color: var(--blue); background: var(--paper); }
+.cat-more svg { width: 16px; height: 16px; }
+.cats > * { animation: rise .55s ease both; } .cats > *:nth-child(1) { animation-delay: 1.1s } .cats > *:nth-child(2) { animation-delay: 1.2s } .cats > *:nth-child(3) { animation-delay: 1.3s }
+@media (prefers-reduced-motion: reduce) { .cats > * { animation: none !important; } }
 </style>
 
 <div class="ntap">
@@ -181,17 +206,14 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
   <a class="ticket" href="https://vezminarin.cz/members/login?utm_source=tap&amp;utm_content=bonus"><span class="amt">150&nbsp;Kč</span><span class="t">na první objednávku<br>za registraci</span><span class="b">Chci je</span><span class="shine"></span></a>
 
-  <section class="sec rv">
-    <div class="sec-h"><h2>Dnes u nás kvete</h2><a href="https://vezminarin.cz/?utm_source=tap&amp;utm_content=strip">Celý katalog</a></div>
-    <div class="strip seq" id="strip">
-      <a class="pc white" href="https://vezminarin.cz/?utm_source=tap&amp;utm_content=kytice"><span class="new-chip">Nově</span><img src="https://narin-work.vercel.app/tap/k30.webp" alt="" loading="lazy"><div class="nm">Vázané kytice</div><span class="av"><i></i>Nově i kytice</span></a>
-      <a class="pc" data-name="Pivoňka bílá" href="https://vezminarin.cz/?utm_source=tap"><img src="https://narin-work.vercel.app/tap/n1.webp" alt="" loading="lazy"><div class="nm">Pivoňka bílá</div><span class="av"><i></i>Doručíme dnes</span></a>
-      <a class="pc" data-name="Růže Pink Express" href="https://vezminarin.cz/?utm_source=tap"><img src="https://narin-work.vercel.app/tap/n2.webp" alt="" loading="lazy"><div class="nm">Růže Pink Express</div><span class="av"><i></i>Doručíme dnes</span></a>
-      <a class="pc" data-name="Pivoňka Sarah Bernhardt" href="https://vezminarin.cz/?utm_source=tap"><img src="https://narin-work.vercel.app/tap/n3.webp" alt="" loading="lazy"><div class="nm">Pivoňka Sarah Bernhardt</div><span class="av"><i></i>Doručíme dnes</span></a>
-      <a class="pc" data-name="Ranunkulus růžový" href="https://vezminarin.cz/?utm_source=tap"><img src="https://narin-work.vercel.app/tap/n4.webp" alt="" loading="lazy"><div class="nm">Ranunkulus růžový</div><span class="av"><i></i>Doručíme zítra</span></a>
-      <a class="pc" data-name="Hortenzie růžová" href="https://vezminarin.cz/?utm_source=tap"><img src="https://narin-work.vercel.app/tap/n5.webp" alt="" loading="lazy"><div class="nm">Hortenzie růžová</div><span class="av"><i></i>Doručíme dnes</span></a>
-      <a class="pc" data-name="Lilie růžová" href="https://vezminarin.cz/?utm_source=tap"><img src="https://narin-work.vercel.app/tap/n6.webp" alt="" loading="lazy"><div class="nm">Lilie růžová</div><span class="av"><i></i>Doručíme zítra</span></a>
+  <section class="sec">
+    <div class="sec-h"><h2>Vyberte si</h2></div>
+    <div class="cats">
+      <a class="cat k" href="https://vezminarin.cz/?tab=kytice&amp;utm_source=tap&amp;utm_content=kytice"><img src="https://narin-work.vercel.app/tap/cat-kytice.webp" alt="" loading="lazy"><span class="new-chip">Nově</span><b>Kytice</b><small>vázané z čerstvých květin, zabalené a s mašlí</small><span class="cnt" data-cat="kytice" hidden><i></i><span></span></span></a>
+      <a class="cat v" href="https://vezminarin.cz/?tab=banky&amp;utm_source=tap&amp;utm_content=kovky"><img src="https://narin-work.vercel.app/tap/cat-kovky.webp" alt="" loading="lazy"><b>Kovky</b><small>naaranžované ve váze, hned k předání</small><span class="cnt" data-cat="banky" hidden><i></i><span></span></span></a>
+      <a class="cat n" href="https://vezminarin.cz/?tab=ohapka&amp;utm_source=tap&amp;utm_content=naruce"><img class="b" src="https://narin-work.vercel.app/tap/cat-naruce2.webp" alt="" loading="lazy"><img class="a" src="https://narin-work.vercel.app/tap/cat-naruce1.webp" alt="" loading="lazy"><b>Náruče</b><small>čerstvé květiny za velkoobchodní ceny</small><span class="cnt" data-cat="ohapka" hidden><i></i><span></span></span></a>
     </div>
+    <a class="cat-more" href="https://vezminarin.cz/?utm_source=tap&amp;utm_content=katalog">Celý katalog <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></a>
   </section>
 
   <section class="sec rv">
@@ -296,7 +318,7 @@
   }
 
   // ---- 3D tilt on tiles ----
-  if (!reduce) document.querySelectorAll('.tile').forEach(function (t) {
+  if (!reduce) document.querySelectorAll('.tile, .cat').forEach(function (t) {
     t.addEventListener('pointermove', function (e) {
       var r = t.getBoundingClientRect();
       t.style.setProperty('--ry', ((e.clientX - r.left) / r.width - .5) * 10 + 'deg');
@@ -326,7 +348,20 @@
   }
   // dostupnost kytic v pásu "Dnes u nás kvete" + zavřené dny
   function norm(s) { return String(s || '').replace(/\s+/g, ' ').trim().toLowerCase(); }
+
+  // počty druhů skladem na kartách kategorií
+  function applyCounts(data) {
+    var hidden = {}, cnt = {};
+    (data.unsourceable || []).forEach(function (n) { hidden[norm(n)] = 1; });
+    (data.tags || []).forEach(function (r) { if (!hidden[norm(r.product_name)]) cnt[r.category] = (cnt[r.category] || 0) + 1; });
+    document.querySelectorAll('.ntap .cnt[data-cat]').forEach(function (el) {
+      var n = cnt[el.getAttribute('data-cat')] || 0;
+      el.hidden = !n;
+      if (n) el.querySelector('span').textContent = n + (n === 1 ? ' druh' : n < 5 ? ' druhy' : ' druhů') + ' skladem';
+    });
+  }
   function applyCatalog(data) {
+    applyCounts(data);
     closedWeekdays = {}; closedDates = {};
     (data.closed_weekdays || []).forEach(function (d) { closedWeekdays[d] = 1; });
     (data.closed_dates || []).forEach(function (d) { closedDates[String(d).slice(0, 10)] = 1; });
@@ -347,15 +382,7 @@
   fetch(CONFIG.catalogApi).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) { if (d && d.tags) applyCatalog(d); }).catch(function () {});
   status(); setInterval(status, 60000);
 
-  // ---- carousel drifts by itself until the visitor touches it ----
-  var strip = document.getElementById('strip'), touched = false;
-  ['pointerdown', 'touchstart', 'wheel'].forEach(function (ev) { strip.addEventListener(ev, function () { touched = true; }, { passive: true }); });
-  if (!reduce) setInterval(function () {
-    if (touched || document.hidden) return;
-    var card = strip.children[0], step = card ? card.getBoundingClientRect().width + 12 : 160;
-    var max = strip.scrollWidth - strip.clientWidth;
-    strip.scrollTo({ left: strip.scrollLeft + step >= max + 4 ? 0 : strip.scrollLeft + step, behavior: 'smooth' });
-  }, 2600);
+
 
   document.querySelector('[href="#plants"]').addEventListener('click', function (e) { e.preventDefault(); });
 })();

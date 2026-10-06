@@ -110,6 +110,8 @@ html.narin-cat-loading .js-store-grid-cont { opacity: 0 !important; }
 
     var TABS = [
         { key: 'all', label: cz('V&#353;e'), category: 'ohapka', caption: null },
+        // Vázané kytice — záložka se ukáže, až budou v katalogu produkty s kategorií 'kytice'.
+        { key: 'kytice', label: 'Kytice', category: 'kytice', caption: cz('V&#225;zan&#233; kytice z &#269;erstv&#253;ch kv&#283;tin, zabalen&#233; a s ma&#353;l&#237;.'), dynamic: true },
         { key: 'set', label: 'Sety', category: 'set', caption: cz('Sestavte si vlastn&#237; kompozici nebo rozm&#237;st&#283;te kv&#283;tiny do r&#367;zn&#253;ch v&#225;z.') },
         { key: 'banky', label: 'Kovky', category: 'banky', caption: cz('Kv&#283;tiny naaran&#382;ovan&#233; p&#345;&#237;mo ve v&#225;ze, p&#345;ipraven&#233; k p&#345;ed&#225;n&#237;.') },
         { key: 'ohapka', label: cz('N&#225;ru&#269;e'), category: 'ohapka', caption: null },
@@ -119,6 +121,9 @@ html.narin-cat-loading .js-store-grid-cont { opacity: 0 !important; }
     var COLORS = [cz('B&#237;l&#225;'), cz('R&#367;&#382;ov&#225;'), cz('&#268;erven&#225;'), cz('&#381;lut&#225;'), cz('Fialov&#225;'), cz('Modr&#225;')];
     var HEIGHTS = [cz('N&#237;zk&#233;'), cz('Vysok&#233;')];
     var LOW_STOCK_THRESHOLD = 3;
+
+    // ?tab=banky / ?tab=ohapka / ?tab=kytice v odkazu (taplink, reklama) otevře rovnou danou záložku
+    var urlTab = (function () { try { return new URLSearchParams(location.search).get('tab'); } catch (e) { return null; } })();
 
     var state = {
         activeTab: 'all',
@@ -173,6 +178,11 @@ html.narin-cat-loading .js-store-grid-cont { opacity: 0 !important; }
     }
     function normalize(text) {
         return decodeEntities(text || '').replace(/\s+/g, ' ').trim();
+    }
+
+    function hasCategory(cat) {
+        for (var n in tagMap) if (tagMap[n].category === cat && !unsourceableNames.has(n)) return true;
+        return false;
     }
 
     function activeTabDef() {
@@ -436,6 +446,7 @@ html.narin-cat-loading .js-store-grid-cont { opacity: 0 !important; }
         if (!bar) return;
         bar.innerHTML = '';
         TABS.forEach(function (tab) {
+            if (tab.dynamic && !hasCategory(tab.category)) return;
             var btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'narin-cat-tab' + (tab.key === state.activeTab ? ' active' : '');
@@ -627,6 +638,15 @@ html.narin-cat-loading .js-store-grid-cont { opacity: 0 !important; }
         if (!grid) return false;
         if (grid.parentElement && !document.querySelector('.narin-cat-nav')) {
             grid.parentElement.insertBefore(buildNav(), grid);
+        }
+        if (urlTab) {
+            var def = TABS.filter(function (t) { return t.key === urlTab; })[0];
+            if (def && (!def.dynamic || hasCategory(def.category))) {
+                state.activeTab = urlTab;
+                var nav = document.querySelector('.narin-cat-nav');
+                if (nav) setTimeout(function () { nav.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 300);
+            }
+            urlTab = null;
         }
         renderTabBar();
         renderSubBar();
