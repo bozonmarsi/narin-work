@@ -8,7 +8,8 @@
 
   Atributy kontaktu v Brevo (nahrát přes import, viz emails/README.md):
     NARIN_UCET   (Text "ano"/prázdné) — má účet na vezminarin.cz → místo "150 Kč za registraci" vidí "Váš účet na vás čeká"
-    NARIN_BODY   (Number) — zůstatek bodů; když > 0, ukáže se "Na účtu máte N b."
+    NARIN_BODY_VETA (Text) — hotová věta se zůstatkem ("Na účtu máte 163 b., …"), prázdná když 0 bodů.
+                     Bez podmínek v šabloně: Brevo ji jen vloží, takže nezáleží na typu čísla.
     NARIN_TOKEN  (Text)   — token pro naši stránku odhlášení vezminarin.cz/odhlaseni?token=…
   Obrázky: https://narin-work.vercel.app/email/navrat/ (web/public/email/navrat)
 -->
@@ -105,9 +106,7 @@
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#1a6ce1;border-radius:18px;">
       <tr><td style="padding:22px;color:#ffffff;">
         <p style="margin:0;font-size:20px;font-weight:900;">Váš účet na vás čeká</p>
-{% if contact.NARIN_BODY > 0 %}
-        <p style="margin:6px 0 0;font-size:15px;line-height:1.45;">Na účtu máte <b style="font-size:20px;">{{ contact.NARIN_BODY }} b.</b>, to je {{ contact.NARIN_BODY }} Kč na příští objednávku.</p>
-{% endif %}
+        <p style="margin:6px 0 0;font-size:16px;line-height:1.45;font-weight:700;">{{ contact.NARIN_BODY_VETA }}</p>
         <p style="margin:6px 0 16px;font-size:14px;line-height:1.45;color:#dbe8ff;">Přihlaste se stejným e-mailem jako dřív a podívejte se, co je nového.</p>
         <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td style="background:#ffffff;border-radius:14px;">
           <a href="https://vezminarin.cz/members/login?utm_source=email&amp;utm_campaign=navrat&amp;utm_content=ucet" style="display:inline-block;padding:13px 24px;font-size:15px;font-weight:800;color:#1a6ce1;text-decoration:none;">Přihlásit se</a>
