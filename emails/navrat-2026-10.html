@@ -7,8 +7,9 @@
   Preheader: (je v textu níže, skrytý řádek hned pod <body>)
 
   Atributy kontaktu v Brevo (nahrát přes import, viz emails/README.md):
-    NARIN_UCET  (Boolean) — má účet na vezminarin.cz → místo "150 Kč za registraci" vidí "Váš účet na vás čeká"
-    NARIN_BODY  (Number)  — zůstatek bodů; když > 0, ukáže se "Na účtu na vás čeká N b."
+    NARIN_UCET   (Text "ano"/prázdné) — má účet na vezminarin.cz → místo "150 Kč za registraci" vidí "Váš účet na vás čeká"
+    NARIN_BODY   (Number) — zůstatek bodů; když > 0, ukáže se "Na účtu máte N b."
+    NARIN_TOKEN  (Text)   — token pro naši stránku odhlášení vezminarin.cz/odhlaseni?token=…
   Obrázky: https://narin-work.vercel.app/email/navrat/ (web/public/email/navrat)
 -->
 <head>
@@ -46,8 +47,9 @@
   <!-- ÚVOD -->
   <tr><td class="px" style="padding:8px 44px 0;font-size:16px;line-height:1.6;">
     <p style="margin:0 0 14px;font-size:18px;font-weight:700;">Ahoj,</p>
-    <p style="margin:0 0 14px;">chvíli bylo u nás ticho. Teď jsme zpátky, a ve větším, než jsme byli.</p>
-    <p style="margin:0;">Díky, že jste na nás nezapomněli. Celou dobu jsme pracovali na tom, aby to s námi bylo ještě jednodušší: <b>otevřeli jsme vlastní e-shop s doručením po celé Praze</b>, klidně ještě v den objednávky.</p>
+    <p style="margin:0 0 14px;">moc jste nám chyběli. A upřímně, i my jsme se na vás těšili: na každou kytici, kterou pro vás vážeme, i na zprávy, jakou udělala radost.</p>
+    <p style="margin:0 0 14px;">Teď se k vám vracíme. Rozjíždíme se postupně, krok za krokem, a brzy pojedeme zase naplno. Mezitím jsme připravili něco, co vám nákup u nás hodně usnadní: <b>vlastní e-shop s doručením po celé Praze</b>.</p>
+    <p style="margin:0;">Díky, že jste s námi a že jste na nás počkali. 💙</p>
   </td></tr>
 
   <!-- AKCE: DOPRAVA ZDARMA -->
@@ -64,38 +66,21 @@
     </table>
   </td></tr>
 
-  <!-- CO JE NOVÉHO -->
-  <tr><td class="px" style="padding:34px 44px 0;">
-    <p class="h1" style="margin:0 0 4px;font-size:24px;font-weight:900;letter-spacing:-.01em;">Co je u nás nového</p>
-    <p style="margin:0 0 18px;font-size:14px;color:#4b5a78;">A náruče za velkoobchodní ceny? Ty zůstávají. Jen si je teď můžete nechat přivézt.</p>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-      <td class="col3" width="33%" valign="top" style="padding-right:8px;">
-        <a href="https://vezminarin.cz/?tab=kytice&amp;utm_source=email&amp;utm_campaign=navrat&amp;utm_content=kytice" style="text-decoration:none;color:#10213f;">
-          <img src="https://narin-work.vercel.app/email/navrat/kytice.jpg" width="164" alt="Kytice" style="width:100%;height:auto;border-radius:16px;">
-          <p style="margin:10px 0 2px;font-size:16px;font-weight:800;">Kytice <span style="background:#ffd56b;border-radius:99px;padding:2px 7px;font-size:10px;font-weight:800;letter-spacing:.06em;">NOVĚ</span></p>
-          <p style="margin:0;font-size:13px;line-height:1.4;color:#4b5a78;">vázané z čerstvých květin, zabalené a s mašlí</p></a>
-      </td>
-      <td class="col3" width="33%" valign="top" style="padding:0 4px;">
-        <a href="https://vezminarin.cz/?tab=banky&amp;utm_source=email&amp;utm_campaign=navrat&amp;utm_content=kovky" style="text-decoration:none;color:#10213f;">
-          <img src="https://narin-work.vercel.app/email/navrat/kovky.jpg" width="164" alt="Kovky" style="width:100%;height:auto;border-radius:16px;">
-          <p style="margin:10px 0 2px;font-size:16px;font-weight:800;">Kovky</p>
-          <p style="margin:0;font-size:13px;line-height:1.4;color:#4b5a78;">naaranžované ve váze, hned k předání</p></a>
-      </td>
-      <td class="col3" width="33%" valign="top" style="padding-left:8px;">
-        <a href="https://vezminarin.cz/?tab=ohapka&amp;utm_source=email&amp;utm_campaign=navrat&amp;utm_content=naruce" style="text-decoration:none;color:#10213f;">
-          <img src="https://narin-work.vercel.app/email/navrat/naruce.jpg" width="164" alt="Náruče" style="width:100%;height:auto;border-radius:16px;">
-          <p style="margin:10px 0 2px;font-size:16px;font-weight:800;">Náruče</p>
-          <p style="margin:0;font-size:13px;line-height:1.4;color:#4b5a78;">čerstvé květiny za velkoobchodní ceny</p></a>
-      </td>
-    </tr></table>
-
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:18px;background:#f3f7fd;border-radius:16px;">
-      <tr><td style="padding:16px 18px;font-size:14px;line-height:1.55;">
-        <b>🚚 Doručení po Praze</b> &nbsp;i dnes, do 60 minut<br>
-        <b>🎁 Dárek bez adresy</b> &nbsp;stačí telefon příjemce, adresu si zadá sám<br>
-        <b>🔁 Předplatné</b> &nbsp;květiny pravidelně, sestavíte si na míru
-      </td></tr>
+  <!-- CO JE NOVÉHO (kompaktně) -->
+  <tr><td class="px" style="padding:30px 44px 0;">
+    <p style="margin:0 0 10px;font-size:20px;font-weight:900;">Co u nás najdete</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f3f7fd;border-radius:16px;">
+    <tr><td style="padding:8px 16px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr><td width="64" valign="middle" style="padding:8px 12px 8px 0;"><a href="https://vezminarin.cz/?tab=ohapka&amp;utm_source=email&amp;utm_campaign=navrat&amp;utm_content=naruce"><img src="https://narin-work.vercel.app/email/navrat/naruce.jpg" width="56" height="56" alt="" style="width:56px;height:56px;border-radius:14px;"></a></td>
+      <td valign="middle" style="padding:8px 0;font-size:14px;line-height:1.4;"><a href="https://vezminarin.cz/?tab=ohapka&amp;utm_source=email&amp;utm_campaign=navrat&amp;utm_content=naruce" style="text-decoration:none;color:#10213f;"><b>Náruče</b><br><span style="color:#4b5a78;">čerstvé květiny za velkoobchodní ceny, jako dřív</span></a></td></tr>
+      <tr><td width="64" valign="middle" style="padding:8px 12px 8px 0;"><a href="https://vezminarin.cz/?tab=kytice&amp;utm_source=email&amp;utm_campaign=navrat&amp;utm_content=kytice"><img src="https://narin-work.vercel.app/email/navrat/kytice.jpg" width="56" height="56" alt="" style="width:56px;height:56px;border-radius:14px;"></a></td>
+      <td valign="middle" style="padding:8px 0;font-size:14px;line-height:1.4;"><a href="https://vezminarin.cz/?tab=kytice&amp;utm_source=email&amp;utm_campaign=navrat&amp;utm_content=kytice" style="text-decoration:none;color:#10213f;"><b>Kytice</b> <span style="background:#ffd56b;border-radius:99px;padding:1px 7px;font-size:10px;font-weight:800;letter-spacing:.06em;">NOVĚ</span><br><span style="color:#4b5a78;">vázané a zabalené, s mašlí</span></a></td></tr>
+      <tr><td width="64" valign="middle" style="padding:8px 12px 8px 0;"><a href="https://vezminarin.cz/?tab=banky&amp;utm_source=email&amp;utm_campaign=navrat&amp;utm_content=kovky"><img src="https://narin-work.vercel.app/email/navrat/kovky.jpg" width="56" height="56" alt="" style="width:56px;height:56px;border-radius:14px;"></a></td>
+      <td valign="middle" style="padding:8px 0;font-size:14px;line-height:1.4;"><a href="https://vezminarin.cz/?tab=banky&amp;utm_source=email&amp;utm_campaign=navrat&amp;utm_content=kovky" style="text-decoration:none;color:#10213f;"><b>Kovky</b><br><span style="color:#4b5a78;">naaranžované ve váze, hned k předání</span></a></td></tr>
     </table>
+    <p style="margin:6px 0 8px;font-size:13.5px;line-height:1.6;color:#10213f;">🚚 <b>Doručení po Praze</b>, klidně ještě dnes &nbsp;·&nbsp; 🎁 <b>Dárek bez adresy</b>, stačí telefon příjemce</p>
+    </td></tr></table>
   </td></tr>
 
   <!-- OSOBNÍ ÚČET -->
@@ -116,7 +101,7 @@
 
   <!-- ÚČET / REGISTRACE (podle atributu NARIN_UCET) -->
   <tr><td class="px" style="padding:26px 44px 0;">
-{% if contact.NARIN_UCET %}
+{% if contact.NARIN_UCET == "ano" %}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#1a6ce1;border-radius:18px;">
       <tr><td style="padding:22px;color:#ffffff;">
         <p style="margin:0;font-size:20px;font-weight:900;">Váš účet na vás čeká</p>
@@ -155,7 +140,7 @@
     <p style="margin:0;font-size:12px;line-height:1.6;color:#7b88a3;">
       <a href="https://vezminarin.cz/?utm_source=email&amp;utm_campaign=navrat&amp;utm_content=footer" style="color:#7b88a3;">vezminarin.cz</a> · <a href="https://instagram.com/narin.cz" style="color:#7b88a3;">Instagram</a> · +420 776 421 993<br>
       Tento e-mail dostáváte, protože jste u nás nakupovali nebo nám nechali e-mail.<br>
-      <a href="{{ unsubscribe }}" style="color:#7b88a3;">Odhlásit se z odběru</a>
+      <a href="https://vezminarin.cz/odhlaseni?token={{ contact.NARIN_TOKEN }}" style="color:#7b88a3;">Odhlásit se z odběru</a>
     </p>
   </td></tr>
 
