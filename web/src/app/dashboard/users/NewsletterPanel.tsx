@@ -25,6 +25,10 @@ export function NewsletterPanel() {
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [checkEmail, setCheckEmail] = useState("");
 
   const loadStats = useCallback(async () => {
     const supabase = createClient();
@@ -92,6 +96,39 @@ export function NewsletterPanel() {
     }
   }
 
+  // Данные для персональных писем (аккаунт, баллы, токен отписки) — прямо в Brevo,
+  // без ручного CSV. См. /api/newsletter/sync-brevo и emails/README.md.
+  async function handleSyncBrevo() {
+    setSyncing(true);
+    setSyncError(null);
+    setSyncResult(null);
+    try {
+      const supabase = createClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) throw new Error("Нет активной сессии");
+      const res = await fetch("/api/newsletter/sync-brevo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ checkEmail: checkEmail.trim() || undefined }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || "Не удалось отправить в Brevo");
+      let text = `Отправлено в Brevo: ${data.sent} контактов в список «${data.listName}» · с аккаунтом: ${data.withAccount} · с баллами: ${data.withPoints}. Brevo обрабатывает импорт 1–2 минуты.`;
+      if (data.check) {
+        text += data.check.notInList
+          ? `\n${data.check.email}: нет среди подписчиков — письмо ему не уйдёт.`
+          : `\n${data.check.email}: аккаунт — ${data.check.attributes.NARIN_UCET || "нет"}; ${data.check.attributes.NARIN_BODY_VETA || "баллов нет"}`;
+      }
+      setSyncResult(text);
+    } catch (e) {
+      setSyncError(e instanceof Error ? e.message : "Не удалось отправить в Brevo");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
   function handleExportCsv() {
     if (!stats) return;
     const csv = ["email", ...stats.subscribedEmails].join("\n");
@@ -150,6 +187,32 @@ export function NewsletterPanel() {
           )}
         </div>
       )}
+
+      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4 space-y-3">
+        <h2 className="font-medium text-zinc-900 dark:text-zinc-100">Данные для писем в Brevo</h2>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          Отправляет всех подписчиков в список Brevo «NARIN – odběratelé» вместе с данными для персонального
+          письма: есть ли аккаунт, сколько баллов, ссылка на отписку. Отписавшиеся из списка убираются. Нажимайте
+          перед каждой рассылкой.
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            value={checkEmail}
+            onChange={(e) => setCheckEmail(e.target.value)}
+            placeholder="проверить e-mail (необязательно)"
+            className="min-w-0 flex-1 rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-zinc-900 dark:text-zinc-100"
+          />
+          <button
+            onClick={handleSyncBrevo}
+            disabled={syncing}
+            className="rounded-md bg-accent px-4 py-1.5 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+          >
+            {syncing ? "Отправляем…" : "Отправить в Brevo"}
+          </button>
+        </div>
+        {syncResult && <p className="whitespace-pre-line text-sm text-green-600 dark:text-green-400">{syncResult}</p>}
+        {syncError && <p className="text-sm text-red-600 dark:text-red-400">{syncError}</p>}
+      </div>
 
       <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4 space-y-3">
         <h2 className="font-medium text-zinc-900 dark:text-zinc-100">Импорт email</h2>
