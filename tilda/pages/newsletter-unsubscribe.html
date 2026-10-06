@@ -158,6 +158,14 @@
       }
 
       subscriberEmail = row.email;
+      // tatáž odhláška hned i v Brevo (blacklist) — další kampaň už nepřijde,
+      // i kdyby se před ní zapomněl synchronizovat seznam
+      fetch("https://narin-work.vercel.app/api/newsletter/unsubscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: token }),
+        keepalive: true,
+      }).catch(function () {});
       flower.classList.remove("sway");
       flower.classList.add("dropped");
       document.getElementById("lkFinalEmail").textContent = subscriberEmail;
