@@ -24,6 +24,7 @@
 #rec1915290073 .t1002__addBtn { top: auto !important; bottom: 10px !important; right: 10px !important; }
 
 .narin-cat-nav { margin: 16px 0; font-family: 'Rubik', sans-serif; }
+.narin-cat-promo { display: flex; align-items: center; gap: 10px; margin: 0 4px 12px 8px; padding: 12px 16px; border-radius: 16px; background: #ffd56b; color: #16181d; font-size: 14px; font-weight: 700; line-height: 1.35; }
 .narin-cat-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 0 4px 6px 8px; margin: 0 -4px 10px; -webkit-overflow-scrolling: touch; }
 .narin-cat-tabs::-webkit-scrollbar { display: none; }
 .narin-cat-tab { flex: 0 0 auto; padding: 10px 20px; border-radius: 24px; border: 1px solid #e0e2e6; background: #fff; font-size: 14px; font-weight: 600; white-space: nowrap; cursor: pointer; color: #16181d; }
@@ -121,6 +122,10 @@ html.narin-cat-loading .js-store-grid-cont { opacity: 0 !important; }
     var COLORS = [cz('B&#237;l&#225;'), cz('R&#367;&#382;ov&#225;'), cz('&#268;erven&#225;'), cz('&#381;lut&#225;'), cz('Fialov&#225;'), cz('Modr&#225;')];
     var HEIGHTS = [cz('N&#237;zk&#233;'), cz('Vysok&#233;')];
     var LOW_STOCK_THRESHOLD = 3;
+
+    // Akce nad katalogem. Zmizí sama po datu "until" (pražský čas) — nic není potřeba mazat ručně.
+    // Další akce: přepsat text a datum, nebo nastavit PROMO = null.
+    var PROMO = { text: cz('&#128666; Doprava zdarma do ned&#283;le 11. 10. &#8212; po cel&#233; Praze, bez k&#243;du'), until: '2026-10-11T23:59:59+02:00' };
 
     // ?tab=banky / ?tab=ohapka / ?tab=kytice v odkazu (taplink, reklama) otevře rovnou danou záložku
     var urlTab = (function () { try { return new URLSearchParams(location.search).get('tab'); } catch (e) { return null; } })();
@@ -519,6 +524,12 @@ html.narin-cat-loading .js-store-grid-cont { opacity: 0 !important; }
     function buildNav() {
         var nav = document.createElement('div');
         nav.className = 'narin-cat-nav';
+        if (PROMO && Date.now() < Date.parse(PROMO.until)) {
+            var promo = document.createElement('div');
+            promo.className = 'narin-cat-promo';
+            promo.textContent = PROMO.text;
+            nav.appendChild(promo);
+        }
         var tabBar = document.createElement('div');
         tabBar.className = 'narin-cat-tabs';
         var count = document.createElement('div');
