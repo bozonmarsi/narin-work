@@ -1,0 +1,397 @@
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800;900&display=swap">
+<style>
+/* layout: one readable column; sticky section chips, "Stručně" tiles first, details in accordions */
+.hlp { --blue:#1a6ce1; --blue-deep:#0f4fb0; --ink:#10213f; --ink-2:#4b5a78; --mist:#eef4fe; --line:#dde7f7; --sun:#ffd56b; --sun-soft:#fff6d8; --ok:#0a8a3a; --tm:#196fe3; --sp:#ff2a20;
+  --f:'Montserrat',system-ui,-apple-system,'Segoe UI',sans-serif; --r:18px;
+  font-family:var(--f); color:var(--ink); background:#fff; -webkit-font-smoothing:antialiased; line-height:1.55; }
+.hlp, .hlp * { box-sizing:border-box; }
+.hlp h1, .hlp h2, .hlp h3, .hlp p, .hlp ul, .hlp ol { margin:0; padding:0; }
+.hlp ul, .hlp ol { list-style:none; }
+:where(.hlp) a { color:inherit; text-decoration:none; }
+.hlp-wrap { max-width:780px; margin:0 auto; padding:0 16px; }
+
+/* hero */
+.hlp-hero { position:relative; overflow:hidden; background:radial-gradient(120% 90% at 50% 0%, #eef4fe 0%, #fff 70%); padding:40px 0 22px; }
+.hlp-hero .dz { position:absolute; width:var(--s); left:var(--x); top:var(--y); pointer-events:none; opacity:.55; animation:hlpspin var(--t) linear infinite; filter:drop-shadow(0 4px 6px rgba(16,33,63,.12)); }
+@keyframes hlpspin { to { transform:rotate(360deg); } }
+.hlp-eyebrow { font:800 12px var(--f); letter-spacing:.2em; text-transform:uppercase; color:var(--blue); }
+.hlp h1 { font:900 clamp(30px,6vw,44px)/1.05 var(--f); letter-spacing:-.02em; margin:10px 0 12px; text-wrap:balance; }
+.hlp-lead { font-size:16px; color:var(--ink-2); max-width:56ch; }
+.hlp-search { position:relative; margin-top:20px; }
+.hlp-search input { width:100%; height:54px; border-radius:16px; border:1.5px solid var(--line); background:#fff; padding:0 18px 0 48px; font:600 15px var(--f); color:var(--ink); box-shadow:0 8px 20px -14px rgba(26,108,225,.5); }
+.hlp-search input:focus { outline:3px solid rgba(26,108,225,.25); border-color:var(--blue); }
+.hlp-search svg { position:absolute; left:16px; top:16px; width:22px; height:22px; color:var(--blue); }
+.hlp-empty { display:none; margin-top:14px; padding:16px; border-radius:16px; background:var(--sun-soft); font-weight:600; }
+.hlp-empty a { color:var(--blue); text-decoration:underline; }
+
+/* chips */
+.hlp-nav { position:sticky; top:0; z-index:30; background:rgba(255,255,255,.94); backdrop-filter:blur(8px); border-bottom:1px solid var(--line); }
+.hlp-chips { display:flex; gap:8px; overflow-x:auto; padding:10px 16px; max-width:780px; margin:0 auto; scrollbar-width:none; }
+.hlp-chips::-webkit-scrollbar { display:none; }
+.hlp-chip { flex:0 0 auto; padding:9px 16px; border-radius:999px; border:1px solid var(--line); font:700 13.5px var(--f); color:var(--ink); background:#fff; white-space:nowrap; transition:background .15s, color .15s; }
+.hlp-chip.on { background:var(--blue); border-color:var(--blue); color:#fff; }
+
+/* sections */
+.hlp-sec { padding:40px 0 4px; scroll-margin-top:62px; }
+.hlp-sec h2 { font:900 clamp(26px,5vw,34px)/1.1 var(--f); letter-spacing:-.02em; }
+.hlp-sec .hlp-lead { margin-top:10px; }
+.hlp h3 { font:800 17px var(--f); margin:26px 0 10px; }
+.hlp-tiles { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:18px; }
+.hlp-tile { background:var(--mist); border-radius:var(--r); padding:15px 16px; }
+.hlp-tile b { display:block; font:900 24px/1.1 var(--f); color:var(--blue); letter-spacing:-.01em; }
+.hlp-tile span { display:block; margin-top:6px; font-size:13.5px; line-height:1.4; color:var(--ink-2); font-weight:600; }
+@media (max-width:600px) { .hlp-tiles { grid-template-columns:1fr; } }
+
+.hlp-lg { display:grid; gap:10px; }
+.hlp-lg > div { display:flex; gap:12px; align-items:flex-start; padding:14px 16px; border-radius:var(--r); border:1px solid var(--line); background:#fff; }
+.hlp-dot { flex:0 0 auto; margin-top:5px; width:12px; height:12px; border-radius:50%; background:var(--c); box-shadow:0 0 0 4px color-mix(in srgb, var(--c) 18%, transparent); }
+.hlp-lg b { font-weight:800; color:var(--c); }
+.hlp-lg p { font-size:14.5px; color:var(--ink-2); margin-top:2px; }
+.hlp-note { font-size:13.5px; color:var(--ink-2); margin-top:10px; }
+
+/* accordions */
+.hlp details { border:1px solid var(--line); border-radius:var(--r); margin-top:10px; background:#fff; }
+.hlp details[open] { border-color:#b9d0f5; box-shadow:0 10px 24px -18px rgba(26,108,225,.5); }
+.hlp summary { list-style:none; cursor:pointer; padding:15px 18px; font:800 15.5px var(--f); display:flex; justify-content:space-between; gap:14px; align-items:center; }
+.hlp summary::-webkit-details-marker { display:none; }
+.hlp summary::after { content:'+'; flex:0 0 auto; width:26px; height:26px; border-radius:50%; background:var(--mist); color:var(--blue); display:grid; place-items:center; font:800 18px/1 var(--f); }
+.hlp details[open] summary::after { content:'–'; background:var(--blue); color:#fff; }
+.hlp summary:focus-visible { outline:3px solid rgba(26,108,225,.35); border-radius:var(--r); }
+.hlp .hq-b { padding:0 18px 18px; font-size:15px; color:var(--ink-2); }
+.hlp .hq-b p + p, .hlp .hq-b p + ol, .hlp .hq-b ol + p, .hlp .hq-b ul + p, .hlp .hq-b p + ul { margin-top:10px; }
+.hlp .hq-b b { color:var(--ink); }
+.hlp .hq-b a, .hlp-lead a, .hlp-note a { color:var(--blue); font-weight:700; text-decoration:underline; text-underline-offset:2px; }
+.hlp ol.st { counter-reset:s; display:grid; gap:10px; }
+.hlp ol.st li { counter-increment:s; position:relative; padding-left:38px; }
+.hlp ol.st li::before { content:counter(s); position:absolute; left:0; top:0; width:26px; height:26px; border-radius:50%; background:var(--blue); color:#fff; display:grid; place-items:center; font:800 13px var(--f); }
+.hlp ul.ds li { position:relative; padding-left:18px; }
+.hlp ul.ds li::before { content:''; position:absolute; left:2px; top:.62em; width:7px; height:7px; border-radius:50%; background:var(--blue); }
+.hlp ul.ds li + li { margin-top:6px; }
+
+/* method cards */
+.hlp-m { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:16px; }
+.hlp-m > div { padding:14px 16px; border-radius:var(--r); border:1px solid var(--line); }
+.hlp-m b { display:block; font-weight:800; font-size:15px; }
+.hlp-m span { display:block; margin-top:3px; font-size:13.5px; color:var(--ink-2); line-height:1.4; }
+@media (max-width:600px) { .hlp-m { grid-template-columns:1fr; } }
+
+/* calculator */
+.hlp-calc { margin-top:18px; border-radius:22px; background:var(--ink); color:#fff; padding:20px; }
+.hlp-calc h3 { margin:0 0 12px; color:#fff; }
+.hlp-calc label { display:block; font-size:13px; font-weight:700; color:#b9c7e6; }
+.hlp-calc .in { margin-top:6px; display:flex; align-items:center; gap:10px; }
+.hlp-calc input { width:150px; height:46px; border-radius:12px; border:0; padding:0 14px; font:800 18px var(--f); color:var(--ink); }
+.hlp-calc input:focus-visible { outline:3px solid var(--sun); }
+.hlp-calc .rows { margin-top:16px; display:grid; gap:8px; }
+.hlp-calc .rw { display:flex; justify-content:space-between; gap:12px; font-weight:600; font-size:15px; font-variant-numeric:tabular-nums; }
+.hlp-calc .rw small { display:block; color:#b9c7e6; font-weight:500; font-size:12px; }
+.hlp-calc .tot { margin-top:6px; padding-top:12px; border-top:1px dashed rgba(255,255,255,.3); font-size:20px; font-weight:900; }
+.hlp-calc .tot span:last-child { color:var(--sun); }
+
+/* example */
+.hlp-ex { margin-top:14px; border-radius:var(--r); background:var(--sun-soft); padding:16px 18px; font-size:14.5px; color:var(--ink); }
+.hlp-ex b { font-weight:800; }
+
+/* tables */
+.hlp-tb { margin-top:14px; border:1px solid var(--line); border-radius:var(--r); overflow:hidden; }
+.hlp-tb > div { display:grid; grid-template-columns:1.2fr 1fr 1fr; gap:8px; padding:12px 16px; font-size:14.5px; font-weight:600; align-items:center; }
+.hlp-tb > div + div { border-top:1px solid var(--line); }
+.hlp-tb .hd { background:var(--mist); font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-2); font-weight:800; }
+.hlp-tb b { font-weight:900; color:var(--blue); }
+.hlp-tb.two > div { grid-template-columns:1fr 1fr; }
+
+/* chat / contact */
+.hlp-chat { margin-top:18px; border-radius:26px; background:linear-gradient(150deg,#2a7bf0,var(--blue) 55%,var(--blue-deep)); color:#fff; padding:24px 22px; }
+.hlp-chat h2 { color:#fff; }
+.hlp-chat p { margin-top:8px; color:#dbe8ff; font-size:15px; }
+.hlp-btns { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:18px; }
+.hlp-btn { display:flex; align-items:center; justify-content:center; height:52px; border-radius:16px; font:800 14.5px var(--f); background:rgba(255,255,255,.14); color:#fff; border:1px solid rgba(255,255,255,.22); text-align:center; padding:0 10px; }
+.hlp-btn.main { grid-column:span 2; background:#fff; color:var(--blue); border:0; font-size:16px; }
+.hlp-foot { margin:26px 0 0; padding:0 0 46px; font-size:13px; color:var(--ink-2); text-align:center; }
+.hlp-foot a { text-decoration:underline; margin:0 6px; }
+.hlp-hide { display:none !important; }
+.hlp mark { background:var(--sun); color:inherit; border-radius:4px; padding:0 2px; }
+@media (prefers-reduced-motion: reduce) { .hlp-hero .dz { animation:none; } }
+</style>
+
+<div class="hlp" id="hlp">
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><g id="dP"><path d="M 159.691406 91.921875 L 178.789062 42.375 C 185.230469 27.75 184.792969 17.382812 177.480469 6.578125 C 173.335938 0.359375 166.894531 1.230469 155.871094 3.195312 C 151.070312 4.066406 146.050781 4.941406 140.921875 4.941406 C 135.574219 4.941406 130.335938 3.851562 125.316406 2.757812 C 114.292969 0.359375 107.855469 -0.625 103.707031 5.921875 C 96.722656 16.945312 96.503906 27.859375 102.941406 42.375 L 103.050781 42.59375 L 122.042969 91.921875 L 131.972656 109.492188 C 134.808594 108.617188 137.757812 108.179688 140.8125 108.179688 C 143.976562 108.179688 146.921875 108.617188 149.871094 109.492188 Z M 159.691406 91.921875"/><path d="M 41.828125 109.601562 L 42.046875 109.601562 L 91.703125 125.207031 L 111.347656 128.261719 C 113.636719 122.476562 117.566406 117.566406 122.476562 114.074219 L 115.164062 95.195312 L 89.082031 49.140625 C 81.878906 34.953125 73.695312 28.839844 60.816406 27.859375 C 60.488281 27.859375 60.164062 27.859375 59.945312 27.859375 C 53.179688 27.859375 49.902344 33.425781 44.773438 43.027344 C 42.484375 47.394531 39.972656 51.867188 36.808594 56.015625 C 33.425781 60.273438 29.386719 63.765625 25.347656 67.148438 C 16.617188 74.460938 11.816406 79.042969 14.328125 86.355469 C 18.472656 98.578125 26.660156 105.5625 41.828125 109.601562 Z M 41.828125 109.601562"/><path d="M 55.359375 200.070312 L 98.25 170.277344 L 112.875 156.527344 C 110.363281 151.835938 108.835938 146.488281 108.835938 140.8125 C 108.835938 140.15625 108.835938 139.503906 108.945312 138.847656 L 89.957031 132.738281 L 38.335938 124.769531 C 34.296875 124.003906 30.695312 123.570312 27.3125 123.570312 C 17.929688 123.570312 10.835938 126.953125 4.394531 134.15625 C -0.625 139.722656 1.667969 145.941406 5.921875 156.417969 C 7.777344 161.003906 9.742188 165.804688 10.945312 170.933594 C 12.144531 176.28125 12.253906 181.738281 12.363281 186.976562 C 12.582031 198.542969 13.015625 205.09375 20.21875 207.710938 C 32.226562 212.078125 42.703125 209.785156 55.25 200.179688 Z M 55.359375 200.070312"/><path d="M 119.3125 164.820312 L 102.941406 176.28125 L 64.636719 212.511719 C 52.742188 222.769531 48.703125 232.265625 50.667969 245.363281 C 51.757812 252.78125 57.980469 254.855469 68.675781 258.023438 C 73.367188 259.332031 78.277344 260.75 82.863281 263.042969 C 87.664062 265.441406 91.921875 268.714844 96.066406 271.992188 C 105.015625 278.976562 110.363281 282.792969 116.910156 278.648438 C 127.714844 271.773438 132.519531 262.058594 132.953125 246.125 L 132.953125 245.90625 L 136.882812 192.976562 L 135.355469 172.789062 C 129.242188 171.695312 123.789062 168.859375 119.3125 164.820312 Z M 119.3125 164.820312"/><path d="M 216.660156 212.511719 L 216.550781 212.402344 L 178.464844 176.390625 L 161.984375 164.929688 C 157.507812 168.96875 152.054688 171.804688 145.941406 172.789062 L 144.414062 192.976562 L 148.34375 246.125 C 148.777344 262.058594 153.582031 271.226562 164.820312 277.773438 C 171.261719 281.484375 176.71875 277.882812 185.773438 271.226562 C 189.703125 268.28125 193.851562 265.332031 198.542969 263.042969 C 203.34375 260.640625 208.585938 259.332031 213.605469 258.128906 C 224.625 255.402344 230.847656 253.4375 231.71875 245.6875 C 233.03125 232.703125 228.554688 222.878906 216.660156 212.511719 Z M 216.660156 212.511719"/><path d="M 277.882812 133.71875 C 268.933594 124.441406 258.457031 121.824219 243.179688 124.988281 L 242.960938 124.988281 L 191.558594 132.84375 L 172.570312 138.847656 C 172.570312 139.503906 172.570312 140.046875 172.570312 140.703125 C 172.570312 146.488281 171.042969 151.945312 168.53125 156.636719 L 183.046875 170.386719 L 226.15625 200.398438 C 238.703125 210.003906 248.636719 211.96875 260.640625 207.054688 C 267.515625 204.21875 268.171875 197.671875 268.714844 186.320312 C 268.933594 181.300781 269.261719 176.171875 270.355469 171.042969 C 271.554688 165.695312 273.738281 160.785156 275.917969 155.980469 C 280.832031 145.503906 283.230469 139.285156 277.882812 133.71875 Z M 277.882812 133.71875"/><path d="M 159.253906 114.183594 C 164.167969 117.785156 167.988281 122.695312 170.386719 128.480469 L 190.03125 125.425781 L 239.90625 109.710938 C 255.074219 105.78125 262.824219 98.90625 266.535156 86.246094 C 268.605469 79.042969 264.023438 74.460938 255.621094 66.929688 C 251.910156 63.65625 248.199219 60.164062 244.925781 56.125 C 241.542969 51.867188 239.140625 46.957031 236.847656 42.265625 C 231.71875 32.007812 228.554688 26.222656 220.917969 26.984375 C 208.257812 28.40625 199.746094 35.0625 192.542969 49.25 L 192.433594 49.359375 L 166.457031 95.195312 Z M 159.253906 114.183594"/></g><path id="dC" d="M 141.25 180.972656 C 118.984375 180.972656 100.871094 162.855469 100.871094 140.59375 C 100.871094 118.332031 118.984375 100.214844 141.25 100.214844 C 163.511719 100.214844 181.628906 118.332031 181.628906 140.59375 C 181.628906 162.855469 163.511719 180.972656 141.25 180.972656 Z M 141.25 180.972656"/></defs></svg>
+  <header class="hlp-hero">
+    <div id="hlpDz" aria-hidden="true"></div>
+    <div class="hlp-wrap" style="position:relative">
+      <div class="hlp-eyebrow">NARIN · Informace pro zákazníky</div>
+      <h1>Vše, co potřebujete vědět</h1>
+      <p class="hlp-lead">Doručení, platba, depozit, body, předplatné a reklamace na jednom místě. Nenašli jste odpověď? <a href="https://vezminarin.cz/contacts#nkcChat">Napište nám do chatu</a>, odpovídáme do 10 minut.</p>
+      <div class="hlp-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input id="hlpQ" type="search" placeholder="Hledat: doručení, depozit, body, zrušení…" autocomplete="off" aria-label="Hledat v informacích pro zákazníky">
+      </div>
+      <div class="hlp-empty" id="hlpEmpty">Nic jsme nenašli. <a href="https://vezminarin.cz/contacts#nkcChat">Zeptejte se nás v chatu</a>, odpovíme do 10 minut.</div>
+    </div>
+  </header>
+
+  <nav class="hlp-nav" aria-label="Sekce"><div class="hlp-chips" id="hlpChips">
+    <a class="hlp-chip on" href="#doruceni">Doručení</a><a class="hlp-chip" href="#platba">Platba</a><a class="hlp-chip" href="#depozit">Depozit</a><a class="hlp-chip" href="#body">Body</a><a class="hlp-chip" href="#predplatne">Předplatné</a><a class="hlp-chip" href="#reklamace">Reklamace</a><a class="hlp-chip" href="#kontakt">Kontakt</a>
+  </div></nav>
+
+  <main class="hlp-wrap">
+
+    <!-- DORUČENÍ -->
+    <section class="hlp-sec" id="doruceni" data-s>
+      <h2>Doručení</h2>
+      <p class="hlp-lead">Doručujeme po Praze a blízkém okolí vlastními kurýry. Kytice vozíme, kdykoli je to možné, v chlazených autech, aby zůstaly co nejčerstvější.</p>
+      <div class="hlp-tiles">
+        <div class="hlp-tile"><b>159 Kč</b><span>doručení po Praze, vždy samostatná položka v košíku</span></div>
+        <div class="hlp-tile"><b>do 16:00</b><span>objednejte a doručíme ještě dnes, je-li kytice skladem</span></div>
+        <div class="hlp-tile"><b>4 okna</b><span>9–12, 12–15, 15–18 a 18–20, vyberete v košíku</span></div>
+      </div>
+      <h3>Kdy květiny dorazí</h3>
+      <div class="hlp-lg">
+        <div style="--c:var(--ok)"><i class="hlp-dot"></i><div><b>Doručíme dnes</b><p>Kytici máme skladem. Objednejte do 16:00 a vyberete si okno ještě dnes.</p></div></div>
+        <div style="--c:var(--tm)"><i class="hlp-dot"></i><div><b>Doručíme zítra</b><p>Květiny dorazí z nové dodávky a vezeme je hned následující den.</p></div></div>
+        <div style="--c:var(--sp)"><i class="hlp-dot"></i><div><b>Doručíme za 2 dny</b><p>Květiny objednáváme speciálně pro vás, obvykle za 2 pracovní dny. Přesné datum vidíte přímo na kartě.</p></div></div>
+      </div>
+      <p class="hlp-note">Barevný štítek najdete u každé kytice v katalogu. Je vždy aktuální podle toho, co máme skladem. Objednávky po 16:00 doručujeme nejdřív další den.</p>
+
+      <details class="hq"><summary>Jak doručení probíhá</summary><div class="hq-b">
+        <ol class="st">
+          <li>Po úspěšné platbě vám přijde e-mail s potvrzením objednávky a vybraným oknem.</li>
+          <li>Kurýr jede v rámci vašeho okna, nemusíte čekat přesně na minutu.</li>
+          <li>10 minut před příjezdem vám přijde SMS: „Kurýr je 10 minut od vás, prosíme, buďte připraveni převzít květiny.“</li>
+          <li>Při předání kurýr kytici vyfotí, abyste viděli, že dorazila v pořádku.</li>
+        </ol></div></details>
+      <details class="hq"><summary>Co když nebudu na místě?</summary><div class="hq-b"><p>Domluvíme se na náhradním termínu. <b>První opakování doručení je zdarma.</b> Dejte nám vědět v chatu nebo na telefonu, ať kurýr zbytečně nejede.</p></div></details>
+      <details class="hq"><summary>Co když se kurýr zdrží nebo jsou všichni obsazení?</summary><div class="hq-b"><p>Při neočekávaných okolnostech (zácpa, počasí, výpadek kurýra) vám nabídneme nejbližší možný termín. Vždy vás budeme informovat a najdeme řešení, které vám vyhovuje.</p></div></details>
+      <details class="hq"><summary>Kam doručujeme a v které dny?</summary><div class="hq-b"><p>Zatím po Praze a blízkém okolí. Dny, kdy nevozíme (např. svátky), v kalendáři v košíku nevyberete.</p></div></details>
+      <details class="hq"><summary>Neznám adresu příjemce</summary><div class="hq-b"><p>Stačí telefon příjemce. Pošleme mu odkaz, kde si adresu a čas doručení zadá sám. <a href="https://vezminarin.cz/darek-bez-adresy">Jak funguje Dárek bez adresy</a></p></div></details>
+    </section>
+
+    <!-- PLATBA -->
+    <section class="hlp-sec" id="platba" data-s>
+      <h2>Platba</h2>
+      <p class="hlp-lead">Platit můžete několika způsoby. Celkovou cenu vždy vidíte v košíku ještě před potvrzením, bez překvapení.</p>
+      <div class="hlp-calc">
+        <h3>Z čeho se skládá cena</h3>
+        <label for="hlpGoods">Cena květin v košíku (Kč)</label>
+        <div class="in"><input id="hlpGoods" type="number" inputmode="numeric" min="0" step="10" value="890"></div>
+        <div class="rows">
+          <div class="rw"><span>Květiny</span><span id="cGoods"></span></div>
+          <div class="rw"><span>Doručení<small>po Praze, vždy samostatně</small></span><span id="cShip"></span></div>
+          <div class="rw"><span>Servisní poplatek<small>vždy samostatně</small></span><span id="cFee"></span></div>
+          <div class="rw tot"><span>Celkem</span><span id="cTot"></span></div>
+        </div>
+      </div>
+      <div class="hlp-m">
+        <div><b>Platební karta</b><span>Visa a Mastercard, přes zabezpečenou bránu Stripe přímo na webu</span></div>
+        <div><b>Apple Pay a Google Pay</b><span>jedním klepnutím, bez opisování karty</span></div>
+        <div><b>Bankovní převod</b><span>údaje vám pošleme po odeslání objednávky</span></div>
+        <div><b>Hotově při převzetí</b><span>po domluvě, napište nám před objednávkou</span></div>
+        <div><b>Depozit</b><span>předplacený zůstatek u NARIN, <a href="#depozit" style="color:var(--blue);font-weight:700">jak funguje</a></span></div>
+        <div><b>Body</b><span>až 30 % hodnoty objednávky, <a href="#body" style="color:var(--blue);font-weight:700">jak je získat</a></span></div>
+      </div>
+      <details class="hq"><summary>Servisní poplatek 80 Kč: za co platíte</summary><div class="hq-b">
+        <p>Ke každé objednávce připočítáváme fixní servisní poplatek <b>80 Kč</b>. Vždy je to samostatná položka, nikdy ho nesloučíme s cenou květin ani doručení. Zahrnuje:</p>
+        <ul class="ds"><li>pečlivou přípravu a sběr květin na skladě</li><li>kvalitní stylové balení</li><li>obsluhu objednávky a související náklady</li></ul>
+        <p>Cenu vidíte v košíku před potvrzením.</p></div></details>
+      <details class="hq"><summary>Je platba kartou bezpečná?</summary><div class="hq-b"><p>Online platby zajišťuje Stripe Payments Europe, Ltd., licencovaná platební instituce v rámci Evropské unie. Údaje o kartě jsou šifrované a zpracovává je Stripe. K nám se nikdy nedostanou.</p></div></details>
+      <details class="hq"><summary>Platba bankovním převodem</summary><div class="hq-b"><p>Po odeslání objednávky vám e-mailem pošleme číslo účtu, částku a variabilní symbol. Objednávku připravíme po připsání platby, proto převod posílejte včas, hlavně u doručení ještě dnes. Nejrychlejší je platba kartou nebo z depozitu.</p></div></details>
+      <details class="hq"><summary>Hotově při převzetí</summary><div class="hq-b"><p>Jde to po domluvě. Napište nám <a href="https://vezminarin.cz/contacts#nkcChat">do chatu</a> před objednávkou a dohodneme se na detailech.</p></div></details>
+      <details class="hq"><summary>Doklad o platbě</summary><div class="hq-b"><p>Daňový doklad (fakturu nebo účtenku) dostanete e-mailem ihned po úhradě.</p></div></details>
+      <details class="hq"><summary>Vrácení peněz</summary><div class="hq-b"><p>Peníze vracíme stejným způsobem, jakým jste platili: na kartu, na váš účet, nebo na depozit. Pokud se vám něco nelíbí, napište nám. <a href="#reklamace">Jak postupovat při reklamaci</a></p></div></details>
+    </section>
+
+    <!-- DEPOZIT -->
+    <section class="hlp-sec" id="depozit" data-s>
+      <h2>Depozit</h2>
+      <p class="hlp-lead">Depozit je váš předplacený zůstatek u NARIN. Dobijete ho jednou, hotově nebo převodem na účet, a pak z něj platíte objednávky, aniž byste museli pokaždé platit znovu.</p>
+      <div class="hlp-tiles">
+        <div class="hlp-tile"><b>Bez karty</b><span>platíte ze zůstatku, nemusíte pokaždé platit znovu</span></div>
+        <div class="hlp-tile"><b>Bez expirace</b><span>zůstatek platí, dokud ho nevyčerpáte</span></div>
+        <div class="hlp-tile"><b>2 způsoby</b><span>dobití hotově nebo převodem na účet</span></div>
+      </div>
+      <h3>K čemu se hodí</h3>
+      <ul class="ds hlp-b" style="font-size:15px;color:var(--ink-2)">
+        <li><b style="color:var(--ink)">Posíláte květiny často.</b> Dobijete jednou a pak z depozitu platíte každou další objednávku. Žádné opakované platby kartou ani převody.</li>
+        <li><b style="color:var(--ink)">Důležité dny.</b> Když si v osobním účtu zapnete, že kytici na narozeniny nebo svátek objednáme za vás, zaplatí se z depozitu a vy na nic nemusíte myslet.</li>
+        <li><b style="color:var(--ink)">Máte přehled.</b> Zůstatek vidíte v osobním účtu.</li>
+      </ul>
+      <h3>Jak to funguje</h3>
+      <ol class="st" style="font-size:15px;color:var(--ink-2)">
+        <li><b style="color:var(--ink)">Dobijete depozit.</b> Hotově, nebo převodem na náš účet. Částku si zvolíte sami.</li>
+        <li><b style="color:var(--ink)">Zůstatek se připíše.</b> Převod připíšeme, jakmile dorazí na účet, obvykle do 1–2 pracovních dnů. Hotovost hned po převzetí.</li>
+        <li><b style="color:var(--ink)">Platíte z depozitu.</b> Při objednávce zvolíte platbu z depozitu a částka se odečte ze zůstatku. Použijete celý zůstatek, nebo jen jeho část.</li>
+        <li><b style="color:var(--ink)">Zbytek doplatíte.</b> Nestačí-li zůstatek, rozdíl doplatíte kartou nebo jiným způsobem.</li>
+      </ol>
+      <div class="hlp-ex"><b>Příklad.</b> Dobijete 2 000 Kč. Objednáte kytici za 890 Kč, doručení 159 Kč a servisní poplatek 80 Kč, dohromady 1 129 Kč. Z depozitu odečteme 1 129 Kč a zůstane vám <b>871 Kč</b> na další objednávky.</div>
+      <details class="hq"><summary>Jak dobít hotově</summary><div class="hq-b"><p>Hotovostí můžete depozit dobít osobně. Stačí říct e-mail, se kterým se přihlašujete, a částku připíšeme na váš depozit hned po převzetí.</p></div></details>
+      <details class="hq"><summary>Jak dobít převodem na účet</summary><div class="hq-b"><p>Pošlete libovolnou částku na náš účet a ke každé platbě uveďte svůj <b>variabilní symbol</b>, podle něj poznáme, čí platba je. Peníze připíšeme, jakmile dorazí na účet, obvykle do 1–2 pracovních dnů.</p></div></details>
+      <details class="hq"><summary>Pravidla depozitu</summary><div class="hq-b"><ul class="ds">
+        <li>Depozit <b>nemá časové omezení</b> a nevyprší.</li>
+        <li>Není to bankovní účet a <b>nenese úrok</b>.</li>
+        <li>Použít ho lze jen na objednávky u NARIN. Nelze ho převést na jiného zákazníka.</li>
+        <li><b>Nevyčerpaný zůstatek vrátíme po vzájemné dohodě.</b></li></ul></div></details>
+      <details class="hq"><summary>Co když depozit nestačí?</summary><div class="hq-b"><p>Rozdíl doplatíte kartou nebo jiným způsobem platby.</p></div></details>
+    </section>
+
+    <!-- BODY -->
+    <section class="hlp-sec" id="body" data-s>
+      <h2>Body a věrnostní program</h2>
+      <p class="hlp-lead">Za každou zaplacenou objednávku dostanete část peněz zpět v bodech. <b>1 bod = 1 Kč</b> a body nevyprší.</p>
+      <div class="hlp-tiles">
+        <div class="hlp-tile"><b>150 b.</b><span>dárek za registraci</span></div>
+        <div class="hlp-tile"><b>až 2 %</b><span>zpět z každé objednávky</span></div>
+        <div class="hlp-tile"><b>30 %</b><span>objednávky lze zaplatit body</span></div>
+      </div>
+      <h3>Úrovně</h3>
+      <div class="hlp-tb">
+        <div class="hd"><span>Úroveň</span><span>Od bodů</span><span>Zpět</span></div>
+        <div><span>Sapphire</span><span>0</span><b>0,5 %</b></div>
+        <div><span>Silver</span><span>300</span><b>1 %</b></div>
+        <div><span>Gold</span><span>600</span><b>1,5 %</b></div>
+        <div><span>Platinum</span><span>900</span><b>2 %</b></div>
+      </div>
+      <p class="hlp-note">Úroveň se počítá ze všech bodů, které jste kdy získali. Útrata bodů vás o úroveň nepřipraví. Od úrovně Silver vám k další objednávce přibalíme dárek.</p>
+      <details class="hq"><summary>Jak body získat</summary><div class="hq-b"><ul class="ds"><li><b>150 bodů</b> za registraci.</li><li><b>Zpětná platba z každé zaplacené objednávky</b> podle vaší úrovně.</li><li><b>10 bodů</b> za ohodnocení doručené objednávky.</li></ul></div></details>
+      <details class="hq"><summary>Jak body uplatnit</summary><div class="hq-b"><p>V košíku zadáte, kolik bodů chcete použít. Body lze uplatnit až do výše <b>30 % hodnoty objednávky</b>, v násobcích 100, nejvýše 1 000 bodů najednou. Zbytek zaplatíte obvyklým způsobem. Zůstatek bodů vidíte v osobním účtu.</p></div></details>
+      <details class="hq"><summary>Platnost a pravidla</summary><div class="hq-b"><ul class="ds"><li>Body <b>nevyprší</b>.</li><li>Nejsou penězi: nelze je vyplatit ani převést na jiného zákazníka.</li><li>Při vrácení objednávky se body, které jste za ni získali, odečtou a použité body se vrátí.</li></ul></div></details>
+    </section>
+
+    <!-- PŘEDPLATNÉ -->
+    <section class="hlp-sec" id="predplatne" data-s>
+      <h2>Předplatné</h2>
+      <p class="hlp-lead">Květiny pravidelně a podle vás. Vyberete linii, velikost a počet dodávek, o zbytek se postaráme.</p>
+      <div class="hlp-tiles">
+        <div class="hlp-tile"><b>4 týdny</b><span>jeden cyklus dodávek</span></div>
+        <div class="hlp-tile"><b>1 klepnutí</b><span>zrušíte v osobním účtu</span></div>
+        <div class="hlp-tile"><b>až −12 %</b><span>čím víc dodávek, tím levněji</span></div>
+      </div>
+      <details class="hq"><summary>Jak předplatné funguje</summary><div class="hq-b"><ol class="st">
+        <li>Vyberete linii: <b>Pouze růže</b>, <b>Exotika</b>, nebo <b>Na uvážení floristy</b>.</li>
+        <li>Zvolíte velikost, počet dodávek v cyklu, den a příjemce.</li>
+        <li>Zaplatíte kartou přes Stripe. Při objednání platíte celé 4 týdny dodávek.</li>
+        <li>Platba se pak sama opakuje každé 4 týdny, dokud předplatné nezrušíte.</li></ol></div></details>
+      <details class="hq"><summary>Kdy a kolik se platí</summary><div class="hq-b"><p>První platba proběhne při objednání. Objednáním souhlasíte s <b>opakovanou platbou kartou každé 4 týdny</b>, dokud předplatné neukončíte. Datum a částku příští platby vidíte v osobním účtu.</p></div></details>
+      <details class="hq"><summary>Slevy za počet dodávek</summary><div class="hq-b">
+        <div class="hlp-tb two" style="margin-top:4px"><div class="hd"><span>Dodávek v cyklu</span><span>Sleva</span></div>
+          <div><span>4</span><b>0 %</b></div><div><span>5</span><b>3 %</b></div><div><span>6</span><b>6 %</b></div><div><span>7</span><b>9 %</b></div><div><span>8</span><b>12 %</b></div></div>
+        <p>U 6 a více dodávek v cyklu přidáváme dárek a u 8 dodávek i partnerský certifikát.</p></div></details>
+      <details class="hq"><summary>Můžu změnit nebo přesunout dodávku?</summary><div class="hq-b"><p>Ano. V osobním účtu u každé dodávky změníte datum, příjemce i adresu. Datum jde přesunout nejpozději <b>48 hodin předem</b>, adresu můžete upravit i později.</p></div></details>
+      <details class="hq"><summary>Jak předplatné zruším?</summary><div class="hq-b"><p>V osobním účtu jedním klepnutím, bez poplatků a bez výpovědní lhůty. Další platby se už nestrhnou a dodávky, které máte v aktuálním cyklu zaplacené, vám normálně doručíme.</p></div></details>
+      <details class="hq"><summary>Jaké květiny přijdou?</summary><div class="hq-b"><p>Sezónní, podle vámi vybrané linie. Florista je pokaždé sestaví z toho nejčerstvějšího, takže se mohou mírně lišit od fotografie. Můžete napsat náladu a co si nepřejete.</p></div></details>
+      <details class="hq"><summary>Můžu předplatné darovat?</summary><div class="hq-b"><p>Ano. Jako příjemce zadáte kohokoli a adresu můžete u jednotlivých dodávek střídat. <a href="https://vezminarin.cz/predplatne">Vybrat předplatné</a></p></div></details>
+    </section>
+
+    <!-- REKLAMACE -->
+    <section class="hlp-sec" id="reklamace" data-s>
+      <h2>Reklamace a vrácení</h2>
+      <p class="hlp-lead">Kdyby se cokoli nepovedlo, chceme to vědět a napravit. Stačí nám napsat.</p>
+      <div class="hlp-tiles">
+        <div class="hlp-tile"><b>7–10 dní</b><span>záruka čerstvosti při správné péči</span></div>
+        <div class="hlp-tile"><b>do 24 h</b><span>nahlaste vadu co nejdřív, s fotkami</span></div>
+        <div class="hlp-tile"><b>3–5 dní</b><span>obvykle vyřídíme, nejdéle do 30 dnů</span></div>
+      </div>
+      <details class="hq"><summary>Záruka čerstvosti</summary><div class="hq-b"><p>Květiny dodáváme v perfektním stavu. Při správné péči (denní výměna vody a řez stonků) vydrží minimálně <b>7–10 dní</b>, podle druhu květin. Vadou není přirozené zvadnutí po této době ani drobné sezónní rozdíly.</p></div></details>
+      <details class="hq"><summary>Jak reklamaci uplatnit</summary><div class="hq-b"><ol class="st">
+        <li>Napište nám <a href="https://vezminarin.cz/contacts#nkcChat">do chatu</a> nebo na <a href="mailto:support@vezminarin.cz">support@vezminarin.cz</a>.</li>
+        <li>Uveďte číslo objednávky, popište problém a přiložte fotky.</li></ol>
+        <p>Prosíme o nahlášení <b>co nejdříve po převzetí, ideálně do 12 hodin a nejpozději do 24 hodin</b>, s fotkami zboží hned po doručení. Pozdější podněty posoudíme individuálně.</p></div></details>
+      <details class="hq"><summary>Jak reklamaci vyřídíme</summary><div class="hq-b"><p>Výměnou, slevou, nebo vrácením peněz. U květin obvykle do <b>3–5 dnů</b>, nejpozději do <b>30 dnů</b>. Pokud reklamace není oprávněná, písemně vám to odůvodníme.</p></div></details>
+      <details class="hq"><summary>Můžu čerstvé květiny vrátit do 14 dnů?</summary><div class="hq-b"><p>Čerstvé květiny rychle podléhají zkáze, proto na ně zákonné právo odstoupit od smlouvy do 14 dnů nelze uplatnit. U ostatního zboží (např. z NARIN Dárky) právo na odstoupení do 14 dnů od převzetí máte. U ostatního zboží také platí záruka 24 měsíců podle zákona. Více v obchodních podmínkách.</p></div></details>
+    </section>
+
+    <!-- KONTAKT -->
+    <section class="hlp-sec" id="kontakt" data-s>
+      <div class="hlp-chat">
+        <h2>Nenašli jste, co hledáte?</h2>
+        <p>Napište nám do chatu. Poradíme s výběrem, objednávkou, platbou i depozitem a odpovídáme do 10 minut. <span id="hlpHours"></span></p>
+        <div class="hlp-btns">
+          <a class="hlp-btn main" href="https://vezminarin.cz/contacts#nkcChat">Otevřít chat</a>
+          <a class="hlp-btn" id="hlpWa" href="https://wa.me/420776421993">WhatsApp</a>
+          <a class="hlp-btn" href="tel:+420776421993">Zavolat</a>
+          <a class="hlp-btn" style="grid-column:span 2" href="mailto:support@vezminarin.cz">support@vezminarin.cz</a>
+        </div>
+      </div>
+      <p class="hlp-foot" id="hlpLinks"></p>
+    </section>
+  </main>
+</div>
+
+<script>
+(function () {
+  // ===== NASTAVENÍ =====
+  var CONFIG = {
+    shipping: 159, fee: 80,
+    hours: 'Po–Pá 9–20, So 10–18.',          // otevírací doba chatu (potvrdit)
+    terms: '', privacy: ''                   // odkazy na obchodní podmínky a ochranu osobních údajů; prázdné = nezobrazí se
+  };
+  var root = document.getElementById('hlp');
+  var $ = function (id) { return document.getElementById(id); };
+  $('hlpHours').textContent = CONFIG.hours;
+  var links = [];
+  if (CONFIG.terms) links.push('<a href="' + CONFIG.terms + '">Obchodní podmínky</a>');
+  if (CONFIG.privacy) links.push('<a href="' + CONFIG.privacy + '">Ochrana osobních údajů</a>');
+  $('hlpLinks').innerHTML = links.join('·');
+
+  // ---- floating daisies in the hero ----
+  var C = [['#ffffff','#ffd56b'],['#f7a9c4','#ffffff'],['#ffd56b','#ff8a5c'],['#7fd9a0','#ffffff'],['#c9b8ff','#ffd56b'],['#1a6ce1','#ffd56b']];
+  var S = [[88,4,46],[-2,60,32],[93,62,38],[66,-6,26]];
+  S.forEach(function (s, i) {
+    var c = C[i % C.length], d = document.createElement('div'); d.className = 'dz';
+    d.style.cssText = '--x:' + s[0] + '%;--y:' + s[1] + '%;--s:' + s[2] + 'px;--t:' + (46 + i * 8) + 's';
+    d.innerHTML = '<svg viewBox="0 0 283 283" width="100%"><use href="#dP" fill="' + c[0] + '"/><use href="#dC" fill="' + c[1] + '"/></svg>';
+    $('hlpDz').appendChild(d);
+  });
+
+  // ---- cena: kalkulačka ----
+  function kc(n) { return Math.round(n).toLocaleString('cs-CZ').replace(/\s/g, ' ') + ' Kč'; }
+  function calc() {
+    var g = Math.max(0, Number($('hlpGoods').value) || 0);
+    $('cGoods').textContent = kc(g); $('cShip').textContent = kc(CONFIG.shipping); $('cFee').textContent = kc(CONFIG.fee);
+    $('cTot').textContent = kc(g + CONFIG.shipping + CONFIG.fee);
+  }
+  $('hlpGoods').addEventListener('input', calc); calc();
+
+  // ---- chips + scroll-spy ----
+  var secs = [].slice.call(root.querySelectorAll('[data-s]'));
+  var chips = [].slice.call(root.querySelectorAll('.hlp-chip'));
+  function setOn(id) {
+    chips.forEach(function (c) { var on = c.getAttribute('href') === '#' + id; c.classList.toggle('on', on); if (on && c.scrollIntoView) { var p = c.parentNode; p.scrollTo({ left: c.offsetLeft - 16, behavior: 'smooth' }); } });
+  }
+  chips.forEach(function (c) {
+    c.addEventListener('click', function (e) {
+      e.preventDefault(); var t = document.getElementById(c.getAttribute('href').slice(1));
+      if (t) { t.scrollIntoView({ behavior: 'smooth', block: 'start' }); setOn(t.id); }
+    });
+  });
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) setOn(e.target.id); }); }, { rootMargin: '-30% 0px -60% 0px' });
+    secs.forEach(function (s) { io.observe(s); });
+  }
+  // odkaz s #sekce otevře sekci (např. z e-mailu)
+  if (location.hash) { var h = decodeURIComponent(location.hash.slice(1)), t0 = document.getElementById(h); if (t0 && root.contains(t0)) setTimeout(function () { t0.scrollIntoView({ block: 'start' }); }, 300); }
+
+  // ---- vyhledávání ----
+  function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+  var items = [].slice.call(root.querySelectorAll('details.hq')).map(function (d) { return { el: d, t: norm(d.textContent) }; });
+  var tiles = [].slice.call(root.querySelectorAll('.hlp-tiles, .hlp-lg, .hlp-m, .hlp-calc, .hlp-ex, .hlp-tb, .hlp-note, .hlp-sec > h3, .hlp-sec > .hlp-b, .hlp-sec > ol'));
+  var secTexts = secs.map(function (s) { return norm(s.textContent); });
+  $('hlpQ').addEventListener('input', function () {
+    var q = norm(this.value.trim()), any = false;
+    if (!q) {
+      items.forEach(function (i) { i.el.classList.remove('hlp-hide'); i.el.open = false; });
+      tiles.forEach(function (t) { t.classList.remove('hlp-hide'); });
+      secs.forEach(function (s) { s.classList.remove('hlp-hide'); });
+      $('hlpEmpty').style.display = 'none'; return;
+    }
+    items.forEach(function (i) { var m = i.t.indexOf(q) !== -1; i.el.classList.toggle('hlp-hide', !m); i.el.open = m; if (m) any = true; });
+    tiles.forEach(function (t) { t.classList.add('hlp-hide'); });
+    secs.forEach(function (s, k) {
+      var hit = s.querySelector('details.hq:not(.hlp-hide)') || (s.id === 'kontakt' && false);
+      s.classList.toggle('hlp-hide', !hit);
+    });
+    $('hlpEmpty').style.display = any ? 'none' : 'block';
+  });
+})();
+</script>
