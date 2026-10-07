@@ -49,6 +49,14 @@
   .nbn-hero-img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center bottom; z-index:-2; -webkit-user-drag:none; user-select:none; }
   .nbn-hero.fade::after { content:''; position:absolute; left:0; right:0; bottom:0; height:30%; background:linear-gradient(to bottom, rgba(255,255,255,0), #fff); z-index:-1; pointer-events:none; }
   .nbn-hero-pad { height:calc(var(--hb, 0) * 1vw); }
+  /* režim "stack": fotka je celá vidět nahoře (včetně nápisu), bannery leží na jejím spodním okraji */
+  .nbn-hero.stack { padding-top:0; }
+  .nbn-hero.stack .nbn-hero-img { position:relative; inset:auto; z-index:0; display:block; width:100%; height:auto; aspect-ratio:var(--hr, auto); object-fit:cover; object-position:center top; }
+  .nbn-hero.stack .nbn-track { position:relative; z-index:1; margin-top:calc(var(--ov, 40) * -1px); }
+  .nbn-hero.stack .nbn-hero-pad, .nbn-hero.stack.fade::after { display:none; }
+  .nbn.has-hero.is-stack { padding-bottom:6px; }
+  .nbn.has-hero.is-stack .nbn-dot { background:#d3dbe7; box-shadow:none; }
+  .nbn.has-hero.is-stack .nbn-dot.is-active { background:var(--blue); }
   .nbn.has-hero { padding-top:0; padding-bottom:0; }
   .nbn.has-hero .nbn-dot { background:rgba(255,255,255,.75); box-shadow:0 1px 3px rgba(10,24,56,.35); }
   .nbn.has-hero .nbn-dot.is-active { background:#fff; }
@@ -82,7 +90,10 @@
   ];
   // Fotka na pozadí. img: odkaz na fotku (1290 × 1100 px) nebo '' = bez fotky.
   // top: kolik px fotky je vidět nad bannery, bottom: kolik fotky je vidět pod bannery (v % šířky displeje; 40 ≈ 156 px na iPhonu).
-  var HERO = { img: 'https://narin-work.vercel.app/hero/dahlia.webp', alt: 'NARIN Dahlia Season', top: 14, bottom: 40, fade: false };
+  // mode: 'stack' = fotka celá nahoře (je vidět i nápis) a bannery leží na jejím spodním okraji;
+  //       'under' = fotka je pod bannery (vykukuje kolem nich).
+  // stack: ratio = poměr stran zobrazené fotky (šířka / výška; 1.34 ořízne spodek, 0 = celá fotka), overlap = kolik px fotky bannery zakryjí.
+  var HERO = { img: 'https://narin-work.vercel.app/hero/dahlia.webp', alt: 'NARIN Dahlia Season', mode: 'stack', ratio: 1.34, overlap: 44, top: 14, bottom: 40, fade: false };
   var AUTOPLAY_MS = 5000;   // 0 = bez automatického posouvání
   // =============================================
 
@@ -93,6 +104,11 @@
   if (HERO && HERO.img) {
     heroImg.src = HERO.img; heroImg.alt = HERO.alt || ''; heroImg.hidden = false; heroImg.setAttribute('fetchpriority', 'high');
     root.classList.add('has-hero'); if (HERO.fade !== false) heroEl.classList.add('fade');
+    if (HERO.mode === 'stack') {
+      root.classList.add('is-stack'); heroEl.classList.add('stack');
+      heroEl.style.setProperty('--hr', HERO.ratio ? String(HERO.ratio) : 'auto');
+      heroEl.style.setProperty('--ov', HERO.overlap == null ? 40 : HERO.overlap);
+    }
     heroEl.style.setProperty('--ht', (HERO.top == null ? 14 : HERO.top) + 'px');
     heroEl.style.setProperty('--hb', HERO.bottom == null ? 40 : HERO.bottom);
   } else { heroImg.remove(); document.getElementById('nbnHeroPad').remove(); }
