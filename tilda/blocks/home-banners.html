@@ -8,7 +8,13 @@
       tone: 'light' (bílý text na tmavém přechodu dole, výchozí) nebo 'dark' (tmavý text na světlém přechodu)
       Text i tlačítko se píšou do pole, ne do obrázku, takže zůstanou ostré a jdou kdykoli změnit.
 
-  DOPORUČENÝ ROZMĚR OBRÁZKU: 1200 × 1500 px (poměr 4:5), WebP nebo JPG do ~250 KB.
+  FOTKA NA POZADÍ (HERO): jedna velká fotka přes celou šířku, která „vítá“ návštěvníka. Bannery leží přes ni
+  a fotka vykukuje pod nimi, takže katalog se posune o kousek níž. Nastavení v objektu HERO ve <script>
+  (HERO.img prázdné = fotka se nepoužije a vše je jako dřív).
+  DOPORUČENÝ ROZMĚR FOTKY: 1290 × 1100 px, WebP nebo JPG do ~250 KB. Bannery zakrývají horních ~47 %,
+  hlavní motiv patří do spodní poloviny; spodních ~25 % se plynule ztrácí do bílé (HERO.fade).
+
+  DOPORUČENÝ ROZMĚR BANNERU S TEXTEM: 1200 × 1500 px (poměr 4:5), WebP nebo JPG do ~250 KB.
   Všechny bannery mají mít stejný poměr stran (karusel ho bere z prvního obrázku).
   U banneru s textem nech spodních ~40 % obrázku klidných (tam půjde přechod, text a tlačítko),
   hlavní motiv drž v horních 60 % a od okrajů alespoň 6 %.
@@ -38,6 +44,14 @@
   .nbn-slide.tone-dark .nbn-btn { background:var(--blue); color:#fff; box-shadow:0 8px 18px -8px rgba(24,108,224,.6); }
   .nbn-btn::after { content:'\2192'; font-size:17px; line-height:1; }
 
+  /* fotka na pozadí pod bannery */
+  .nbn-hero { position:relative; isolation:isolate; padding-top:var(--ht, 0px); }
+  .nbn-hero-img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center bottom; z-index:-2; -webkit-user-drag:none; user-select:none; }
+  .nbn-hero.fade::after { content:''; position:absolute; left:0; right:0; bottom:0; height:30%; background:linear-gradient(to bottom, rgba(255,255,255,0), #fff); z-index:-1; pointer-events:none; }
+  .nbn-hero-pad { height:calc(var(--hb, 0) * 1vw); }
+  .nbn.has-hero { padding-top:0; padding-bottom:0; }
+  .nbn.has-hero .nbn-dot { background:rgba(255,255,255,.75); box-shadow:0 1px 3px rgba(10,24,56,.35); }
+  .nbn.has-hero .nbn-dot.is-active { background:#fff; }
   .nbn-dots { display:flex; justify-content:center; gap:6px; margin-top:10px; height:6px; }
   .nbn-dot { width:6px; height:6px; border-radius:999px; border:none; padding:0; background:#d3dbe7; cursor:pointer; transition:width .35s cubic-bezier(.16,1,.3,1), background .35s ease; }
   .nbn-dot.is-active { width:20px; background:var(--blue); }
@@ -49,8 +63,12 @@
 </style>
 
 <div class="nbn" id="nbn" aria-roledescription="carousel" aria-label="Novinky NARIN">
-  <div class="nbn-track" id="nbnTrack"></div>
-  <div class="nbn-dots" id="nbnDots" role="tablist"></div>
+  <div class="nbn-hero" id="nbnHero">
+    <img class="nbn-hero-img" id="nbnHeroImg" alt="" draggable="false" hidden>
+    <div class="nbn-track" id="nbnTrack"></div>
+    <div class="nbn-dots" id="nbnDots" role="tablist"></div>
+    <div class="nbn-hero-pad" id="nbnHeroPad"></div>
+  </div>
 </div>
 
 <script>
@@ -62,12 +80,22 @@
     { img: 'https://static.tildacdn.com/tild3337-3231-4763-b837-623930333338/91AF5C83-285B-4D0D-8.webp', href: 'https://vezminarin.cz/bonussystem', alt: 'NARIN' },
     { img: 'https://static.tildacdn.com/tild6533-6138-4736-b861-373030613738/41557017-730E-4984-9.webp', href: 'https://vezminarin.cz/predplatne', alt: 'NARIN' },
   ];
+  // Fotka na pozadí. img: odkaz na fotku (1290 × 1100 px) nebo '' = bez fotky.
+  // top: kolik px fotky je vidět nad bannery, bottom: kolik fotky je vidět pod bannery (v % šířky displeje; 40 ≈ 156 px na iPhonu).
+  var HERO = { img: '', alt: 'NARIN', top: 14, bottom: 40, fade: true };
   var AUTOPLAY_MS = 5000;   // 0 = bez automatického posouvání
   // =============================================
 
   var root = document.getElementById('nbn');
   if (!root || !BANNERS.length) return;
   var track = document.getElementById('nbnTrack'), dots = document.getElementById('nbnDots');
+  var heroEl = document.getElementById('nbnHero'), heroImg = document.getElementById('nbnHeroImg');
+  if (HERO && HERO.img) {
+    heroImg.src = HERO.img; heroImg.alt = HERO.alt || ''; heroImg.hidden = false; heroImg.setAttribute('fetchpriority', 'high');
+    root.classList.add('has-hero'); if (HERO.fade !== false) heroEl.classList.add('fade');
+    heroEl.style.setProperty('--ht', (HERO.top == null ? 14 : HERO.top) + 'px');
+    heroEl.style.setProperty('--hb', HERO.bottom == null ? 40 : HERO.bottom);
+  } else { heroImg.remove(); document.getElementById('nbnHeroPad').remove(); }
   var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
