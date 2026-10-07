@@ -1,8 +1,17 @@
 <!--
   NARIN: karusel bannerů na hlavní stránce, JEN pro mobil (na počítači se neukazuje).
   Vložit jako HTML blok T123 nad katalog. Vše je scoped pod .nbn.
-  Bannery se přidávají do pole BANNERS dole ve <script> (obrázek, odkaz, popis).
-  Poměr stran se vezme z prvního obrázku, takže stačí mít všechny bannery ve stejném rozměru.
+
+  Bannery se přidávají do pole BANNERS dole ve <script>. Dva druhy:
+   1) jen obrázek (text je už v obrázku):      { img, href, alt }
+   2) fotka + text a tlačítko přímo v kódu:    { img, href, alt, eyebrow, title, text, button, tone }
+      tone: 'light' (bílý text na tmavém přechodu dole, výchozí) nebo 'dark' (tmavý text na světlém přechodu)
+      Text i tlačítko se píšou do pole, ne do obrázku, takže zůstanou ostré a jdou kdykoli změnit.
+
+  DOPORUČENÝ ROZMĚR OBRÁZKU: 1200 × 1500 px (poměr 4:5), WebP nebo JPG do ~250 KB.
+  Všechny bannery mají mít stejný poměr stran (karusel ho bere z prvního obrázku).
+  U banneru s textem nech spodních ~40 % obrázku klidných (tam půjde přechod, text a tlačítko),
+  hlavní motiv drž v horních 60 % a od okrajů alespoň 6 %.
 -->
 <style>
 .nbn { display:none; }
@@ -11,11 +20,24 @@
   .nbn *, .nbn *::before, .nbn *::after { box-sizing:border-box; }
   .nbn-track { display:flex; gap:10px; overflow-x:auto; scroll-snap-type:x mandatory; scroll-padding-inline:16px; padding:0 16px; scrollbar-width:none; -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain; }
   .nbn-track::-webkit-scrollbar { display:none; }
-  .nbn-slide { flex:0 0 calc(100% - 44px); scroll-snap-align:start; scroll-snap-stop:always; display:block; position:relative; border-radius:var(--r); overflow:hidden; aspect-ratio:var(--ar, 16 / 9); background:#eef3fb; text-decoration:none; transform:translateZ(0); transition:transform .35s cubic-bezier(.16,1,.3,1); }
+  .nbn-slide { flex:0 0 calc(100% - 44px); scroll-snap-align:start; scroll-snap-stop:always; display:block; position:relative; border-radius:var(--r); overflow:hidden; aspect-ratio:var(--ar, 4 / 5); background:#eef3fb; text-decoration:none; color:#fff; transform:translateZ(0); transition:transform .35s cubic-bezier(.16,1,.3,1); }
   .nbn-track.is-single .nbn-slide { flex-basis:100%; }
   .nbn-slide:active { transform:scale(.985); }
   .nbn-slide img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; -webkit-user-drag:none; user-select:none; }
   .nbn-slide::after { content:''; position:absolute; inset:0; border-radius:inherit; box-shadow:inset 0 0 0 1px rgba(22,24,29,.06); pointer-events:none; }
+
+  /* text + tlačítko přes fotku */
+  .nbn-shade { position:absolute; left:0; right:0; bottom:0; height:62%; pointer-events:none; background:linear-gradient(to top, rgba(10,24,56,.82) 0%, rgba(10,24,56,.55) 45%, rgba(10,24,56,0) 100%); }
+  .nbn-slide.tone-dark { color:#10213f; }
+  .nbn-slide.tone-dark .nbn-shade { background:linear-gradient(to top, rgba(255,255,255,.94) 0%, rgba(255,255,255,.7) 45%, rgba(255,255,255,0) 100%); }
+  .nbn-copy { position:absolute; left:0; right:0; bottom:0; padding:0 18px 18px; display:flex; flex-direction:column; align-items:flex-start; gap:6px; z-index:1; }
+  .nbn-eyebrow { font:600 11.5px/1.2 'Rubik',sans-serif; letter-spacing:.14em; text-transform:uppercase; opacity:.9; }
+  .nbn-title { font:700 clamp(22px, 6.6vw, 28px)/1.08 'Rubik',sans-serif; letter-spacing:-.01em; text-wrap:balance; }
+  .nbn-text { font:400 14px/1.4 'Rubik',sans-serif; opacity:.92; max-width:30ch; }
+  .nbn-btn { margin-top:8px; display:inline-flex; align-items:center; gap:8px; height:46px; padding:0 22px; border-radius:999px; background:#fff; color:var(--blue); font:600 15px 'Rubik',sans-serif; box-shadow:0 8px 18px -8px rgba(0,0,0,.45); }
+  .nbn-slide.tone-dark .nbn-btn { background:var(--blue); color:#fff; box-shadow:0 8px 18px -8px rgba(24,108,224,.6); }
+  .nbn-btn::after { content:'\2192'; font-size:17px; line-height:1; }
+
   .nbn-dots { display:flex; justify-content:center; gap:6px; margin-top:10px; height:6px; }
   .nbn-dot { width:6px; height:6px; border-radius:999px; border:none; padding:0; background:#d3dbe7; cursor:pointer; transition:width .35s cubic-bezier(.16,1,.3,1), background .35s ease; }
   .nbn-dot.is-active { width:20px; background:var(--blue); }
@@ -34,11 +56,11 @@
 <script>
 (function () {
   // ================== BANNERY ==================
-  // Nový banner = nový řádek. img: odkaz na obrázek, href: kam banner vede (může být ''), alt: krátký popis.
+  // Nový banner = nový řádek. img: obrázek (doporučeno 1200 × 1500 px), href: kam banner vede (může být ''), alt: krátký popis.
+  // Volitelně text přes fotku: eyebrow (malý nadpis), title, text, button (text tlačítka), tone: 'light' | 'dark'.
   var BANNERS = [
-    { img: 'https://static.tildacdn.com/tild3337-3231-4763-b837-623930333338/91AF5C83-285B-4D0D-8.webp', href: '', alt: 'NARIN' },
-    { img: 'https://static.tildacdn.com/tild3337-3231-4763-b837-623930333338/91AF5C83-285B-4D0D-8.webp', href: '', alt: 'NARIN' },
-    { img: 'https://static.tildacdn.com/tild3337-3231-4763-b837-623930333338/91AF5C83-285B-4D0D-8.webp', href: '', alt: 'NARIN' }
+    { img: 'https://static.tildacdn.com/tild3337-3231-4763-b837-623930333338/91AF5C83-285B-4D0D-8.webp', href: 'https://vezminarin.cz/bonussystem', alt: 'NARIN' },
+    { img: 'https://static.tildacdn.com/tild6533-6138-4736-b861-373030613738/41557017-730E-4984-9.webp', href: 'https://vezminarin.cz/predplatne', alt: 'NARIN' },
   ];
   var AUTOPLAY_MS = 5000;   // 0 = bez automatického posouvání
   // =============================================
@@ -47,11 +69,20 @@
   if (!root || !BANNERS.length) return;
   var track = document.getElementById('nbnTrack'), dots = document.getElementById('nbnDots');
   var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
   track.innerHTML = BANNERS.map(function (b, i) {
-    var tag = b.href ? 'a' : 'div';
-    return '<' + tag + ' class="nbn-slide"' + (b.href ? ' href="' + b.href + '"' : '') + ' role="group" aria-label="' + (i + 1) + ' z ' + BANNERS.length + '">' +
-      '<img src="' + b.img + '" alt="' + (b.alt || '') + '"' + (i ? ' loading="lazy"' : ' fetchpriority="high"') + ' draggable="false"></' + tag + '>';
+    var tag = b.href ? 'a' : 'div', hasText = !!(b.title || b.text || b.button || b.eyebrow);
+    var copy = hasText
+      ? '<div class="nbn-shade"></div><div class="nbn-copy">' +
+          (b.eyebrow ? '<div class="nbn-eyebrow">' + esc(b.eyebrow) + '</div>' : '') +
+          (b.title ? '<div class="nbn-title">' + esc(b.title) + '</div>' : '') +
+          (b.text ? '<div class="nbn-text">' + esc(b.text) + '</div>' : '') +
+          (b.button ? '<span class="nbn-btn">' + esc(b.button) + '</span>' : '') +
+        '</div>'
+      : '';
+    return '<' + tag + ' class="nbn-slide' + (hasText && b.tone === 'dark' ? ' tone-dark' : '') + '"' + (b.href ? ' href="' + esc(b.href) + '"' : '') + ' role="group" aria-label="' + (i + 1) + ' z ' + BANNERS.length + '">' +
+      '<img src="' + esc(b.img) + '" alt="' + esc(b.alt || '') + '"' + (i ? ' loading="lazy"' : ' fetchpriority="high"') + ' draggable="false">' + copy + '</' + tag + '>';
   }).join('');
   if (BANNERS.length === 1) { track.classList.add('is-single'); dots.remove(); }
   else dots.innerHTML = BANNERS.map(function (b, i) { return '<button type="button" class="nbn-dot" role="tab" aria-label="Banner ' + (i + 1) + '"></button>'; }).join('');
