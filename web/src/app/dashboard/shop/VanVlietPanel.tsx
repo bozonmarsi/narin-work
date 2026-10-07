@@ -96,6 +96,18 @@ type ShortfallRow = { materialId: string; neededDate: string; shortfall: number;
 // их считать нельзя.
 const NOT_YET_ASSEMBLED_STATUSES = ["new", "confirmed", "courier_assigned", "assembling"];
 
+// delivery_date в базе — timestamptz ("2026-10-09T00:00:00+00:00"), а Van Vliet
+// (и поиск, и заказ) принимает дату как "YYYY-MM-DD" — так ручной поиск и
+// проходит. Приводим к пражскому дню один раз тут, чтобы и надпись в списке,
+// и поиск, и покупка шли с одной и той же чистой датой (заодно заказы одного
+// дня с разным временем больше не делятся на разные строки).
+function toPragueDateStr(value: string): string {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return value.slice(0, 10);
+  return d.toLocaleDateString("sv-SE", { timeZone: "Europe/Prague" });
+}
+
 // Та же логика, что и при сборке одного заказа (OrderAssembleModal), но
 // по всем ещё не собранным заказам сразу — чтобы увидеть дефицит
 // заранее, а не в момент, когда флорист уже стоит и собирает букет.
@@ -106,7 +118,7 @@ function computeShortfalls(orders: QueueOrder[], stickers: StickerLite[], recipe
 
   const ordersByDate = new Map<string, QueueOrder[]>();
   for (const order of orders) {
-    const date = order.delivery_date;
+    const date = order.delivery_date ? toPragueDateStr(order.delivery_date) : null;
     if (!date) continue;
     const list = ordersByDate.get(date) ?? [];
     list.push(order);
