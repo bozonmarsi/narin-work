@@ -43,6 +43,7 @@ type Product = {
   vanvliet_cheapest_price: number | null;
   price_markup_multiplier: number;
   auto_special_order: boolean;
+  force_tomorrow: boolean;
 };
 
 // Van Vliet — оптовый поставщик, его цена без DPH; конечная цена на
@@ -401,6 +402,7 @@ function ProductCard({
   onToggleFragrant,
   onUploadImage,
   onToggleSpecialOrder,
+  onToggleForceTomorrow,
   onToggleManualHide,
   onSetAddedToTilda,
   onOpenCsvDraft,
@@ -436,6 +438,7 @@ function ProductCard({
   onToggleFragrant: (id: string, current: boolean) => void;
   onUploadImage: (id: string, file: File) => void;
   onToggleSpecialOrder: (id: string, current: boolean) => void;
+  onToggleForceTomorrow: (id: string, current: boolean) => void;
   onToggleManualHide: (id: string, current: boolean) => void;
   onSetAddedToTilda: (id: string, value: boolean) => void;
   onOpenCsvDraft: (product: Product) => void;
@@ -482,7 +485,7 @@ function ProductCard({
       ? "border-zinc-300 dark:border-zinc-600 bg-zinc-100 dark:bg-zinc-800"
       : p.special_order
         ? "border-red-300 dark:border-red-500/40 bg-red-50 dark:bg-red-500/10 ring-1 ring-red-200 dark:ring-red-500/30"
-        : isAvailable
+        : isAvailable && !p.force_tomorrow
           ? "border-green-300 dark:border-green-500/40 bg-green-50 dark:bg-green-500/10 ring-1 ring-green-200 dark:ring-green-500/30"
           : "border-blue-200 dark:border-blue-500/30 bg-blue-50/60 dark:bg-blue-500/10";
 
@@ -1007,6 +1010,19 @@ function ProductCard({
             {isAvailable ? "✓ В наличии" : "Нет сегодня"}
           </button>
         )}
+        {(p.force_tomorrow || (!p.archived && !hiddenFromSite && !p.special_order)) && (
+          <button
+            onClick={() => onToggleForceTomorrow(p.id, p.force_tomorrow)}
+            title="Меняет только плашку на сайте: покажет «Doručíme zítra», даже если товар есть в наличии. Остатки, наличие и всё остальное в системе не меняются."
+            className={`rounded-md px-2 py-1 text-[11px] font-medium ${
+              p.force_tomorrow
+                ? "bg-blue-100 text-blue-700 ring-1 ring-inset ring-blue-300 dark:bg-blue-500/20 dark:text-blue-300 dark:ring-blue-500/40"
+                : "border border-zinc-300 dark:border-zinc-600 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            }`}
+          >
+            {p.force_tomorrow ? "🕐 На сайте «Доставим завтра» — выключить" : "🕐 Плашка «Доставим завтра»"}
+          </button>
+        )}
         <div className="flex items-center justify-between gap-2">
           <button
             onClick={() => onToggleSpecialOrder(p.id, p.special_order)}
@@ -1183,7 +1199,7 @@ export default function ShopPage() {
       supabase
         .from("product_stickers")
         .select(
-          "id, product_name, image_url, category, gift_subcategory, archived, special_order, flower_type, color, height, fragrant, badge_text, badge_color, quantity, order_unit_size, default_vase_life_days, vanvliet_in_stock, manually_hidden, added_to_tilda, price, pending_review, vanvliet_cheapest_price, price_markup_multiplier, auto_special_order",
+          "id, product_name, image_url, category, gift_subcategory, archived, special_order, flower_type, color, height, fragrant, badge_text, badge_color, quantity, order_unit_size, default_vase_life_days, vanvliet_in_stock, manually_hidden, added_to_tilda, price, pending_review, vanvliet_cheapest_price, price_markup_multiplier, auto_special_order, force_tomorrow",
         )
         .order("product_name", { ascending: true }),
       supabase.from("product_availability").select("product_name"),
@@ -1217,6 +1233,7 @@ export default function ShopPage() {
           vanvliet_cheapest_price: p.vanvliet_cheapest_price ?? null,
           price_markup_multiplier: p.price_markup_multiplier ?? 2.5,
           auto_special_order: p.auto_special_order ?? false,
+          force_tomorrow: p.force_tomorrow ?? false,
         })),
     );
     setAvailableToday(new Set((availabilityRes.data ?? []).map((r) => r.product_name)));
@@ -1584,6 +1601,15 @@ export default function ShopPage() {
     loadAvailability();
   }
 
+  // Только плашка на сайте ("Doručíme zítra"): отдельный флаг, который читает
+  // одна get_catalog_page_data. Остаток, product_availability, special_order и
+  // всё остальное не трогаем — выключил флаг, и всё как было.
+  async function toggleForceTomorrow(productId: string, current: boolean) {
+    const supabase = createClient();
+    await supabase.from("product_stickers").update({ force_tomorrow: !current }).eq("id", productId);
+    loadAvailability();
+  }
+
   async function toggleManualHide(productId: string, manuallyHidden: boolean) {
     const supabase = createClient();
     await supabase.from("product_stickers").update({ manually_hidden: !manuallyHidden }).eq("id", productId);
@@ -1693,8 +1719,8 @@ export default function ShopPage() {
   // глаза (порядок такой же, как у флориста на складе, CatalogTab).
   const sortedProducts = useMemo(() => {
     return [...filteredProducts].sort((a, b) => {
-      const aAvail = availableToday.has(a.name);
-      const bAvail = availableToday.has(b.name);
+      const aAvail = availableToday.has(a.name) && !a.force_tomorrow;
+      const bAvail = availableToday.has(b.name) && !b.force_tomorrow;
       const aRank = toneRank(a, aAvail);
       const bRank = toneRank(b, bAvail);
       if (aRank !== bRank) return aRank - bRank;
@@ -1988,6 +2014,7 @@ export default function ShopPage() {
                   onToggleFragrant={toggleFragrant}
                   onUploadImage={uploadStickerImage}
                   onToggleSpecialOrder={toggleSpecialOrder}
+                  onToggleForceTomorrow={toggleForceTomorrow}
                   onToggleManualHide={toggleManualHide}
                   onSetAddedToTilda={setAddedToTilda}
                   onOpenCsvDraft={openCsvDraft}
@@ -2327,6 +2354,7 @@ export default function ShopPage() {
                 onToggleFragrant={toggleFragrant}
                 onUploadImage={uploadStickerImage}
                 onToggleSpecialOrder={toggleSpecialOrder}
+                onToggleForceTomorrow={toggleForceTomorrow}
                 onToggleManualHide={toggleManualHide}
                 onSetAddedToTilda={setAddedToTilda}
                 onOpenCsvDraft={openCsvDraft}
