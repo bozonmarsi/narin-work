@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { decodeHtmlEntities } from "@/lib/format";
 import { useRealtimeRefresh } from "@/lib/useRealtimeRefresh";
-import { parseLineItems, type OrderLite } from "../warehouse/OrderAssembleModal";
+import { lineItemStems, parseLineItems, type OrderLite } from "../warehouse/OrderAssembleModal";
 import { Modal } from "../warehouse/Modal";
 import { FloristRequestsPanel } from "./FloristRequestsPanel";
 
@@ -149,7 +149,7 @@ function computeShortfalls(orders: QueueOrder[], stickers: StickerLite[], recipe
         const sticker = findSticker(item.rawName, item.name);
         if (!sticker) continue;
         if (sticker.category === "ohapka") {
-          const qty = item.quantity * sticker.order_unit_size;
+          const qty = lineItemStems(item, sticker.order_unit_size);
           needMap.set(sticker.id, (needMap.get(sticker.id) ?? 0) + qty);
           addContribution(sticker.id, order, qty);
           continue;

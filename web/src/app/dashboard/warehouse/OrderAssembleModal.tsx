@@ -12,7 +12,7 @@ export type OrderLite = {
   customer_name: string | null;
   recipient_name: string | null;
   products_text: string | null;
-  raw_payload: { payment?: { products?: { name?: string; quantity?: number }[] } } | null;
+  raw_payload: { payment?: { products?: { name?: string; quantity?: number; portion?: string | number | null }[] } } | null;
 };
 
 type StickerLite = { id: string; product_name: string; category: string | null; unit: string | null; order_unit_size: number };
@@ -21,23 +21,37 @@ type BatchLite = { id: string; product_sticker_id: string; remaining: number; pu
 type BatchAlloc = { batchId: string; available: number; purchaseDate: string; take: string };
 type NeedRow = { ingredientId: string; ingredientName: string; unit: string | null; neededQty: number; batches: BatchAlloc[] };
 
-export function parseLineItems(order: OrderLite): { name: string; rawName: string; quantity: number }[] {
+// inPieces — позиция из "весового" товара Tilda (в заказе есть portion, unit pc,
+// цена за штуку): quantity там уже в штуках (10 = 10 стеблей), а не в упаковках.
+// В старых заказах и в кассе portion нет, и quantity — число упаковок по
+// order_unit_size стеблей (см. lineItemStems).
+export type LineItem = { name: string; rawName: string; quantity: number; inPieces: boolean };
+
+export function parseLineItems(order: OrderLite): LineItem[] {
   const items = order.raw_payload?.payment?.products;
   if (items && items.length > 0) {
     return items.map((p) => ({
       rawName: p.name ?? "",
       name: decodeHtmlEntities(p.name ?? ""),
       quantity: Number(p.quantity ?? 1),
+      inPieces: Number(p.portion) > 0,
     }));
   }
   return (order.products_text ?? "")
     .split("\n")
     .map((line) => {
       const m = line.match(/^(.*?)\s*x\s*(\d+)\s*$/i);
-      if (!m) return { name: line.trim(), rawName: line.trim(), quantity: 1 };
-      return { name: m[1].trim(), rawName: m[1].trim(), quantity: parseInt(m[2], 10) || 1 };
+      if (!m) return { name: line.trim(), rawName: line.trim(), quantity: 1, inPieces: false };
+      return { name: m[1].trim(), rawName: m[1].trim(), quantity: parseInt(m[2], 10) || 1, inPieces: false };
     })
     .filter((i) => i.name);
+}
+
+// Сколько стеблей охапки реально заказано в позиции. Умножать на размер
+// упаковки можно только для старого формата — иначе заказ на 10 штук
+// превращается в 100 (и в "К заказу", и в списании со склада при сборке).
+export function lineItemStems(item: LineItem, orderUnitSize: number): number {
+  return item.inPieces ? item.quantity : item.quantity * orderUnitSize;
 }
 
 export function OrderAssembleModal({
@@ -80,7 +94,7 @@ export function OrderAssembleModal({
           continue;
         }
         if (sticker.category === "ohapka") {
-          needMap.set(sticker.id, (needMap.get(sticker.id) ?? 0) + item.quantity * sticker.order_unit_size);
+          needMap.set(sticker.id, (needMap.get(sticker.id) ?? 0) + lineItemStems(item, sticker.order_unit_size));
           continue;
         }
         const bouquetRecipe = recipes.filter((r) => r.bouquet_sticker_id === sticker.id);
