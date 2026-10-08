@@ -370,18 +370,21 @@ function guessHeight(name: string): string | null {
 // менеджер скрыл товар вручную (любая категория, приоритет над всем
 // остальным), либо это охапка без своего остатка и без подтверждения
 // от Van Vliet и не поставленная под заказ вручную — в обоих случаях
-// карточка реально скрыта с сайта клиента прямо сейчас.
-function isHiddenFromSite(p: Product): boolean {
+// карточка реально скрыта с сайта клиента прямо сейчас. "Свой остаток" —
+// свободный: на складе минус резерв под подтверждённые заказы (как в
+// get_catalog_page_data), иначе карточка с полностью обещанным остатком
+// выглядела бы здесь как "завтра", а на сайте была бы уже скрыта.
+function isHiddenFromSite(p: Product, reserved = 0): boolean {
   if (p.manually_hidden) return true;
-  return p.category === "ohapka" && !p.special_order && (p.quantity ?? 0) <= 0 && p.vanvliet_in_stock !== true;
+  return p.category === "ohapka" && !p.special_order && (p.quantity ?? 0) - reserved <= 0 && p.vanvliet_in_stock !== true;
 }
 
 // Порядок карточек в Каталоге у менеджера: зелёные (в наличии) → синие
 // (по умолчанию, "привезём завтра") → красные (под заказ) → серые (скрыто
 // с сайта / архив) — тот же приоритет цветов, что и cardTone ниже, просто
 // как сортировка вместо оформления.
-function toneRank(p: Product, isAvailable: boolean): number {
-  if (p.archived || isHiddenFromSite(p)) return 3;
+function toneRank(p: Product, isAvailable: boolean, reserved = 0): number {
+  if (p.archived || isHiddenFromSite(p, reserved)) return 3;
   if (p.special_order) return 2;
   if (isAvailable) return 0;
   return 1;
@@ -474,7 +477,7 @@ function ProductCard({
   const tagSummary = [...p.flower_type, ...p.color, p.height, p.fragrant ? "Voňavé" : null]
     .filter(Boolean)
     .join(", ");
-  const hiddenFromSite = isHiddenFromSite(p);
+  const hiddenFromSite = isHiddenFromSite(p, reserved);
 
   // Тот же приоритет, что и бейдж на самом сайте (catalog-availability-
   // badges.html): скрыто > под заказ (красный, как "Doručíme <дата>") >
@@ -976,7 +979,9 @@ function ProductCard({
             title={
               p.manually_hidden
                 ? "Скрыто вручную — нажми «Показать на сайте» ниже, чтобы вернуть."
-                : "Нет своего остатка и нет подтверждения от Van Vliet — карточка не показывается покупателям. Поставь «Под заказ» ниже, если реально можешь привезти."
+                : reserved > 0 && (p.quantity ?? 0) > 0
+                  ? "Весь остаток обещан подтверждённым заказам, а у Van Vliet на завтра нет — карточка не показывается покупателям. Поставь «Под заказ» ниже, если готова продавать «через 2 дня»."
+                  : "Нет своего остатка и нет подтверждения от Van Vliet — карточка не показывается покупателям. Поставь «Под заказ» ниже, если реально можешь привезти."
             }
             className="rounded-md bg-red-50 dark:bg-red-500/10 px-2 py-1 text-[11px] font-medium text-red-600 dark:text-red-400 ring-1 ring-inset ring-red-200 dark:ring-red-500/30"
           >
@@ -1752,15 +1757,15 @@ export default function ShopPage() {
     return [...filteredProducts].sort((a, b) => {
       const aAvail = isInStockToday(a) && !a.force_tomorrow;
       const bAvail = isInStockToday(b) && !b.force_tomorrow;
-      const aRank = toneRank(a, aAvail);
-      const bRank = toneRank(b, bAvail);
+      const aRank = toneRank(a, aAvail, reserved[a.id] ?? 0);
+      const bRank = toneRank(b, bAvail, reserved[b.id] ?? 0);
       if (aRank !== bRank) return aRank - bRank;
       if (aRank === 0 && a.category === "ohapka" && b.category === "ohapka") {
         return (a.quantity ?? 0) - (b.quantity ?? 0);
       }
       return a.name.localeCompare(b.name);
     });
-  }, [filteredProducts, isInStockToday]);
+  }, [filteredProducts, isInStockToday, reserved]);
 
   const availableCount = useMemo(
     () => activeProducts.filter((p) => isInStockToday(p)).length,
