@@ -390,6 +390,7 @@ function toneRank(p: Product, isAvailable: boolean): number {
 function ProductCard({
   product: p,
   isAvailable,
+  reserved,
   uploadingId,
   recipe,
   rawMaterials,
@@ -426,6 +427,7 @@ function ProductCard({
 }: {
   product: Product;
   isAvailable: boolean;
+  reserved: number;
   uploadingId: string | null;
   recipe: RecipeRow[];
   rawMaterials: { id: string; name: string }[];
@@ -803,6 +805,14 @@ function ProductCard({
               </button>
             </div>
           </div>
+          {p.category === "ohapka" && reserved > 0 && (
+            <p
+              title="Обещано подтверждённым, но ещё не собранным заказам. Со склада спишется при сборке; на сайте и в «наличии» учитывается только свободный остаток."
+              className="mt-1 text-[10px] font-medium text-violet-600 dark:text-violet-400"
+            >
+              🔒 в заказах {reserved} · свободно {Math.max((p.quantity ?? 0) - reserved, 0)}
+            </p>
+          )}
           {p.category === "ohapka" && (
             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
               <div className="flex items-center gap-1" title="Сколько стеблей в одной единице заказа на сайте (весовой товар в Tilda)">
@@ -988,7 +998,7 @@ function ProductCard({
                 снова перезапишет product_availability поверх ручного
                 клика. */}
             <span
-              title="Считается само по остатку на складе — меняется после приёмки/списания у флориста"
+              title="Считается само по свободному остатку (на складе минус обещанное подтверждённым заказам) — меняется после приёмки, сборки и подтверждения заказов"
               className={`rounded-md px-2 py-1 text-xs font-medium ${
                 isAvailable
                   ? "bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-200 dark:ring-green-500/30"
@@ -1073,6 +1083,15 @@ export default function ShopPage() {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [availableToday, setAvailableToday] = useState<Set<string>>(new Set());
+  // Резерв: стебли охапок, уже обещанные подтверждёнными, но ещё не собранными
+  // заказами (get_reserved_stock). quantity — физический остаток, он
+  // списывается только при сборке; "в наличии" и плашки на сайте считаются от
+  // свободного остатка (на складе минус резерв).
+  const [reserved, setReserved] = useState<Record<string, number>>({});
+  const isInStockToday = useCallback(
+    (p: Product) => (p.category === "ohapka" ? (p.quantity ?? 0) - (reserved[p.id] ?? 0) > 0 : availableToday.has(p.name)),
+    [reserved, availableToday],
+  );
   const [availabilitySearch, setAvailabilitySearch] = useState("");
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -1239,14 +1258,24 @@ export default function ShopPage() {
     setAvailableToday(new Set((availabilityRes.data ?? []).map((r) => r.product_name)));
   }, []);
 
+  const loadReserved = useCallback(async () => {
+    const supabase = createClient();
+    const { data, error } = await supabase.rpc("get_reserved_stock");
+    if (error || !data) return; // функции ещё нет в базе — работаем как раньше, без резерва
+    const map: Record<string, number> = {};
+    for (const r of data as { product_sticker_id: string; reserved: number | string }[]) map[r.product_sticker_id] = Number(r.reserved);
+    setReserved(map);
+  }, []);
+
   useEffect(() => {
     load();
     loadAvailability();
+    loadReserved();
     createClient()
       .from("product_recipes")
       .select("id, bouquet_sticker_id, ingredient_sticker_id, vanvliet_ingredient_name, quantity_needed")
       .then(({ data }) => setRecipes(data ?? []));
-  }, [load, loadAvailability]);
+  }, [load, loadAvailability, loadReserved]);
 
   async function addRecipeItem(bouquetId: string, ingredientId: string, qty: number) {
     const supabase = createClient();
@@ -1282,6 +1311,8 @@ export default function ShopPage() {
   }
 
   useRealtimeRefresh("product_availability", loadAvailability);
+  // Заказ подтвердили / собрали / отменили — резерв меняется, остаток нет.
+  useRealtimeRefresh("tilda_orders", loadReserved);
   // Остаток у Van Vliet проставляет сканер дважды в день — бейдж "Скрыто
   // с сайта" должен обновиться сам, без перезагрузки страницы.
   useRealtimeRefresh("product_stickers", loadAvailability);
@@ -1719,8 +1750,8 @@ export default function ShopPage() {
   // глаза (порядок такой же, как у флориста на складе, CatalogTab).
   const sortedProducts = useMemo(() => {
     return [...filteredProducts].sort((a, b) => {
-      const aAvail = availableToday.has(a.name) && !a.force_tomorrow;
-      const bAvail = availableToday.has(b.name) && !b.force_tomorrow;
+      const aAvail = isInStockToday(a) && !a.force_tomorrow;
+      const bAvail = isInStockToday(b) && !b.force_tomorrow;
       const aRank = toneRank(a, aAvail);
       const bRank = toneRank(b, bAvail);
       if (aRank !== bRank) return aRank - bRank;
@@ -1729,11 +1760,11 @@ export default function ShopPage() {
       }
       return a.name.localeCompare(b.name);
     });
-  }, [filteredProducts, availableToday]);
+  }, [filteredProducts, isInStockToday]);
 
   const availableCount = useMemo(
-    () => activeProducts.filter((p) => availableToday.has(p.name)).length,
-    [activeProducts, availableToday],
+    () => activeProducts.filter((p) => isInStockToday(p)).length,
+    [activeProducts, isInStockToday],
   );
 
   const archivedCount = useMemo(() => products.filter((p) => p.archived).length, [products]);
@@ -1992,6 +2023,7 @@ export default function ShopPage() {
                   key={p.id}
                   product={p}
                   isAvailable={false}
+                  reserved={0}
                   uploadingId={uploadingId}
                   recipe={recipes.filter((r) => r.bouquet_sticker_id === p.id)}
                   rawMaterials={rawMaterialOptions}
@@ -2331,7 +2363,8 @@ export default function ShopPage() {
               <ProductCard
                 key={p.id}
                 product={p}
-                isAvailable={availableToday.has(p.name)}
+                isAvailable={isInStockToday(p)}
+                reserved={reserved[p.id] ?? 0}
                 uploadingId={uploadingId}
                 recipe={recipes.filter((r) => r.bouquet_sticker_id === p.id)}
                 rawMaterials={rawMaterialOptions}
