@@ -1,0 +1,636 @@
+<meta charset="utf-8">
+<title>KOVKA?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,800;9..144,900&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&display=swap">
+<style>
+/* Layout: one full-bleed canvas "film" (9:16 on phones, wide on desktop) + an auto-hiding control pill. Single deliberate look. */
+:root {
+  --ink: #0E1840;      /* night between the flowers */
+  --paper: #FFFDF8;    /* label white */
+  --cobalt: #1C70E3;   /* KOVKA wordmark */
+  --blue: #0B4DB5;     /* logo daisy */
+  --red: #FF3B2F;
+  --yellow: #FFD84A;
+  --green: #2A9A4B;
+  --purple: #8B55F6;
+  --pink: #F3CDF6;
+  --display: "Fraunces", "Georgia", serif;
+  --ui: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--ink); color: var(--paper); overflow: hidden; font-family: var(--ui); }
+#film { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: pointer; touch-action: manipulation; }
+.bar {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  width: min(560px, calc(100% - 32px));
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: 999px;
+  background: rgba(14, 24, 64, .78); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .25);
+  transition: opacity .35s ease, transform .35s cubic-bezier(.3,1.6,.5,1);
+}
+.bar.idle { opacity: 0; transform: translateX(-50%) translateY(12px); pointer-events: none; }
+.btn {
+  flex: none; width: 36px; height: 36px; border-radius: 50%; border: 0;
+  background: var(--paper); color: var(--ink); cursor: pointer;
+  display: grid; place-items: center;
+}
+.btn.ghost { background: transparent; color: var(--paper); }
+.btn svg { width: 16px; height: 16px; fill: currentColor; }
+.btn:focus-visible, .seg:focus-visible { outline: 2px solid var(--yellow); outline-offset: 2px; }
+.track { flex: 1; min-width: 0; display: flex; gap: 4px; height: 36px; align-items: center; }
+.seg {
+  position: relative; height: 22px; border: 0; padding: 0; background: none; cursor: pointer; min-width: 0;
+}
+.seg::before { content: ""; position: absolute; left: 0; right: 0; top: 9px; height: 4px; border-radius: 4px; background: rgba(255, 253, 248, .22); }
+.seg i { position: absolute; left: 0; top: 9px; height: 4px; border-radius: 4px; background: var(--yellow); width: 0; }
+.seg span {
+  position: absolute; left: 0; right: 0; bottom: -14px; font-size: 10px; letter-spacing: .06em; text-transform: uppercase;
+  color: rgba(255, 253, 248, .6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; font-weight: 600;
+}
+.track { padding-bottom: 6px; }
+@media (max-width: 420px) { .seg span { display: none; } .track { padding-bottom: 0; } }
+</style>
+
+<canvas id="film" aria-label="KOVKA: animovaná prezentace. Klepnutím spustíte vlnu květin."></canvas>
+<div class="bar" id="bar">
+  <button class="btn" id="play" aria-label="Pauza"><svg viewBox="0 0 16 16" id="playIcon"><rect x="3" y="2" width="3.5" height="12" rx="1"/><rect x="9.5" y="2" width="3.5" height="12" rx="1"/></svg></button>
+  <div class="track" id="track"></div>
+  <button class="btn ghost" id="restart" aria-label="Od začátku"><svg viewBox="0 0 16 16"><path d="M8 2.5a5.5 5.5 0 1 1-5.2 3.7l1.6.6A3.8 3.8 0 1 0 8 4.2V6L4.6 3.4 8 .8z"/></svg></button>
+</div>
+
+<script>
+const IMG_SRC = {
+  k1: "%%k1%%", k2: "%%k2%%", k3: "%%k3%%", k4: "%%k4%%", k5: "%%k5%%",
+  K1: "%%K1%%", O: "%%O%%", V: "%%V%%", K2: "%%K2%%", A: "%%A%%", Q: "%%Q%%"
+};
+
+const C = {
+  ink: "#0E1840", paper: "#FFFDF8", cobalt: "#1C70E3", blue: "#0B4DB5", red: "#FF3B2F",
+  yellow: "#FFD84A", green: "#2A9A4B", purple: "#8B55F6", pink: "#F3CDF6"
+};
+const FLOWERS = [C.blue, C.red, C.yellow, C.green, C.purple, C.pink];
+const HOT = [C.red, C.red, C.pink, C.purple, C.red];
+const COOL = [C.blue, C.green, C.yellow, C.blue, C.cobalt];
+
+const PRODUCTS = [
+  { img: "k1", a: "Jiřiny", b: "& máta", bg: C.green, halo: C.pink, fg: C.paper },
+  { img: "k2", a: "Gerbery", b: "& ostrožka", bg: C.yellow, halo: C.cobalt, fg: C.blue },
+  { img: "k3", a: "Pivoňky", b: "& ranunkulus", bg: C.cobalt, halo: C.yellow, fg: C.paper },
+  { img: "k4", a: "Astry", b: "& eustoma", bg: C.red, halo: C.pink, fg: C.paper },
+  { img: "k5", a: "Jiřiny", b: "& růže", bg: C.purple, halo: C.yellow, fg: C.paper }
+];
+const WORDS = [
+  { w: "Malá", bg: C.yellow, fg: C.blue },
+  { w: "květinová", bg: C.red, fg: C.paper },
+  { w: "kompozice", bg: C.pink, fg: C.blue },
+  { w: "v plechovce", bg: C.green, fg: C.paper },
+  { w: "s vodou.", bg: C.cobalt, fg: C.paper }
+];
+
+// Scene clock (seconds)
+const T_WAVE = 4.1, T_WORDS = 10.3, T_PROD = 17.2, PROD_LEN = 2.8, T_FIN = T_PROD + PROD_LEN * PRODUCTS.length, DUR = 40;
+const SCENES = [
+  { name: "Otázka", t: 0 }, { name: "Mozaika", t: 3.6 }, { name: "Slova", t: T_WORDS },
+  { name: "Kovky", t: T_PROD }, { name: "Finále", t: T_FIN }
+];
+
+const cv = document.getElementById("film");
+const ctx = cv.getContext("2d");
+let W = 0, H = 0, DPR = 1, DIAG = 0, T = 60, tiles = [];
+const img = {};
+
+/* ---------- math ---------- */
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, k) => a + (b - a) * k;
+function spring(t, w = 13, z = 0.34) {
+  if (t <= 0) return 0;
+  return 1 - Math.exp(-z * w * t) * Math.cos(w * Math.sqrt(1 - z * z) * t);
+}
+const easeIn = p => p * p * p;
+const easeOut = p => 1 - Math.pow(1 - p, 3);
+function hash(n) { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
+function hex(c) { const n = parseInt(c.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; }
+function mix(c, d, k) {
+  const a = hex(c), b = hex(d);
+  return `rgb(${a.map((v, i) => Math.round(lerp(v, b[i], k))).join(",")})`;
+}
+
+/* ---------- the KOVKA daisy ---------- */
+function daisyPath(p, cx, cy, R, rot = 0, centerK = 0.3) {
+  const pt = (a, x, y) => [cx + (x * Math.cos(a) - y * Math.sin(a)) * R, cy + (x * Math.sin(a) + y * Math.cos(a)) * R];
+  for (let k = 0; k < 8; k++) petalPath(p, pt, rot + k * Math.PI / 4 - Math.PI / 2);
+  p.moveTo(cx + centerK * R, cy);
+  p.arc(cx, cy, centerK * R, 0, Math.PI * 2);
+  return p;
+}
+function petalPath(p, pt, a) {
+  const m = (x, y) => pt(a, x, y);
+  p.moveTo(...m(0.14, -0.05));
+  p.bezierCurveTo(...m(0.45, -0.07), ...m(0.6, -0.27), ...m(0.83, -0.28));
+  p.bezierCurveTo(...m(0.99, -0.28), ...m(1.03, -0.12), ...m(0.98, -0.035));
+  p.quadraticCurveTo(...m(0.9, 0), ...m(0.98, 0.035));
+  p.bezierCurveTo(...m(1.03, 0.12), ...m(0.99, 0.28), ...m(0.83, 0.28));
+  p.bezierCurveTo(...m(0.6, 0.27), ...m(0.45, 0.07), ...m(0.14, 0.05));
+  p.closePath();
+}
+
+// Soft "clay" daisy, pre-rendered once per colour and size
+const spriteCache = new Map();
+function plush(color, d) {
+  const key = color + "|" + Math.round(d) + "|" + DPR;
+  if (spriteCache.has(key)) return spriteCache.get(key);
+  const pad = d * 0.22, full = d + pad * 2;
+  const c = document.createElement("canvas");
+  c.width = c.height = Math.ceil(full * DPR);
+  const g = c.getContext("2d");
+  g.scale(DPR, DPR);
+  const cx = full / 2, cy = full / 2, R = d / 2;
+  const shape = daisyPath(new Path2D(), cx, cy, R);
+  g.save();
+  g.shadowColor = "rgba(6, 10, 34, .5)";
+  g.shadowBlur = R * 0.18 * DPR;
+  g.shadowOffsetY = R * 0.09 * DPR;
+  g.fillStyle = color;
+  g.fill(shape);
+  g.restore();
+  const light = mix(color, "#FFFFFF", 0.6), soft = mix(color, "#FFFFFF", 0.2), deep = mix(color, "#000020", 0.42), rim = mix(color, "#000020", 0.55);
+  for (let k = 0; k < 8; k++) {
+    const a = k * Math.PI / 4 - Math.PI / 2;
+    const p = new Path2D();
+    petalPath(p, (aa, x, y) => [cx + (x * Math.cos(aa) - y * Math.sin(aa)) * R, cy + (x * Math.sin(aa) + y * Math.cos(aa)) * R], a);
+    const px = cx + Math.cos(a) * 0.66 * R, py = cy + Math.sin(a) * 0.66 * R;
+    const gr = g.createRadialGradient(px - 0.12 * R, py - 0.16 * R, 0, px, py, 0.46 * R);
+    gr.addColorStop(0, light); gr.addColorStop(0.3, soft); gr.addColorStop(0.68, color); gr.addColorStop(1, deep);
+    g.fillStyle = gr;
+    g.fill(p);
+    // soft inner rim: the petal edge rolls away from the light
+    g.save();
+    g.clip(p);
+    g.shadowColor = rim; g.shadowBlur = R * 0.1 * DPR; g.shadowOffsetX = R * 0.03 * DPR; g.shadowOffsetY = R * 0.05 * DPR;
+    g.strokeStyle = rim; g.lineWidth = R * 0.07;
+    g.stroke(p);
+    g.restore();
+    // glossy spot
+    const sp = g.createRadialGradient(px - 0.14 * R, py - 0.17 * R, 0, px - 0.14 * R, py - 0.17 * R, 0.16 * R);
+    sp.addColorStop(0, "rgba(255,255,255,.55)"); sp.addColorStop(1, "rgba(255,255,255,0)");
+    g.fillStyle = sp;
+    g.fill(p);
+  }
+  const cg = g.createRadialGradient(cx - 0.08 * R, cy - 0.1 * R, 0, cx, cy, 0.32 * R);
+  cg.addColorStop(0, soft); cg.addColorStop(0.7, color); cg.addColorStop(1, deep);
+  g.fillStyle = cg;
+  g.beginPath(); g.arc(cx, cy, 0.3 * R, 0, Math.PI * 2); g.fill();
+  const bg = g.createRadialGradient(cx - 0.05 * R, cy - 0.06 * R, 0, cx, cy, 0.16 * R);
+  bg.addColorStop(0, "#FFFFFF"); bg.addColorStop(0.6, "#FBF3E6"); bg.addColorStop(1, "#D9CBB8");
+  g.save();
+  g.shadowColor = "rgba(0,0,20,.35)"; g.shadowBlur = R * 0.06 * DPR; g.shadowOffsetY = R * 0.03 * DPR;
+  g.fillStyle = bg;
+  g.beginPath(); g.arc(cx, cy, 0.15 * R, 0, Math.PI * 2); g.fill();
+  g.restore();
+  const s = { c, full };
+  spriteCache.set(key, s);
+  return s;
+}
+function drawPlush(color, x, y, d, sx = 1, sy = 1, rot = 0) {
+  const s = plush(color, d);
+  ctx.save();
+  ctx.translate(x, y);
+  if (rot) ctx.rotate(rot);
+  ctx.scale(sx, sy);
+  ctx.drawImage(s.c, -s.full / 2, -s.full / 2, s.full, s.full);
+  ctx.restore();
+}
+// Flat giant daisy used as an iris wipe between scenes
+function iris(color, p, rot) {
+  if (p <= 0) return;
+  if (p >= 1) { ctx.fillStyle = color; ctx.fillRect(0, 0, W, H); return; }
+  const R = DIAG * 1.9 * easeIn(p);
+  ctx.fillStyle = color;
+  ctx.fill(daisyPath(new Path2D(), W / 2, H / 2, R, rot, 0.32));
+}
+
+/* ---------- wordmark ---------- */
+const GLYPHS = [["K1", 262], ["O", 630], ["V", 1040], ["K2", 1523], ["A", 1912], ["Q", 2450]];
+const WM_W = (2880 - 262) * 0.6, WM_H = 444, Q_SPLIT = 0.79;
+function wordmark(width, cx, cy) {
+  const u = width / WM_W, left = cx - width / 2, top = cy - WM_H * u / 2;
+  return GLYPHS.map(([k, x0]) => {
+    const im = img[k], w = im.naturalWidth * u, h = im.naturalHeight * u;
+    return { k, im, x: left + (x0 - 262) * 0.6 * u, y: top, w, h };
+  });
+}
+function drawGlyph(g, { dy = 0, sx = 1, sy = 1, rot = 0, alpha = 1, clip = null }) {
+  if (alpha <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  const ax = g.x + g.w / 2, ay = g.y + g.h;
+  ctx.translate(ax, ay + dy);
+  ctx.rotate(rot);
+  ctx.scale(sx, sy);
+  if (clip) {
+    const [a, b] = clip;
+    ctx.beginPath(); ctx.rect(-g.w, -g.h + a * g.h, g.w * 2, (b - a) * g.h); ctx.clip();
+  }
+  ctx.drawImage(g.im, -g.w / 2, -g.h, g.w, g.h);
+  ctx.restore();
+}
+// Drop from above, land with a jelly squash
+function drop(dt, fall) {
+  const s = spring(dt, 13, 0.3);
+  if (dt <= 0) return { dy: -fall * 3, sx: 1, sy: 1 };
+  if (s <= 1) return { dy: -(1 - s) * fall, sx: 1, sy: 1 };
+  const q = (s - 1) * 1.3;
+  return { dy: 0, sx: 1 + q * 0.8, sy: 1 - q };
+}
+
+/* ---------- mosaic ---------- */
+let waves = [];
+function baseWaves() {
+  const qc = sceneA().q;
+  return [
+    { t: T_WAVE, ox: qc.x, oy: qc.y, to: 1, speed: DIAG / 1.5 },
+    { t: 6.0, ox: W / 2, oy: H / 2, to: 2, speed: DIAG / 1.3 },
+    { t: 8.0, ox: 0, oy: H, to: 3, speed: DIAG / 1.4 },
+    { t: T_WORDS, ox: W / 2, oy: H / 2, to: 0, speed: DIAG / 0.9, zone: true },
+    { t: 13.4, ox: W, oy: 0, to: 1, speed: DIAG / 1.4, outside: true },
+    { t: 15.6, ox: 0, oy: H / 2, to: 2, speed: DIAG / 1.2, outside: true }
+  ];
+}
+let clickWaves = [];
+function zone() {
+  const rx = Math.min(W * 0.47, 620), ry = Math.max(T * 1.25, Math.min(H * 0.12, 120));
+  return { rx, ry };
+}
+function inZone(tl) {
+  const { rx, ry } = zone();
+  const dx = (tl.cx - W / 2) / rx, dy = (tl.cy - H / 2) / ry;
+  return dx * dx + dy * dy < 1;
+}
+function layerColor(layer, tl) {
+  if (layer === 0) return null;
+  const pal = layer === 1 ? FLOWERS : layer === 2 ? HOT : COOL;
+  return pal[Math.floor(hash(tl.i * 7.3 + layer * 13.1) * pal.length)];
+}
+function drawMosaic(t) {
+  const D = 0.6;
+  const all = waves.concat(clickWaves);
+  for (const tl of tiles) {
+    let cur = 0, prev = 0, start = -1e9;
+    for (const w of all) {
+      if (w.zone && !tl.z) continue;
+      if (w.outside && tl.z) continue;
+      const st = w.t + Math.hypot(tl.cx - w.ox, tl.cy - w.oy) / w.speed + tl.h * 0.14;
+      if (t >= st) { prev = cur; cur = w.to === "next" ? (cur % 3) + 1 : w.to; start = st; }
+    }
+    const dt = t - start;
+    let color, sy = 1, pop = 1;
+    if (dt < 1.4) {
+      const th = Math.PI * spring(dt, 11, 0.42);
+      const c = Math.cos(th);
+      color = th < Math.PI / 2 ? layerColor(prev, tl) : layerColor(cur, tl);
+      sy = Math.abs(c);
+      pop = 1 + 0.16 * Math.sin(clamp(th, 0, Math.PI));
+      if (!layerColor(prev, tl) && th < Math.PI / 2) color = null;
+      if (!layerColor(cur, tl) && th >= Math.PI / 2) color = null;
+    } else color = layerColor(cur, tl);
+    if (!color) continue;
+    const breathe = 1 + 0.025 * Math.sin(t * 2.2 + tl.h * 6.28);
+    drawPlush(color, tl.cx, tl.cy, T * 1.0, pop * breathe, sy * pop * breathe);
+  }
+}
+
+/* ---------- layouts ---------- */
+const portrait = () => W / H < 0.9;
+function sceneA() {
+  const width = Math.min(W * 0.86, H * 1.5);
+  const g = wordmark(width, W / 2, H * 0.5);
+  const q = g[5];
+  return { g, q: { x: q.x + q.w / 2, y: q.y + q.h / 2 } };
+}
+function fit(text, maxW, size, weight = 900) {
+  ctx.font = `${weight} ${size}px Fraunces, Georgia, serif`;
+  const w = ctx.measureText(text).width;
+  return w > maxW ? size * maxW / w : size;
+}
+
+/* ---------- scenes ---------- */
+function drawSceneA(t) {
+  const { g } = sceneA();
+  const fall = H * 0.7;
+  g.forEach((gl, i) => {
+    if (i < 5) {
+      let o = drop(t - (0.25 + i * 0.11), fall);
+      const kick = t - (T_WAVE + 0.05 + Math.abs(i - 2) * 0.05);
+      if (kick > 0) {
+        const v = H * (0.9 + hash(i) * 0.5), grav = H * 6;
+        o = { dy: -v * kick + 0.5 * grav * kick * kick, sx: 1, sy: 1, rot: (i - 2.2) * 1.4 * kick };
+      }
+      drawGlyph(gl, o);
+    } else {
+      const dt = t - 1.25;
+      if (dt < 0) return;
+      let s = spring(dt, 12, 0.28), rot = (1 - spring(dt, 9, 0.22)) * 0.9, dy = 0, sx = s, sy = s, alpha = 1;
+      for (const h0 of [2.3, 2.85]) {
+        const k = (t - h0) / 0.45;
+        if (k > 0 && k < 1) { dy -= Math.sin(Math.PI * k) * gl.h * 0.16; rot += Math.sin(Math.PI * 2 * k) * 0.12; }
+      }
+      if (t > 3.55 && t < T_WAVE) {
+        const k = easeOut((t - 3.55) / (T_WAVE - 3.55));
+        sx *= 1 + 0.25 * k; sy *= 1 - 0.32 * k;
+      }
+      if (t >= T_WAVE) {
+        const k = (t - T_WAVE) / 0.32;
+        sx = sy = 1 + 3 * easeOut(clamp(k, 0, 1)); alpha = 1 - k;
+      }
+      drawGlyph(gl, { dy, sx, sy, rot, alpha });
+    }
+  });
+}
+
+function drawWords(t) {
+  const { rx, ry } = zone();
+  const per = 1.25, t0 = T_WORDS + 0.35;
+  const i = Math.floor((t - t0) / per);
+  if (i < 0 || i >= WORDS.length) return;
+  const lt = t - t0 - i * per;
+  const wd = WORDS[i];
+  // pill
+  const open = spring(lt, 15, 0.38), close = i === WORDS.length - 1 ? clamp((lt - per + 0.25) / 0.25, 0, 1) : 0;
+  const pw = rx * 2 * (0.86 + 0.14 * open) * (1 - close), ph = ry * 1.5 * (1.12 - 0.12 * open) * (1 - close);
+  if (pw <= 1) return;
+  ctx.fillStyle = wd.bg;
+  ctx.beginPath();
+  ctx.roundRect(W / 2 - pw / 2, H / 2 - ph / 2, pw, ph, ph / 2);
+  ctx.fill();
+  // word
+  const size = fit(wd.w, pw * 0.82, ph * 0.62);
+  const s = spring(lt - 0.04, 14, 0.3) * (1 - close);
+  const out = clamp((lt - per + 0.14) / 0.14, 0, 1);
+  ctx.save();
+  ctx.translate(W / 2, H / 2);
+  ctx.scale(s * (1 + out * 0.3), s * (1 - out));
+  ctx.fillStyle = wd.fg;
+  ctx.font = `900 ${size}px Fraunces, Georgia, serif`;
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(wd.w, 0, size * 0.04);
+  ctx.restore();
+}
+
+function productLayout(im) {
+  const ar = im.naturalHeight / im.naturalWidth;
+  if (portrait()) {
+    const ph = Math.min(H * 0.58, W * 0.86 * ar);
+    return { cx: W / 2, bottom: H * 0.93, ph, pw: ph / ar, tx: W / 2, ty: H * 0.1, align: "center", maxW: W * 0.88, size: Math.min(W * 0.15, H * 0.085) };
+  }
+  const ph = Math.min(H * 0.84, W * 0.5 * ar);
+  return { cx: W * 0.68, bottom: H * 0.95, ph, pw: ph / ar, tx: W * 0.07, ty: H * 0.5, align: "left", maxW: W * 0.4, size: Math.min(H * 0.14, W * 0.075), mid: true };
+}
+
+function drawProduct(i, t) {
+  const pr = PRODUCTS[i], s0 = T_PROD + i * PROD_LEN, lt = t - s0;
+  const im = img[pr.img], L = productLayout(im);
+  // halo daisy
+  const hs = spring(lt - 0.15, 9, 0.32);
+  if (hs > 0) {
+    const hd = Math.max(L.ph, L.pw) * 1.05 * hs;
+    drawPlush(pr.halo, L.cx, L.bottom - L.ph * 0.62, Math.max(hd, 1), 1, 1, t * 0.5 + (1 - hs) * 2);
+  }
+  // can
+  const k = spring(lt - 0.25, 11, 0.3);
+  if (lt > 0.25) {
+    let dy = (1 - k) * H * 0.9, sx = 1, sy = 1;
+    if (k > 1) { const q = (k - 1) * 0.9; dy = 0; sx = 1 + q * 0.6; sy = 1 - q; }
+    const rot = (1 - spring(lt - 0.25, 8, 0.3)) * 0.35 * (i % 2 ? -1 : 1);
+    ctx.save();
+    ctx.translate(L.cx, L.bottom + dy);
+    ctx.rotate(rot);
+    ctx.scale(sx, sy);
+    ctx.drawImage(im, -L.pw / 2, -L.ph, L.pw, L.ph);
+    ctx.restore();
+  }
+  // name
+  const n = spring(lt - 0.45, 12, 0.34), n2 = spring(lt - 0.58, 12, 0.34);
+  const size = Math.min(fit(pr.a, L.maxW, L.size), fit(pr.b, L.maxW, L.size));
+  const lab = Math.max(11, size * 0.2);
+  ctx.save();
+  ctx.fillStyle = pr.fg;
+  ctx.textAlign = L.align;
+  ctx.textBaseline = "alphabetic";
+  const top = L.mid ? L.ty - size * 1.05 : L.ty;
+  ctx.font = `700 ${lab}px "Bricolage Grotesque", Arial, sans-serif`;
+  if ("letterSpacing" in ctx) ctx.letterSpacing = `${lab * 0.14}px`;
+  ctx.globalAlpha = clamp(n, 0, 1);
+  ctx.fillText(`KOVKA  Nº ${String(i + 1).padStart(2, "0")} / ${String(PRODUCTS.length).padStart(2, "0")}`, L.tx, top);
+  if ("letterSpacing" in ctx) ctx.letterSpacing = "0px";
+  ctx.globalAlpha = 1;
+  ctx.font = `900 ${size}px Fraunces, Georgia, serif`;
+  const line = (txt, y, sp) => {
+    if (sp <= 0) return;
+    ctx.save();
+    const ox = L.align === "center" ? L.tx : L.tx;
+    ctx.translate(ox, y);
+    ctx.scale(1, sp);
+    ctx.fillText(txt, 0, 0);
+    ctx.restore();
+  };
+  line(pr.a, top + lab * 0.6 + size * 0.95, n);
+  line(pr.b, top + lab * 0.6 + size * 1.9, n2);
+  ctx.restore();
+}
+
+function finaleLayout() {
+  const P = portrait();
+  const wmW = P ? Math.min(W * 0.84, H * 0.5) : Math.min(W * 0.55, H * 0.95);
+  const wmY = P ? H * 0.16 : H * 0.2;
+  const cans = [];
+  if (P) {
+    const ch = Math.min(H * 0.32, W * 0.5);
+    const yb = H * 0.74, yf = H * 0.93;
+    [[0.2, yb, 0.82], [0.5, yb - ch * 0.06, 0.88], [0.8, yb, 0.82], [0.34, yf, 1], [0.66, yf, 1]].forEach(([x, y, s], i) => cans.push({ x: W * x, y, h: ch * s, i: [0, 2, 4, 1, 3][i] }));
+  } else {
+    const ch = Math.min(H * 0.42, W * 0.2);
+    for (let i = 0; i < 5; i++) cans.push({ x: W * (0.14 + i * 0.18), y: H * 0.95, h: ch * (i % 2 ? 0.9 : 1), i });
+  }
+  return { wmW, wmY, cans, tagY: P ? H * 0.27 : H * 0.37, tagSize: P ? Math.min(W * 0.052, 26) : Math.min(H * 0.04, 30) };
+}
+
+function drawFinale(t) {
+  const lt = t - T_FIN, F = finaleLayout();
+  // cans
+  F.cans.forEach((c, j) => {
+    const k = spring(lt - 0.85 - j * 0.12, 12, 0.3);
+    if (k <= 0) return;
+    const im = img[PRODUCTS[c.i].img], w = c.h * im.naturalWidth / im.naturalHeight;
+    ctx.save();
+    ctx.translate(c.x, c.y);
+    ctx.rotate((1 - k) * (j % 2 ? 0.4 : -0.4) + Math.sin(t * 1.6 + j) * 0.015);
+    ctx.scale(k, k);
+    ctx.drawImage(im, -w / 2, -c.h, w, c.h);
+    ctx.restore();
+  });
+  // wordmark: drops, then the question mark loses its hook
+  const g = wordmark(F.wmW, W / 2, F.wmY);
+  g.forEach((gl, i) => {
+    if (i < 5) { drawGlyph(gl, drop(lt - 1.6 - i * 0.08, H * 0.5)); return; }
+    const dt = lt - 2.15;
+    if (dt <= 0) return;
+    const s = spring(dt, 12, 0.3);
+    const cut = lt - 3.3;
+    if (cut <= 0) { drawGlyph(gl, { sx: s, sy: s, rot: (1 - s) * 0.6 }); return; }
+    // hook falls away
+    drawGlyph(gl, { clip: [0, Q_SPLIT], dy: 0.5 * H * 5 * cut * cut, rot: cut * 2.4 });
+    // dot stays: becomes the full stop
+    const b = cut < 0.5 ? Math.sin(cut / 0.5 * Math.PI) * Math.exp(-cut * 3) : 0;
+    drawGlyph(gl, { clip: [Q_SPLIT, 1.02], sx: 1 + b * 0.5, sy: 1 - b * 0.5 });
+  });
+  // tagline
+  const tk = clamp((lt - 3.8) / 0.6, 0, 1);
+  if (tk > 0) {
+    ctx.save();
+    ctx.globalAlpha = tk;
+    ctx.fillStyle = C.blue;
+    ctx.textAlign = "center";
+    ctx.font = `800 ${F.tagSize}px Fraunces, Georgia, serif`;
+    const y = F.tagY + (1 - easeOut(tk)) * 20;
+    ctx.fillText("Malá květinová kompozice", W / 2, y);
+    ctx.fillText("v kovové plechovce s vodou", W / 2, y + F.tagSize * 1.25);
+    ctx.restore();
+  }
+}
+
+/* ---------- frame ---------- */
+function frame(t) {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  // ground: paper, then night spreading from the question mark
+  ctx.fillStyle = C.paper;
+  ctx.fillRect(0, 0, W, H);
+  if (t >= T_WAVE - 0.05 && t < T_PROD + 1) {
+    const q = sceneA().q;
+    const r = (t - T_WAVE + 0.05) * DIAG / 1.5 + T * 0.4;
+    ctx.fillStyle = C.ink;
+    ctx.beginPath(); ctx.arc(q.x, q.y, Math.max(r, 0), 0, Math.PI * 2); ctx.fill();
+  }
+  if (t >= T_WAVE - 0.1 && t < T_PROD + 1) drawMosaic(t);
+  if (t < T_WAVE + 1.2) drawSceneA(t);
+  if (t >= T_WORDS && t < T_PROD) drawWords(t);
+  // products, each arriving through a daisy iris
+  for (let i = 0; i < PRODUCTS.length; i++) {
+    const s0 = T_PROD + i * PROD_LEN;
+    if (t < s0 || t > s0 + PROD_LEN + 0.8) continue;
+    iris(PRODUCTS[i].bg, (t - s0) / 0.7, (1 - (t - s0) / 0.7) * 2.2);
+    drawProduct(i, t);
+  }
+  if (t >= T_FIN) {
+    iris(C.paper, (t - T_FIN) / 0.7, -(1 - (t - T_FIN) / 0.7) * 2.2);
+    drawFinale(t);
+  }
+  // fade back into the opening paper so the loop is seamless
+  if (t > DUR - 0.5) {
+    ctx.fillStyle = C.paper;
+    ctx.globalAlpha = (t - (DUR - 0.5)) / 0.5;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 1;
+  }
+}
+
+/* ---------- sizing ---------- */
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  DIAG = Math.hypot(W, H);
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  T = clamp(Math.min(W, H) / 7.2, 46, 118);
+  const cols = Math.ceil(W / T) + 1, rows = Math.ceil(H / T) + 1;
+  const ox = (W - (cols - 1) * T) / 2, oy = (H - (rows - 1) * T) / 2;
+  tiles = [];
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const i = r * cols + c;
+    const tl = { i, cx: ox + c * T, cy: oy + r * T, h: hash(i * 3.17) };
+    tiles.push(tl);
+  }
+  waves = baseWaves();
+  tiles.forEach(tl => { tl.z = inZone(tl); });
+  spriteCache.clear();
+}
+
+/* ---------- playback ---------- */
+let t = 0, playing = true, last = 0;
+const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const bar = document.getElementById("bar"), track = document.getElementById("track");
+const playBtn = document.getElementById("play"), playIcon = document.getElementById("playIcon");
+const segEls = SCENES.map((s, i) => {
+  const end = i + 1 < SCENES.length ? SCENES[i + 1].t : DUR;
+  const b = document.createElement("button");
+  b.className = "seg"; b.style.flex = String(end - s.t);
+  b.setAttribute("aria-label", s.name);
+  b.innerHTML = `<i></i><span>${s.name}</span>`;
+  b.addEventListener("click", e => { e.stopPropagation(); seek(s.t); });
+  track.appendChild(b);
+  return { b, fill: b.firstChild, start: s.t, end };
+});
+function seek(nt) { t = nt; clickWaves = []; }
+function setPlaying(p) {
+  playing = p;
+  playIcon.innerHTML = p
+    ? '<rect x="3" y="2" width="3.5" height="12" rx="1"/><rect x="9.5" y="2" width="3.5" height="12" rx="1"/>'
+    : '<path d="M4 2.2v11.6a.8.8 0 0 0 1.2.7l9.3-5.8a.8.8 0 0 0 0-1.4L5.2 1.5A.8.8 0 0 0 4 2.2z"/>';
+  playBtn.setAttribute("aria-label", p ? "Pauza" : "Přehrát");
+}
+playBtn.addEventListener("click", e => { e.stopPropagation(); setPlaying(!playing); });
+document.getElementById("restart").addEventListener("click", e => { e.stopPropagation(); seek(0); setPlaying(true); });
+window.addEventListener("keydown", e => {
+  if (e.code === "Space") { e.preventDefault(); setPlaying(!playing); }
+  if (e.key === "ArrowRight") seek(Math.min(DUR - 0.01, t + 2));
+  if (e.key === "ArrowLeft") seek(Math.max(0, t - 2));
+  wake();
+});
+// tap the mosaic to send your own wave
+cv.addEventListener("pointerdown", e => {
+  wake();
+  if (t > T_WAVE + 0.6 && t < T_PROD - 0.3) {
+    clickWaves.push({ t, ox: e.clientX, oy: e.clientY, to: "next", speed: DIAG / 1.1, outside: t >= T_WORDS });
+    if (clickWaves.length > 10) clickWaves.shift();
+  }
+});
+let idleTimer = 0;
+function wake() {
+  bar.classList.remove("idle");
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => bar.classList.add("idle"), 2600);
+}
+window.addEventListener("pointermove", wake);
+
+function loop(now) {
+  const dt = last ? Math.min((now - last) / 1000, 0.05) : 0;
+  last = now;
+  if (playing) { t += dt; if (t >= DUR) { t -= DUR; clickWaves = []; } }
+  frame(t);
+  for (const s of segEls) s.fill.style.width = `${clamp((t - s.start) / (s.end - s.start), 0, 1) * 100}%`;
+  requestAnimationFrame(loop);
+}
+
+// test hook: render a given second without playback
+window.__kovka = { seek: s => { t = s; frame(t); }, pause: () => setPlaying(false) };
+
+async function boot() {
+  await Promise.all(Object.entries(IMG_SRC).map(([k, src]) => new Promise(res => {
+    const im = new Image(); im.onload = res; im.onerror = res; im.src = src; img[k] = im;
+  })));
+  try {
+    await Promise.race([
+      Promise.all([document.fonts.load("900 80px Fraunces"), document.fonts.load("800 30px Fraunces"), document.fonts.load('700 14px "Bricolage Grotesque"')]),
+      new Promise(r => setTimeout(r, 2500))
+    ]);
+  } catch (e) { /* fall back to Georgia */ }
+  resize();
+  window.addEventListener("resize", resize);
+  if (reduce) { t = T_FIN + 6; setPlaying(false); }
+  wake();
+  requestAnimationFrame(loop);
+}
+boot();
+</script>
