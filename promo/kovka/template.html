@@ -1,5 +1,5 @@
 <meta charset="utf-8">
-<title>KOVKA?</title>
+<title>KOVKA od Narin</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,900&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&display=swap">
@@ -46,7 +46,7 @@ body { background: var(--frame); color: var(--ink); overflow: hidden; font-famil
 @media (max-width: 520px) { .seg span { display: none; } .track { padding-bottom: 0; } }
 </style>
 
-<canvas id="film" aria-label="KOVKA: reklamní video 16:9. Klepnutím pošlete do louky vítr."></canvas>
+<canvas id="film" aria-label="KOVKA od Narin: reklamní video 16:9. Klepnutím pošlete do louky vítr."></canvas>
 <div class="bar idle" id="bar">
   <button class="btn" id="play" aria-label="Pauza"><svg viewBox="0 0 16 16" id="playIcon"><rect x="3" y="2" width="3.5" height="12" rx="1"/><rect x="9.5" y="2" width="3.5" height="12" rx="1"/></svg></button>
   <div class="track" id="track"></div>
@@ -56,7 +56,8 @@ body { background: var(--frame); color: var(--ink); overflow: hidden; font-famil
 <script>
 const IMG_SRC = {
   k1: "%%k1%%", k2: "%%k2%%", k3: "%%k3%%", k4: "%%k4%%", k5: "%%k5%%", daisy: "%%daisy%%",
-  K1: "%%K1%%", O: "%%O%%", V: "%%V%%", K2: "%%K2%%", A: "%%A%%", Q: "%%Q%%"
+  K1: "%%K1%%", O: "%%O%%", V: "%%V%%", K2: "%%K2%%", A: "%%A%%", Q: "%%Q%%",
+  nN1: "%%nN1%%", nA: "%%nA%%", nR: "%%nR%%", nI: "%%nI%%", nN2: "%%nN2%%", nSub1: "%%nSub1%%", nSub2: "%%nSub2%%"
 };
 const C = {
   paper: "#FFFEFB", frame: "#ECEAE3", ink: "#14204A", cobalt: "#1C70E3", blue: "#0B4DB5", red: "#FF3B2F",
@@ -67,30 +68,32 @@ const GREENS = ["#2A9A4B", "#3DAF5C", "#19C98A", "#7CCB5B", "#238544"];
 const SW = 1920, SH = 1080, GROUND = 1062;
 
 // 120 BPM: one beat = 0.5 s. Scene starts are on the grid.
-const T = { hook: 0, flash: 2.5, hero: 5, vars: 8, VAR: 1.3, line: 14.5, use: 17.5, end: 19, dur: 24 };
+const T = { logo: 0, how: 4.5, uniq: 12.5, use: 19, end: 25, dur: 30 };
 const SCENES = [
-  { name: "Háček", t: T.hook }, { name: "Slova", t: T.flash }, { name: "Hero", t: T.hero },
-  { name: "Varianty", t: T.vars }, { name: "Řada", t: T.line }, { name: "Kam", t: T.use }, { name: "Výzva", t: T.end }
+  { name: "Narin → Kovka", t: T.logo }, { name: "Jak vzniká", t: T.how }, { name: "Originál", t: T.uniq },
+  { name: "Kdy", t: T.use }, { name: "Výzva", t: T.end }
 ];
-const FLASH = [
-  { w: "Květiny.", bg: C.red, fg: C.paper, d: C.yellow },
-  { w: "V plechovce.", bg: C.yellow, fg: C.blue, d: C.red },
-  { w: "S vodou.", bg: C.cobalt, fg: C.paper, d: C.pink },
-  { w: "Malá.", bg: C.pink, fg: C.blue, d: C.blue },
-  { wm: true, bg: C.paper, d: C.yellow }
+const HOW = [
+  { at: 0, w: "Kovová|plechovka.", s: "Malá a pevná, s naší etiketou." },
+  { at: 1.8, w: "Nalijeme|vodu.", s: "Květiny v ní pijí jako ve váze." },
+  { at: 3.8, w: "Ručně složíme|kytičku.", s: "Pokaždé z toho, co zrovna kvete." },
+  { at: 6.0, w: "A je to|kovka.", s: "Malá květinová kompozice v plechovce s vodou." }
 ];
-const VARS = [
-  { k: "k1", bg: C.green, fg: C.paper, halo: C.pink },
-  { k: "k2", bg: C.yellow, fg: C.blue, halo: C.cobalt },
-  { k: "k3", bg: C.cobalt, fg: C.paper, halo: C.yellow },
-  { k: "k4", bg: C.red, fg: C.paper, halo: C.pink },
-  { k: "k5", bg: C.purple, fg: C.paper, halo: C.yellow }
-];
+const FLIP = ["k1", "k3", "k2", "k5", "k4", "k1", "k3", "k2", "k4", "k5", "k3", "k1"];
+const FLIP_BG = [C.red, C.yellow, C.cobalt, C.pink, C.green, C.purple];
+const FLIP_DUR = [0.5, 0.45, 0.4, 0.35, 0.3, 0.28, 0.25, 0.22, 0.22, 0.22, 0.22, 0.22];
 const USES = [
+  { w: "Jako dárek.", bg: C.red, fg: C.paper, k: "k5" },
   { w: "Na stůl.", bg: C.yellow, fg: C.blue, k: "k2" },
-  { w: "Na parapet.", bg: C.pink, fg: C.blue, k: "k4" },
-  { w: "Jako dárek.", bg: C.red, fg: C.paper, k: "k5" }
+  { w: "K narozeninám.", bg: C.pink, fg: C.blue, k: "k4" },
+  { w: "Jako poděkování.", bg: C.cobalt, fg: C.paper, k: "k3" },
+  { w: "Do kanceláře.", bg: C.green, fg: C.paper, k: "k1" },
+  { w: "Jen tak.", bg: C.purple, fg: C.paper, k: "k5" }
 ];
+// NARIN logo pieces: top-left corner in the source logo (px); the block spans x 226–1299, y 330–745
+const NARIN = { nN1: [226, 330], nA: [465, 330], nR: [731, 330], nI: [965, 330], nN2: [1071, 330], nSub1: [226, 640], nSub2: [938, 640] };
+// ink box of the tulip A inside each glyph image (x0, y0, x1, y1), so the A can travel from one logo into the other
+const A_BOX = { nA: [5, 11, 255, 298], A: [6.6, 106.8, 253.8, 390] };
 
 const cv = document.getElementById("film");
 const ctx = cv.getContext("2d");
@@ -282,121 +285,273 @@ function ribbon(y, ang, h, bg, fg, text, off, reveal, daisyCol) {
   ctx.restore();
 }
 
+/* ---------- logos ---------- */
+function narinRects(u, cx, cy) {
+  const left = cx - (1299 - 226) * u / 2, top = cy - (745 - 330) * u / 2, r = {};
+  for (const [k, [x, y]] of Object.entries(NARIN)) {
+    const im = img[k];
+    r[k] = { im, x: left + (x - 226) * u, y: top + (y - 330) * u, w: im.naturalWidth * u, h: im.naturalHeight * u };
+  }
+  return r;
+}
+function kovkaRects(spanW, cx, cy) {
+  const u = spanW / WM_NOQ, left = cx - spanW / 2, top = cy - WM_H * u / 2, r = {};
+  for (const [k, x0] of GLYPHS) {
+    if (k === "Q") continue;
+    const im = img[k];
+    r[k] = { im, x: left + (x0 - 262) * 0.6 * u, y: top, w: im.naturalWidth * u, h: im.naturalHeight * u };
+  }
+  return r;
+}
+function blit(r, alpha = 1, s = 1, dx = 0, dy = 0, rot = 0) {
+  if (alpha <= 0 || s <= 0) return;
+  ctx.save(); ctx.globalAlpha = Math.min(1, alpha);
+  ctx.translate(r.x + r.w / 2 + dx, r.y + r.h / 2 + dy); if (rot) ctx.rotate(rot); ctx.scale(s, s);
+  ctx.drawImage(r.im, -r.w / 2, -r.h / 2, r.w, r.h);
+  ctx.restore();
+}
+const slamP = (t, st) => expo((t - st) / 0.38);
+function slam(r, p, alpha = 1) { blit(r, clamp(p * 1.8, 0, 1) * alpha, lerp(1.8, 1, p)); }
+// screen box of the A's ink for a glyph rect
+function aBox(r, key) {
+  const [x0, y0, x1, y1] = A_BOX[key], sx = r.w / r.im.naturalWidth, sy = r.h / r.im.naturalHeight;
+  return [r.x + x0 * sx, r.y + y0 * sy, r.x + x1 * sx, r.y + y1 * sy];
+}
+function drawInBox(im, key, box, alpha) {
+  const [x0, y0, x1, y1] = A_BOX[key], sx = (box[2] - box[0]) / (x1 - x0), sy = (box[3] - box[1]) / (y1 - y0);
+  ctx.save(); ctx.globalAlpha = alpha;
+  ctx.drawImage(im, box[0] - x0 * sx, box[1] - y0 * sy, im.naturalWidth * sx, im.naturalHeight * sy);
+  ctx.restore();
+}
+// "od NARIN" lockup
+function odNarin(cx, cy, h, p, color = C.blue) {
+  if (p <= 0) return;
+  const u = h / 310, lw = (1299 - 226) * u;
+  uiFont(h * 0.42, 700);
+  const ow = ctx.measureText("od").width, gap = h * 0.22, total = ow + gap + lw, left = cx - total / 2;
+  ctx.save();
+  ctx.globalAlpha = expo(p);
+  ctx.translate(0, (1 - expo(p)) * h * 0.4);
+  ctx.fillStyle = color; ctx.textBaseline = "alphabetic"; ctx.textAlign = "left";
+  ctx.fillText("od", left, cy + h * 0.38);
+  const top = cy - h / 2;
+  for (const k of ["nN1", "nA", "nR", "nI", "nN2"]) {
+    const im = img[k], [x, y] = NARIN[k];
+    ctx.drawImage(im, left + ow + gap + (x - 226) * u, top + (y - 330) * u, im.naturalWidth * u, im.naturalHeight * u);
+  }
+  ctx.restore();
+}
+
+/* ---------- illustrated can for the "how it's made" scene ---------- */
+const BOUQUET = [
+  { dx: -10, hy: 270, d: 190, c: C.blue }, { dx: -170, hy: 190, d: 160, c: C.yellow }, { dx: 160, hy: 210, d: 170, c: C.red },
+  { dx: 80, hy: 360, d: 140, c: C.pink }, { dx: -110, hy: 370, d: 130, c: C.purple }, { dx: 250, hy: 90, d: 140, c: C.pink },
+  { dx: -250, hy: 80, d: 130, c: C.blue }, { dx: 40, hy: 130, d: 160, c: C.yellow }, { dx: -60, hy: 120, d: 120, c: C.red },
+  { dx: 190, hy: 330, d: 110, c: C.purple }, { dx: -230, hy: 300, d: 110, c: C.red }
+];
+function canBody(cx, top, w, h) {
+  const p = new Path2D(), rx = w / 2, ry = w * 0.1;
+  p.moveTo(cx - rx, top); p.lineTo(cx - rx, top + h);
+  p.ellipse(cx, top + h, rx, ry, 0, Math.PI, 0, true);
+  p.lineTo(cx + rx, top); p.ellipse(cx, top, rx, ry, 0, 0, Math.PI, false);
+  p.closePath();
+  return p;
+}
+function sceneHowArt(lt, cx, bottom, w, h) {
+  const top = bottom - h, rx = w / 2, ry = w * 0.1, body = canBody(cx, top, w, h);
+  const front = lerp(1, 0.25, expo((lt - 1.9) / 0.4));
+  const water = 0.74 * inOut((lt - 2.1) / 1.3), ts = step(lt);
+  // inside + opening
+  ctx.fillStyle = "#DCE2E9"; ctx.fill(body);
+  ctx.fillStyle = "#7E8691"; ctx.beginPath(); ctx.ellipse(cx, top, rx * 0.94, ry * 0.8, 0, 0, Math.PI * 2); ctx.fill();
+  // stems going into the can
+  const flowers = BOUQUET.map((f, i) => {
+    const p = expo((lt - 3.95 - i * 0.18) / 0.5), drop = (1 - p) * -900;
+    return { ...f, p, hx: cx + f.dx + Math.sin(ts * 1.6 + i) * 5, hyAbs: top - f.hy + drop, bx: cx + f.dx * 0.25, by: bottom - h * 0.12 + drop };
+  });
+  for (const f of flowers) {
+    if (f.p <= 0) continue;
+    ctx.strokeStyle = GREENS[BOUQUET.indexOf(BOUQUET.find(b => b.dx === f.dx)) % GREENS.length]; ctx.lineWidth = 7; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(f.bx, f.by); ctx.quadraticCurveTo(lerp(f.bx, f.hx, 0.3), lerp(f.by, f.hyAbs, 0.5), f.hx, f.hyAbs); ctx.stroke();
+    const lx = lerp(f.bx, f.hx, 0.62), ly = lerp(f.by, f.hyAbs, 0.62), side = f.dx >= 0 ? 1 : -1, L = 70;
+    ctx.fillStyle = ctx.strokeStyle;
+    ctx.beginPath(); ctx.moveTo(lx, ly);
+    ctx.quadraticCurveTo(lx + side * L * 0.5, ly - L * 0.6, lx + side * L, ly - L * 0.35);
+    ctx.quadraticCurveTo(lx + side * L * 0.45, ly - L * 0.05, lx, ly); ctx.fill();
+  }
+  // water with a wobbling surface
+  if (water > 0) {
+    ctx.save(); ctx.clip(body);
+    const wy = bottom - water * h;
+    ctx.fillStyle = "rgba(28,112,227,.55)";
+    ctx.beginPath(); ctx.moveTo(cx - rx - 5, wy);
+    for (let x = -rx - 5; x <= rx + 5; x += 10) ctx.lineTo(cx + x, wy + Math.sin(x * 0.03 + ts * 5) * 6);
+    ctx.lineTo(cx + rx + 5, bottom + ry + 5); ctx.lineTo(cx - rx - 5, bottom + ry + 5); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,.7)";
+    for (let i = 0; i < 9; i++) {
+      const k = ((ts * 0.5 + i * 0.13) % 1), bx = cx + Math.sin(i * 7.3) * rx * 0.7, by = bottom - k * water * h;
+      ctx.beginPath(); ctx.arc(bx, by, 4 + (i % 3) * 2, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+  // metal shell, see-through while we show what is inside
+  ctx.save(); ctx.globalAlpha = front;
+  const g = ctx.createLinearGradient(cx - rx, 0, cx + rx, 0);
+  g.addColorStop(0, "#AEB5BE"); g.addColorStop(0.28, "#EEF0F3"); g.addColorStop(0.55, "#C3C9D0"); g.addColorStop(0.8, "#F6F7F9"); g.addColorStop(1, "#A9B0B9");
+  ctx.fillStyle = g; ctx.fill(body);
+  ctx.strokeStyle = "rgba(20,32,74,.18)"; ctx.lineWidth = 3;
+  for (const f of [0.07, 0.93]) { ctx.beginPath(); ctx.ellipse(cx, top + h * f, rx, ry, 0, 0, Math.PI); ctx.stroke(); }
+  ctx.restore();
+  // label band stays readable
+  ctx.save(); ctx.globalAlpha = Math.max(front, 0.55);
+  const ly = top + h * 0.3, lh = h * 0.42, lx = cx - rx * 0.78, lw = rx * 1.56;
+  ctx.fillStyle = C.paper; ctx.beginPath(); ctx.roundRect(lx, ly, lw, lh, 8); ctx.fill();
+  font(lh * 0.3, 900); ctx.fillStyle = C.blue; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("KOVKA", cx, ly + lh * 0.5);
+  [[0.1, 0.16, C.blue], [0.3, 0.12, C.red], [0.55, 0.15, C.green], [0.8, 0.12, C.yellow], [0.9, 0.85, C.purple], [0.12, 0.84, C.yellow], [0.45, 0.86, C.pink], [0.68, 0.84, C.blue]]
+    .forEach(([fx, fy, c]) => drawDaisy(c, lx + lw * fx, ly + lh * fy, lh * 0.15));
+  ctx.restore();
+  // rim
+  ctx.strokeStyle = "#9AA2AC"; ctx.lineWidth = 6;
+  ctx.beginPath(); ctx.ellipse(cx, top, rx, ry, 0, 0, Math.PI * 2); ctx.stroke();
+  // heads on top
+  for (const f of flowers) if (f.p > 0) drawDaisy(f.c, f.hx, f.hyAbs, f.d, f.dx * 0.01 + ts * 0.2, 1, 1, 0.92);
+}
+
 /* ---------- scenes (lt = time inside the scene) ---------- */
-function sceneHook(lt) {
-  const z = 1 + 0.07 * inOut((lt - 1.9) / 0.6);
-  ctx.save(); ctx.translate(SW / 2, SH / 2); ctx.scale(z, z); ctx.translate(-SW / 2, -SH / 2);
-  const st = [[250, 230, 170, C.blue], [1680, 210, 130, C.red], [1530, 880, 190, C.yellow], [360, 860, 120, C.purple], [1800, 610, 86, C.pink], [120, 560, 80, C.green], [980, 950, 96, C.red], [860, 120, 70, C.yellow]];
-  st.forEach(([x, y, d, c], i) => {
-    const p = expo((lt - 1.55 - i * 0.05) / 0.4);
+function sceneLogo(lt) {
+  const nr = narinRects(1.2, SW / 2, SH / 2 - 10), kr = kovkaRects(1250, SW / 2, 470);
+  // NARIN builds up, then everything but the A falls away
+  ["nN1", "nA", "nR", "nI", "nN2"].forEach((k, i) => {
+    if (k === "nA") return;
+    const p = slamP(lt, 0.1 + i * 0.12), out = expoIn((lt - 2.0 - i * 0.05) / 0.45);
+    if (out >= 1) return;
+    blit(nr[k], clamp(p * 1.8, 0, 1), lerp(1.8, 1, p), 0, out * 800, out * (i % 2 ? 0.5 : -0.5));
+  });
+  for (const [k, d] of [["nSub1", 0.8], ["nSub2", 0.9]]) {
+    const p = expo((lt - d) / 0.45), out = expoIn((lt - 1.95) / 0.35);
+    if (out < 1) blit(nr[k], p * (1 - out), 1, 0, (1 - p) * 30 + out * 500);
+  }
+  // the tulip A travels from NARIN into KOVKA
+  const m = inOut((lt - 2.15) / 0.8), from = aBox(nr.nA, "nA"), to = aBox(kr.A, "A");
+  const box = from.map((v, i) => lerp(v, to[i], m)), pA = slamP(lt, 0.22);
+  const swap = clamp((lt - 2.85) / 0.2, 0, 1);
+  if (m <= 0) slam(nr.nA, pA);
+  else { drawInBox(img.nA, "nA", box, 1 - swap); if (swap > 0) drawInBox(img.A, "A", box, swap); }
+  // K O V K slam in after the A has moved
+  ["K1", "O", "V", "K2"].forEach((k, i) => { const p = slamP(lt, 2.55 + i * 0.1); if (p > 0) slam(kr[k], p); });
+  odNarin(SW / 2, 745, 92, (lt - 3.2) / 0.45);
+  tag("NOVINKA", 120, 110, C.red, C.paper, (lt - 3.3) / 0.4);
+  [[260, 260, 150, C.blue], [1660, 240, 120, C.red], [1540, 880, 170, C.yellow], [380, 860, 110, C.purple], [1800, 600, 80, C.pink], [150, 560, 70, C.green]].forEach(([x, y, d, c], i) => {
+    const p = expo((lt - 3.35 - i * 0.05) / 0.4);
     drawDaisy(c, x, y, d * p, (1 - p) * 2 + lt * 0.4 * (i % 2 ? 1 : -1));
   });
-  wordmark(1480, SW / 2, SH / 2, 0.12, lt, { stagger: 0.2 });
-  tag("NOVINKA", 120, 110, C.red, C.paper, (lt - 0.9) / 0.4);
-  ctx.restore();
 }
-function sceneFlash(lt) {
-  const i = clamp(Math.floor(lt / 0.5), 0, 4), c = lt - i * 0.5, f = FLASH[i];
-  ctx.fillStyle = f.bg; ctx.fillRect(0, 0, SW, SH);
-  const z = lerp(1.06, 1, expo(c / 0.5));
-  ctx.save(); ctx.translate(SW / 2, SH / 2); ctx.scale(z, z); ctx.translate(-SW / 2, -SH / 2);
-  const corner = [[SW - 120, 140], [140, SH - 120], [SW - 150, SH - 110], [130, 150], [SW - 200, SH - 160]][i];
-  drawDaisy(f.d, corner[0], corner[1], 620, lt * 1.1 + i, 1);
-  if (f.wm) {
-    wordmark(1250, SW / 2, SH / 2, 0, c * 1.4, { q: false, stagger: 0.035 });
-  } else {
-    const size = fit(f.w, 1560, 300);
-    rise(f.w, SW / 2, SH / 2 + size * 0.34, size, c / 0.3, f.fg, "center");
-  }
-  ctx.restore();
-}
-function sceneHero(lt) {
-  const off = lt * 260;
-  ribbon(400, -0.07, 132, C.cobalt, C.paper, "MALÁ KVĚTINOVÁ KOMPOZICE", off, lt / 0.45, C.yellow);
-  ribbon(740, 0.05, 132, C.yellow, C.blue, "V PLECHOVCE S VODOU", -off * 1.1 - 400, (lt - 0.1) / 0.45, C.red);
-  const p = expo((lt - 0.35) / 0.55);
-  const bottom = lerp(-200, 1050, p);
-  // landing burst
-  const b = lt - 0.62;
-  if (b > 0) {
-    const r = rnd(9);
-    for (let i = 0; i < 12; i++) {
-      const a = (i / 12) * Math.PI * 2 + r() * 0.4, dist = expo(b / 1.0) * (380 + r() * 260);
-      drawDaisy(HEADS[i % HEADS.length], SW / 2 + Math.cos(a) * dist, 640 + Math.sin(a) * dist * 0.75, 50 + r() * 50, b * 2 * (r() - 0.5) * 3, 1 - clamp((b - 0.8) / 0.6, 0, 1));
-    }
-  }
-  can("k3", SW / 2, bottom, 860);
-  tag("RUČNĚ SKLÁDANÉ", 120, 110, C.ink, C.paper, (lt - 0.9) / 0.4);
-}
-function sceneVars(lt) {
-  const i = clamp(Math.floor(lt / T.VAR), 0, 4), c = lt - i * T.VAR, v = VARS[i], pv = VARS[Math.max(0, i - 1)];
-  const PW = 800;
-  // right: white stage with meadow and the can sliding through
-  ctx.save(); ctx.beginPath(); ctx.rect(PW, 0, SW - PW, SH); ctx.clip();
-  const hp = expo(c / 0.6);
-  drawDaisy(mix(v.halo, C.paper, 0.35), 1360, 470, 760 * lerp(0.7, 1, hp), lt * 0.35 + i, hp);
-  drawMeadow(T.vars + lt, null, [0, 1], PW, SW, 0.8);
-  if (i > 0) can(pv.k, lerp(1360, 380, expoIn(c / 0.32)), 1045, 900);
-  can(v.k, i === 0 && c < 0.6 ? lerp(2400, 1360, expo((c - 0.05) / 0.5)) : lerp(2400, 1360, expo((c - 0.12) / 0.5)), 1045, 900);
-  drawMeadow(T.vars + lt, null, [2, 3], PW, SW, 0.8);
-  ctx.restore();
-  // left: colour panel, wiped up on every swap
-  ctx.fillStyle = i > 0 ? pv.bg : v.bg; ctx.fillRect(0, 0, PW, SH);
-  const wipe = i === 0 ? expo(lt / 0.4) : expo(c / 0.35);
-  ctx.fillStyle = v.bg; ctx.fillRect(0, SH * (1 - wipe), PW, SH * wipe);
-  const fg = wipe > 0.5 ? v.fg : pv.fg;
-  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, PW, SH); ctx.clip();
-  // big outlined number
-  font(560, 900);
-  ctx.lineWidth = 5; ctx.strokeStyle = fg; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
-  const ny = lerp(1240, 1010, expo((c - 0.05) / 0.45));
-  ctx.globalAlpha = 0.9; ctx.strokeText(String(i + 1).padStart(2, "0"), 80, ny); ctx.globalAlpha = 1;
+function sceneHow(lt) {
+  const i = HOW.reduce((a, s, j) => (lt >= s.at ? j : a), 0), st = HOW[i], c = lt - st.at;
+  // caption column
   uiFont(26, 700);
   if ("letterSpacing" in ctx) ctx.letterSpacing = "3px";
-  ctx.fillStyle = fg; ctx.fillText(`KOVKA · VARIANTA ${i + 1} / 5`, 90, 150);
+  ctx.fillStyle = C.ink; ctx.globalAlpha = 0.7; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+  ctx.fillText(`JAK VZNIKÁ KOVKA   ${String(i + 1).padStart(2, "0")} / 04`, 120, 300);
+  ctx.globalAlpha = 1;
   if ("letterSpacing" in ctx) ctx.letterSpacing = "0px";
-  rise("Každá", 86, 300, 150, lt / 0.35, fg);
-  rise("je jiná.", 86, 440, 150, (lt - 0.12) / 0.35, fg);
-  ctx.restore();
+  const size = 128, [l1, l2 = ""] = st.w.split("|");
+  rise(l1, 112, 430, size, c / 0.35, C.cobalt);
+  if (l2) rise(l2, 112, 430 + size * 1.02, size, (c - 0.08) / 0.35, C.cobalt);
+  const sy = l2 ? 430 + size * 1.02 + 80 : 510;
+  font(38, 600);
+  ctx.save(); ctx.globalAlpha = expo((c - 0.25) / 0.4); ctx.fillStyle = C.ink; ctx.fillText(st.s, 116, sy); ctx.restore();
+  // progress dots
+  for (let k = 0; k < 4; k++) {
+    ctx.fillStyle = k <= i ? C.cobalt : "rgba(20,32,74,.15)";
+    ctx.beginPath(); ctx.roundRect(120 + k * 46, 900, 36, 8, 4); ctx.fill();
+  }
+  // picture
+  const cx = 1330, bottom = 960, inP = expo((lt - 0.05) / 0.6);
+  if (lt < 6.05) sceneHowArt(lt, cx, bottom + (1 - inP) * 700, 460, 480);
+  else {
+    const b = lt - 6.05, r = rnd(4);
+    for (let j = 0; j < 12; j++) {
+      const a = (j / 12) * Math.PI * 2 + r() * 0.4, dist = expo(b / 1.0) * (360 + r() * 220);
+      drawDaisy(HEADS[j % HEADS.length], cx + Math.cos(a) * dist, 600 + Math.sin(a) * dist * 0.8, 50 + r() * 40, b * 2, 1 - clamp((b - 0.8) / 0.6, 0, 1));
+    }
+    const s = lerp(0.94, 1, expo(b / 0.4));
+    ctx.save(); ctx.translate(cx, bottom); ctx.scale(s, s); ctx.translate(-cx, -bottom);
+    can("k3", cx, bottom + 20, 900);
+    ctx.restore();
+  }
+  // flash on the reveal
+  const fl = 1 - Math.abs(lt - 6.05) / 0.14;
+  if (fl > 0) { ctx.fillStyle = C.paper; ctx.globalAlpha = fl; ctx.fillRect(0, 0, SW, SH); ctx.globalAlpha = 1; }
 }
-function sceneLine(lt) {
-  const z = 1 + 0.04 * inOut(lt / 3);
-  ctx.save(); ctx.translate(SW / 2, SH); ctx.scale(z, z); ctx.translate(-SW / 2, -SH);
-  drawMeadow(T.line + lt, T.line - 0.2, [0, 1]);
-  [0, 1, 2, 3, 4].forEach(i => {
-    const p = expo((lt - 0.15 - [2, 1, 3, 0, 4][i] * 0.25) / 0.5);
-    can(VARS[i].k, SW / 2 + (i - 2) * 372, lerp(1700, 1050, p), 560);
-  });
-  drawMeadow(T.line + lt, T.line - 0.2, [2, 3]);
+function sceneUniq(lt) {
+  if (lt < 1.4 || lt >= 5.2) {
+    const first = lt < 1.4, c = first ? lt : lt - 5.2;
+    const [a, b] = first ? ["Žádná kovka", "se neopakuje."] : ["Ta vaše bude", "zase jiná."];
+    rise(a, SW / 2, 470, 190, c / 0.35, C.cobalt, "center");
+    rise(b, SW / 2, 670, 190, (c - 0.12) / 0.35, first ? C.cobalt : C.red, "center");
+    [[230, 220, 120, C.yellow], [1700, 240, 140, C.blue], [1650, 870, 110, C.pink], [260, 860, 150, C.red]].forEach(([x, y, d, col], i) => {
+      const p = expo((c - 0.3 - i * 0.06) / 0.4);
+      drawDaisy(col, x, y, d * p, c * 0.6 * (i % 2 ? 1 : -1));
+    });
+    return;
+  }
+  // flipbook of kovky we have already made, faster and faster
+  let acc = 1.4, i = 0;
+  while (i < FLIP.length - 1 && lt >= acc + FLIP_DUR[i]) { acc += FLIP_DUR[i]; i++; }
+  const c = lt - acc;
+  ctx.fillStyle = FLIP_BG[i % FLIP_BG.length]; ctx.fillRect(0, 0, SW, SH);
+  drawDaisy(mix(FLIP_BG[i % FLIP_BG.length], C.paper, 0.4), SW / 2, 560, 900, lt * 0.7 + i, 1);
+  const s = lerp(1.08, 1, expo(c / 0.18));
+  ctx.save(); ctx.translate(SW / 2, 1060); ctx.scale(s, s); ctx.translate(-SW / 2, -1060);
+  can(FLIP[i], SW / 2, 1060, 860, 1, (i % 2 ? 1 : -1) * 0.03);
   ctx.restore();
-  rise("Vyber si svou.", SW / 2, 250, 170, (lt - 0.25) / 0.4, C.cobalt, "center");
+  // caption on a paper card
+  const pc = expo((lt - 1.4) / 0.3);
+  font(64, 900);
+  const text = "Tyhle už jsme složili.", tw = ctx.measureText(text).width;
+  ctx.save(); ctx.translate(SW / 2, 120); ctx.scale(pc, pc);
+  ctx.fillStyle = C.paper; ctx.beginPath(); ctx.roundRect(-tw / 2 - 40, -55, tw + 80, 110, 55); ctx.fill();
+  ctx.fillStyle = C.blue; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(text, 0, 4);
+  ctx.restore();
+  tag("PŘÍKLADY · KAŽDÁ JEN JEDNOU", 110, 990, C.ink, C.paper, (lt - 1.6) / 0.4);
 }
 function sceneUse(lt) {
-  const i = clamp(Math.floor(lt / 0.5), 0, 2), c = lt - i * 0.5, u = USES[i];
+  if (lt < 1.2) {
+    rise("Hodí se", SW / 2, 470, 200, lt / 0.35, C.cobalt, "center");
+    rise("vždycky.", SW / 2, 680, 200, (lt - 0.12) / 0.35, C.cobalt, "center");
+    return;
+  }
+  const i = clamp(Math.floor((lt - 1.2) / 0.7), 0, USES.length - 1), c = lt - 1.2 - i * 0.7, u = USES[i];
   ctx.fillStyle = u.bg; ctx.fillRect(0, 0, SW, SH);
-  drawDaisy(mix(u.bg, C.paper, 0.45), 1420, 520, 980, lt * 0.8 + i, 1);
-  can(u.k, 1420, lerp(1500, 1060, expo(c / 0.3)), 900);
-  const size = fit(u.w, 980, 210);
+  drawDaisy(mix(u.bg, C.paper, 0.4), 1420, 520, 980, lt * 0.8 + i, 1);
+  can(u.k, 1420, lerp(1500, 1062, expo(c / 0.3)), 900, 1, (1 - expo(c / 0.3)) * 0.12);
+  const size = fit(u.w, 920, 190);
   rise(u.w, 110, 600, size, c / 0.28, u.fg);
+  uiFont(26, 700);
+  if ("letterSpacing" in ctx) ctx.letterSpacing = "3px";
+  ctx.fillStyle = u.fg; ctx.globalAlpha = 0.8; ctx.textAlign = "left"; ctx.fillText("KOVKA SE HODÍ", 116, 420); ctx.globalAlpha = 1;
+  if ("letterSpacing" in ctx) ctx.letterSpacing = "0px";
 }
 function sceneEnd(lt) {
   drawMeadow(T.end + lt, T.end + 0.1, [0, 1]);
   can("k3", 215, lerp(1700, 1055, expo((lt - 0.35) / 0.5)), 540);
   can("k1", 1705, lerp(1700, 1055, expo((lt - 0.5) / 0.5)), 540);
   drawMeadow(T.end + lt, T.end + 0.1, [2, 3]);
-  [[520, 130, 90, C.yellow], [1420, 120, 110, C.blue], [180, 300, 60, C.pink], [1760, 330, 70, C.red]].forEach(([x, y, d, c], i) => {
+  [[520, 120, 90, C.yellow], [1420, 110, 110, C.blue], [180, 300, 60, C.pink], [1760, 330, 70, C.red]].forEach(([x, y, d, c], i) => {
     const p = expo((lt - 1.1 - i * 0.08) / 0.4);
     drawDaisy(c, x, y, d * p, lt * 0.5 * (i % 2 ? 1 : -1));
   });
-  wordmark(1000, SW / 2, 340, 0.05, lt, { q: false, stagger: 0.07 });
-  rise("Malá květinová kompozice", SW / 2, 540, 48, (lt - 0.6) / 0.4, C.blue, "center", 600);
-  rise("v kovové plechovce s vodou", SW / 2, 600, 48, (lt - 0.7) / 0.4, C.blue, "center", 600);
-  // CTA
-  const p = expo((lt - 1.0) / 0.4), pulse = 1 + 0.03 * Math.sin(Math.max(0, lt - 1.6) * Math.PI * 2);
+  const kr = kovkaRects(900, SW / 2, 270);
+  ["K1", "O", "V", "K2", "A"].forEach((k, i) => slam(kr[k], slamP(lt, 0.05 + i * 0.07)));
+  odNarin(SW / 2, 448, 70, (lt - 0.5) / 0.4);
+  rise("Malá květinová kompozice", SW / 2, 570, 48, (lt - 0.7) / 0.4, C.blue, "center", 600);
+  rise("v kovové plechovce s vodou", SW / 2, 628, 48, (lt - 0.8) / 0.4, C.blue, "center", 600);
+  const p = expo((lt - 1.1) / 0.4), pulse = 1 + 0.03 * Math.sin(Math.max(0, lt - 1.7) * Math.PI * 2);
   if (p > 0) {
     uiFont(34, 700);
     const text = "Objednávky — odkaz v bio", w = ctx.measureText(text).width + 90, h = 84;
-    ctx.save(); ctx.translate(SW / 2, 715); ctx.scale(p * pulse, p * pulse);
+    ctx.save(); ctx.translate(SW / 2, 740); ctx.scale(p * pulse, p * pulse);
     ctx.fillStyle = C.cobalt; ctx.beginPath(); ctx.roundRect(-w / 2, -h / 2, w, h, h / 2); ctx.fill();
     ctx.fillStyle = C.paper; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(text, 0, 2);
     ctx.restore();
@@ -411,11 +566,9 @@ function frame(t) {
   ctx.save();
   ctx.beginPath(); ctx.rect(0, 0, SW, SH); ctx.clip();
   ctx.fillStyle = C.paper; ctx.fillRect(0, 0, SW, SH);
-  if (t < T.flash) sceneHook(t - T.hook);
-  else if (t < T.hero) sceneFlash(t - T.flash);
-  else if (t < T.vars) sceneHero(t - T.hero);
-  else if (t < T.line) sceneVars(t - T.vars);
-  else if (t < T.use) sceneLine(t - T.line);
+  if (t < T.how) sceneLogo(t - T.logo);
+  else if (t < T.uniq) sceneHow(t - T.how);
+  else if (t < T.use) sceneUniq(t - T.uniq);
   else if (t < T.end) sceneUse(t - T.use);
   else sceneEnd(t - T.end);
   ctx.globalAlpha = 0.55; ctx.fillStyle = grainPat; ctx.fillRect(0, 0, SW, SH); ctx.globalAlpha = 1;
