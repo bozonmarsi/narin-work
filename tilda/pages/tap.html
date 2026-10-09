@@ -142,6 +142,9 @@
 .ticket .shine { position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.65) 45%, transparent 60%); transform: translateX(-100%); animation: shine 3.6s ease-in-out 1.6s infinite; pointer-events: none; }
 @keyframes shine { 0% { transform: translateX(-100%); } 35%, 100% { transform: translateX(100%); } }
 
+.ticket.review { background: var(--pink); }
+.ticket[hidden] { display: none; }
+
 /* ---------- how it works ---------- */
 .how { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .how div { min-width: 0; border-radius: var(--r-md); background: var(--mist); padding: 12px 10px; text-align: center; }
@@ -208,7 +211,8 @@
   <div class="ticker" aria-hidden="true"><div class="run"><span>Doručení i dnes do 60 minut <svg viewBox="0 0 283 283"><use href="#dP" fill="#ffd56b"/><use href="#dC" fill="#ffffff"/></svg></span><span>Čerstvé květiny každý den <svg viewBox="0 0 283 283"><use href="#dP" fill="#ffd56b"/><use href="#dC" fill="#ffffff"/></svg></span><span>Velkoobchodní ceny <svg viewBox="0 0 283 283"><use href="#dP" fill="#ffd56b"/><use href="#dC" fill="#ffffff"/></svg></span><span>Po celé Praze <svg viewBox="0 0 283 283"><use href="#dP" fill="#ffd56b"/><use href="#dC" fill="#ffffff"/></svg></span><span>Nově i vázané kytice <svg viewBox="0 0 283 283"><use href="#dP" fill="#ffd56b"/><use href="#dC" fill="#ffffff"/></svg></span><span>Ke každé objednávce samolepka <svg viewBox="0 0 283 283"><use href="#dP" fill="#ffd56b"/><use href="#dC" fill="#ffffff"/></svg></span><span>Doručení i dnes do 60 minut <svg viewBox="0 0 283 283"><use href="#dP" fill="#ffd56b"/><use href="#dC" fill="#ffffff"/></svg></span><span>Čerstvé květiny každý den <svg viewBox="0 0 283 283"><use href="#dP" fill="#ffd56b"/><use href="#dC" fill="#ffffff"/></svg></span><span>Velkoobchodní ceny <svg viewBox="0 0 283 283"><use href="#dP" fill="#ffd56b"/><use href="#dC" fill="#ffffff"/></svg></span><span>Po celé Praze <svg viewBox="0 0 283 283"><use href="#dP" fill="#ffd56b"/><use href="#dC" fill="#ffffff"/></svg></span><span>Nově i vázané kytice <svg viewBox="0 0 283 283"><use href="#dP" fill="#ffd56b"/><use href="#dC" fill="#ffffff"/></svg></span><span>Ke každé objednávce samolepka <svg viewBox="0 0 283 283"><use href="#dP" fill="#ffd56b"/><use href="#dC" fill="#ffffff"/></svg></span></div></div>
   <a class="cta rv" href="https://vezminarin.cz/?utm_source=tap&amp;utm_content=cta">Vybrat květiny
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-  <a class="ticket" href="https://vezminarin.cz/members/login?utm_source=tap&amp;utm_content=bonus"><span class="amt">150&nbsp;Kč</span><span class="t">na první objednávku<br>za registraci</span><span class="b">Chci je</span><span class="shine"></span></a>
+  <a class="ticket" id="tapReg" href="https://vezminarin.cz/members/login?utm_source=tap&amp;utm_content=bonus"><span class="amt">150&nbsp;Kč</span><span class="t">na první objednávku<br>za registraci</span><span class="b">Chci je</span><span class="shine"></span></a>
+  <a class="ticket review" id="tapReview" href="https://vezminarin.cz/members/review?utm_source=tap&amp;utm_content=review" hidden><span class="amt">+10&nbsp;b.</span><span class="t">za podrobné<br>hodnocení</span><span class="b">Ohodnotit</span><span class="shine"></span></a>
 
   <section class="sec">
     <div class="sec-h"><h2>Vyberte si</h2></div>
@@ -302,6 +306,19 @@
   }
   if (CONFIG.pinterest) { var pin = document.getElementById('tapPin'); pin.href = CONFIG.pinterest; pin.hidden = false; }
   document.getElementById('tapWa').href = 'https://wa.me/' + CONFIG.phone;
+  // přihlášený zákazník (Tilda Members profil v localStorage) vidí místo "150 Kč za registraci" výzvu k hodnocení
+  (function () {
+    var loggedIn = false;
+    try {
+      for (var k in localStorage) {
+        if (k.indexOf('tilda_members_profile') === 0 && k.indexOf('_timestamp') === -1) {
+          var pr = JSON.parse(localStorage.getItem(k));
+          if (pr && (pr.login || pr.email)) { loggedIn = true; break; }
+        }
+      }
+    } catch (e) {}
+    if (loggedIn) { document.getElementById('tapReg').hidden = true; document.getElementById('tapReview').hidden = false; }
+  })();
   var DAYS = ['Ne', 'Po', 'Út', 'St', 'Čt', 'Pá', 'So'];
   (function () {
     var parts = [], h = CONFIG.hours;
