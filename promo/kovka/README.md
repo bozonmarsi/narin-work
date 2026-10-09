@@ -1,14 +1,12 @@
 # KOVKA — animated presentation
 
-Single-file canvas film (~44 s loop) on white paper: KOVKA? → a hand-drawn meadow of label daisies grows and
-flips colour → "Malá květinová kompozice v kovové plechovce s vodou." → the camera walks along five kovky in
-the meadow → line-up with the wordmark. Drawn things move on twos (12 fps) with a slight line boil; camera and
-type move smoothly.
+Instagram landscape ad (16:9, 1920×1080, 24 s, cut on a 120 BPM grid): KOVKA? hook → word flashes on label colours →
+hero can with ribbons → five variants ("Každá je jiná.") → line-up → use cases → end card with CTA.
+White paper, the logo daisy recoloured in label colours, a hand-drawn meadow moving on twos.
 
-- `template.html` — page source (assets as `%%name%%` placeholders)
-- `assets/` — product cut-outs (`k1..k5.webp`) and wordmark glyphs (`K1 O V K2 A Q .png`)
-- `build.py` — inlines assets → `kovka.html`: `python3 build.py`
-- `rb.py`, `fix2.py` — background removal (rembg `isnet-general-use`; `fix2.py` keeps the blue sprigs in photo 2)
-- `logo.py` — splits the wordmark into letters
+- `template.html` — page source (assets as `%%name%%` placeholders); `build.py` inlines them → `kovka.html`
+- `render.js` — renders `kovka.html` frame by frame into an mp4: `node render.js $PWD/kovka.html out.mp4 30`
+- `assets/` — product cut-outs (`k1..k5.webp`), wordmark glyphs, `daisy.png` (logo daisy mask)
+- `rb.py`, `fix2.py`, `logo.py` — how the assets were made
 
-Tap the meadow to send a gust of wind. Space = pause, ←/→ = seek.
+Space = pause, ←/→ = seek, tap = gust of wind.
