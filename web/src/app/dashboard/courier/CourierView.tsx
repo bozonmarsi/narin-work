@@ -7,10 +7,25 @@ import { CourierOrderCard } from "./CourierOrderCard";
 import { MineOrdersGroup } from "./MineOrdersGroup";
 import { CourierEarnings } from "./CourierEarnings";
 import { useRealtimeRefresh } from "@/lib/useRealtimeRefresh";
+import { orderTimeRange } from "@/lib/schedule";
 import { COURIER_ORDER_COLUMNS } from "./types";
 import type { CourierOrder } from "./types";
 
 const MINE_STATUSES = ["courier_assigned", "assembling", "assembled", "in_transit", "arriving"];
+
+// Supabase отдаёт строки только по дате, а слоты внутри дня — в произвольном
+// порядке (и строкой "12-15" < "9-12" не отсортировать). Сортируем по дате,
+// затем по часу начала слота; заказы без времени — в конец дня.
+function slotStart(o: CourierOrder): number {
+  return orderTimeRange(o.delivery_slot, o.delivery_time_raw)?.start ?? Number.MAX_SAFE_INTEGER;
+}
+
+function byDateAndSlot(a: CourierOrder, b: CourierOrder): number {
+  const da = a.delivery_date ?? "9999";
+  const db = b.delivery_date ?? "9999";
+  if (da !== db) return da < db ? -1 : 1;
+  return slotStart(a) - slotStart(b);
+}
 
 function groupKey(o: CourierOrder) {
   return `${o.delivery_date ?? "—"}|${o.delivery_slot ?? "—"}`;
@@ -55,8 +70,8 @@ export function CourierView() {
       setError(poolRes.error?.message ?? mineRes.error?.message ?? "Ошибка загрузки");
     } else {
       setError(null);
-      setPool(poolRes.data ?? []);
-      setMine(mineRes.data ?? []);
+      setPool([...(poolRes.data ?? [])].sort(byDateAndSlot));
+      setMine([...(mineRes.data ?? [])].sort(byDateAndSlot));
     }
     setLoading(false);
   }, [user.id]);
