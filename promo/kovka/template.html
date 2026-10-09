@@ -2,61 +2,59 @@
 <title>KOVKA?</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,800;9..144,900&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&display=swap">
 <style>
-/* Layout: one full-bleed canvas "film" (9:16 on phones, wide on desktop) + an auto-hiding control pill. Single deliberate look. */
+/* Layout: one full-bleed canvas film on white paper — a hand-drawn meadow of label daisies, animated "on twos"
+   (12 fps for drawn things, smooth for camera and type). Control pill hides itself. Single deliberate light look. */
 :root {
-  --ink: #0E1840;      /* night between the flowers */
-  --paper: #FFFDF8;    /* label white */
+  --paper: #FFFEFB;    /* main colour: white */
+  --ink: #14204A;
   --cobalt: #1C70E3;   /* KOVKA wordmark */
-  --blue: #0B4DB5;     /* logo daisy */
+  --blue: #0B4DB5;     /* label daisy */
   --red: #FF3B2F;
   --yellow: #FFD84A;
   --green: #2A9A4B;
+  --mint: #19C98A;     /* tulip leaf */
   --purple: #8B55F6;
   --pink: #F3CDF6;
   --display: "Fraunces", "Georgia", serif;
   --ui: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
-  color-scheme: dark;
+  color-scheme: light;
 }
 html, body { height: 100%; }
-body { background: var(--ink); color: var(--paper); overflow: hidden; font-family: var(--ui); }
-#film { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: pointer; touch-action: manipulation; }
+body { background: var(--paper); color: var(--ink); overflow: hidden; font-family: var(--ui); }
+#film { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: manipulation; }
 .bar {
   position: fixed; left: 50%; transform: translateX(-50%);
   bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   width: min(560px, calc(100% - 32px));
   display: flex; align-items: center; gap: 10px;
   padding: 8px 10px; border-radius: 999px;
-  background: rgba(14, 24, 64, .78); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, .25);
-  transition: opacity .35s ease, transform .35s cubic-bezier(.3,1.6,.5,1);
+  background: rgba(255, 254, 251, .86); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 1px 0 rgba(20, 32, 74, .08), 0 10px 30px rgba(20, 32, 74, .12);
+  transition: opacity .5s ease, transform .5s ease;
 }
-.bar.idle { opacity: 0; transform: translateX(-50%) translateY(12px); pointer-events: none; }
+.bar.idle { opacity: 0; transform: translateX(-50%) translateY(10px); pointer-events: none; }
 .btn {
   flex: none; width: 36px; height: 36px; border-radius: 50%; border: 0;
-  background: var(--paper); color: var(--ink); cursor: pointer;
-  display: grid; place-items: center;
+  background: var(--ink); color: var(--paper); cursor: pointer; display: grid; place-items: center;
 }
-.btn.ghost { background: transparent; color: var(--paper); }
+.btn.ghost { background: transparent; color: var(--ink); }
 .btn svg { width: 16px; height: 16px; fill: currentColor; }
-.btn:focus-visible, .seg:focus-visible { outline: 2px solid var(--yellow); outline-offset: 2px; }
-.track { flex: 1; min-width: 0; display: flex; gap: 4px; height: 36px; align-items: center; }
-.seg {
-  position: relative; height: 22px; border: 0; padding: 0; background: none; cursor: pointer; min-width: 0;
-}
-.seg::before { content: ""; position: absolute; left: 0; right: 0; top: 9px; height: 4px; border-radius: 4px; background: rgba(255, 253, 248, .22); }
-.seg i { position: absolute; left: 0; top: 9px; height: 4px; border-radius: 4px; background: var(--yellow); width: 0; }
+.btn:focus-visible, .seg:focus-visible { outline: 2px solid var(--cobalt); outline-offset: 2px; }
+.track { flex: 1; min-width: 0; display: flex; gap: 4px; height: 36px; align-items: center; padding-bottom: 6px; }
+.seg { position: relative; height: 22px; border: 0; padding: 0; background: none; cursor: pointer; min-width: 0; }
+.seg::before { content: ""; position: absolute; left: 0; right: 0; top: 9px; height: 3px; border-radius: 3px; background: rgba(20, 32, 74, .14); }
+.seg i { position: absolute; left: 0; top: 9px; height: 3px; border-radius: 3px; background: var(--cobalt); width: 0; }
 .seg span {
   position: absolute; left: 0; right: 0; bottom: -14px; font-size: 10px; letter-spacing: .06em; text-transform: uppercase;
-  color: rgba(255, 253, 248, .6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; font-weight: 600;
+  color: rgba(20, 32, 74, .55); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; font-weight: 500;
 }
-.track { padding-bottom: 6px; }
 @media (max-width: 420px) { .seg span { display: none; } .track { padding-bottom: 0; } }
 </style>
 
-<canvas id="film" aria-label="KOVKA: animovaná prezentace. Klepnutím spustíte vlnu květin."></canvas>
-<div class="bar" id="bar">
+<canvas id="film" aria-label="KOVKA: animovaná prezentace. Klepnutím pošlete do louky vítr."></canvas>
+<div class="bar idle" id="bar">
   <button class="btn" id="play" aria-label="Pauza"><svg viewBox="0 0 16 16" id="playIcon"><rect x="3" y="2" width="3.5" height="12" rx="1"/><rect x="9.5" y="2" width="3.5" height="12" rx="1"/></svg></button>
   <div class="track" id="track"></div>
   <button class="btn ghost" id="restart" aria-label="Od začátku"><svg viewBox="0 0 16 16"><path d="M8 2.5a5.5 5.5 0 1 1-5.2 3.7l1.6.6A3.8 3.8 0 1 0 8 4.2V6L4.6 3.4 8 .8z"/></svg></button>
@@ -67,494 +65,398 @@ const IMG_SRC = {
   k1: "%%k1%%", k2: "%%k2%%", k3: "%%k3%%", k4: "%%k4%%", k5: "%%k5%%",
   K1: "%%K1%%", O: "%%O%%", V: "%%V%%", K2: "%%K2%%", A: "%%A%%", Q: "%%Q%%"
 };
-
 const C = {
-  ink: "#0E1840", paper: "#FFFDF8", cobalt: "#1C70E3", blue: "#0B4DB5", red: "#FF3B2F",
-  yellow: "#FFD84A", green: "#2A9A4B", purple: "#8B55F6", pink: "#F3CDF6"
+  paper: "#FFFEFB", ink: "#14204A", cobalt: "#1C70E3", blue: "#0B4DB5", red: "#FF3B2F", yellow: "#FFD84A",
+  green: "#2A9A4B", mint: "#19C98A", purple: "#8B55F6", pink: "#F3CDF6"
 };
-const FLOWERS = [C.blue, C.red, C.yellow, C.green, C.purple, C.pink];
-const HOT = [C.red, C.red, C.pink, C.purple, C.red];
-const COOL = [C.blue, C.green, C.yellow, C.blue, C.cobalt];
+// head colours, weighted like the label
+const HEADS = [C.blue, C.blue, C.red, C.yellow, C.yellow, C.purple, C.pink, C.pink, C.green];
+const GREENS = ["#2A9A4B", "#3DAF5C", "#19C98A", "#7CCB5B", "#238544"];
+const CANS = ["k1", "k2", "k3", "k4", "k5"];
 
-const PRODUCTS = [
-  { img: "k1", a: "Jiřiny", b: "& máta", bg: C.green, halo: C.pink, fg: C.paper },
-  { img: "k2", a: "Gerbery", b: "& ostrožka", bg: C.yellow, halo: C.cobalt, fg: C.blue },
-  { img: "k3", a: "Pivoňky", b: "& ranunkulus", bg: C.cobalt, halo: C.yellow, fg: C.paper },
-  { img: "k4", a: "Astry", b: "& eustoma", bg: C.red, halo: C.pink, fg: C.paper },
-  { img: "k5", a: "Jiřiny", b: "& růže", bg: C.purple, halo: C.yellow, fg: C.paper }
-];
-const WORDS = [
-  { w: "Malá", bg: C.yellow, fg: C.blue },
-  { w: "květinová", bg: C.red, fg: C.paper },
-  { w: "kompozice", bg: C.pink, fg: C.blue },
-  { w: "v plechovce", bg: C.green, fg: C.paper },
-  { w: "s vodou.", bg: C.cobalt, fg: C.paper }
-];
-
-// Scene clock (seconds)
-const T_WAVE = 4.1, T_WORDS = 10.3, T_PROD = 17.2, PROD_LEN = 2.8, T_FIN = T_PROD + PROD_LEN * PRODUCTS.length, DUR = 40;
+// clock (seconds)
+const T_MEADOW = 5.4, T_FLIP1 = 9.0, T_FLIP2 = 11.0, T_WORDS = 12.8, T_VAR = 19.0, HOP = 3.2, T_FIN = 35.6, DUR = 44;
 const SCENES = [
-  { name: "Otázka", t: 0 }, { name: "Mozaika", t: 3.6 }, { name: "Slova", t: T_WORDS },
-  { name: "Kovky", t: T_PROD }, { name: "Finále", t: T_FIN }
+  { name: "Otázka", t: 0 }, { name: "Louka", t: T_MEADOW - 0.4 }, { name: "Slova", t: T_WORDS },
+  { name: "Varianty", t: T_VAR }, { name: "Finále", t: T_FIN }
 ];
 
 const cv = document.getElementById("film");
 const ctx = cv.getContext("2d");
-let W = 0, H = 0, DPR = 1, DIAG = 0, T = 60, tiles = [];
 const img = {};
+let W = 0, H = 0, DPR = 1, GY = 0, SP = 0, CAN_H = 0, plants = [], blades = [], drifters = [], grain = null;
 
 /* ---------- math ---------- */
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, k) => a + (b - a) * k;
-function spring(t, w = 13, z = 0.34) {
-  if (t <= 0) return 0;
-  return 1 - Math.exp(-z * w * t) * Math.cos(w * Math.sqrt(1 - z * z) * t);
-}
-const easeIn = p => p * p * p;
-const easeOut = p => 1 - Math.pow(1 - p, 3);
-function hash(n) { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
+const ease = p => (p <= 0 ? 0 : p >= 1 ? 1 : p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2);
+const easeOut = p => 1 - Math.pow(1 - clamp(p, 0, 1), 3);
+const sine = p => 0.5 - 0.5 * Math.cos(Math.PI * clamp(p, 0, 1));
+function rnd(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
 function hex(c) { const n = parseInt(c.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; }
-function mix(c, d, k) {
-  const a = hex(c), b = hex(d);
-  return `rgb(${a.map((v, i) => Math.round(lerp(v, b[i], k))).join(",")})`;
+function mix(c, d, k) { const a = hex(c), b = hex(d); return `rgb(${a.map((v, i) => Math.round(lerp(v, b[i], k))).join(",")})`; }
+const step = t => Math.floor(t * 12) / 12;          // drawn things move on twos
+const boilIx = t => Math.floor(t * 8) % 3;           // line boil: 3 drawings cycling
+
+/* ---------- paper grain ---------- */
+function makeGrain() {
+  const c = document.createElement("canvas"); c.width = c.height = 192;
+  const g = c.getContext("2d"), r = rnd(7);
+  for (let i = 0; i < 2600; i++) {
+    g.fillStyle = r() < 0.5 ? `rgba(20,32,74,${0.05 + r() * 0.08})` : `rgba(255,255,255,${0.2 + r() * 0.3})`;
+    g.fillRect(r() * 192, r() * 192, 0.6 + r() * 1.4, 0.6 + r() * 1.4);
+  }
+  return c;
 }
 
-/* ---------- the KOVKA daisy ---------- */
-function daisyPath(p, cx, cy, R, rot = 0, centerK = 0.3) {
-  const pt = (a, x, y) => [cx + (x * Math.cos(a) - y * Math.sin(a)) * R, cy + (x * Math.sin(a) + y * Math.cos(a)) * R];
-  for (let k = 0; k < 8; k++) petalPath(p, pt, rot + k * Math.PI / 4 - Math.PI / 2);
-  p.moveTo(cx + centerK * R, cy);
-  p.arc(cx, cy, centerK * R, 0, Math.PI * 2);
-  return p;
-}
-function petalPath(p, pt, a) {
-  const m = (x, y) => pt(a, x, y);
-  p.moveTo(...m(0.14, -0.05));
-  p.bezierCurveTo(...m(0.45, -0.07), ...m(0.6, -0.27), ...m(0.83, -0.28));
+/* ---------- the label daisy, flat, hand-drawn ---------- */
+function petal(p, cx, cy, R, a, j) {
+  const m = (x, y) => { x += j(); y += j(); return [cx + (x * Math.cos(a) - y * Math.sin(a)) * R, cy + (x * Math.sin(a) + y * Math.cos(a)) * R]; };
+  p.moveTo(...m(0.2, -0.06));
+  p.bezierCurveTo(...m(0.45, -0.08), ...m(0.6, -0.27), ...m(0.83, -0.28));
   p.bezierCurveTo(...m(0.99, -0.28), ...m(1.03, -0.12), ...m(0.98, -0.035));
   p.quadraticCurveTo(...m(0.9, 0), ...m(0.98, 0.035));
   p.bezierCurveTo(...m(1.03, 0.12), ...m(0.99, 0.28), ...m(0.83, 0.28));
-  p.bezierCurveTo(...m(0.6, 0.27), ...m(0.45, 0.07), ...m(0.14, 0.05));
+  p.bezierCurveTo(...m(0.6, 0.27), ...m(0.45, 0.08), ...m(0.2, 0.06));
   p.closePath();
 }
-
-// Soft "clay" daisy, pre-rendered once per colour and size
-const spriteCache = new Map();
-function plush(color, d) {
-  const key = color + "|" + Math.round(d) + "|" + DPR;
-  if (spriteCache.has(key)) return spriteCache.get(key);
-  const pad = d * 0.22, full = d + pad * 2;
-  const c = document.createElement("canvas");
+const daisyCache = new Map();
+const BUCKETS = [28, 48, 80, 132, 220];
+function daisy(color, d, v) {
+  const size = BUCKETS.find(b => b >= d) || BUCKETS[BUCKETS.length - 1];
+  const key = `${color}|${size}|${v}|${DPR}`;
+  let s = daisyCache.get(key);
+  if (s) return s;
+  const full = size * 1.12, c = document.createElement("canvas");
   c.width = c.height = Math.ceil(full * DPR);
   const g = c.getContext("2d");
   g.scale(DPR, DPR);
-  const cx = full / 2, cy = full / 2, R = d / 2;
-  const shape = daisyPath(new Path2D(), cx, cy, R);
-  g.save();
-  g.shadowColor = "rgba(6, 10, 34, .5)";
-  g.shadowBlur = R * 0.18 * DPR;
-  g.shadowOffsetY = R * 0.09 * DPR;
-  g.fillStyle = color;
-  g.fill(shape);
-  g.restore();
-  const light = mix(color, "#FFFFFF", 0.6), soft = mix(color, "#FFFFFF", 0.2), deep = mix(color, "#000020", 0.42), rim = mix(color, "#000020", 0.55);
+  const cx = full / 2, cy = full / 2, R = size / 2, r = rnd(v * 977 + size), j = () => (r() - 0.5) * 0.035;
+  const p = new Path2D();
+  for (let k = 0; k < 8; k++) petal(p, cx, cy, R, k * Math.PI / 4 - Math.PI / 2 + (r() - 0.5) * 0.04, j);
+  p.moveTo(cx + 0.36 * R, cy); p.arc(cx, cy, 0.36 * R, 0, Math.PI * 2);
+  g.fillStyle = color; g.fill(p);
+  // crayon tooth inside the fill
+  g.globalCompositeOperation = "source-atop";
+  g.fillStyle = g.createPattern(grain, "repeat");
+  g.translate(r() * 50, r() * 50); g.fillRect(-60, -60, full + 120, full + 120); g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  // petal creases, like ink lines in a cel drawing
+  g.strokeStyle = mix(color, C.ink, 0.35); g.globalAlpha = 0.45; g.lineCap = "round"; g.lineWidth = Math.max(0.7, R * 0.025);
   for (let k = 0; k < 8; k++) {
-    const a = k * Math.PI / 4 - Math.PI / 2;
-    const p = new Path2D();
-    petalPath(p, (aa, x, y) => [cx + (x * Math.cos(aa) - y * Math.sin(aa)) * R, cy + (x * Math.sin(aa) + y * Math.cos(aa)) * R], a);
-    const px = cx + Math.cos(a) * 0.66 * R, py = cy + Math.sin(a) * 0.66 * R;
-    const gr = g.createRadialGradient(px - 0.12 * R, py - 0.16 * R, 0, px, py, 0.46 * R);
-    gr.addColorStop(0, light); gr.addColorStop(0.3, soft); gr.addColorStop(0.68, color); gr.addColorStop(1, deep);
-    g.fillStyle = gr;
-    g.fill(p);
-    // soft inner rim: the petal edge rolls away from the light
-    g.save();
-    g.clip(p);
-    g.shadowColor = rim; g.shadowBlur = R * 0.1 * DPR; g.shadowOffsetX = R * 0.03 * DPR; g.shadowOffsetY = R * 0.05 * DPR;
-    g.strokeStyle = rim; g.lineWidth = R * 0.07;
-    g.stroke(p);
-    g.restore();
-    // glossy spot
-    const sp = g.createRadialGradient(px - 0.14 * R, py - 0.17 * R, 0, px - 0.14 * R, py - 0.17 * R, 0.16 * R);
-    sp.addColorStop(0, "rgba(255,255,255,.55)"); sp.addColorStop(1, "rgba(255,255,255,0)");
-    g.fillStyle = sp;
-    g.fill(p);
+    const a = k * Math.PI / 4 - Math.PI / 2 + (r() - 0.5) * 0.08;
+    g.beginPath(); g.moveTo(cx + Math.cos(a) * 0.46 * R, cy + Math.sin(a) * 0.46 * R);
+    g.lineTo(cx + Math.cos(a) * (0.66 + r() * 0.1) * R, cy + Math.sin(a) * (0.66 + r() * 0.1) * R); g.stroke();
   }
-  const cg = g.createRadialGradient(cx - 0.08 * R, cy - 0.1 * R, 0, cx, cy, 0.32 * R);
-  cg.addColorStop(0, soft); cg.addColorStop(0.7, color); cg.addColorStop(1, deep);
-  g.fillStyle = cg;
-  g.beginPath(); g.arc(cx, cy, 0.3 * R, 0, Math.PI * 2); g.fill();
-  const bg = g.createRadialGradient(cx - 0.05 * R, cy - 0.06 * R, 0, cx, cy, 0.16 * R);
-  bg.addColorStop(0, "#FFFFFF"); bg.addColorStop(0.6, "#FBF3E6"); bg.addColorStop(1, "#D9CBB8");
-  g.save();
-  g.shadowColor = "rgba(0,0,20,.35)"; g.shadowBlur = R * 0.06 * DPR; g.shadowOffsetY = R * 0.03 * DPR;
-  g.fillStyle = bg;
-  g.beginPath(); g.arc(cx, cy, 0.15 * R, 0, Math.PI * 2); g.fill();
-  g.restore();
-  const s = { c, full };
-  spriteCache.set(key, s);
+  g.globalAlpha = 1; g.globalCompositeOperation = "source-over";
+  // the white hole in the middle, as on the label
+  g.fillStyle = C.paper;
+  g.beginPath(); g.arc(cx + j() * R, cy + j() * R, 0.19 * R, 0, Math.PI * 2); g.fill();
+  s = { c };
+  daisyCache.set(key, s);
   return s;
 }
-function drawPlush(color, x, y, d, sx = 1, sy = 1, rot = 0) {
-  const s = plush(color, d);
-  ctx.save();
-  ctx.translate(x, y);
-  if (rot) ctx.rotate(rot);
-  ctx.scale(sx, sy);
-  ctx.drawImage(s.c, -s.full / 2, -s.full / 2, s.full, s.full);
+function drawDaisy(color, x, y, d, v, sx = 1, sy = 1, rot = 0) {
+  if (d < 2 || sx <= 0.01) return;
+  const s = daisy(color, d, v), full = d * 1.12;
+  ctx.save(); ctx.translate(x, y); if (rot) ctx.rotate(rot); ctx.scale(sx, sy);
+  ctx.drawImage(s.c, -full / 2, -full / 2, full, full);
   ctx.restore();
 }
-// Flat giant daisy used as an iris wipe between scenes
-function iris(color, p, rot) {
-  if (p <= 0) return;
-  if (p >= 1) { ctx.fillStyle = color; ctx.fillRect(0, 0, W, H); return; }
-  const R = DIAG * 1.9 * easeIn(p);
-  ctx.fillStyle = color;
-  ctx.fill(daisyPath(new Path2D(), W / 2, H / 2, R, rot, 0.32));
+
+/* ---------- meadow ---------- */
+let gusts = [];
+function wind(x, t) {
+  let w = Math.sin(t * 1.25 + x * 0.0042) * 0.55 + Math.sin(t * 0.63 + x * 0.0017 + 1.3) * 0.45;
+  const gx = ((t * 260) % (SP * 7 + W * 3)) - W;            // a slow gust rolling through
+  w += 0.9 * Math.exp(-Math.pow((x - gx) / (W * 0.35), 2));
+  for (const g of gusts) {
+    const dt = t - g.t; if (dt < 0 || dt > 4) continue;
+    w += 1.6 * Math.exp(-Math.pow((x - g.x - dt * 420) / 160, 2)) * Math.exp(-dt * 0.7);
+  }
+  return w;
+}
+function buildMeadow() {
+  const r = rnd(42);
+  const x0 = -W * 0.9, x1 = SP * 6 + W * 0.9;
+  plants = []; blades = [];
+  const layers = [
+    { par: 0.7, gap: Math.max(16, W * 0.028), hMin: 0.1, hMax: 0.33, dMin: 0.022, dMax: 0.036, pale: 0.42 },
+    { par: 1.0, gap: Math.max(26, W * 0.05), hMin: 0.12, hMax: 0.42, dMin: 0.038, dMax: 0.07, pale: 0 },
+    { par: 1.3, gap: Math.max(90, W * 0.2), hMin: 0.015, hMax: 0.05, dMin: 0.045, dMax: 0.07, pale: 0 }
+  ];
+  layers.forEach((L, li) => {
+    for (let x = x0 / L.par; x < x1 * 1.05; x += L.gap * (0.6 + r() * 0.8)) {
+      const h = H * lerp(L.hMin, L.hMax, Math.pow(r(), 1.3));
+      const color = HEADS[Math.floor(r() * HEADS.length)];
+      const c2 = HEADS[Math.floor(r() * HEADS.length)], c3 = HEADS[Math.floor(r() * HEADS.length)];
+      plants.push({
+        li, par: L.par, x, h, d: H * lerp(L.dMin, L.dMax, r()), pale: L.pale,
+        cols: [color, c2, c3], v: Math.floor(r() * 3), tilt: 0.78 + r() * 0.22, lean: (r() - 0.5) * 0.35,
+        leaf: r(), leafSide: r() < 0.5 ? -1 : 1, green: GREENS[Math.floor(r() * GREENS.length)], seed: r() * 10, grow: r()
+      });
+    }
+  });
+  const nb = Math.floor((x1 - x0) / Math.max(5, W * 0.009));
+  for (let i = 0; i < nb; i++) {
+    const front = r() < 0.35;
+    blades.push({
+      par: front ? 1.3 : 0.85, x: lerp(x0, x1, r()) / (front ? 1.3 : 0.85), h: H * (front ? 0.02 + r() * 0.05 : 0.03 + r() * 0.12),
+      w: 1.2 + r() * 2.6, lean: (r() - 0.5) * 0.6, green: GREENS[Math.floor(r() * GREENS.length)], seed: r() * 10, grow: r(), front
+    });
+  }
+  plants.sort((a, b) => a.li - b.li);
+}
+
+// camera: x in world px, zoom about the ground line
+function camera(t) {
+  let x = 0, z = 1;
+  if (t >= T_VAR) {
+    const k = t - T_VAR - 0.3;
+    const i = clamp(Math.floor(k / HOP), 0, 4), lt = k - i * HOP;
+    const from = i === 0 ? 0 : i * SP, to = (i + 1) * SP;
+    x = k < 0 ? 0 : lerp(from, to, ease(lt / 1.1));
+    if (k >= 5 * HOP) x = 5 * SP;
+  }
+  if (t >= T_FIN) {
+    const p = ease((t - T_FIN) / 2.4);
+    x = lerp(5 * SP, 3 * SP, p);
+    z = lerp(1, finZoom(), p);
+  }
+  return { x, z };
+}
+const portrait = () => W / H < 0.9;
+const CAN_AR = 0.78;   // typical width / height of a can photo
+function finZoom() { return Math.min(1, (W * 0.94) / ((portrait() ? 2.7 : 4.5) * CAN_H * CAN_AR * 0.92)); }
+function canX(i, t) {
+  const p = t >= T_FIN ? ease((t - T_FIN) / 2.4) : 0;
+  return lerp((i + 1) * SP, 3 * SP + (i - 2) * CAN_H * CAN_AR * 0.92, p);
+}
+const sx = (wx, par, cam) => W / 2 + (wx * par - cam.x * par) * cam.z;
+const sy = (wy, cam) => GY + wy * cam.z;
+
+function growth(p, t) {
+  // plants in the opening view grow in; everything else is already there
+  if (Math.abs(p.x * p.par) > W * 0.62) return 1;
+  const start = T_MEADOW + (Math.abs(p.x * p.par) / (W * 0.5)) * 1.2 + p.grow * 0.7 + (p.li === 0 ? 0.3 : 0);
+  return clamp((t - start) / 1.4, 0, 1);
+}
+function headColor(p, t, xs) {
+  const s1 = T_FLIP1 + (xs / W) * 1.6 + p.grow * 0.15, s2 = T_FLIP2 + (1 - xs / W) * 1.6 + p.grow * 0.15;
+  const k1 = clamp((t - s1) / 0.6, 0, 1), k2 = clamp((t - s2) / 0.6, 0, 1);
+  let col = p.cols[0], sc = 1;
+  if (k1 > 0 && k1 < 1) { const c = Math.cos(Math.PI * sine(k1)); sc = Math.abs(c); col = c > 0 ? p.cols[0] : p.cols[1]; }
+  else if (k1 >= 1) col = p.cols[1];
+  if (k2 > 0 && k2 < 1) { const c = Math.cos(Math.PI * sine(k2)); sc = Math.abs(c); col = c > 0 ? p.cols[1] : p.cols[2]; }
+  else if (k2 >= 1) col = p.cols[2];
+  return { col, sc };
+}
+function drawPlant(p, t, ts, cam) {
+  const xs = sx(p.x, p.par, cam);
+  const pad = p.h * cam.z + 60;
+  if (xs < -pad || xs > W + pad) return;
+  const g = growth(p, t);
+  if (g <= 0) return;
+  const z = cam.z * (p.par > 1 ? 1.05 : p.par < 1 ? 0.85 : 1);
+  const gs = easeOut(g / 0.8), open = sine((g - 0.45) / 0.55);
+  const h = p.h * z * gs;
+  const sw = wind(p.x * p.par, ts) * (0.05 + p.h / H * 0.25) * H * 0.12 + p.lean * h * 0.3;
+  const bx = xs, by = sy(0.005 * H, cam);
+  const hx = bx + sw, hy = by - h;
+  const cx = bx + sw * 0.25 + p.lean * h * 0.1, cy = by - h * 0.55;
+  const green = p.pale ? mix(p.green, C.paper, p.pale) : p.green;
+  ctx.strokeStyle = green; ctx.lineCap = "round";
+  ctx.lineWidth = Math.max(1.2, p.d * z * 0.075);
+  ctx.beginPath(); ctx.moveTo(bx, by); ctx.quadraticCurveTo(cx, cy, hx, hy); ctx.stroke();
+  // one leaf
+  if (p.leaf > 0.25 && gs > 0.3) {
+    const f = 0.25 + p.leaf * 0.35, lx = lerp(lerp(bx, cx, f), lerp(cx, hx, f), f), ly = lerp(lerp(by, cy, f), lerp(cy, hy, f), f);
+    const L = Math.min(h * 0.32, p.d * z * 1.4) * gs, a = -Math.PI / 2 + p.leafSide * (0.75 + 0.15 * Math.sin(ts * 1.4 + p.seed)) + sw / (h + 1) * 0.6;
+    const ex = lx + Math.cos(a) * L, ey = ly + Math.sin(a) * L, nx = -Math.sin(a) * L * 0.22, ny = Math.cos(a) * L * 0.22;
+    ctx.fillStyle = green;
+    ctx.beginPath(); ctx.moveTo(lx, ly);
+    ctx.quadraticCurveTo((lx + ex) / 2 + nx, (ly + ey) / 2 + ny, ex, ey);
+    ctx.quadraticCurveTo((lx + ex) / 2 - nx, (ly + ey) / 2 - ny, lx, ly); ctx.fill();
+  }
+  if (open <= 0) return;
+  let { col, sc } = headColor(p, t, xs);
+  if (p.pale) col = rgbHex(mix(col, C.paper, p.pale));
+  const d = p.d * z * (0.35 + 0.65 * open);
+  drawDaisy(col, hx, hy, d, (boilIx(t) + p.v) % 3, sc, p.tilt, (1 - open) * 1.2 + sw / (h + 1) * 0.5);
+}
+function rgbHex(c) { return "#" + c.match(/\d+/g).map(n => (+n).toString(16).padStart(2, "0")).join(""); }
+function drawBlade(b, t, ts, cam) {
+  const xs = sx(b.x, b.par, cam);
+  if (xs < -40 || xs > W + 40) return;
+  const g = Math.abs(b.x * b.par) > W * 0.62 ? 1 : clamp((t - T_MEADOW - (Math.abs(b.x * b.par) / (W * 0.5)) * 1.1 - b.grow * 0.6) / 1.1, 0, 1);
+  if (g <= 0) return;
+  const z = cam.z * (b.front ? 1.05 : 0.9), h = b.h * z * easeOut(g);
+  const sw = wind(b.x * b.par, ts) * h * 0.35 + b.lean * h;
+  const by = sy(0.01 * H, cam);
+  ctx.fillStyle = b.green;
+  ctx.beginPath();
+  ctx.moveTo(xs - b.w * z, by);
+  ctx.quadraticCurveTo(xs + sw * 0.3, by - h * 0.55, xs + sw, by - h);
+  ctx.quadraticCurveTo(xs + sw * 0.3 + b.w * z * 0.4, by - h * 0.5, xs + b.w * z, by);
+  ctx.fill();
 }
 
 /* ---------- wordmark ---------- */
 const GLYPHS = [["K1", 262], ["O", 630], ["V", 1040], ["K2", 1523], ["A", 1912], ["Q", 2450]];
-const WM_W = (2880 - 262) * 0.6, WM_H = 444, Q_SPLIT = 0.79;
-function wordmark(width, cx, cy) {
-  const u = width / WM_W, left = cx - width / 2, top = cy - WM_H * u / 2;
-  return GLYPHS.map(([k, x0]) => {
+const WM_W = (2880 - 262) * 0.6, WM_H = 444;
+function drawWordmark(width, cx, cy, t0, t, alpha = 1, withQ = true) {
+  const u = width / WM_W, span = withQ ? WM_W : (2340 - 262) * 0.6, left = cx - span * u / 2, top = cy - WM_H * u / 2;
+  GLYPHS.forEach(([k, x0], i) => {
+    if (!withQ && k === "Q") return;
+    const p = easeOut((t - t0 - i * 0.11) / 0.9);
+    if (p <= 0) return;
     const im = img[k], w = im.naturalWidth * u, h = im.naturalHeight * u;
-    return { k, im, x: left + (x0 - 262) * 0.6 * u, y: top, w, h };
+    ctx.save();
+    ctx.globalAlpha = p * alpha;
+    const x = left + (x0 - 262) * 0.6 * u, y = top + (1 - p) * h * 0.12;
+    if (k === "Q") { ctx.translate(x + w / 2, y + h); ctx.rotate((1 - p) * -0.12); ctx.drawImage(im, -w / 2, -h, w, h); }
+    else ctx.drawImage(im, x, y, w, h);
+    ctx.restore();
   });
 }
-function drawGlyph(g, { dy = 0, sx = 1, sy = 1, rot = 0, alpha = 1, clip = null }) {
-  if (alpha <= 0) return;
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  const ax = g.x + g.w / 2, ay = g.y + g.h;
-  ctx.translate(ax, ay + dy);
-  ctx.rotate(rot);
-  ctx.scale(sx, sy);
-  if (clip) {
-    const [a, b] = clip;
-    ctx.beginPath(); ctx.rect(-g.w, -g.h + a * g.h, g.w * 2, (b - a) * g.h); ctx.clip();
-  }
-  ctx.drawImage(g.im, -g.w / 2, -g.h, g.w, g.h);
-  ctx.restore();
-}
-// Drop from above, land with a jelly squash
-function drop(dt, fall) {
-  const s = spring(dt, 13, 0.3);
-  if (dt <= 0) return { dy: -fall * 3, sx: 1, sy: 1 };
-  if (s <= 1) return { dy: -(1 - s) * fall, sx: 1, sy: 1 };
-  const q = (s - 1) * 1.3;
-  return { dy: 0, sx: 1 + q * 0.8, sy: 1 - q };
-}
 
-/* ---------- mosaic ---------- */
-let waves = [];
-function baseWaves() {
-  const qc = sceneA().q;
-  return [
-    { t: T_WAVE, ox: qc.x, oy: qc.y, to: 1, speed: DIAG / 1.5 },
-    { t: 6.0, ox: W / 2, oy: H / 2, to: 2, speed: DIAG / 1.3 },
-    { t: 8.0, ox: 0, oy: H, to: 3, speed: DIAG / 1.4 },
-    { t: T_WORDS, ox: W / 2, oy: H / 2, to: 0, speed: DIAG / 0.9, zone: true },
-    { t: 13.4, ox: W, oy: 0, to: 1, speed: DIAG / 1.4, outside: true },
-    { t: 15.6, ox: 0, oy: H / 2, to: 2, speed: DIAG / 1.2, outside: true }
-  ];
+/* ---------- type ---------- */
+function setFont(size, w = 800) { ctx.font = `${w} ${size}px Fraunces, Georgia, serif`; }
+function fitSize(lines, maxW, size, w = 800) {
+  setFont(size, w);
+  const m = Math.max(...lines.map(l => ctx.measureText(l).width));
+  return m > maxW ? size * maxW / m : size;
 }
-let clickWaves = [];
-function zone() {
-  const rx = Math.min(W * 0.47, 620), ry = Math.max(T * 1.25, Math.min(H * 0.12, 120));
-  return { rx, ry };
-}
-function inZone(tl) {
-  const { rx, ry } = zone();
-  const dx = (tl.cx - W / 2) / rx, dy = (tl.cy - H / 2) / ry;
-  return dx * dx + dy * dy < 1;
-}
-function layerColor(layer, tl) {
-  if (layer === 0) return null;
-  const pal = layer === 1 ? FLOWERS : layer === 2 ? HOT : COOL;
-  return pal[Math.floor(hash(tl.i * 7.3 + layer * 13.1) * pal.length)];
-}
-function drawMosaic(t) {
-  const D = 0.6;
-  const all = waves.concat(clickWaves);
-  for (const tl of tiles) {
-    let cur = 0, prev = 0, start = -1e9;
-    for (const w of all) {
-      if (w.zone && !tl.z) continue;
-      if (w.outside && tl.z) continue;
-      const st = w.t + Math.hypot(tl.cx - w.ox, tl.cy - w.oy) / w.speed + tl.h * 0.14;
-      if (t >= st) { prev = cur; cur = w.to === "next" ? (cur % 3) + 1 : w.to; start = st; }
+// a line that rises out of a mask, word by word
+function revealLine(text, x, y, size, t0, t, color, align = "center") {
+  setFont(size);
+  const words = text.split(" "), space = ctx.measureText(" ").width;
+  const widths = words.map(w => ctx.measureText(w).width), total = widths.reduce((a, b) => a + b, 0) + space * (words.length - 1);
+  let cx = align === "center" ? x - total / 2 : x;
+  ctx.fillStyle = color; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+  words.forEach((w, i) => {
+    const p = easeOut((t - t0 - i * 0.12) / 0.8);
+    if (p > 0) {
+      ctx.save();
+      ctx.beginPath(); ctx.rect(cx - size * 0.1, y - size * 1.05, widths[i] + size * 0.2, size * 1.35); ctx.clip();
+      ctx.fillText(w, cx, y + (1 - p) * size * 1.1);
+      ctx.restore();
     }
-    const dt = t - start;
-    let color, sy = 1, pop = 1;
-    if (dt < 1.4) {
-      const th = Math.PI * spring(dt, 11, 0.42);
-      const c = Math.cos(th);
-      color = th < Math.PI / 2 ? layerColor(prev, tl) : layerColor(cur, tl);
-      sy = Math.abs(c);
-      pop = 1 + 0.16 * Math.sin(clamp(th, 0, Math.PI));
-      if (!layerColor(prev, tl) && th < Math.PI / 2) color = null;
-      if (!layerColor(cur, tl) && th >= Math.PI / 2) color = null;
-    } else color = layerColor(cur, tl);
-    if (!color) continue;
-    const breathe = 1 + 0.025 * Math.sin(t * 2.2 + tl.h * 6.28);
-    drawPlush(color, tl.cx, tl.cy, T * 1.0, pop * breathe, sy * pop * breathe);
-  }
+    cx += widths[i] + space;
+  });
 }
-
-/* ---------- layouts ---------- */
-const portrait = () => W / H < 0.9;
-function sceneA() {
-  const width = Math.min(W * 0.86, H * 1.5);
-  const g = wordmark(width, W / 2, H * 0.5);
-  const q = g[5];
-  return { g, q: { x: q.x + q.w / 2, y: q.y + q.h / 2 } };
-}
-function fit(text, maxW, size, weight = 900) {
-  ctx.font = `${weight} ${size}px Fraunces, Georgia, serif`;
-  const w = ctx.measureText(text).width;
-  return w > maxW ? size * maxW / w : size;
-}
+function ui(size, w = 700) { ctx.font = `${w} ${size}px "Bricolage Grotesque", Arial, sans-serif`; }
 
 /* ---------- scenes ---------- */
-function drawSceneA(t) {
-  const { g } = sceneA();
-  const fall = H * 0.7;
-  g.forEach((gl, i) => {
-    if (i < 5) {
-      let o = drop(t - (0.25 + i * 0.11), fall);
-      const kick = t - (T_WAVE + 0.05 + Math.abs(i - 2) * 0.05);
-      if (kick > 0) {
-        const v = H * (0.9 + hash(i) * 0.5), grav = H * 6;
-        o = { dy: -v * kick + 0.5 * grav * kick * kick, sx: 1, sy: 1, rot: (i - 2.2) * 1.4 * kick };
-      }
-      drawGlyph(gl, o);
-    } else {
-      const dt = t - 1.25;
-      if (dt < 0) return;
-      let s = spring(dt, 12, 0.28), rot = (1 - spring(dt, 9, 0.22)) * 0.9, dy = 0, sx = s, sy = s, alpha = 1;
-      for (const h0 of [2.3, 2.85]) {
-        const k = (t - h0) / 0.45;
-        if (k > 0 && k < 1) { dy -= Math.sin(Math.PI * k) * gl.h * 0.16; rot += Math.sin(Math.PI * 2 * k) * 0.12; }
-      }
-      if (t > 3.55 && t < T_WAVE) {
-        const k = easeOut((t - 3.55) / (T_WAVE - 3.55));
-        sx *= 1 + 0.25 * k; sy *= 1 - 0.32 * k;
-      }
-      if (t >= T_WAVE) {
-        const k = (t - T_WAVE) / 0.32;
-        sx = sy = 1 + 3 * easeOut(clamp(k, 0, 1)); alpha = 1 - k;
-      }
-      drawGlyph(gl, { dy, sx, sy, rot, alpha });
-    }
-  });
+function drawOpening(t) {
+  // KOVKA? on white, then it rises and makes room for the meadow
+  const lift = ease((t - T_MEADOW + 0.2) / 1.4);
+  const out = 1 - clamp((t - T_WORDS + 0.6) / 0.5, 0, 1);
+  if (out <= 0) return;
+  const w0 = Math.min(W * 0.78, H * 1.2), w1 = Math.min(W * 0.62, H * 0.75);
+  const y0 = H * 0.44, y1 = portrait() ? H * 0.17 : H * 0.2;
+  drawWordmark(lerp(w0, w1, lift), W / 2, lerp(y0, y1, lift), 0.5, t, out);
 }
-
+function drawDrifters(t, ts) {
+  // loose heads carried by the wind across the empty page
+  for (const f of drifters) {
+    const k = (ts - f.t0) / f.dur;
+    if (k <= 0 || k >= 1) continue;
+    const x = lerp(-0.12 * W, 1.12 * W, k), y = f.y * H + Math.sin(k * Math.PI * 2 * f.wav + f.ph) * H * 0.04;
+    drawDaisy(f.col, x, y, f.d, (boilIx(t) + f.v) % 3, 1, 0.85, ts * f.spin + f.ph);
+  }
+}
 function drawWords(t) {
-  const { rx, ry } = zone();
-  const per = 1.25, t0 = T_WORDS + 0.35;
-  const i = Math.floor((t - t0) / per);
-  if (i < 0 || i >= WORDS.length) return;
-  const lt = t - t0 - i * per;
-  const wd = WORDS[i];
-  // pill
-  const open = spring(lt, 15, 0.38), close = i === WORDS.length - 1 ? clamp((lt - per + 0.25) / 0.25, 0, 1) : 0;
-  const pw = rx * 2 * (0.86 + 0.14 * open) * (1 - close), ph = ry * 1.5 * (1.12 - 0.12 * open) * (1 - close);
-  if (pw <= 1) return;
-  ctx.fillStyle = wd.bg;
-  ctx.beginPath();
-  ctx.roundRect(W / 2 - pw / 2, H / 2 - ph / 2, pw, ph, ph / 2);
-  ctx.fill();
-  // word
-  const size = fit(wd.w, pw * 0.82, ph * 0.62);
-  const s = spring(lt - 0.04, 14, 0.3) * (1 - close);
-  const out = clamp((lt - per + 0.14) / 0.14, 0, 1);
+  const a = T_WORDS, out = clamp((t - (T_VAR - 0.7)) / 0.5, 0, 1);
+  if (t < a || out >= 1) return;
+  const lines = ["Malá květinová", "kompozice", "v kovové plechovce", "s vodou."];
+  const size = fitSize(lines, W * 0.84, portrait() ? W * 0.12 : Math.min(H * 0.1, W * 0.07));
+  const lh = size * 1.08, top = (portrait() ? H * 0.16 : H * 0.14) + size;
   ctx.save();
-  ctx.translate(W / 2, H / 2);
-  ctx.scale(s * (1 + out * 0.3), s * (1 - out));
-  ctx.fillStyle = wd.fg;
-  ctx.font = `900 ${size}px Fraunces, Georgia, serif`;
-  ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText(wd.w, 0, size * 0.04);
+  ctx.globalAlpha = 1 - out;
+  ctx.translate(0, -out * size * 0.6);
+  lines.forEach((l, i) => revealLine(l, W / 2, top + i * lh, size, a + 0.2 + i * 0.55, t, i === 3 ? C.red : C.cobalt));
   ctx.restore();
 }
-
-function productLayout(im) {
-  const ar = im.naturalHeight / im.naturalWidth;
-  if (portrait()) {
-    const ph = Math.min(H * 0.58, W * 0.86 * ar);
-    return { cx: W / 2, bottom: H * 0.93, ph, pw: ph / ar, tx: W / 2, ty: H * 0.1, align: "center", maxW: W * 0.88, size: Math.min(W * 0.15, H * 0.085) };
-  }
-  const ph = Math.min(H * 0.84, W * 0.5 * ar);
-  return { cx: W * 0.68, bottom: H * 0.95, ph, pw: ph / ar, tx: W * 0.07, ty: H * 0.5, align: "left", maxW: W * 0.4, size: Math.min(H * 0.14, W * 0.075), mid: true };
+function drawCans(t, cam) {
+  CANS.forEach((k, i) => {
+    const im = img[k], wx = canX(i, t), x = sx(wx, 1, cam), h = CAN_H * cam.z, w = h * im.naturalWidth / im.naturalHeight;
+    if (x < -w || x > W + w) return;
+    const y = sy(0.035 * H, cam);
+    ctx.save(); ctx.translate(x, y); ctx.scale(1, 0.16);
+    const sh = ctx.createRadialGradient(0, 0, 0, 0, 0, w * 0.6);
+    sh.addColorStop(0, "rgba(20,32,74,.2)"); sh.addColorStop(1, "rgba(20,32,74,0)");
+    ctx.fillStyle = sh; ctx.beginPath(); ctx.arc(0, 0, w * 0.6, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    ctx.drawImage(im, x - w / 2, y - h, w, h);
+  });
 }
-
-function drawProduct(i, t) {
-  const pr = PRODUCTS[i], s0 = T_PROD + i * PROD_LEN, lt = t - s0;
-  const im = img[pr.img], L = productLayout(im);
-  // halo daisy
-  const hs = spring(lt - 0.15, 9, 0.32);
-  if (hs > 0) {
-    const hd = Math.max(L.ph, L.pw) * 1.05 * hs;
-    drawPlush(pr.halo, L.cx, L.bottom - L.ph * 0.62, Math.max(hd, 1), 1, 1, t * 0.5 + (1 - hs) * 2);
-  }
-  // can
-  const k = spring(lt - 0.25, 11, 0.3);
-  if (lt > 0.25) {
-    let dy = (1 - k) * H * 0.9, sx = 1, sy = 1;
-    if (k > 1) { const q = (k - 1) * 0.9; dy = 0; sx = 1 + q * 0.6; sy = 1 - q; }
-    const rot = (1 - spring(lt - 0.25, 8, 0.3)) * 0.35 * (i % 2 ? -1 : 1);
-    ctx.save();
-    ctx.translate(L.cx, L.bottom + dy);
-    ctx.rotate(rot);
-    ctx.scale(sx, sy);
-    ctx.drawImage(im, -L.pw / 2, -L.ph, L.pw, L.ph);
-    ctx.restore();
-  }
-  // name
-  const n = spring(lt - 0.45, 12, 0.34), n2 = spring(lt - 0.58, 12, 0.34);
-  const size = Math.min(fit(pr.a, L.maxW, L.size), fit(pr.b, L.maxW, L.size));
-  const lab = Math.max(11, size * 0.2);
-  ctx.save();
-  ctx.fillStyle = pr.fg;
-  ctx.textAlign = L.align;
-  ctx.textBaseline = "alphabetic";
-  const top = L.mid ? L.ty - size * 1.05 : L.ty;
-  ctx.font = `700 ${lab}px "Bricolage Grotesque", Arial, sans-serif`;
-  if ("letterSpacing" in ctx) ctx.letterSpacing = `${lab * 0.14}px`;
-  ctx.globalAlpha = clamp(n, 0, 1);
-  ctx.fillText(`KOVKA  Nº ${String(i + 1).padStart(2, "0")} / ${String(PRODUCTS.length).padStart(2, "0")}`, L.tx, top);
-  if ("letterSpacing" in ctx) ctx.letterSpacing = "0px";
-  ctx.globalAlpha = 1;
-  ctx.font = `900 ${size}px Fraunces, Georgia, serif`;
-  const line = (txt, y, sp) => {
-    if (sp <= 0) return;
-    ctx.save();
-    const ox = L.align === "center" ? L.tx : L.tx;
-    ctx.translate(ox, y);
-    ctx.scale(1, sp);
-    ctx.fillText(txt, 0, 0);
-    ctx.restore();
-  };
-  line(pr.a, top + lab * 0.6 + size * 0.95, n);
-  line(pr.b, top + lab * 0.6 + size * 1.9, n2);
-  ctx.restore();
-}
-
-function finaleLayout() {
+function drawVariantsText(t) {
+  const a = T_VAR + 0.6, out = clamp((t - T_FIN) / 0.6, 0, 1);
+  if (t < a || out >= 1) return;
   const P = portrait();
-  const wmW = P ? Math.min(W * 0.84, H * 0.5) : Math.min(W * 0.55, H * 0.95);
-  const wmY = P ? H * 0.16 : H * 0.2;
-  const cans = [];
-  if (P) {
-    const ch = Math.min(H * 0.32, W * 0.5);
-    const yb = H * 0.74, yf = H * 0.93;
-    [[0.2, yb, 0.82], [0.5, yb - ch * 0.06, 0.88], [0.8, yb, 0.82], [0.34, yf, 1], [0.66, yf, 1]].forEach(([x, y, s], i) => cans.push({ x: W * x, y, h: ch * s, i: [0, 2, 4, 1, 3][i] }));
-  } else {
-    const ch = Math.min(H * 0.42, W * 0.2);
-    for (let i = 0; i < 5; i++) cans.push({ x: W * (0.14 + i * 0.18), y: H * 0.95, h: ch * (i % 2 ? 0.9 : 1), i });
-  }
-  return { wmW, wmY, cans, tagY: P ? H * 0.27 : H * 0.37, tagSize: P ? Math.min(W * 0.052, 26) : Math.min(H * 0.04, 30) };
+  const size = P ? Math.min(W * 0.085, 40) : Math.min(H * 0.07, 56);
+  const x = P ? W / 2 : W * 0.06, y = P ? H * 0.1 : H * 0.15, align = P ? "center" : "left";
+  ctx.save();
+  ctx.globalAlpha = 1 - out;
+  revealLine("Každá kovka je jiná.", x, y, size, a, t, C.cobalt, align);
+  const k = clamp(Math.floor((t - T_VAR - 0.3 - 1.1) / HOP) + 1, 1, 5);
+  const fade = easeOut((t - a - 0.6) / 0.6);
+  ui(Math.max(11, size * 0.32), 500);
+  if ("letterSpacing" in ctx) ctx.letterSpacing = "0.12em";
+  ctx.fillStyle = C.ink; ctx.globalAlpha = (1 - out) * fade * 0.75; ctx.textAlign = align;
+  ctx.fillText(`SKLÁDÁME JE RUČNĚ   ${String(k).padStart(2, "0")} / 05`, x, y + size * 0.85);
+  if ("letterSpacing" in ctx) ctx.letterSpacing = "0px";
+  ctx.restore();
 }
-
 function drawFinale(t) {
-  const lt = t - T_FIN, F = finaleLayout();
-  // cans
-  F.cans.forEach((c, j) => {
-    const k = spring(lt - 0.85 - j * 0.12, 12, 0.3);
-    if (k <= 0) return;
-    const im = img[PRODUCTS[c.i].img], w = c.h * im.naturalWidth / im.naturalHeight;
-    ctx.save();
-    ctx.translate(c.x, c.y);
-    ctx.rotate((1 - k) * (j % 2 ? 0.4 : -0.4) + Math.sin(t * 1.6 + j) * 0.015);
-    ctx.scale(k, k);
-    ctx.drawImage(im, -w / 2, -c.h, w, c.h);
-    ctx.restore();
-  });
-  // wordmark: drops, then the question mark loses its hook
-  const g = wordmark(F.wmW, W / 2, F.wmY);
-  g.forEach((gl, i) => {
-    if (i < 5) { drawGlyph(gl, drop(lt - 1.6 - i * 0.08, H * 0.5)); return; }
-    const dt = lt - 2.15;
-    if (dt <= 0) return;
-    const s = spring(dt, 12, 0.3);
-    const cut = lt - 3.3;
-    if (cut <= 0) { drawGlyph(gl, { sx: s, sy: s, rot: (1 - s) * 0.6 }); return; }
-    // hook falls away
-    drawGlyph(gl, { clip: [0, Q_SPLIT], dy: 0.5 * H * 5 * cut * cut, rot: cut * 2.4 });
-    // dot stays: becomes the full stop
-    const b = cut < 0.5 ? Math.sin(cut / 0.5 * Math.PI) * Math.exp(-cut * 3) : 0;
-    drawGlyph(gl, { clip: [Q_SPLIT, 1.02], sx: 1 + b * 0.5, sy: 1 - b * 0.5 });
-  });
-  // tagline
-  const tk = clamp((lt - 3.8) / 0.6, 0, 1);
-  if (tk > 0) {
-    ctx.save();
-    ctx.globalAlpha = tk;
-    ctx.fillStyle = C.blue;
-    ctx.textAlign = "center";
-    ctx.font = `800 ${F.tagSize}px Fraunces, Georgia, serif`;
-    const y = F.tagY + (1 - easeOut(tk)) * 20;
-    ctx.fillText("Malá květinová kompozice", W / 2, y);
-    ctx.fillText("v kovové plechovce s vodou", W / 2, y + F.tagSize * 1.25);
-    ctx.restore();
-  }
+  if (t < T_FIN + 1.6) return;
+  const P = portrait(), canTop = GY - CAN_H * finZoom();
+  const wmW = Math.min(W * (P ? 0.78 : 0.46), H * 0.9), wmH = wmW / WM_W * WM_H;
+  const size = P ? Math.min(W * 0.05, 24) : Math.min(H * 0.035, 28);
+  const block = wmH * 0.8 + size * 3;
+  const wmY = Math.max(H * 0.1 + wmH / 2, (canTop - block) / 2 + wmH / 2);
+  drawWordmark(wmW, W / 2, wmY, T_FIN + 1.6, t, 1, false);
+  const y = wmY + wmH * 0.62 + size * 1.2;
+  revealLine("Malá květinová kompozice", W / 2, y, size, T_FIN + 2.7, t, C.blue);
+  revealLine("v kovové plechovce s vodou", W / 2, y + size * 1.3, size, T_FIN + 3.0, t, C.blue);
 }
 
 /* ---------- frame ---------- */
 function frame(t) {
+  const ts = step(t), cam = camera(t);
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  // ground: paper, then night spreading from the question mark
-  ctx.fillStyle = C.paper;
-  ctx.fillRect(0, 0, W, H);
-  if (t >= T_WAVE - 0.05 && t < T_PROD + 1) {
-    const q = sceneA().q;
-    const r = (t - T_WAVE + 0.05) * DIAG / 1.5 + T * 0.4;
-    ctx.fillStyle = C.ink;
-    ctx.beginPath(); ctx.arc(q.x, q.y, Math.max(r, 0), 0, Math.PI * 2); ctx.fill();
-  }
-  if (t >= T_WAVE - 0.1 && t < T_PROD + 1) drawMosaic(t);
-  if (t < T_WAVE + 1.2) drawSceneA(t);
-  if (t >= T_WORDS && t < T_PROD) drawWords(t);
-  // products, each arriving through a daisy iris
-  for (let i = 0; i < PRODUCTS.length; i++) {
-    const s0 = T_PROD + i * PROD_LEN;
-    if (t < s0 || t > s0 + PROD_LEN + 0.8) continue;
-    iris(PRODUCTS[i].bg, (t - s0) / 0.7, (1 - (t - s0) / 0.7) * 2.2);
-    drawProduct(i, t);
-  }
-  if (t >= T_FIN) {
-    iris(C.paper, (t - T_FIN) / 0.7, -(1 - (t - T_FIN) / 0.7) * 2.2);
-    drawFinale(t);
-  }
-  // fade back into the opening paper so the loop is seamless
-  if (t > DUR - 0.5) {
-    ctx.fillStyle = C.paper;
-    ctx.globalAlpha = (t - (DUR - 0.5)) / 0.5;
-    ctx.fillRect(0, 0, W, H);
-    ctx.globalAlpha = 1;
-  }
+  ctx.fillStyle = C.paper; ctx.fillRect(0, 0, W, H);
+  drawDrifters(t, ts);
+  drawOpening(t);
+  drawWords(t);
+  for (const b of blades) if (!b.front) drawBlade(b, t, ts, cam);
+  for (const p of plants) if (p.li < 2) drawPlant(p, t, ts, cam);
+  if (t >= T_VAR - 0.6) drawCans(t, cam);
+  for (const b of blades) if (b.front) drawBlade(b, t, ts, cam);
+  for (const p of plants) if (p.li === 2) drawPlant(p, t, ts, cam);
+  drawVariantsText(t);
+  drawFinale(t);
+  // paper tooth over everything
+  ctx.globalAlpha = 0.5; ctx.fillStyle = grainPat; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1;
+  if (t > DUR - 0.8) { ctx.fillStyle = C.paper; ctx.globalAlpha = (t - (DUR - 0.8)) / 0.8; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
 }
 
 /* ---------- sizing ---------- */
+let grainPat = null;
 function resize() {
   DPR = Math.min(window.devicePixelRatio || 1, 2);
   W = window.innerWidth; H = window.innerHeight;
-  DIAG = Math.hypot(W, H);
   cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
-  T = clamp(Math.min(W, H) / 7.2, 46, 118);
-  const cols = Math.ceil(W / T) + 1, rows = Math.ceil(H / T) + 1;
-  const ox = (W - (cols - 1) * T) / 2, oy = (H - (rows - 1) * T) / 2;
-  tiles = [];
-  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-    const i = r * cols + c;
-    const tl = { i, cx: ox + c * T, cy: oy + r * T, h: hash(i * 3.17) };
-    tiles.push(tl);
-  }
-  waves = baseWaves();
-  tiles.forEach(tl => { tl.z = inZone(tl); });
-  spriteCache.clear();
+  GY = H * 0.95;
+  CAN_H = portrait() ? Math.min(H * 0.56, W * 1.1) : H * 0.7;
+  SP = Math.max(W * (portrait() ? 0.95 : 0.62), CAN_H * 1.1);
+  daisyCache.clear();
+  grainPat = ctx.createPattern(grain, "repeat");
+  buildMeadow();
+  const r = rnd(5);
+  drifters = Array.from({ length: 8 }, (_, i) => ({
+    t0: 1.6 + i * 0.42 + r() * 0.3, dur: 4.2 + r() * 1.6, y: 0.62 + r() * 0.3 - (i % 2) * 0.5 * r(), wav: 0.6 + r(), ph: r() * 6,
+    d: Math.min(W, H) * (0.03 + r() * 0.035), col: HEADS[i % HEADS.length], v: i % 3, spin: (r() - 0.5) * 2.2
+  }));
 }
 
 /* ---------- playback ---------- */
@@ -565,14 +467,13 @@ const playBtn = document.getElementById("play"), playIcon = document.getElementB
 const segEls = SCENES.map((s, i) => {
   const end = i + 1 < SCENES.length ? SCENES[i + 1].t : DUR;
   const b = document.createElement("button");
-  b.className = "seg"; b.style.flex = String(end - s.t);
-  b.setAttribute("aria-label", s.name);
+  b.className = "seg"; b.style.flex = String(end - s.t); b.setAttribute("aria-label", s.name);
   b.innerHTML = `<i></i><span>${s.name}</span>`;
   b.addEventListener("click", e => { e.stopPropagation(); seek(s.t); });
   track.appendChild(b);
-  return { b, fill: b.firstChild, start: s.t, end };
+  return { fill: b.firstChild, start: s.t, end };
 });
-function seek(nt) { t = nt; clickWaves = []; }
+function seek(nt) { t = nt; gusts = []; }
 function setPlaying(p) {
   playing = p;
   playIcon.innerHTML = p
@@ -588,13 +489,11 @@ window.addEventListener("keydown", e => {
   if (e.key === "ArrowLeft") seek(Math.max(0, t - 2));
   wake();
 });
-// tap the mosaic to send your own wave
 cv.addEventListener("pointerdown", e => {
   wake();
-  if (t > T_WAVE + 0.6 && t < T_PROD - 0.3) {
-    clickWaves.push({ t, ox: e.clientX, oy: e.clientY, to: "next", speed: DIAG / 1.1, outside: t >= T_WORDS });
-    if (clickWaves.length > 10) clickWaves.shift();
-  }
+  const cam = camera(t);
+  gusts.push({ t, x: (e.clientX - W / 2) / cam.z + cam.x });
+  if (gusts.length > 8) gusts.shift();
 });
 let idleTimer = 0;
 function wake() {
@@ -607,29 +506,27 @@ window.addEventListener("pointermove", wake);
 function loop(now) {
   const dt = last ? Math.min((now - last) / 1000, 0.05) : 0;
   last = now;
-  if (playing) { t += dt; if (t >= DUR) { t -= DUR; clickWaves = []; } }
+  if (playing) { t += dt; if (t >= DUR) { t -= DUR; gusts = []; } }
   frame(t);
   for (const s of segEls) s.fill.style.width = `${clamp((t - s.start) / (s.end - s.start), 0, 1) * 100}%`;
   requestAnimationFrame(loop);
 }
-
-// test hook: render a given second without playback
 window.__kovka = { seek: s => { t = s; frame(t); }, pause: () => setPlaying(false) };
 
 async function boot() {
+  grain = makeGrain();
   await Promise.all(Object.entries(IMG_SRC).map(([k, src]) => new Promise(res => {
     const im = new Image(); im.onload = res; im.onerror = res; im.src = src; img[k] = im;
   })));
   try {
     await Promise.race([
-      Promise.all([document.fonts.load("900 80px Fraunces"), document.fonts.load("800 30px Fraunces"), document.fonts.load('700 14px "Bricolage Grotesque"')]),
+      Promise.all([document.fonts.load("800 60px Fraunces"), document.fonts.load('500 14px "Bricolage Grotesque"')]),
       new Promise(r => setTimeout(r, 2500))
     ]);
-  } catch (e) { /* fall back to Georgia */ }
+  } catch (e) { /* Georgia fallback */ }
   resize();
   window.addEventListener("resize", resize);
   if (reduce) { t = T_FIN + 6; setPlaying(false); }
-  wake();
   requestAnimationFrame(loop);
 }
 boot();
