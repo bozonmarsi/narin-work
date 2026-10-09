@@ -1,4 +1,4 @@
-import { sendBrevoEmail, sendBrevoSms } from "@/lib/brevo";
+import { normalizeSmsPhone, sendBrevoEmail, sendBrevoSms } from "@/lib/brevo";
 
 type NotifyPayload = {
   event:
@@ -490,8 +490,11 @@ export async function POST(request: Request) {
       break;
 
     case "arriving_sms":
-      if (phone) {
-        await sendBrevoSms(phone, `Kurýr už je za rohem — vaše květiny dorazí do 10 minut! Připravte se!!! 🌷`);
+      if (phone && normalizeSmsPhone(phone)) {
+        const sent = await sendBrevoSms(phone, `Kurýr už je za rohem — vaše květiny dorazí do 10 minut! Připravte se!!! 🌷`);
+        // Non-2xx makes the DB-side retry job (retry_failed_brevo_notifications) try again and,
+        // after 3 failures, alert managers in Telegram — instead of silently losing the SMS.
+        if (!sent) return Response.json({ ok: false, error: "sms_send_failed" }, { status: 502 });
       }
       break;
   }

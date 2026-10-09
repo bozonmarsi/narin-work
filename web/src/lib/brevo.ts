@@ -31,13 +31,24 @@ export async function sendBrevoEmail(
   return res.ok;
 }
 
+// Tilda gives "+420 (776) 421-993", but some orders have a bare "776421993"
+// (no country code). Brevo wants digits with the country code and no "+".
+export function normalizeSmsPhone(raw: string): string | null {
+  let digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("00")) digits = digits.slice(2);
+  if (digits.length === 9) digits = "420" + digits;
+  return digits.length >= 11 && digits.length <= 15 ? digits : null;
+}
+
 export async function sendBrevoSms(phone: string, content: string) {
   const apiKey = process.env.BREVO_API_KEY;
   if (!apiKey) throw new Error("BREVO_API_KEY is not configured");
 
-  // Brevo wants E.164-ish digits with a leading "+" — strip spaces,
-  // parentheses and dashes that Tilda's raw phone format includes.
-  const cleanPhone = phone.replace(/[^\d+]/g, "");
+  const recipient = normalizeSmsPhone(phone);
+  if (!recipient) {
+    console.error("Brevo SMS skipped: unusable phone number", phone);
+    return false;
+  }
 
   const res = await fetch("https://api.brevo.com/v3/transactionalSMS/sms", {
     method: "POST",
@@ -47,14 +58,14 @@ export async function sendBrevoSms(phone: string, content: string) {
     },
     body: JSON.stringify({
       sender: (process.env.BREVO_SENDER_NAME || "NARIN").slice(0, 11), // SMS sender IDs are short
-      recipient: cleanPhone,
+      recipient,
       content,
       type: "transactional",
     }),
   });
 
   if (!res.ok) {
-    console.error("Brevo SMS failed", await res.text());
+    console.error("Brevo SMS failed", res.status, await res.text());
   }
   return res.ok;
 }
