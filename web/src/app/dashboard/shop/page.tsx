@@ -1094,7 +1094,13 @@ export default function ShopPage() {
   // свободного остатка (на складе минус резерв).
   const [reserved, setReserved] = useState<Record<string, number>>({});
   const isInStockToday = useCallback(
-    (p: Product) => (p.category === "ohapka" ? (p.quantity ?? 0) - (reserved[p.id] ?? 0) > 0 : availableToday.has(p.name)),
+    (p: Product) => {
+      if (p.category === "ohapka") return (p.quantity ?? 0) - (reserved[p.id] ?? 0) > 0;
+      // Кованки и кытицы: если количество задано — "в наличии" по нему (как
+      // на сайте), иначе по ручному переключателю product_availability.
+      if ((p.category === "banky" || p.category === "buket") && p.quantity != null) return p.quantity > 0;
+      return availableToday.has(p.name);
+    },
     [reserved, availableToday],
   );
   const [availabilitySearch, setAvailabilitySearch] = useState("");
