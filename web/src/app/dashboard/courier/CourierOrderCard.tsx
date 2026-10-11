@@ -14,6 +14,11 @@ const PROBLEM_TYPES = [
   { value: "other", label: "Другое" },
 ];
 
+// patro приходит строкой; "0" - это валидный этаж (первый, уровень земли), не пусто.
+function hasValue(v: string | null): v is string {
+  return v !== null && v !== undefined && v.trim() !== "";
+}
+
 function ActionButton({
   onClick,
   disabled,
@@ -197,11 +202,44 @@ export function CourierOrderCard({
         </span>
       </div>
 
-      <p className="mt-0.5 truncate text-zinc-500 dark:text-zinc-400">
-        {order.address}, {order.city} · {formatDate(order.delivery_date)}
+      <p className="mt-0.5 text-zinc-500 dark:text-zinc-400">
+        {order.address}, {[order.psk, order.city].filter(Boolean).join(" ")} · {formatDate(order.delivery_date)}
         {order.delivery_slot ? ` · ${order.delivery_slot}` : ""}
         {order.delivery_time_raw ? ` · ${order.delivery_time_raw}` : ""}
       </p>
+
+      {/* Всё, что клиент указал для курьера: этаж, квартира, домофон, фирма.
+          Поле домофона у клиентов часто содержит целую инструкцию, поэтому
+          без обрезки. */}
+      {(order.company_name || hasValue(order.patro) || order.cislo_bytu || order.kod_intercomu) && (
+        <div className="mt-1 space-y-0.5 rounded-md bg-amber-50 dark:bg-amber-500/10 px-2 py-1 text-zinc-800 dark:text-zinc-100">
+          {order.company_name && (
+            <p>
+              <span className="font-medium">🏢 Фирма:</span> {order.company_name}
+            </p>
+          )}
+          {(hasValue(order.patro) || order.cislo_bytu) && (
+            <p>
+              {hasValue(order.patro) && (
+                <span>
+                  <span className="font-medium">Этаж:</span> {order.patro}
+                </span>
+              )}
+              {hasValue(order.patro) && order.cislo_bytu && " · "}
+              {order.cislo_bytu && (
+                <span>
+                  <span className="font-medium">Кв./офис:</span> {order.cislo_bytu}
+                </span>
+              )}
+            </p>
+          )}
+          {order.kod_intercomu && (
+            <p className="whitespace-pre-wrap break-words">
+              <span className="font-medium">🔔 Домофон / как войти:</span> {order.kod_intercomu}
+            </p>
+          )}
+        </div>
+      )}
 
       {routeStop && (
         <p className={routeStop.missedDeadline ? "font-medium text-red-600 dark:text-red-400" : "text-accent"}>
@@ -222,17 +260,32 @@ export function CourierOrderCard({
       <p className="truncate text-zinc-500 dark:text-zinc-400">{order.products_text}</p>
 
       {order.comments && (
-        <p className="truncate text-zinc-500 dark:text-zinc-400">
+        <p className="whitespace-pre-wrap break-words text-zinc-500 dark:text-zinc-400">
           <span className="font-medium text-zinc-600 dark:text-zinc-300">Клиент:</span> {order.comments}
         </p>
       )}
+      {order.delivery_comment && order.delivery_comment !== order.comments && (
+        <p className="whitespace-pre-wrap break-words text-zinc-500 dark:text-zinc-400">
+          <span className="font-medium text-zinc-600 dark:text-zinc-300">Комментарий к доставке:</span>{" "}
+          {order.delivery_comment}
+        </p>
+      )}
+      {(order.customer_phone && order.customer_phone !== order.recipient_phone) && (
+        <p className="text-zinc-500 dark:text-zinc-400">
+          <span className="font-medium text-zinc-600 dark:text-zinc-300">Заказчик:</span>{" "}
+          {[order.customer_name, order.customer_last_name].filter(Boolean).join(" ")}{" "}
+          <a href={`tel:${order.customer_phone.replace(/[^\d+]/g, "")}`} className="underline">
+            {order.customer_phone}
+          </a>
+        </p>
+      )}
       {order.manager_comment && (
-        <p className="truncate text-blue-700 dark:text-blue-400">
+        <p className="whitespace-pre-wrap break-words text-blue-700 dark:text-blue-400">
           <span className="font-medium">Менеджер:</span> {order.manager_comment}
         </p>
       )}
       {order.florist_comment && (
-        <p className="truncate text-purple-700 dark:text-purple-400">
+        <p className="whitespace-pre-wrap break-words text-purple-700 dark:text-purple-400">
           <span className="font-medium">Флорист:</span> {order.florist_comment}
         </p>
       )}
