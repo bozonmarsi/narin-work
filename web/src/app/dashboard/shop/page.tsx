@@ -385,7 +385,7 @@ function isHiddenFromSite(p: Product, reserved = 0): boolean {
 // как сортировка вместо оформления.
 function toneRank(p: Product, isAvailable: boolean, reserved = 0): number {
   if (p.archived || isHiddenFromSite(p, reserved)) return 3;
-  if (p.special_order) return 2;
+  if (p.special_order && !p.force_tomorrow) return 2;
   if (isAvailable) return 0;
   return 1;
 }
@@ -488,7 +488,7 @@ function ProductCard({
     ? "opacity-60 border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900"
     : hiddenFromSite
       ? "border-zinc-300 dark:border-zinc-600 bg-zinc-100 dark:bg-zinc-800"
-      : p.special_order
+      : p.special_order && !p.force_tomorrow
         ? "border-red-300 dark:border-red-500/40 bg-red-50 dark:bg-red-500/10 ring-1 ring-red-200 dark:ring-red-500/30"
         : isAvailable && !p.force_tomorrow
           ? "border-green-300 dark:border-green-500/40 bg-green-50 dark:bg-green-500/10 ring-1 ring-green-200 dark:ring-green-500/30"
@@ -994,6 +994,7 @@ function ProductCard({
             className="rounded-md bg-orange-50 dark:bg-orange-500/10 px-2 py-1 text-[11px] font-medium text-orange-600 dark:text-orange-400 ring-1 ring-inset ring-orange-200 dark:ring-orange-500/30"
           >
             🚚 {p.auto_special_order ? "Под заказ — не хватает цветка" : "Всегда под заказ"} (+2 дня)
+            {p.force_tomorrow && " — перебито плашкой «завтра»"}
           </p>
         ) : p.category === "ohapka" ? (
           <>
@@ -1025,10 +1026,10 @@ function ProductCard({
             {isAvailable ? "✓ В наличии" : "Нет сегодня"}
           </button>
         )}
-        {(p.force_tomorrow || (!p.archived && !hiddenFromSite && !p.special_order)) && (
+        {(p.force_tomorrow || (!p.archived && !hiddenFromSite)) && (
           <button
             onClick={() => onToggleForceTomorrow(p.id, p.force_tomorrow)}
-            title="Меняет только плашку на сайте: покажет «Doručíme zítra», даже если товар есть в наличии. Остатки, наличие и всё остальное в системе не меняются."
+            title="Меняет только плашку и дату на сайте: покажет «Doručíme zítra», даже если товар есть в наличии или стоит «под заказ». Остатки, наличие и сама отметка «под заказ» не меняются — выключил плашку, и всё как было."
             className={`rounded-md px-2 py-1 text-[11px] font-medium ${
               p.force_tomorrow
                 ? "bg-blue-100 text-blue-700 ring-1 ring-inset ring-blue-300 dark:bg-blue-500/20 dark:text-blue-300 dark:ring-blue-500/40"
