@@ -4,6 +4,7 @@ type NotifyPayload = {
   event:
     | "order_confirmed_stripe"
     | "order_confirmed_cod"
+    | "payment_reminder"
     | "pickup_ready"
     | "courier_out"
     | "delivered"
@@ -350,6 +351,36 @@ export async function POST(request: Request) {
             extraHtml: recipientRow(recipient_name) + productsBlock(products_text, order_total) + deliveryWhenLine(delivery_date, delivery_time),
             ctaLabel: "Zobrazit objednávku",
             ctaUrl: `${ORDERS_URL}`,
+          }),
+        );
+      }
+      break;
+
+    // Stripe objednávka vznikne v databázi ještě před zaplacením. Když platba
+    // za hodinu nedorazí (zavřené okno, zamítnutá karta), pošle SQL
+    // send_payment_reminders() jedno přátelské připomenutí. Přímý odkaz na
+    // platbu nemáme (Stripe stránku vytváří Tilda), proto vede na web.
+    case "payment_reminder":
+      if (email) {
+        const when = delivery_date && /^\d{4}-\d{2}-\d{2}$/.test(delivery_date)
+          ? `${czDate(delivery_date)}${delivery_time ? `, ${esc(delivery_time)} h` : ""}`
+          : null;
+        await sendBrevoEmail(
+          email,
+          `Vaše kytice čeká na dokončení platby 💐`,
+          emailShell({
+            preheader: `Objednávka č. ${order_id} čeká na zaplacení.`,
+            badgeEmoji: "💳",
+            badgeBg: PREPARING_BG,
+            headline: "Platba zatím nedorazila",
+            bodyHtml: `Dobrý den, objednávku jsme od vás dostali, jenže platba se asi nedokončila. Stává se, že se okno zavře dřív, než platba proběhne, nebo ji banka zastaví. Nic se neděje. Dokud platba nedorazí, kytici ještě nepřipravujeme, ale moc se na ni těšíme.`,
+            extraHtml:
+              recipientRow(recipient_name) +
+              productsBlock(products_text, order_total) +
+              (when ? `<p style="margin:0 0 14px;font-size:12.5px;color:${MUTED};">Vybraný termín: <b style="color:${INK};">${when}</b></p>` : ""),
+            ctaLabel: "Dokončit objednávku",
+            ctaUrl: "https://vezminarin.cz/",
+            footNote: `Kdyby se platba nedařila, ozvěte se nám na <a href="mailto:support@vezminarin.cz" style="color:${ACCENT};text-decoration:none;font-weight:500;">support@vezminarin.cz</a> nebo na <a href="tel:+420776421993" style="color:${ACCENT};text-decoration:none;font-weight:500;">+420 776 421 993</a> a pomůžeme. Pokud jste už objednali znovu, tento e-mail prosím ignorujte.`,
           }),
         );
       }
