@@ -7,7 +7,7 @@
   background:var(--bg);color:var(--ink);font-family:'Rubik',system-ui,-apple-system,'Segoe UI',sans-serif;width:100%;overflow:hidden;box-sizing:border-box}
 .natp *,.natp *::before,.natp *::after{box-sizing:border-box}
 :where(.natp) a{color:inherit;text-decoration:none}
-.natp-in{max-width:1180px;margin:0 auto;padding:36px 16px 40px;display:grid;gap:26px}
+.natp-in{max-width:1180px;margin:0 auto;padding:26px 16px 28px;display:grid;gap:18px}
 .natp-in>*,.natp-top>*,.natp-bottom>*{min-width:0}
 /* icons (стили на самих символах, чтобы работали внутри <use>) */
 .natp-s{fill:none;stroke:var(--st,#2a9a48);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -21,11 +21,11 @@
 @keyframes natpFall{0%,30%{transform:none;opacity:1}80%,100%{transform:translate(4px,14px) rotate(40deg);opacity:0}}
 @keyframes natpSpin{to{transform:rotate(360deg)}}
 
-.natp-head{display:grid;gap:14px}
-.natp-logo{width:170px;height:auto;display:block}
-.natp h2{font:700 clamp(30px,8.4vw,56px)/1.05 'Gelasio',Georgia,serif;color:var(--green);margin:0;letter-spacing:-.01em;text-wrap:balance}
+.natp-head{display:grid;gap:8px}
+.natp-logo{width:120px;height:auto;display:block}
+.natp h2{font:700 clamp(26px,7.4vw,44px)/1.05 'Gelasio',Georgia,serif;color:var(--green);margin:0;letter-spacing:-.01em;text-wrap:balance}
 .natp h2 em{font-style:italic;font-weight:500;color:var(--red);white-space:nowrap}
-.natp-lead{margin:0;font-size:16px;line-height:1.5;color:var(--muted);max-width:46ch}
+.natp-lead{margin:0;font-size:14.5px;line-height:1.45;color:var(--muted);max-width:46ch}
 
 .natp-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .natp-tiles a{display:flex;flex-direction:column;gap:8px;padding:14px 10px 12px;border-radius:16px;background:var(--paper);border:1px solid var(--line);min-width:0;transition:transform .2s}
@@ -39,38 +39,43 @@
 .natp-tiles .k small{color:#bdb6aa}
 
 .natp-sec{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
-.natp-sec h3{font:600 22px/1.2 'Gelasio',Georgia,serif;color:var(--ink);margin:0}
+.natp-sec h3{font:600 18px/1.2 'Gelasio',Georgia,serif;color:var(--ink);margin:0}
 .natp-sec a{font-size:14px;color:var(--green);font-weight:500;white-space:nowrap}
-.natp-steps{list-style:none;margin:12px -16px 0;padding:0 16px 4px;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(178px,1fr);gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-inline:16px;scrollbar-width:none}
+.natp-steps{list-style:none;margin:10px -16px 0;padding:0 16px 2px;display:grid;grid-auto-flow:column;grid-auto-columns:128px;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-inline:16px;scrollbar-width:none}
 .natp-steps::-webkit-scrollbar{display:none}
-.natp-steps li{scroll-snap-align:start;background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:8px;min-width:0}
-.natp-ic{width:48px;height:48px}
-.natp-n{position:relative;display:inline-grid;place-items:center;width:30px;height:30px;color:var(--red)}
+.natp-steps li{scroll-snap-align:start;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;gap:6px 8px;align-items:center;min-width:0}
+.natp-steps li b{grid-column:1/-1}
+.natp-ic{width:34px;height:34px}
+.natp-n{position:relative;display:inline-grid;place-items:center;width:24px;height:24px;justify-self:end;align-self:start;color:var(--red)}
 .natp-n svg{position:absolute;inset:0;width:100%;height:100%}
-.natp-n i{position:relative;font:700 12px/1 'Rubik',system-ui,sans-serif;font-style:normal}
-.natp-steps b{font:600 17px/1.2 'Gelasio',Georgia,serif}
+.natp-n i{position:relative;font:700 10px/1 'Rubik',system-ui,sans-serif;font-style:normal}
+.natp-steps b{font:600 14px/1.2 'Gelasio',Georgia,serif}
 .natp-steps p{margin:0;font-size:14px;line-height:1.4;color:var(--muted)}
 
-.natp-shop{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
+.natp-shop{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
 .natp-p{display:grid;gap:6px;align-content:start;min-width:0}
 .natp-p .ph{position:relative;border-radius:14px;overflow:hidden;background:#9fb987}
-.natp-p img{display:block;width:100%;aspect-ratio:1;object-fit:cover}
-.natp-p b{font-size:14px;font-weight:600;line-height:1.25}
+.natp-p img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}
+.natp-p b{font-size:13px;font-weight:600;line-height:1.25}
 .natp-p small{font-size:12px;color:var(--muted);line-height:1.3}
-.natp-p span{font-size:14px;color:var(--green);font-weight:600}
+.natp-p span{font-size:13px;color:var(--green);font-weight:600}
 .natp-p .tag{position:absolute;left:8px;top:8px;background:var(--ink);color:var(--paper);font-size:11px;font-weight:500;padding:4px 8px;border-radius:999px;display:flex;align-items:center;gap:5px}
 .natp-p .tag i{font-style:normal;background:var(--red);color:#fff;width:15px;height:15px;display:grid;place-items:center;font-size:9px;border-radius:2px}
 
-.natp-cta{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--green);color:#fff !important;border-radius:999px;padding:16px 22px;font-weight:600;font-size:16px;transition:transform .2s}
+.natp-cta{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--green);color:#fff !important;border-radius:999px;padding:13px 20px;font-weight:600;font-size:15px;transition:transform .2s}
 .natp-cta:hover{transform:translateY(-1px)}
 .natp-cta svg{width:20px;height:20px}
 
 @media (min-width:900px){
-  .natp-in{padding:56px 24px 60px;gap:36px}
-  .natp-top{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:48px;align-items:end}
+  .natp-in{padding:36px 24px 40px;gap:24px}
   .natp-steps{grid-auto-flow:row;grid-template-columns:repeat(5,minmax(0,1fr));overflow:visible;margin-inline:0;padding-inline:0}
-  .natp-bottom{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:48px;align-items:end}
-  .natp-shop{margin-top:12px}
+  .natp-in{grid-template-columns:minmax(0,.8fr) minmax(0,1.6fr);column-gap:40px;align-items:center}
+  .natp-top{grid-column:1}
+  .natp-in>div:nth-child(2){grid-column:2}
+  .natp-bottom{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:48px;align-items:end}
+  .natp-shop{grid-template-columns:repeat(3,170px)}
+  .natp-bottom{grid-template-columns:auto minmax(0,1fr) !important;align-items:center !important}
+  .natp-cta{max-width:420px;justify-self:end !important;width:100%}
   .natp-cta{justify-self:stretch}
 }
 </style>
@@ -118,23 +123,18 @@
       <div class="natp-head">
         <img class="natp-logo" src="https://narin-work.vercel.app/atelier/logo-wide.webp" alt="NARIN atelier" loading="lazy">
         <h2>Ať vaše květiny vydrží <em>déle</em></h2>
-        <p class="natp-lead">Péče, nástroje a kenzany, které v ateliéru používáme každý den. Vybrali jsme jen to, co opravdu funguje.</p>
+        <p class="natp-lead">Péče, nástroje a kenzany z našeho ateliéru.</p>
       </div>
-      <nav class="natp-tiles" aria-label="NARIN atelier">
-        <a class="g" href="https://vezminarin.cz/atelier?utm_source=home&amp;utm_content=pece"><svg aria-hidden="true"><use href="#natp-i-water"/></svg><b>Péče</b><small>Rady a SOS pro vaši kytici</small></a>
-        <a href="https://vezminarin.cz/atelier?utm_source=home&amp;utm_content=nuzky"><svg aria-hidden="true"><use href="#natp-i-scissors"/></svg><b>Nástroje</b><small>Sekátor a nůžky</small></a>
-        <a class="k" href="https://vezminarin.cz/atelier?utm_source=home&amp;utm_content=kenzany"><svg aria-hidden="true"><use href="#natp-i-holder"/></svg><b>Kenzany</b><small>Japonské aranžování</small></a>
-      </nav>
     </div>
 
     <div>
       <div class="natp-sec"><h3>Prvních 10 minut doma</h3><a href="https://vezminarin.cz/atelier?utm_source=home&amp;utm_content=ritual">Více rad →</a></div>
       <ol class="natp-steps">
-      <li><svg class="natp-ic" aria-hidden="true"><use href="#natp-i-cut"/></svg><span class="natp-n"><svg viewBox="0 0 283 283" aria-hidden="true"><use href="#natpP" fill="currentColor"/><circle cx="141.25" cy="140.6" r="52" fill="#fff"/></svg><i>1</i></span><b>Zastřihněte šikmo</b><p>2–3 cm ostrým sekátorem, stonek lépe pije.</p></li>
-      <li><svg class="natp-ic" aria-hidden="true"><use href="#natp-i-leaf"/></svg><span class="natp-n"><svg viewBox="0 0 283 283" aria-hidden="true"><use href="#natpP" fill="currentColor"/><circle cx="141.25" cy="140.6" r="52" fill="#fff"/></svg><i>2</i></span><b>Pryč s listy pod vodou</b><p>Ve vodě hnijí a kalí ji.</p></li>
-      <li><svg class="natp-ic" aria-hidden="true"><use href="#natp-i-water"/></svg><span class="natp-n"><svg viewBox="0 0 283 283" aria-hidden="true"><use href="#natpP" fill="currentColor"/><circle cx="141.25" cy="140.6" r="52" fill="#fff"/></svg><i>3</i></span><b>Čistá, chladná voda</b><p>Umytá váza, voda do třetiny stonků.</p></li>
-      <li><svg class="natp-ic" aria-hidden="true"><use href="#natp-i-place"/></svg><span class="natp-n"><svg viewBox="0 0 283 283" aria-hidden="true"><use href="#natpP" fill="currentColor"/><circle cx="141.25" cy="140.6" r="52" fill="#fff"/></svg><i>4</i></span><b>Dál od tepla</b><p>Ne na slunce, k topení ani k ovoci.</p></li>
-      <li><svg class="natp-ic" aria-hidden="true"><use href="#natp-i-repeat"/></svg><span class="natp-n"><svg viewBox="0 0 283 283" aria-hidden="true"><use href="#natpP" fill="currentColor"/><circle cx="141.25" cy="140.6" r="52" fill="#fff"/></svg><i>5</i></span><b>Každé 2 dny</b><p>Čerstvá voda a stonky o 1 cm kratší.</p></li>
+      <li><svg class="natp-ic" aria-hidden="true"><use href="#natp-i-cut"/></svg><span class="natp-n"><svg viewBox="0 0 283 283" aria-hidden="true"><use href="#natpP" fill="currentColor"/><circle cx="141.25" cy="140.6" r="52" fill="#fff"/></svg><i>1</i></span><b>Zastřihněte šikmo</b></li>
+      <li><svg class="natp-ic" aria-hidden="true"><use href="#natp-i-leaf"/></svg><span class="natp-n"><svg viewBox="0 0 283 283" aria-hidden="true"><use href="#natpP" fill="currentColor"/><circle cx="141.25" cy="140.6" r="52" fill="#fff"/></svg><i>2</i></span><b>Pryč s listy pod vodou</b></li>
+      <li><svg class="natp-ic" aria-hidden="true"><use href="#natp-i-water"/></svg><span class="natp-n"><svg viewBox="0 0 283 283" aria-hidden="true"><use href="#natpP" fill="currentColor"/><circle cx="141.25" cy="140.6" r="52" fill="#fff"/></svg><i>3</i></span><b>Čistá, chladná voda</b></li>
+      <li><svg class="natp-ic" aria-hidden="true"><use href="#natp-i-place"/></svg><span class="natp-n"><svg viewBox="0 0 283 283" aria-hidden="true"><use href="#natpP" fill="currentColor"/><circle cx="141.25" cy="140.6" r="52" fill="#fff"/></svg><i>4</i></span><b>Dál od tepla</b></li>
+      <li><svg class="natp-ic" aria-hidden="true"><use href="#natp-i-repeat"/></svg><span class="natp-n"><svg viewBox="0 0 283 283" aria-hidden="true"><use href="#natpP" fill="currentColor"/><circle cx="141.25" cy="140.6" r="52" fill="#fff"/></svg><i>5</i></span><b>Každé 2 dny</b></li>
       </ol>
     </div>
 
@@ -142,9 +142,9 @@
       <div>
         <div class="natp-sec"><h3>Z ateliéru</h3></div>
         <div class="natp-shop">
-          <a class="natp-p" href="https://vezminarin.cz/atelier?utm_source=home&amp;utm_content=sekator"><span class="ph"><img src="https://narin-work.vercel.app/atelier/secateur.webp" alt="Sekátor NARIN" loading="lazy"></span><b>Sekátor</b><small>Silné stonky, čistý řez</small><span>110 Kč</span></a>
-          <a class="natp-p" href="https://vezminarin.cz/atelier?utm_source=home&amp;utm_content=nuzky"><span class="ph"><img src="https://narin-work.vercel.app/atelier/scissors.webp" alt="Nůžky NARIN" loading="lazy"></span><b>Nůžky</b><small>Jemné stonky a stuhy</small><span>110 Kč</span></a>
-          <a class="natp-p" href="https://vezminarin.cz/atelier?utm_source=home&amp;utm_content=kenzan"><span class="ph"><img src="https://narin-work.vercel.app/atelier/k6.webp" alt="Kenzan" loading="lazy"><span class="tag"><i>剣</i>Made in CZ</span></span><b>Kenzan</b><small>Kompozice, která stojí sama</small><span>od 300 Kč</span></a>
+          <a class="natp-p" href="https://vezminarin.cz/atelier?utm_source=home&amp;utm_content=sekator"><span class="ph"><img src="https://narin-work.vercel.app/atelier/secateur.webp" alt="Sekátor NARIN" loading="lazy"></span><b>Sekátor</b><span>110 Kč</span></a>
+          <a class="natp-p" href="https://vezminarin.cz/atelier?utm_source=home&amp;utm_content=nuzky"><span class="ph"><img src="https://narin-work.vercel.app/atelier/scissors.webp" alt="Nůžky NARIN" loading="lazy"></span><b>Nůžky</b><span>110 Kč</span></a>
+          <a class="natp-p" href="https://vezminarin.cz/atelier?utm_source=home&amp;utm_content=kenzan"><span class="ph"><img src="https://narin-work.vercel.app/atelier/k6.webp" alt="Kenzan" loading="lazy"><span class="tag"><i>剣</i>Made in CZ</span></span><b>Kenzan</b><span>od 300 Kč</span></a>
         </div>
       </div>
       <a class="natp-cta" href="https://vezminarin.cz/atelier?utm_source=home&amp;utm_content=cta">Do ateliéru NARIN<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
