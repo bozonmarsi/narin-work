@@ -5,6 +5,7 @@ type NotifyPayload = {
     | "order_confirmed_stripe"
     | "order_confirmed_cod"
     | "payment_reminder"
+    | "order_cancelled"
     | "pickup_ready"
     | "courier_out"
     | "delivered"
@@ -23,6 +24,9 @@ type NotifyPayload = {
   order_total?: number | null;
   delivery_date?: string | null;
   delivery_time?: string | null;
+  // order_cancelled (SQL tg_notify_customer_brevo)
+  paid?: boolean;
+  pay_method?: string | null;
   // occasion_reminder / occasion_last_call (SQL send_occasion_reminders)
   days?: number;
   items?: OccasionItem[];
@@ -381,6 +385,41 @@ export async function POST(request: Request) {
             ctaLabel: "Dokončit objednávku",
             ctaUrl: "https://vezminarin.cz/",
             footNote: `Kdyby se platba nedařila, ozvěte se nám na <a href="mailto:support@vezminarin.cz" style="color:${ACCENT};text-decoration:none;font-weight:500;">support@vezminarin.cz</a> nebo na <a href="tel:+420776421993" style="color:${ACCENT};text-decoration:none;font-weight:500;">+420 776 421 993</a> a pomůžeme. Pokud jste už objednali znovu, tento e-mail prosím ignorujte.`,
+          }),
+        );
+      }
+      break;
+
+    // Manažer zruší objednávku v kabinetu (status "cancelled"). Tři různé
+    // situace, tři různé věty: zaplaceno (vrátíme peníze), karta nedokončená
+    // (nic se nestrhlo), ostatní (hotovost apod.). Dárky sem nechodí, ty mají
+    // vlastní gift_cancelled.
+    case "order_cancelled":
+      if (email) {
+        const isPaid = payload.paid === true;
+        const isCard = /stripe/i.test(payload.pay_method ?? "");
+        const totalTxt = order_total ? `${Math.round(order_total).toLocaleString("cs-CZ")} Kč` : "zaplacenou částku";
+        const subject = isPaid
+          ? "Objednávku jsme zrušili, peníze se vrátí 🤍"
+          : "Objednávku jsme zrušili, kytice na vás počká 🌷";
+        const body = isPaid
+          ? `Dobrý den, moc se omlouváme, objednávku č. ${esc(order_id)} jsme museli zrušit. Za ${totalTxt} vám nic nezůstává dlužné: peníze vám vrátíme na kartu do několika pracovních dní. Kytice nám chybí skoro stejně moc jako vám.`
+          : isCard
+            ? `Dobrý den, objednávku č. ${esc(order_id)} jsme zrušili, protože platba nedorazila. Nic se vám nestrhlo a nic nedlužíte. Kytice zůstala v ateliéru ve váze a těší se, až si pro ni přijdete příště.`
+            : `Dobrý den, objednávku č. ${esc(order_id)} jsme zrušili. Nic se neplatí a nic nedlužíte. Kytice zůstala v ateliéru ve váze a těší se, až si pro ni přijdete příště.`;
+        await sendBrevoEmail(
+          email,
+          subject,
+          emailShell({
+            preheader: `Objednávka č. ${order_id} je zrušená.`,
+            badgeEmoji: isPaid ? "🤍" : "🌷",
+            badgeBg: isPaid ? "#f4f5f7" : PREPARING_BG,
+            headline: "Tentokrát to nevyšlo",
+            bodyHtml: body,
+            extraHtml: productsBlock(products_text, isPaid ? order_total : null),
+            ctaLabel: "Vybrat jinou kytici",
+            ctaUrl: "https://vezminarin.cz/page118819546.html",
+            footNote: `Pokud jde o omyl, nebo si jen chcete popovídat, napište nám na <a href="mailto:support@vezminarin.cz" style="color:${ACCENT};text-decoration:none;font-weight:500;">support@vezminarin.cz</a> nebo zavolejte na <a href="tel:+420776421993" style="color:${ACCENT};text-decoration:none;font-weight:500;">+420 776 421 993</a>. Rádi pomůžeme.`,
           }),
         );
       }
