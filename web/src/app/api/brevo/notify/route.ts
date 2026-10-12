@@ -401,12 +401,12 @@ export async function POST(request: Request) {
         const totalTxt = order_total ? `${Math.round(order_total).toLocaleString("cs-CZ")} Kč` : "zaplacenou částku";
         const subject = isPaid
           ? "Objednávku jsme zrušili, peníze se vrátí 🤍"
-          : "Objednávku jsme zrušili, kytice na vás počká 🌷";
+          : "Objednávku jsme zrušili, ale květiny tu pořád jsou 🌷";
         const body = isPaid
-          ? `Dobrý den, moc se omlouváme, objednávku č. ${esc(order_id)} jsme museli zrušit. Za ${totalTxt} vám nic nezůstává dlužné: peníze vám vrátíme na kartu do několika pracovních dní. Kytice nám chybí skoro stejně moc jako vám.`
+          ? `Dobrý den, moc se omlouváme, objednávku č. ${esc(order_id)} jsme museli zrušit. Za ${totalTxt} vám nic nezůstává dlužné: peníze vám vrátíme na kartu do několika pracovních dní. Moc nás to mrzí a budeme rádi, když nás zase navštívíte.`
           : isCard
-            ? `Dobrý den, objednávku č. ${esc(order_id)} jsme zrušili, protože platba nedorazila. Nic se vám nestrhlo a nic nedlužíte. Kytice zůstala v ateliéru ve váze a těší se, až si pro ni přijdete příště.`
-            : `Dobrý den, objednávku č. ${esc(order_id)} jsme zrušili. Nic se neplatí a nic nedlužíte. Kytice zůstala v ateliéru ve váze a těší se, až si pro ni přijdete příště.`;
+            ? `Dobrý den, objednávku č. ${esc(order_id)} jsme zrušili, protože platba nedorazila. Nic se vám nestrhlo a nic nedlužíte. Čerstvé květiny nám chodí každý týden, takže si příště zase vyberete.`
+            : `Dobrý den, objednávku č. ${esc(order_id)} jsme zrušili. Nic se neplatí a nic nedlužíte. Čerstvé květiny nám chodí každý týden, takže si příště zase vyberete.`;
         await sendBrevoEmail(
           email,
           subject,
