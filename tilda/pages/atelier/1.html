@@ -1,9 +1,8 @@
-<!-- NARIN atelier: stránka /atelier (péče o květiny, kenzany, nůžky). Tilda → jeden HTML-blok T123.
-     Košík: tlačítka „Do košíku“ používají košík Tilda (tcart__addProduct) — na stránce musí být blok košíku (ST100/T706).
-     QR z visačky: /atelier?kvetina=pivonka|ruze|hortenzie|tulipan|lilie|ranunculus|gerbera|jina otevře SOS pro danou květinu. -->
+<!-- NARIN atelier · 1 · Úvod, péče a SOS (styly a skripty pro všechny části) -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gelasio:ital,wght@0,600;0,700;1,500&family=Rubik:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@600&text=%E5%89%A3%E5%B1%B1&display=swap">
 <style>
+
 .natl{--paper:#fffbf7;      
   --paper-2:#f7f0e7;    
   --green:#2a9a48;      
@@ -199,8 +198,18 @@
 
 
 
+.natl .sizes{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.natl .sizes li{display:grid;grid-template-columns:150px 1fr;gap:12px;padding:12px 0;border-top:1px solid var(--ink);font-size:15px}
+.natl .sizes b{font-family:var(--display);font-size:18px}
+.natl .sizes span{color:var(--muted)}
+@media (max-width:520px){.natl .sizes li{grid-template-columns:1fr;gap:2px}}
+.natl .vs .card.vt{background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px;gap:8px}
+.natl .vs .card.vt .nm{font-family:var(--display);font-size:22px;color:var(--green)}
+.natl .vs .or{top:50%}
+.natl.part{padding-block:0}
+.natl.part-last{padding-block:0 48px}
 </style>
-<div class="natl">
+<div class="natl part">
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs><g id="dP"><path d="M 159.691406 91.921875 L 178.789062 42.375 C 185.230469 27.75 184.792969 17.382812 177.480469 6.578125 C 173.335938 0.359375 166.894531 1.230469 155.871094 3.195312 C 151.070312 4.066406 146.050781 4.941406 140.921875 4.941406 C 135.574219 4.941406 130.335938 3.851562 125.316406 2.757812 C 114.292969 0.359375 107.855469 -0.625 103.707031 5.921875 C 96.722656 16.945312 96.503906 27.859375 102.941406 42.375 L 103.050781 42.59375 L 122.042969 91.921875 L 131.972656 109.492188 C 134.808594 108.617188 137.757812 108.179688 140.8125 108.179688 C 143.976562 108.179688 146.921875 108.617188 149.871094 109.492188 Z M 159.691406 91.921875"/><path d="M 41.828125 109.601562 L 42.046875 109.601562 L 91.703125 125.207031 L 111.347656 128.261719 C 113.636719 122.476562 117.566406 117.566406 122.476562 114.074219 L 115.164062 95.195312 L 89.082031 49.140625 C 81.878906 34.953125 73.695312 28.839844 60.816406 27.859375 C 60.488281 27.859375 60.164062 27.859375 59.945312 27.859375 C 53.179688 27.859375 49.902344 33.425781 44.773438 43.027344 C 42.484375 47.394531 39.972656 51.867188 36.808594 56.015625 C 33.425781 60.273438 29.386719 63.765625 25.347656 67.148438 C 16.617188 74.460938 11.816406 79.042969 14.328125 86.355469 C 18.472656 98.578125 26.660156 105.5625 41.828125 109.601562 Z M 41.828125 109.601562"/><path d="M 55.359375 200.070312 L 98.25 170.277344 L 112.875 156.527344 C 110.363281 151.835938 108.835938 146.488281 108.835938 140.8125 C 108.835938 140.15625 108.835938 139.503906 108.945312 138.847656 L 89.957031 132.738281 L 38.335938 124.769531 C 34.296875 124.003906 30.695312 123.570312 27.3125 123.570312 C 17.929688 123.570312 10.835938 126.953125 4.394531 134.15625 C -0.625 139.722656 1.667969 145.941406 5.921875 156.417969 C 7.777344 161.003906 9.742188 165.804688 10.945312 170.933594 C 12.144531 176.28125 12.253906 181.738281 12.363281 186.976562 C 12.582031 198.542969 13.015625 205.09375 20.21875 207.710938 C 32.226562 212.078125 42.703125 209.785156 55.25 200.179688 Z M 55.359375 200.070312"/><path d="M 119.3125 164.820312 L 102.941406 176.28125 L 64.636719 212.511719 C 52.742188 222.769531 48.703125 232.265625 50.667969 245.363281 C 51.757812 252.78125 57.980469 254.855469 68.675781 258.023438 C 73.367188 259.332031 78.277344 260.75 82.863281 263.042969 C 87.664062 265.441406 91.921875 268.714844 96.066406 271.992188 C 105.015625 278.976562 110.363281 282.792969 116.910156 278.648438 C 127.714844 271.773438 132.519531 262.058594 132.953125 246.125 L 132.953125 245.90625 L 136.882812 192.976562 L 135.355469 172.789062 C 129.242188 171.695312 123.789062 168.859375 119.3125 164.820312 Z M 119.3125 164.820312"/><path d="M 216.660156 212.511719 L 216.550781 212.402344 L 178.464844 176.390625 L 161.984375 164.929688 C 157.507812 168.96875 152.054688 171.804688 145.941406 172.789062 L 144.414062 192.976562 L 148.34375 246.125 C 148.777344 262.058594 153.582031 271.226562 164.820312 277.773438 C 171.261719 281.484375 176.71875 277.882812 185.773438 271.226562 C 189.703125 268.28125 193.851562 265.332031 198.542969 263.042969 C 203.34375 260.640625 208.585938 259.332031 213.605469 258.128906 C 224.625 255.402344 230.847656 253.4375 231.71875 245.6875 C 233.03125 232.703125 228.554688 222.878906 216.660156 212.511719 Z M 216.660156 212.511719"/><path d="M 277.882812 133.71875 C 268.933594 124.441406 258.457031 121.824219 243.179688 124.988281 L 242.960938 124.988281 L 191.558594 132.84375 L 172.570312 138.847656 C 172.570312 139.503906 172.570312 140.046875 172.570312 140.703125 C 172.570312 146.488281 171.042969 151.945312 168.53125 156.636719 L 183.046875 170.386719 L 226.15625 200.398438 C 238.703125 210.003906 248.636719 211.96875 260.640625 207.054688 C 267.515625 204.21875 268.171875 197.671875 268.714844 186.320312 C 268.933594 181.300781 269.261719 176.171875 270.355469 171.042969 C 271.554688 165.695312 273.738281 160.785156 275.917969 155.980469 C 280.832031 145.503906 283.230469 139.285156 277.882812 133.71875 Z M 277.882812 133.71875"/><path d="M 159.253906 114.183594 C 164.167969 117.785156 167.988281 122.695312 170.386719 128.480469 L 190.03125 125.425781 L 239.90625 109.710938 C 255.074219 105.78125 262.824219 98.90625 266.535156 86.246094 C 268.605469 79.042969 264.023438 74.460938 255.621094 66.929688 C 251.910156 63.65625 248.199219 60.164062 244.925781 56.125 C 241.542969 51.867188 239.140625 46.957031 236.847656 42.265625 C 231.71875 32.007812 228.554688 26.222656 220.917969 26.984375 C 208.257812 28.40625 199.746094 35.0625 192.542969 49.25 L 192.433594 49.359375 L 166.457031 95.195312 Z M 159.253906 114.183594"/></g><path id="dC" d="M 141.25 180.972656 C 118.984375 180.972656 100.871094 162.855469 100.871094 140.59375 C 100.871094 118.332031 118.984375 100.214844 141.25 100.214844 C 163.511719 100.214844 181.628906 118.332031 181.628906 140.59375 C 181.628906 162.855469 163.511719 180.972656 141.25 180.972656 Z M 141.25 180.972656"/></defs>
   <symbol id="i-daisy-n" viewBox="0 0 283 283"><use href="#dP" fill="currentColor"/><circle cx="141.25" cy="140.6" r="52" fill="#fff"/></symbol>
@@ -272,7 +281,6 @@
   </symbol>
 </svg>
 <div class="wrap">
-
   <header class="hero">
     <div class="hero-top">
       <img class="logo" src="https://narin-work.vercel.app/atelier/logo-wide.webp" alt="NARIN atelier">
@@ -323,58 +331,6 @@
     </div>
   </section>
 
-  <section class="kz" id="kenzany">
-    <div class="wrap">
-      <span class="tate" aria-hidden="true">剣山</span>
-      <div class="sec-head">
-        <span class="eyebrow"><span class="seal" aria-hidden="true">剣</span>Kenzan · Made in Czechia</span>
-        <h2>Japonský ježek pro kytice, které stojí samy</h2>
-      </div>
-      <div class="kz-intro">
-        <img src="https://narin-work.vercel.app/atelier/kenzan.webp" alt="Kompozice z anemonek a karafiátu na kenzanu">
-        <div>
-          <p>Kenzan drží každý stonek přesně tam, kam ho zapíchnete. Stačí nízká miska, pár květin a kompozice vypadá, jako by rostla přímo ze stolu.</p>
-          <p>Na kenzan nepotřebujete velkou kytici. Tři až pět stonků a jedna větvička stačí.</p>
-          <hr class="brush">
-          <ol class="k-steps">
-            <li><svg class="ic"><use href="#i-bowl"/></svg>Voda do nízké misky</li>
-            <li><svg class="ic"><use href="#i-holder"/></svg>Kenzan na dno</li>
-            <li><svg class="ic"><use href="#i-stem"/></svg>Stonky šikmo zastřihnout a zapíchnout</li>
-          </ol>
-        </div>
-      </div>
-
-      <div class="subhead"><h3>Jaký kenzan vybrat</h3></div>
-      <div class="picker">
-        <div class="card"><div class="ph"><img src="https://narin-work.vercel.app/atelier/k6.webp" alt="Kenzan kulatý 6 cm"><span class="tag">Made in Czechia</span></div><span class="nm">Kenzan Ø 6 cm</span><span class="use">Kulatý. Na 5–9 stonků do kulaté misky.</span><div class="row"><span class="pr">300 Kč</span><button data-name="KENZAN Ø 6CM" data-price="300" data-img="https://narin-work.vercel.app/atelier/k6.webp" class="add" type="button">Do košíku</button></div></div>
-        <div class="card"><div class="ph"><img src="https://narin-work.vercel.app/atelier/k55.webp" alt="Kenzan 5,5 × 3,8 cm"><span class="tag">Made in Czechia</span></div><span class="nm">Kenzan 5,5 × 3,8 cm</span><span class="use">Úzký. Na 3–5 stonků, minimalistické kompozice.</span><div class="row"><span class="pr">340 Kč</span><button data-name="KENZAN 5.5CM X 3.8CM" data-price="340" data-img="https://narin-work.vercel.app/atelier/k55.webp" class="add" type="button">Do košíku</button></div></div>
-        <div class="card"><div class="ph"><img src="https://narin-work.vercel.app/atelier/brush.webp" alt="Čisticí kartáček pro kenzan"></div><span class="nm">Čisticí kartáček</span><span class="use">Vyčistí jehly od zbytků stonků po každé kompozici.</span><div class="row"><span class="pr">160 Kč</span><button data-name="ČISTÍCÍ KARTÁČEK PRO KENZAN" data-price="160" data-img="https://narin-work.vercel.app/atelier/brush.webp" class="add" type="button">Do košíku</button></div></div>
-        <div class="card"><div class="ph"><img src="https://narin-work.vercel.app/atelier/rovnatko.webp" alt="Rovnátko na jehly"></div><span class="nm">Rovnátko na jehly</span><span class="use">Narovná ohnuté jehly. Kenzan pak drží jako nový.</span><div class="row"><span class="pr">100 Kč</span><button data-name="ROVNÁTKO NA JEHLY PRO KENZAN" data-price="100" data-img="https://narin-work.vercel.app/atelier/rovnatko.webp" class="add" type="button">Do košíku</button></div></div>
-      </div>
-      
-    </div>
-  </section>
-
-  <div class="sep" aria-hidden="true"><svg><use href="#i-daisy"/></svg></div>
-  <section id="nuzky">
-    <div class="sec-head">
-      <span class="eyebrow">Nástroje</span>
-      <h2>Nůžky, nebo sekátor?</h2>
-    </div>
-    <div class="vs">
-      <span class="or" aria-hidden="true">nebo</span>
-      <div class="card"><div class="ph"><img src="https://narin-work.vercel.app/atelier/scissors.webp" alt="Dvoučepelové nůžky NARIN"></div><span class="nm">Nůžky</span><span class="for">Měkké stonky, stuhy, papír a balení.<span>Tulipány, ranunculusy, eustoma.</span></span><div class="row"><span class="pr">110 Kč</span><button data-name="PŘEČEPELOVÉ NŮŽKY" data-price="110" data-img="https://narin-work.vercel.app/atelier/scissors.webp" class="add g" type="button">Do košíku</button></div></div>
-      <div class="card"><div class="ph"><img src="https://narin-work.vercel.app/atelier/secateur-sq.webp" alt="Jednočepelový sekátor NARIN"></div><span class="nm">Sekátor</span><span class="for">Silné a dřevnaté stonky. Řeže čistě a stonek nerozmačká.<span>Růže, hortenzie, pivoňky, větve.</span></span><div class="row"><span class="pr">110 Kč</span><button data-name="JEDNOČEPELOVÉ NŮŽKY" data-price="110" data-img="https://narin-work.vercel.app/atelier/secateur-sq.webp" class="add g" type="button">Do košíku</button></div></div>
-    </div>
-    <p class="hint">Doma stačí jeden nástroj. Kupujete hlavně růže, pivoňky a hortenzie? Vezměte sekátor.</p>
-  </section>
-
-  <div class="outro">
-    <img class="mark" src="https://narin-work.vercel.app/atelier/mark.webp" alt="">
-    <h2>Pečujte s námi</h2>
-    <p class="lead">Čerstvé květiny z katalogu, nástroje z ateliéru a rada floristy, kdykoli ji potřebujete.</p>
-    <div class="doors"><a href="https://vezminarin.cz/">Do katalogu</a><a href="https://vezminarin.cz/contacts#nkcChat" class="alt">Napsat do chatu</a></div>
-  </div>
 </div>
 </div>
 <script>
