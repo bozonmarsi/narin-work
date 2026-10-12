@@ -1,4 +1,4 @@
-<!-- NARIN atelier: промо-полоса на главной под каталогом (на всю ширину). Tilda → HTML-блок T123.
+<!-- NARIN atelier: промо-полоса на главной под каталогом (на всю ширину): заголовок, товары, плашка кензана. Tilda → HTML-блок T123.
      Фото: замените ссылки в src="" на свои из Tilda. -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gelasio:ital,wght@0,700;1,500&display=swap">
 <style>
@@ -11,16 +11,9 @@
 .natp-top img{width:34px;height:auto;display:block}
 .natp-top span{font-size:11px;line-height:1.35;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 .natp-top b{display:block;color:var(--green);font-weight:600}
+.natp-lead{margin:-6px 0 0;font-size:15px;line-height:1.45;color:var(--muted)}
 .natp h2{font:700 clamp(32px,9vw,64px)/1 'Gelasio',Georgia,serif;color:var(--green);margin:0;letter-spacing:-.015em}
 .natp h2 em{font-style:italic;font-weight:500;color:var(--red)}
-.natp-fig{position:relative;margin:0 -16px;display:block}
-.natp-fig img{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;object-position:30% 40%;mix-blend-mode:multiply}
-.natp-fig figcaption{position:absolute;left:16px;bottom:10px;max-width:52%;font:italic 500 14px/1.3 'Gelasio',Georgia,serif}
-.natp-fig figcaption b{display:block;font:600 10px/1.3 'Rubik',system-ui,sans-serif;font-style:normal;letter-spacing:.14em;text-transform:uppercase;color:var(--red);margin-bottom:2px}
-.natp-dot{position:absolute;left:21%;top:36%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:var(--red)}
-.natp-tips{list-style:none;margin:0;padding:12px 0 0;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;counter-reset:t}
-.natp-tips li{font-size:13px;line-height:1.3;display:grid;gap:4px;align-content:start}
-.natp-tips li::before{counter-increment:t;content:counter(t);font:italic 500 22px/1 'Gelasio',Georgia,serif;color:var(--red)}
 .natp-shop{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) 54px;gap:8px;border-top:1px solid var(--line);padding-top:14px}
 .natp-p{display:grid;gap:6px;align-content:start;min-width:0}
 .natp-p img{display:block;width:100%;aspect-ratio:1;object-fit:cover;background:#ece4d8}
@@ -35,18 +28,14 @@
 .natp-cta:hover svg{transform:translateX(4px)}
 .natp-cta .d{width:18px;height:18px;color:#fff;opacity:.9}
 @media (min-width:860px){
-  .natp-in{grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);column-gap:36px;padding-top:36px;align-items:start}
-  .natp-top,.natp h2,.natp-tips,.natp-shop{grid-column:1}
-  .natp-fig{grid-column:2;grid-row:1/span 4;margin:0}
-  .natp-fig img{aspect-ratio:4/3}
-  .natp-shop{grid-template-columns:repeat(3,minmax(0,1fr)) 76px}
+  .natp-in{grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);column-gap:48px;padding-top:36px;align-items:center}
+  .natp-top,.natp h2,.natp-lead{grid-column:1}
+  .natp-shop{grid-column:2;grid-row:1/span 3;border-top:0;padding-top:0;grid-template-columns:repeat(3,minmax(0,1fr)) 76px}
   .natp-kz{padding:14px 0}
   .natp-kz .jp{font-size:26px}
   .natp-kz .seal{width:26px;height:26px;font-size:13px}
-  .natp-fig{align-self:center}
+  .natp-lead{font-size:17px;max-width:34ch}
 }
-@media (prefers-reduced-motion:no-preference){.natp-dot{animation:natpPulse 2.2s ease-out infinite}}
-@keyframes natpPulse{0%{box-shadow:0 0 0 0 rgba(232,50,46,.45)}100%{box-shadow:0 0 0 14px rgba(232,50,46,0)}}
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@600&text=%E5%89%A3%E5%B1%B1&display=swap">
 
@@ -55,18 +44,7 @@
   <div class="natp-in">
     <div class="natp-top"><img src="https://static.tildacdn.com/tild6131-3832-4865-b465-393061363931/photo.png" alt="NARIN atelier" loading="lazy"><span><b>NARIN atelier</b>Péče o květiny a nástroje</span></div>
     <h2>Ať kytice vydrží <em>déle</em></h2>
-    <a class="natp-fig" href="https://vezminarin.cz/atelier?utm_source=home&amp;utm_content=photo">
-      <figure style="margin:0">
-        <img src="https://narin-work.vercel.app/atelier/hero.webp" alt="Sekátor čistě přeřezává stonek" loading="lazy">
-        <span class="natp-dot" aria-hidden="true"></span>
-        <figcaption><b>Šikmý řez</b>Ostrý sekátor stonek nerozmačká, a tak lépe pije.</figcaption>
-      </figure>
-    </a>
-    <ol class="natp-tips">
-      <li>Zastřihnout šikmo 2–3 cm</li>
-      <li>Čistá chladná voda</li>
-      <li>Dál od tepla a ovoce</li>
-    </ol>
+    <p class="natp-lead">Sekátory, nůžky a vázy, se kterými vám květiny vydrží déle.</p>
     <div class="natp-shop">
       <a class="natp-p" href="https://vezminarin.cz/atelier?utm_source=home&amp;utm_content=sekator"><img src="https://narin-work.vercel.app/atelier/secateur.webp" alt="" loading="lazy"><b>Sekátor</b><span>110 Kč</span></a>
       <a class="natp-p" href="https://vezminarin.cz/atelier?utm_source=home&amp;utm_content=nuzky"><img src="https://narin-work.vercel.app/atelier/scissors.webp" alt="" loading="lazy"><b>Nůžky</b><span>110 Kč</span></a>
