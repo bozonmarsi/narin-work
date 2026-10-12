@@ -1,0 +1,450 @@
+<!-- NARIN atelier: stránka /atelier (péče o květiny, kenzany, nůžky). Tilda → jeden HTML-blok T123.
+     Košík: tlačítka „Do košíku“ používají košík Tilda (tcart__addProduct) — na stránce musí být blok košíku (ST100/T706).
+     QR z visačky: /atelier?kvetina=pivonka|ruze|hortenzie|tulipan|lilie|ranunculus|gerbera|jina otevře SOS pro danou květinu. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gelasio:ital,wght@0,600;0,700;1,500&family=Rubik:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@600&text=%E5%89%A3%E5%B1%B1&display=swap">
+<style>
+.natl{--paper:#fffbf7;      
+  --paper-2:#f7f0e7;    
+  --green:#2a9a48;      
+  --green-soft:#e6f2e8;
+  --red:#e8322e;        
+  --ink:#1b1a18;        
+  --muted:#6d685f;
+  --line:#e7ded2;
+  --product:#9fb987;    
+  --display:'Gelasio',Georgia,'Times New Roman',serif;
+  --body:'Rubik',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --jp:'Noto Serif JP','Hiragino Mincho ProN','Yu Mincho',serif;
+  color-scheme:light;}
+.natl *{box-sizing:border-box}
+.natl{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;padding-inline:16px;padding-block:0 48px;-webkit-font-smoothing:antialiased}
+.natl img{display:block;max-width:100%}
+:where(.natl) a{color:inherit}
+.natl .wrap{max-width:1080px;margin:0 auto}
+.natl h1,.natl h2,.natl h3{font-family:var(--display);color:var(--green);margin:0;text-wrap:balance;line-height:1.12}
+.natl h1{font-size:clamp(34px,7vw,58px);font-weight:700}
+.natl h2{font-size:clamp(28px,5vw,42px);font-weight:700}
+.natl h3{font-size:22px;font-weight:600}
+.natl p{margin:0}
+.natl .eyebrow{font:500 12px/1 var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.natl .lead{color:var(--muted);font-size:17px;max-width:56ch}
+.natl :focus-visible{outline:2px solid var(--green);outline-offset:3px;border-radius:6px}
+.natl .ic{width:56px;height:56px;flex:none}
+.natl .s{fill:none;stroke:var(--st,#2a9a48);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.natl .r{fill:#e8322e}
+.natl .rs{fill:none;stroke:var(--red);stroke-width:2;stroke-linecap:round}
+.natl .w{fill:var(--wf,#e6f2e8)}
+@media (prefers-reduced-motion:no-preference){.natl .drop{animation:drip 2.4s ease-in infinite}
+.natl .leaf{animation:fall 3s ease-in-out infinite;transform-origin:34px 18px}
+.natl .spin{animation:spin 6s linear infinite;transform-origin:24px 24px}
+.natl .stem{animation:push 2.6s ease-in-out infinite}
+
+}
+@keyframes drip{0%,40%{transform:translateY(-4px);opacity:0}55%{opacity:1}100%{transform:translateY(6px);opacity:0}}
+@keyframes fall{0%,30%{transform:none;opacity:1}80%,100%{transform:translate(4px,14px) rotate(40deg);opacity:0}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes push{0%,35%{transform:translateY(-6px)}60%,100%{transform:none}}
+.natl .dz{display:inline-grid;place-items:center;position:relative;flex:none}
+.natl .dz svg{position:absolute;inset:0;width:100%;height:100%}
+.natl .dz i{position:relative;font:700 12px/1 var(--body);font-style:normal;color:inherit}
+.natl .ritual .n{width:34px;height:34px;color:var(--red)}
+.natl .ritual .n i{font-size:13px}
+.natl .fig .bgd{position:absolute;right:-6%;top:-8%;width:62%;aspect-ratio:1;color:#e3efe5;z-index:0}
+.natl .fig img{position:relative;z-index:1}
+@media (prefers-reduced-motion:no-preference){.natl .fig .bgd{animation:spin 80s linear infinite}
+.natl .sos-head .dz svg{animation:spin 14s linear infinite}
+}
+.natl .sos-head .dz{width:30px;height:30px;color:var(--red)}
+.natl .sos-head .dz i{font-size:8px;letter-spacing:.04em}
+.natl .stepl .dz{width:28px;height:28px;color:var(--green)}
+.natl .stepl .dz i{font-size:11px}
+.natl .sep{display:flex;align-items:center;gap:12px;color:var(--green)}
+.natl .sep::before,.natl .sep::after{content:"";flex:1;height:1px;background:var(--line)}
+.natl .sep svg{width:18px;height:18px}
+.natl .outro .mark{width:96px}
+.natl .hero{display:grid;gap:20px;padding-block:18px 40px}
+.natl .hero-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.natl .hero .logo{width:150px}
+.natl .hero-top .eyebrow{font-size:11px;text-align:right;line-height:1.5}
+.natl .hero h1{font-size:clamp(42px,11.5vw,76px);line-height:1;letter-spacing:-.01em}
+.natl .hero h1 em{font-style:italic;font-weight:500;color:var(--red)}
+.natl .hero .lead{margin-top:14px}
+.natl .fig{position:relative;margin-inline:-16px;overflow:hidden}
+.natl .fig img{width:100%;mix-blend-mode:multiply}
+.natl .fig svg.ln{z-index:2;position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.natl .fig .pin{z-index:2;position:absolute;left:23.5%;top:33%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:var(--red);box-shadow:0 0 0 4px rgba(232,50,46,.18)}
+@media (prefers-reduced-motion:no-preference){.natl .fig .pin{animation:pulse 2.2s ease-out infinite}
+}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(232,50,46,.45)}100%{box-shadow:0 0 0 16px rgba(232,50,46,0)}}
+.natl .fig .lbl{z-index:2;position:absolute;left:16px;bottom:5%;display:grid;gap:2px;max-width:46%}
+.natl .fig .lbl b{font:600 11px/1.3 var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--red)}
+.natl .fig .lbl span{font:italic 500 15px/1.3 var(--display);color:var(--ink)}
+.natl .tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.natl .tiles a{display:flex;flex-direction:column;gap:8px;padding:14px 10px 12px;border-radius:16px;background:#fff;border:1px solid var(--line);text-decoration:none;min-width:0}
+.natl .tiles .ic{width:40px;height:40px}
+.natl .tiles b{font:600 15px/1.2 var(--body);color:var(--ink)}
+.natl .tiles small{font-size:12px;line-height:1.3;color:var(--muted)}
+.natl .tiles a.ink{background:var(--ink);border-color:var(--ink);--st:#fffbf7}
+.natl .tiles a.ink b{color:var(--paper)}
+.natl .tiles a.ink small{color:#bdb6aa}
+.natl .tiles a.grn{background:var(--green);border-color:var(--green);--st:#fff;--wf:rgba(255,255,255,.18)}
+.natl .tiles a.grn b{color:#fff}
+.natl .tiles a.grn small{color:#d4ecd9}
+@media (min-width:860px){.natl .hero{grid-template-columns:1fr 1.1fr;column-gap:40px;align-items:center}
+.natl .hero-top,.natl .hero-text,.natl .tiles{grid-column:1}
+.natl .fig{grid-column:2;grid-row:1/span 3;margin-inline:0}
+}
+.natl .doors{display:flex;flex-wrap:wrap;gap:10px}
+.natl .doors a{display:inline-flex;align-items:center;text-decoration:none;font-weight:500;padding:12px 20px;border-radius:999px;background:var(--green);color:#fff}
+.natl .doors a.alt{background:transparent;color:var(--green);box-shadow:inset 0 0 0 1.5px var(--green)}
+.natl section{padding-block:48px}
+.natl .sec-head{display:grid;gap:10px;margin-bottom:28px}
+.natl .ritual{list-style:none;margin:0;padding:0;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(210px,1fr);gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:8px;margin-inline:-16px;padding-inline:16px;scrollbar-width:none;scroll-padding-inline:16px}
+.natl .ritual::-webkit-scrollbar{display:none}
+.natl .ritual li{scroll-snap-align:start;background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.natl .ritual .n{font:600 13px var(--body);color:var(--red);font-variant-numeric:tabular-nums}
+.natl .ritual b{font-family:var(--display);font-size:19px;color:var(--ink);font-weight:600;line-height:1.2}
+.natl .ritual p{color:var(--muted);font-size:15px}
+.natl .ritual .buy{margin-top:auto;font-weight:500;color:var(--green);text-decoration:none;font-size:15px}
+.natl .swipe{font-size:13px;color:var(--muted);margin-top:6px}
+@media (min-width:1000px){.natl .ritual{grid-auto-flow:row;grid-template-columns:repeat(5,1fr);overflow:visible;margin-inline:0;padding-inline:0}
+.natl .swipe{display:none}
+}
+.natl .more{margin-top:18px;font-size:15px}
+.natl .more a{color:var(--green);font-weight:500}
+.natl .sos{margin-top:44px;background:#fff;border:1px solid var(--line);border-radius:22px;padding:20px 16px;margin-inline:-4px}
+.natl .sos-head{display:flex;align-items:center;gap:10px}
+.natl .sos .badge{font:600 11px var(--body);letter-spacing:.12em;color:#fff;background:var(--red);border-radius:6px;padding:4px 7px}
+.natl .sos h3{color:var(--ink)}
+.natl .stepl{display:flex;align-items:center;gap:8px;margin-block:20px 10px;font:500 14px var(--body);color:var(--muted)}
+.natl .flowers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.natl .flowers button{display:grid;justify-items:center;gap:4px;padding:10px 2px 8px;border-radius:14px;border:1px solid var(--line);background:var(--paper);cursor:pointer;font:500 12.5px/1.2 var(--body);color:var(--ink);min-width:0}
+.natl .flowers .ic{width:42px;height:42px}
+.natl .flowers button[aria-pressed="true"]{border-color:var(--green);background:var(--green-soft);box-shadow:inset 0 0 0 1px var(--green)}
+.natl .chips{display:flex;flex-wrap:wrap;gap:8px}
+.natl .chips button{font:500 14.5px var(--body);color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:9px 14px;cursor:pointer}
+.natl .chips button[aria-pressed="true"]{background:var(--green);border-color:var(--green);color:#fff}
+.natl .advice{margin-top:16px;border-radius:16px;background:var(--green-soft);padding:16px;display:grid;gap:10px}
+@media (prefers-reduced-motion:no-preference){.natl .advice.in{animation:rise .35s ease-out}
+}
+@keyframes rise{from{opacity:.2;transform:translateY(6px)}to{opacity:1;transform:none}}
+.natl .advice .ah{display:flex;align-items:center;gap:10px}
+.natl .advice .ah .ic{width:38px;height:38px;flex:none;background:#fff;border-radius:50%;padding:3px}
+.natl .advice .ah b{font:600 18px/1.2 var(--display);color:var(--ink)}
+.natl .advice .why{font-size:15px;color:var(--ink)}
+.natl .advice .why span{color:var(--green);font-weight:600}
+.natl .advice ol{margin:0;padding:0;list-style:none;display:grid;gap:8px;counter-reset:a}
+.natl .advice li{display:grid;grid-template-columns:24px 1fr;gap:8px;font-size:15px;line-height:1.45}
+.natl .advice li::before{counter-increment:a;content:counter(a);display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:#fff;color:var(--green);font:600 12px var(--body)}
+.natl .advice .tool{display:flex;align-items:center;gap:10px;background:#fff;border-radius:12px;padding:10px 12px;text-decoration:none}
+.natl .advice .tool img{width:44px;height:44px;border-radius:8px;object-fit:cover;background:var(--product)}
+.natl .advice .tool span{font-size:14px;color:var(--ink);line-height:1.3}
+.natl .advice .tool b{color:var(--green)}
+.natl .sos .chat{margin-top:14px;font-size:14px;color:var(--muted)}
+.natl .sos .chat a{color:var(--green);font-weight:500}
+.natl .kz{background:var(--paper-2);margin-inline:-16px;padding-inline:16px;border-block:1px solid var(--ink);position:relative;overflow:hidden}
+.natl .kz .wrap{position:relative}
+.natl .kz .tate{position:absolute;right:0;top:0;writing-mode:vertical-rl;font:600 44px/1 var(--jp);color:var(--ink);letter-spacing:.2em;opacity:.9}
+.natl .kz .seal{display:inline-grid;place-items:center;width:30px;height:30px;background:var(--red);color:#fff;font:600 15px/1 var(--jp);border-radius:4px;transform:rotate(-4deg)}
+.natl .kz h2{color:var(--ink);max-width:16ch;padding-right:56px}
+.natl .kz .eyebrow{display:flex;align-items:center;gap:10px;color:var(--ink)}
+.natl .kz-intro{display:grid;gap:24px;align-items:start}
+.natl .kz-intro img{border-radius:4px;width:100%;aspect-ratio:4/5;object-fit:cover}
+.natl .kz-intro p+p{margin-top:12px}
+@media (min-width:860px){.natl .kz-intro{grid-template-columns:.9fr 1.1fr;gap:40px}
+}
+.natl .brush{height:10px;margin-block:36px 28px;background:none;border:0;border-top:2px solid var(--ink);width:72px}
+.natl .k-steps{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;counter-reset:k}
+.natl .k-steps li{display:grid;gap:8px;justify-items:center;text-align:center;font-size:14px;line-height:1.35}
+.natl .k-steps .ic{--st:#1b1a18}
+.natl .k-steps .ic{--wf:#dfe9df}
+.natl .k-steps li::before{counter-increment:k;content:counter(k);font:600 13px var(--jp);color:var(--red)}
+.natl .picker{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (min-width:860px){.natl .picker{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+.natl .card{display:flex;flex-direction:column;gap:8px;min-width:0}
+.natl .card .ph{position:relative;background:var(--product);border-radius:4px;overflow:hidden}
+.natl .card .ph img{width:100%;aspect-ratio:9/10;object-fit:cover}
+.natl .card .tag{position:absolute;left:8px;top:8px;background:var(--red);color:#fff;font:italic 500 12px var(--body);padding:4px 9px;border-radius:999px}
+.natl .card .nm{font:600 15px/1.3 var(--body);color:var(--ink)}
+.natl .card .use{font-size:14px;color:var(--muted);line-height:1.4}
+.natl .card .row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto}
+.natl .card .pr{font-weight:600;font-variant-numeric:tabular-nums}
+.natl .add{font:500 14px var(--body);border:0;background:var(--ink);color:var(--paper);border-radius:999px;padding:8px 14px;cursor:pointer}
+.natl .add.g{background:var(--green);color:#fff}
+.natl .add[data-done]{background:var(--green-soft);color:var(--green)}
+.natl .subhead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-block:36px 14px}
+.natl .subhead h3{color:var(--ink)}
+.natl .subhead a{font-size:14px;color:var(--ink);white-space:nowrap}
+.natl .vs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;position:relative}
+.natl .vs .or{position:absolute;left:50%;top:30%;transform:translate(-50%,-50%);width:44px;height:44px;border-radius:50%;background:var(--paper);border:1px solid var(--line);display:grid;place-items:center;font:italic 600 16px var(--display);color:var(--green);z-index:1}
+.natl .vs .card .ph img{aspect-ratio:1/1}
+.natl .vs .for{font-size:14px;color:var(--ink);line-height:1.4}
+.natl .vs .for span{display:block;color:var(--muted);margin-top:4px}
+.natl .hint{margin-top:18px;padding:14px 16px;border-left:3px solid var(--green);background:#fff;border-radius:0 12px 12px 0;font-size:15px}
+@media (min-width:860px){.natl .vs{max-width:640px}
+}
+.natl .notes{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(230px,1fr);gap:14px;overflow-x:auto;margin-inline:-16px;padding-inline:16px;scroll-snap-type:x mandatory;scrollbar-width:none}
+.natl .notes::-webkit-scrollbar{display:none}
+.natl .note{scroll-snap-align:start;display:flex;flex-direction:column;gap:10px;text-decoration:none;min-width:0}
+.natl .note .cv{aspect-ratio:4/3;border-radius:14px;display:grid;place-items:center;background:var(--green-soft)}
+.natl .note .cv.k{background:var(--paper-2);border:1px solid var(--ink);--st:#1b1a18}
+.natl .note .cv .ic{width:72px;height:72px}
+.natl .note b{font:600 18px/1.25 var(--display);color:var(--green)}
+.natl .note small{color:var(--muted);font-size:13px}
+.natl .note .soon{color:var(--red)}
+.natl .outro{text-align:center;display:grid;justify-items:center;gap:14px;padding-block:56px 24px}
+.natl .outro .doors{justify-content:center;margin-top:6px}
+
+
+
+</style>
+<div class="natl">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs><g id="dP"><path d="M 159.691406 91.921875 L 178.789062 42.375 C 185.230469 27.75 184.792969 17.382812 177.480469 6.578125 C 173.335938 0.359375 166.894531 1.230469 155.871094 3.195312 C 151.070312 4.066406 146.050781 4.941406 140.921875 4.941406 C 135.574219 4.941406 130.335938 3.851562 125.316406 2.757812 C 114.292969 0.359375 107.855469 -0.625 103.707031 5.921875 C 96.722656 16.945312 96.503906 27.859375 102.941406 42.375 L 103.050781 42.59375 L 122.042969 91.921875 L 131.972656 109.492188 C 134.808594 108.617188 137.757812 108.179688 140.8125 108.179688 C 143.976562 108.179688 146.921875 108.617188 149.871094 109.492188 Z M 159.691406 91.921875"/><path d="M 41.828125 109.601562 L 42.046875 109.601562 L 91.703125 125.207031 L 111.347656 128.261719 C 113.636719 122.476562 117.566406 117.566406 122.476562 114.074219 L 115.164062 95.195312 L 89.082031 49.140625 C 81.878906 34.953125 73.695312 28.839844 60.816406 27.859375 C 60.488281 27.859375 60.164062 27.859375 59.945312 27.859375 C 53.179688 27.859375 49.902344 33.425781 44.773438 43.027344 C 42.484375 47.394531 39.972656 51.867188 36.808594 56.015625 C 33.425781 60.273438 29.386719 63.765625 25.347656 67.148438 C 16.617188 74.460938 11.816406 79.042969 14.328125 86.355469 C 18.472656 98.578125 26.660156 105.5625 41.828125 109.601562 Z M 41.828125 109.601562"/><path d="M 55.359375 200.070312 L 98.25 170.277344 L 112.875 156.527344 C 110.363281 151.835938 108.835938 146.488281 108.835938 140.8125 C 108.835938 140.15625 108.835938 139.503906 108.945312 138.847656 L 89.957031 132.738281 L 38.335938 124.769531 C 34.296875 124.003906 30.695312 123.570312 27.3125 123.570312 C 17.929688 123.570312 10.835938 126.953125 4.394531 134.15625 C -0.625 139.722656 1.667969 145.941406 5.921875 156.417969 C 7.777344 161.003906 9.742188 165.804688 10.945312 170.933594 C 12.144531 176.28125 12.253906 181.738281 12.363281 186.976562 C 12.582031 198.542969 13.015625 205.09375 20.21875 207.710938 C 32.226562 212.078125 42.703125 209.785156 55.25 200.179688 Z M 55.359375 200.070312"/><path d="M 119.3125 164.820312 L 102.941406 176.28125 L 64.636719 212.511719 C 52.742188 222.769531 48.703125 232.265625 50.667969 245.363281 C 51.757812 252.78125 57.980469 254.855469 68.675781 258.023438 C 73.367188 259.332031 78.277344 260.75 82.863281 263.042969 C 87.664062 265.441406 91.921875 268.714844 96.066406 271.992188 C 105.015625 278.976562 110.363281 282.792969 116.910156 278.648438 C 127.714844 271.773438 132.519531 262.058594 132.953125 246.125 L 132.953125 245.90625 L 136.882812 192.976562 L 135.355469 172.789062 C 129.242188 171.695312 123.789062 168.859375 119.3125 164.820312 Z M 119.3125 164.820312"/><path d="M 216.660156 212.511719 L 216.550781 212.402344 L 178.464844 176.390625 L 161.984375 164.929688 C 157.507812 168.96875 152.054688 171.804688 145.941406 172.789062 L 144.414062 192.976562 L 148.34375 246.125 C 148.777344 262.058594 153.582031 271.226562 164.820312 277.773438 C 171.261719 281.484375 176.71875 277.882812 185.773438 271.226562 C 189.703125 268.28125 193.851562 265.332031 198.542969 263.042969 C 203.34375 260.640625 208.585938 259.332031 213.605469 258.128906 C 224.625 255.402344 230.847656 253.4375 231.71875 245.6875 C 233.03125 232.703125 228.554688 222.878906 216.660156 212.511719 Z M 216.660156 212.511719"/><path d="M 277.882812 133.71875 C 268.933594 124.441406 258.457031 121.824219 243.179688 124.988281 L 242.960938 124.988281 L 191.558594 132.84375 L 172.570312 138.847656 C 172.570312 139.503906 172.570312 140.046875 172.570312 140.703125 C 172.570312 146.488281 171.042969 151.945312 168.53125 156.636719 L 183.046875 170.386719 L 226.15625 200.398438 C 238.703125 210.003906 248.636719 211.96875 260.640625 207.054688 C 267.515625 204.21875 268.171875 197.671875 268.714844 186.320312 C 268.933594 181.300781 269.261719 176.171875 270.355469 171.042969 C 271.554688 165.695312 273.738281 160.785156 275.917969 155.980469 C 280.832031 145.503906 283.230469 139.285156 277.882812 133.71875 Z M 277.882812 133.71875"/><path d="M 159.253906 114.183594 C 164.167969 117.785156 167.988281 122.695312 170.386719 128.480469 L 190.03125 125.425781 L 239.90625 109.710938 C 255.074219 105.78125 262.824219 98.90625 266.535156 86.246094 C 268.605469 79.042969 264.023438 74.460938 255.621094 66.929688 C 251.910156 63.65625 248.199219 60.164062 244.925781 56.125 C 241.542969 51.867188 239.140625 46.957031 236.847656 42.265625 C 231.71875 32.007812 228.554688 26.222656 220.917969 26.984375 C 208.257812 28.40625 199.746094 35.0625 192.542969 49.25 L 192.433594 49.359375 L 166.457031 95.195312 Z M 159.253906 114.183594"/></g><path id="dC" d="M 141.25 180.972656 C 118.984375 180.972656 100.871094 162.855469 100.871094 140.59375 C 100.871094 118.332031 118.984375 100.214844 141.25 100.214844 C 163.511719 100.214844 181.628906 118.332031 181.628906 140.59375 C 181.628906 162.855469 163.511719 180.972656 141.25 180.972656 Z M 141.25 180.972656"/></defs>
+  <symbol id="i-daisy-n" viewBox="0 0 283 283"><use href="#dP" fill="currentColor"/><circle cx="141.25" cy="140.6" r="52" fill="#fff"/></symbol>
+  <symbol id="i-daisy" viewBox="0 0 283 283"><use href="#dP" fill="currentColor"/><use href="#dC" style="fill:var(--dc,currentColor)"/></symbol>
+  <!-- 1 cut on a slant -->
+  <symbol id="i-cut" viewBox="0 0 48 48">
+    <path class="s" d="M22 5v27l5-4V5"/>
+    <path class="rs" d="M14 36 34 25" stroke-dasharray="2 4"/>
+    <path class="s" d="M30 31c3 1 6 4 6 8M18 33c-2 2-3 5-2 9"/>
+    <path class="r drop" d="M24.5 36c1.6 2.2 2.4 3.6 2.4 4.6a2.4 2.4 0 0 1-4.8 0c0-1 .8-2.4 2.4-4.6z"/>
+  </symbol>
+  <!-- 2 leaves away from water -->
+  <symbol id="i-leaf" viewBox="0 0 48 48">
+    <path class="w" d="M15.5 27h17l-1.4 13.5a3 3 0 0 1-3 2.5h-8.2a3 3 0 0 1-3-2.5z"/>
+    <path class="s" d="M14 17h20l-2.9 23.5a3 3 0 0 1-3 2.5h-8.2a3 3 0 0 1-3-2.5z"/>
+    <path class="s" d="M15.5 27h17M24 27V4"/>
+    <g class="leaf"><path class="r" d="M27 18c3-5 8-6 11-5-1 4-5 7-11 5z"/></g>
+  </symbol>
+  <!-- 3 clean cold water -->
+  <symbol id="i-water" viewBox="0 0 48 48">
+    <path class="w" d="M13 26h22l-1.6 14a3 3 0 0 1-3 2.6H17.6a3 3 0 0 1-3-2.6z"/>
+    <path class="s" d="M12 14h24l-2.6 26a3 3 0 0 1-3 2.6H17.6a3 3 0 0 1-3-2.6z"/>
+    <path class="s" d="M13 26c4 2 7-2 11 0s7 2 11 0"/>
+    <path class="r drop" d="M24 3c2 2.8 3 4.6 3 5.8a3 3 0 0 1-6 0C21 7.6 22 5.8 24 3z"/>
+  </symbol>
+  <!-- 4 away from sun, radiator, fruit -->
+  <symbol id="i-place" viewBox="0 0 48 48">
+    <circle class="s" cx="24" cy="24" r="7"/>
+    <path class="s" d="M24 7v4M24 37v4M7 24h4M37 24h4M12 12l3 3M33 33l3 3M12 36l3-3M33 15l3-3"/>
+    <path class="rs" d="M9 39 39 9" stroke-width="2.5"/>
+  </symbol>
+  <!-- 5 every 2 days -->
+  <symbol id="i-repeat" viewBox="0 0 48 48">
+    <g class="spin"><path class="s" d="M38 20a15 15 0 0 0-27-4M10 28a15 15 0 0 0 27 4"/><path class="s" d="M11 9v7h7M37 39v-7h-7"/></g>
+    <text x="24" y="29" text-anchor="middle" font-family="Rubik,sans-serif" font-weight="600" font-size="14" fill="#e8322e">2</text>
+  </symbol>
+  <!-- kenzan: bowl, holder, stem -->
+  <symbol id="i-bowl" viewBox="0 0 48 48">
+    <path class="w" d="M8 28h32c-1 7-7 11-16 11S9 35 8 28z"/>
+    <path class="s" d="M5 24h38c-1 9-8 15-19 15S6 33 5 24z"/>
+    <path class="s" d="M8 28c5 2 10-2 16 0s11 2 16 0"/>
+  </symbol>
+  <symbol id="i-holder" viewBox="0 0 48 48">
+    <path class="s" d="M10 32h28v4a2 2 0 0 1-2 2H12a2 2 0 0 1-2-2z"/>
+    <path class="s" d="M13 32V21M17 32V19M21 32V21M25 32V19M29 32V21M33 32V19M36 32V22"/>
+  </symbol>
+  <symbol id="i-stem" viewBox="0 0 48 48">
+    <path class="s" d="M10 34h28v4a2 2 0 0 1-2 2H12a2 2 0 0 1-2-2z"/>
+    <path class="s" d="M14 34v-6M19 34v-6M29 34v-6M34 34v-6"/>
+    <g class="stem"><path d="M24 33V13" fill="none" stroke="#2a9a48" stroke-width="2" stroke-linecap="round"/><circle class="r" cx="24" cy="10" r="5"/><path d="M24 22c-4-4-8-4-10-3 2 3 6 4 10 3z" fill="#2a9a48"/></g>
+  </symbol>
+  <!-- flowers for SOS -->
+  <symbol id="f-pivonka" viewBox="0 0 48 48"><path class="s" d="M24 31v14M24 38c-3-3-7-3-9-2 2 3 6 4 9 2"/><path class="s" d="M24 31c-7 0-12-4-12-10 0-3 2-5 4-6 1-3 4-6 8-6s7 3 8 6c2 1 4 3 4 6 0 6-5 10-12 10z"/><path class="s" d="M18 20c2-3 10-3 12 0M17 25c3 2 11 2 14 0"/><circle class="r" cx="24" cy="21" r="3"/></symbol>
+  <symbol id="f-ruze" viewBox="0 0 48 48"><path class="s" d="M24 30v15M24 38c3-3 7-3 9-2-2 3-6 4-9 2"/><path class="s" d="M14 13c0 10 4 17 10 17s10-7 10-17"/><path class="rs" d="M24 17c2 0 3 1.4 3 3s-1.6 3.4-4 3.4-5-2-5-5 3-6.4 7-6.4 8 3 8 8"/></symbol>
+  <symbol id="f-hortenzie" viewBox="0 0 48 48"><path class="s" d="M24 32v13M24 39c-3-3-7-3-9-2 2 3 6 4 9 2"/><circle class="s" cx="17" cy="16" r="5"/><circle class="s" cx="31" cy="16" r="5"/><circle class="s" cx="24" cy="10" r="5"/><circle class="s" cx="20" cy="25" r="5"/><circle class="s" cx="29" cy="25" r="5"/><circle class="r" cx="24" cy="18" r="2.6"/></symbol>
+  <symbol id="f-tulipan" viewBox="0 0 48 48"><path class="s" d="M24 30v15M24 41c3-6 2-12 0-14M24 40c-4-2-7-8-6-12"/><path class="r" d="M15 9l5 4.5L24 7l4 6.5L33 9v9a9 9 0 0 1-18 0z"/></symbol>
+  <symbol id="f-lilie" viewBox="0 0 48 48"><path class="s" d="M24 30v15"/><g class="s"><path d="M24 20c-2-6-1-12 0-15 1 3 2 9 0 15z"/><path d="M24 20c-6-1-11-5-13-8 4-1 9 1 13 8z"/><path d="M24 20c6-1 11-5 13-8-4-1-9 1-13 8z"/><path d="M24 20c-5 3-11 4-14 3 2-3 8-5 14-3z"/><path d="M24 20c5 3 11 4 14 3-2-3-8-5-14-3z"/></g><path class="rs" d="M24 20l-3 8M24 20l3 8M24 20v9"/></symbol>
+  <symbol id="f-ranunculus" viewBox="0 0 48 48"><path class="s" d="M24 31v14M24 39c3-3 7-3 9-2-2 3-6 4-9 2"/><circle class="s" cx="24" cy="18" r="12"/><circle class="s" cx="24" cy="18" r="8"/><circle class="r" cx="24" cy="18" r="4"/></symbol>
+  <symbol id="f-gerbera" viewBox="0 0 48 48"><path class="s" d="M24 28v17M24 38c-3-3-7-3-9-2 2 3 6 4 9 2"/><g class="s"><ellipse cx="24" cy="9" rx="3" ry="6"/><ellipse cx="24" cy="27" rx="3" ry="6" style="opacity:0"/><ellipse cx="15" cy="18" rx="6" ry="3"/><ellipse cx="33" cy="18" rx="6" ry="3"/><ellipse cx="17.6" cy="11.6" rx="3" ry="6" transform="rotate(-45 17.6 11.6)"/><ellipse cx="30.4" cy="11.6" rx="3" ry="6" transform="rotate(45 30.4 11.6)"/></g><circle class="r" cx="24" cy="18" r="3.5"/></symbol>
+  <symbol id="f-jina" viewBox="0 0 48 48"><path class="s" d="M24 33v12"/><circle class="s" cx="24" cy="18" r="13"/><path class="rs" d="M19.5 14.5a4.5 4.5 0 1 1 6.5 4c-1.4.8-2 1.6-2 3.2"/><circle class="r" cx="24" cy="26" r="1.6"/></symbol>
+  <!-- covers -->
+  <symbol id="i-scissors" viewBox="0 0 48 48">
+    <circle class="s" cx="14" cy="36" r="5"/><circle class="s" cx="34" cy="36" r="5"/>
+    <path class="s" d="M17 32 33 6M31 32 15 6"/><circle class="r" cx="24" cy="19" r="1.8"/>
+  </symbol>
+  <symbol id="i-petal" viewBox="0 0 32 32">
+    <path d="M16 3c4 4 6 8 6 12a6 6 0 0 1-12 0c0-4 2-8 6-12z" fill="none" stroke="#e8322e" stroke-width="1.8"/>
+    <path d="M16 21v8" stroke="#2a9a48" stroke-width="1.8" stroke-linecap="round"/>
+  </symbol>
+</svg>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="hero-top">
+      <img class="logo" src="https://narin-work.vercel.app/atelier/logo-wide.webp" alt="NARIN atelier">
+      <span class="eyebrow">Péče · Kenzany<br>Nástroje</span>
+    </div>
+    <div class="hero-text">
+      <h1>Ať vaše květiny vydrží <em>déle</em></h1>
+      <p class="lead">Péče, kenzany a nástroje, které v ateliéru používáme každý den.</p>
+    </div>
+    <figure class="fig" style="margin-block:0">
+      <svg class="bgd" aria-hidden="true"><use href="#i-daisy"/></svg>
+      <img src="https://narin-work.vercel.app/atelier/stem.webp" alt="Sekátor NARIN čistě přeřezává silný stonek">
+      <svg class="ln" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M23.5 35 C 20 50, 10 58, 8 76" fill="none" stroke="#e8322e" stroke-width="1.2" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/></svg>
+      <span class="pin" aria-hidden="true"></span>
+      <figcaption class="lbl"><b>Šikmý řez</b><span>Ostrý sekátor stonek nerozmačká, a tak lépe pije.</span></figcaption>
+    </figure>
+    <nav class="tiles" aria-label="Rozcestník">
+      <a href="#pece" class="grn"><svg class="ic"><use href="#i-water"/></svg><b>Péče</b><small>Rituál a rady SOS</small></a>
+      <a href="#kenzany" class="ink"><svg class="ic"><use href="#i-holder"/></svg><b>Kenzany</b><small>Japonské aranžování</small></a>
+      <a href="#nuzky"><svg class="ic"><use href="#i-scissors"/></svg><b>Nůžky</b><small>Nůžky a sekátor</small></a>
+    </nav>
+  </header>
+
+  <section id="pece">
+    <div class="sec-head">
+      <span class="eyebrow">Péče</span>
+      <h2>Prvních 10 minut doma</h2>
+      <p class="lead">Pět kroků hned po doručení. Kytice díky nim vydrží o několik dní déle.</p>
+    </div>
+    <ol class="ritual">
+      <li><svg class="ic"><use href="#i-cut"/></svg><span class="n dz"><svg aria-hidden="true"><use href="#i-daisy-n"/></svg><i>1</i></span><b>Zastřihněte šikmo</b><p>2–3 cm ostrým sekátorem. Stonek se nerozmačká a lépe pije.</p><a class="buy" href="#nuzky">Sekátor 110 Kč →</a></li>
+      <li><svg class="ic"><use href="#i-leaf"/></svg><span class="n dz"><svg aria-hidden="true"><use href="#i-daisy-n"/></svg><i>2</i></span><b>Pryč s listy pod vodou</b><p>Listy ve vodě hnijí a voda se rychle kalí.</p></li>
+      <li><svg class="ic"><use href="#i-water"/></svg><span class="n dz"><svg aria-hidden="true"><use href="#i-daisy-n"/></svg><i>3</i></span><b>Čistá, chladná voda</b><p>Umytá váza a voda zhruba do třetiny stonků.</p></li>
+      <li><svg class="ic"><use href="#i-place"/></svg><span class="n dz"><svg aria-hidden="true"><use href="#i-daisy-n"/></svg><i>4</i></span><b>Dál od tepla</b><p>Ne na slunce, k topení ani k ovoci. Zralé ovoce květiny rychleji stárne.</p></li>
+      <li><svg class="ic"><use href="#i-repeat"/></svg><span class="n dz"><svg aria-hidden="true"><use href="#i-daisy-n"/></svg><i>5</i></span><b>Každé 2 dny</b><p>Vyměňte vodu a stonky zastřihněte o 1 cm.</p></li>
+    </ol>
+    <p class="swipe">Posuňte do strany →</p>
+    <p class="more">Péči o konkrétní květinu najdete v její kartě v <a href="https://vezminarin.cz/">katalogu</a>.</p>
+
+    <div class="sos" id="sos">
+      <div class="sos-head"><span class="dz" aria-hidden="true"><svg><use href="#i-daisy"/></svg></span><h3>Co trápí vaši kytici?</h3></div>
+      <p class="stepl"><span class="dz"><svg aria-hidden="true"><use href="#i-daisy-n"/></svg><i>1</i></span>Vyberte květinu</p>
+      <div class="flowers" id="flowers" role="group" aria-label="Květina"></div>
+      <p class="stepl"><span class="dz"><svg aria-hidden="true"><use href="#i-daisy-n"/></svg><i>2</i></span>Co se děje?</p>
+      <div class="chips" id="probs" role="group" aria-label="Problém"></div>
+      <div class="advice" id="advice" aria-live="polite"></div>
+      <p class="chat">Nenašli jste svůj problém? <a href="https://vezminarin.cz/contacts#nkcChat">Pošlete nám fotku do chatu</a>, poradíme.</p>
+    </div>
+  </section>
+
+  <section class="kz" id="kenzany">
+    <div class="wrap">
+      <span class="tate" aria-hidden="true">剣山</span>
+      <div class="sec-head">
+        <span class="eyebrow"><span class="seal" aria-hidden="true">剣</span>Kenzan · Made in Czechia</span>
+        <h2>Japonský ježek pro kytice, které stojí samy</h2>
+      </div>
+      <div class="kz-intro">
+        <img src="https://narin-work.vercel.app/atelier/kenzan.webp" alt="Kompozice z anemonek a karafiátu na kenzanu">
+        <div>
+          <p>Kenzan drží každý stonek přesně tam, kam ho zapíchnete. Stačí nízká miska, pár květin a kompozice vypadá, jako by rostla přímo ze stolu.</p>
+          <p>Na kenzan nepotřebujete velkou kytici. Tři až pět stonků a jedna větvička stačí.</p>
+          <hr class="brush">
+          <ol class="k-steps">
+            <li><svg class="ic"><use href="#i-bowl"/></svg>Voda do nízké misky</li>
+            <li><svg class="ic"><use href="#i-holder"/></svg>Kenzan na dno</li>
+            <li><svg class="ic"><use href="#i-stem"/></svg>Stonky šikmo zastřihnout a zapíchnout</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="subhead"><h3>Jaký kenzan vybrat</h3></div>
+      <div class="picker">
+        <div class="card"><div class="ph"><img src="https://narin-work.vercel.app/atelier/k6.webp" alt="Kenzan kulatý 6 cm"><span class="tag">Made in Czechia</span></div><span class="nm">Kenzan Ø 6 cm</span><span class="use">Kulatý. Na 5–9 stonků do kulaté misky.</span><div class="row"><span class="pr">300 Kč</span><button data-name="KENZAN Ø 6CM" data-price="300" data-img="https://narin-work.vercel.app/atelier/k6.webp" class="add" type="button">Do košíku</button></div></div>
+        <div class="card"><div class="ph"><img src="https://narin-work.vercel.app/atelier/k55.webp" alt="Kenzan 5,5 × 3,8 cm"><span class="tag">Made in Czechia</span></div><span class="nm">Kenzan 5,5 × 3,8 cm</span><span class="use">Úzký. Na 3–5 stonků, minimalistické kompozice.</span><div class="row"><span class="pr">340 Kč</span><button data-name="KENZAN 5.5CM X 3.8CM" data-price="340" data-img="https://narin-work.vercel.app/atelier/k55.webp" class="add" type="button">Do košíku</button></div></div>
+        <div class="card"><div class="ph"><img src="https://narin-work.vercel.app/atelier/brush.webp" alt="Čisticí kartáček pro kenzan"></div><span class="nm">Čisticí kartáček</span><span class="use">Vyčistí jehly od zbytků stonků po každé kompozici.</span><div class="row"><span class="pr">160 Kč</span><button data-name="ČISTÍCÍ KARTÁČEK PRO KENZAN" data-price="160" data-img="https://narin-work.vercel.app/atelier/brush.webp" class="add" type="button">Do košíku</button></div></div>
+        <div class="card"><div class="ph"><img src="https://narin-work.vercel.app/atelier/rovnatko.webp" alt="Rovnátko na jehly"></div><span class="nm">Rovnátko na jehly</span><span class="use">Narovná ohnuté jehly. Kenzan pak drží jako nový.</span><div class="row"><span class="pr">100 Kč</span><button data-name="ROVNÁTKO NA JEHLY PRO KENZAN" data-price="100" data-img="https://narin-work.vercel.app/atelier/rovnatko.webp" class="add" type="button">Do košíku</button></div></div>
+      </div>
+      
+    </div>
+  </section>
+
+  <div class="sep" aria-hidden="true"><svg><use href="#i-daisy"/></svg></div>
+  <section id="nuzky">
+    <div class="sec-head">
+      <span class="eyebrow">Nástroje</span>
+      <h2>Nůžky, nebo sekátor?</h2>
+    </div>
+    <div class="vs">
+      <span class="or" aria-hidden="true">nebo</span>
+      <div class="card"><div class="ph"><img src="https://narin-work.vercel.app/atelier/scissors.webp" alt="Dvoučepelové nůžky NARIN"></div><span class="nm">Nůžky</span><span class="for">Měkké stonky, stuhy, papír a balení.<span>Tulipány, ranunculusy, eustoma.</span></span><div class="row"><span class="pr">110 Kč</span><button data-name="PŘEČEPELOVÉ NŮŽKY" data-price="110" data-img="https://narin-work.vercel.app/atelier/scissors.webp" class="add g" type="button">Do košíku</button></div></div>
+      <div class="card"><div class="ph"><img src="https://narin-work.vercel.app/atelier/secateur-sq.webp" alt="Jednočepelový sekátor NARIN"></div><span class="nm">Sekátor</span><span class="for">Silné a dřevnaté stonky. Řeže čistě a stonek nerozmačká.<span>Růže, hortenzie, pivoňky, větve.</span></span><div class="row"><span class="pr">110 Kč</span><button data-name="JEDNOČEPELOVÉ NŮŽKY" data-price="110" data-img="https://narin-work.vercel.app/atelier/secateur-sq.webp" class="add g" type="button">Do košíku</button></div></div>
+    </div>
+    <p class="hint">Doma stačí jeden nástroj. Kupujete hlavně růže, pivoňky a hortenzie? Vezměte sekátor.</p>
+  </section>
+
+  <div class="outro">
+    <img class="mark" src="https://narin-work.vercel.app/atelier/mark.webp" alt="">
+    <h2>Pečujte s námi</h2>
+    <p class="lead">Čerstvé květiny z katalogu, nástroje z ateliéru a rada floristy, kdykoli ji potřebujete.</p>
+    <div class="doors"><a href="https://vezminarin.cz/">Do katalogu</a><a href="https://vezminarin.cz/contacts#nkcChat" class="alt">Napsat do chatu</a></div>
+  </div>
+</div>
+</div>
+<script>
+
+(function(){
+  var root=document.querySelector('.natl');if(!root)return;
+  var SEK={href:'#nuzky',img:'https://narin-work.vercel.app/atelier/secateur-sq.webp',t:'<b>Sekátor 110 Kč</b><br>Řeže čistě, stonek nerozmačká'};
+  var NUZ={href:'#nuzky',img:'https://narin-work.vercel.app/atelier/scissors.webp',t:'<b>Nůžky 110 Kč</b><br>Na jemné a duté stonky'};
+  var KALNA=['Kalná voda','Ve vodě se množí bakterie z listů a stonků.',['Vyndejte kytici a vázu důkladně umyjte.','Odeberte všechny listy pod hladinou.','Nalijte čerstvou chladnou vodu a stonky zastřihněte o 1 cm.'],SEK];
+  var F=[
+    ['pivonka','Pivoňka',[
+      ['Neotevírá se','Poupata potřebují teplo. Někdy je drží pohromadě lepkavý nektar.',['Dejte pivoňky do vlažné vody na teplejší místo.','Poupata opláchněte vlažnou vodou nebo otřete vlhkým hadříkem.','Obvykle se otevřou do 1–2 dnů.']],
+      ['Otevřela se moc rychle','V teple pivoňky rozkvétají velmi rychle.',['Na noc je dejte na chladné místo.','Použijte studenou vodu.','Odeberte listy pod hladinou.']],
+      ['Svěšené hlavy','Těžký květ a stonek, který přestal pít.',['Zastřihněte stonky 2–3 cm šikmo.','Na 1–2 hodiny je postavte do hluboké vody až pod květy.'],SEK],
+      KALNA]],
+    ['ruze','Růže',[
+      ['Svěšená hlava','Do stonku se dostal vzduch a voda nedoteče až ke květu.',['Zastřihněte stonek 2–3 cm šikmo, ideálně pod tekoucí vodou.','Zabalte růže pevně do papíru, aby hlavy stály rovně.','Nechte je 2–3 hodiny v hluboké chladné vodě.'],SEK],
+      ['Neotevírá se','Růži je chladno, nebo ji drží tuhé vnější lístky.',['Dejte ji do vlažné vody na teplejší místo.','Opatrně odeberte 1–2 vnější tuhé okvětní lístky.']],
+      ['Hnědnou okraje','Teplo, slunce nebo suchý vzduch.',['Odeberte poškozené vnější lístky.','Přesuňte kytici dál od topení a slunce.','Vyměňte vodu a stonky zastřihněte o 1 cm.'],SEK],
+      KALNA]],
+    ['hortenzie','Hortenzie',[
+      ['Vadne, hlavy visí','Hortenzie pije i přes květy a vodu ztrácí velmi rychle.',['Ponořte celou hlavu i stonek na 30–60 minut do studené vody.','Stonek zastřihněte šikmo a 2–3 cm ho nařízněte.','Vraťte ji do vázy s velkým množstvím vody.'],SEK],
+      ['Hnědnou okraje','Suchý vzduch, teplo nebo slunce.',['Květy lehce postříkejte vodou z rozprašovače.','Přesuňte ji na chladnější místo bez slunce.']],
+      KALNA]],
+    ['tulipan','Tulipán',[
+      ['Ohýbají se','Tulipány ve váze dál rostou a otáčejí se za světlem.',['Zabalte je pevně do papíru a na 1–2 hodiny postavte do vody.','Nalijte jen 5–10 cm studené vody.','Vázu občas pootočte.']],
+      ['Moc se otevřely','Je jim teplo.',['Přesuňte je na chladnější místo.','Použijte studenou vodu.']],
+      KALNA]],
+    ['lilie','Lilie',[
+      ['Pyl špiní','Oranžový pyl z tyčinek barví látky i ruce.',['Hned jak se květ otevře, odeberte tyčinky papírovým kapesníkem.','Skvrnu z látky nemyjte vodou. Vyklepejte ji nebo seberte lepicí páskou.']],
+      ['Poupata se neotevírají','Kytice potřebuje teplo a sílu pro další květy.',['Odeberte odkvetlé květy, síla půjde do poupat.','Dejte ji na teplejší místo, ale ne na slunce.']],
+      ['Žloutnou listy','Stárnoucí listy nebo listy ve vodě.',['Odeberte žluté listy a všechny listy pod hladinou.','Vyměňte vodu a stonky zastřihněte o 1 cm.'],SEK]]],
+    ['ranunculus','Ranunculus',[
+      ['Ohýbají se stonky','Stonky jsou duté a jemné, ve vodě rychle měknou.',['Nalijte jen 5–7 cm chladné vody.','Zastřihněte je ostrými nůžkami, ať stonek nerozmačkáte.','Vodu měňte každý den.'],NUZ],
+      ['Neotevírá se','Ranunculus se otevírá pomalu a potřebuje teplo.',['Dejte ho na teplejší místo.','Obvykle se otevře za 1–3 dny.']],
+      KALNA]],
+    ['gerbera','Gerbera',[
+      ['Hlava se ohýbá','Gerbery mají měkké stonky a nemají rády hlubokou vodu.',['Nalijte jen 5 cm vody.','Stonky zastřihněte šikmo ostrými nůžkami.','Hlavy můžete na pár hodin podepřít papírem.'],NUZ],
+      KALNA]],
+    ['jina','Jiná',[
+      ['Svěšené hlavy','Stonek přestal pít.',['Zastřihněte stonky 2–3 cm šikmo.','Postavte kytici na 2 hodiny do hluboké chladné vody.'],SEK],
+      KALNA,
+      ['Žloutnou listy','Stárnoucí listy nebo listy ve vodě.',['Odeberte žluté listy a listy pod hladinou.','Vyměňte vodu.']],
+      ['Opadávají lístky','Kytice je v teple nebo u ovoce.',['Přesuňte ji na chladnější místo, dál od ovoce.','Odeberte odkvetlé květy.']]]]
+  ];
+  var fl=root.querySelector('#flowers'),pr=root.querySelector('#probs'),ad=root.querySelector('#advice');
+  var cf=0,cp=0;
+  F.forEach(function(f,i){var b=document.createElement('button');b.type='button';b.innerHTML='<svg class="ic"><use href="#f-'+f[0]+'"/></svg>'+f[1];b.addEventListener('click',function(){cf=i;cp=0;render(true)});fl.appendChild(b)});
+  function render(anim){
+    [].forEach.call(fl.children,function(b,i){b.setAttribute('aria-pressed',String(i===cf))});
+    var probs=F[cf][2];pr.innerHTML='';
+    probs.forEach(function(p,i){var b=document.createElement('button');b.type='button';b.textContent=p[0];b.setAttribute('aria-pressed',String(i===cp));b.addEventListener('click',function(){cp=i;render(true)});pr.appendChild(b)});
+    var p=probs[cp],h='<div class="ah"><svg class="ic"><use href="#f-'+F[cf][0]+'"/></svg><b>'+(F[cf][0]==='jina'?'':F[cf][1]+': ')+p[0].toLowerCase()+'</b></div><p class="why"><span>Proč:</span> '+p[1]+'</p><ol>'+p[2].map(function(t){return '<li><span>'+t+'</span></li>'}).join('')+'</ol>';
+    if(p[3])h+='<a class="tool" href="'+p[3].href+'"><img src="'+p[3].img+'" alt=""><span>'+p[3].t+'</span></a>';
+    ad.innerHTML=h;
+    if(anim){ad.classList.remove('in');void ad.offsetWidth;ad.classList.add('in')}
+  }
+  render(false);
+
+
+  // ?kvetina=pivonka (QR z visačky) — rovnou otevře péči o danou květinu
+  try{var q=new URLSearchParams(location.search).get('kvetina');if(q){F.forEach(function(f,i){if(f[0]===q)cf=i});render(false);setTimeout(function(){var el=root.querySelector('#sos');if(el)el.scrollIntoView({behavior:'smooth',block:'start'})},400)}}catch(e){}
+
+  // Do košíku → košík Tilda (tcart__addProduct). Názvy a ceny jsou stejné jako v obchodě Tilda.
+  root.querySelectorAll('.add').forEach(function(b){b.addEventListener('click',function(){
+    var d=b.dataset;
+    if(typeof window.tcart__addProduct==='function'){
+      try{window.tcart__addProduct({name:d.name,price:Number(d.price),img:d.img,quantity:1});b.textContent='V košíku ✓';b.setAttribute('data-done','');
+        if(typeof window.tcart__openCart==='function'){setTimeout(window.tcart__openCart,300)}}catch(e){location.href='https://vezminarin.cz/atelier'}
+    }else{b.textContent='V košíku ✓';b.setAttribute('data-done','')}
+  })});
+})();
+</script>
