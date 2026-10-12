@@ -1,56 +1,81 @@
-<!-- NARIN atelier: промо-полоса на главной под каталогом (на всю ширину): заголовок, товары, плашка кензана. Tilda → HTML-блок T123.
+<!-- NARIN atelier: промо-полоса на главной под каталогом (на всю ширину).
+     Строка 1 — уход (секатор, ножницы), строка 2 — кензан и всё для него.
      Фото: замените ссылки в src="" на свои из Tilda. -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gelasio:ital,wght@0,700;1,500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@600&text=%E5%89%A3%E5%B1%B1&display=swap">
 <style>
-.natp{--paper:#fffbf7;--green:#2a9a48;--red:#e8322e;--ink:#1b1a18;--muted:#6d685f;--line:#e2d8cb;
+.natp{--paper:#fffbf7;--paper2:#f6efe5;--green:#2a9a48;--red:#e8322e;--ink:#1b1a18;--muted:#6d685f;--line:#e2d8cb;
   background:var(--paper);color:var(--ink);font-family:'Rubik',system-ui,-apple-system,'Segoe UI',sans-serif;width:100%;overflow:hidden;box-sizing:border-box}
 .natp *,.natp *::before,.natp *::after{box-sizing:border-box}
 :where(.natp) a{color:inherit;text-decoration:none}
-.natp-in{max-width:1240px;margin:0 auto;padding:22px 16px 0;display:grid;gap:16px}
+.natp-row{padding:22px 16px 20px}
+.natp-row>div{max-width:1240px;margin:0 auto;display:grid;gap:14px}
 .natp-top{display:flex;align-items:center;gap:10px}
 .natp-top img{width:34px;height:auto;display:block}
 .natp-top span{font-size:11px;line-height:1.35;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 .natp-top b{display:block;color:var(--green);font-weight:600}
-.natp-lead{margin:-6px 0 0;font-size:15px;line-height:1.45;color:var(--muted)}
-.natp h2{font:700 clamp(32px,9vw,64px)/1 'Gelasio',Georgia,serif;color:var(--green);margin:0;letter-spacing:-.015em}
+.natp h2{font:700 clamp(26px,7.6vw,54px)/1.02 'Gelasio',Georgia,serif;color:var(--green);margin:0;letter-spacing:-.015em;white-space:nowrap}
 .natp h2 em{font-style:italic;font-weight:500;color:var(--red)}
-.natp-shop{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) 54px;gap:8px;border-top:1px solid var(--line);padding-top:14px}
+.natp h3{font:700 clamp(21px,5.6vw,34px)/1.1 'Gelasio',Georgia,serif;color:var(--ink);margin:0;letter-spacing:-.01em}
+.natp-lead{margin:0;font-size:15px;line-height:1.45;color:var(--muted)}
+.natp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.natp-kz .natp-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
 .natp-p{display:grid;gap:6px;align-content:start;min-width:0}
 .natp-p img{display:block;width:100%;aspect-ratio:1;object-fit:cover;background:#ece4d8}
 .natp-p b{font-size:13px;font-weight:600;line-height:1.2}
 .natp-p span{font-size:13px;color:var(--green);font-weight:600}
-.natp-kz{background:var(--ink);color:var(--paper);display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:10px 0;min-height:100%;position:relative}
-.natp-kz .jp{writing-mode:vertical-rl;font:600 20px/1 'Noto Serif JP','Hiragino Mincho ProN','Yu Mincho',serif;letter-spacing:.25em}
-.natp-kz .lat{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#cfc6b8;text-align:center;line-height:1.3}
-.natp-kz .seal{width:22px;height:22px;background:var(--red);color:#fff;display:grid;place-items:center;font:600 11px/1 'Noto Serif JP',serif;transform:rotate(-4deg)}
-.natp-cta{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--green);color:#fff !important;margin-top:18px;padding:16px max(16px,calc((100% - 1240px)/2 + 16px));font-weight:600;font-size:16px}
+.natp-kz .natp-p b{font-size:12px}
+.natp-care .natp-p img{aspect-ratio:4/3}
+.natp-kz{background:var(--paper2);border-top:1px solid var(--ink);position:relative}
+.natp-jp{display:flex;align-items:center;gap:10px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink)}
+.natp-seal{width:24px;height:24px;background:var(--red);color:#fff;display:grid;place-items:center;font:600 12px/1 'Noto Serif JP',serif;transform:rotate(-4deg);flex:none}
+.natp-jp i{font:600 14px/1 'Noto Serif JP','Hiragino Mincho ProN','Yu Mincho',serif;font-style:normal;letter-spacing:.2em}
+.natp-tate{position:absolute;right:12px;top:18px;writing-mode:vertical-rl;font:600 30px/1 'Noto Serif JP','Hiragino Mincho ProN','Yu Mincho',serif;letter-spacing:.25em;color:var(--ink);opacity:.12;pointer-events:none}
+.natp-cta{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--green);color:#fff !important;padding:16px max(16px,calc((100% - 1240px)/2 + 16px));font-weight:600;font-size:16px}
+.natp-cta>span{display:flex;align-items:center;gap:10px}
 .natp-cta svg{width:22px;height:22px;flex:none;transition:transform .3s}
-.natp-cta:hover svg{transform:translateX(4px)}
-.natp-cta .d{width:18px;height:18px;color:#fff;opacity:.9}
+.natp-cta .d{width:18px;height:18px}
+.natp-cta:hover svg:last-child{transform:translateX(4px)}
 @media (min-width:860px){
-  .natp-in{grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);column-gap:48px;padding-top:36px;align-items:center}
-  .natp-top,.natp h2,.natp-lead{grid-column:1}
-  .natp-shop{grid-column:2;grid-row:1/span 3;border-top:0;padding-top:0;grid-template-columns:repeat(3,minmax(0,1fr)) 76px}
-  .natp-kz{padding:14px 0}
-  .natp-kz .jp{font-size:26px}
-  .natp-kz .seal{width:26px;height:26px;font-size:13px}
-  .natp-lead{font-size:17px;max-width:34ch}
+  .natp-row{padding:34px 16px}
+  .natp-row>div{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);column-gap:56px;align-items:center}
+  .natp-row .txt{grid-column:1;display:grid;gap:12px}
+  .natp-grid{grid-column:2;grid-row:1}
+  .natp-care .natp-grid{grid-template-columns:repeat(2,minmax(0,220px));justify-content:end}
+  .natp-lead{font-size:17px;max-width:36ch}
+  .natp h2{font-size:clamp(40px,4.4vw,58px)}
+  .natp-tate{display:none}
+  .natp-care .natp-p img{aspect-ratio:1}
 }
 </style>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@600&text=%E5%89%A3%E5%B1%B1&display=swap">
 
 <section class="natp" aria-label="NARIN atelier">
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><g id="natpP"><path d="M 159.691406 91.921875 L 178.789062 42.375 C 185.230469 27.75 184.792969 17.382812 177.480469 6.578125 C 173.335938 0.359375 166.894531 1.230469 155.871094 3.195312 C 151.070312 4.066406 146.050781 4.941406 140.921875 4.941406 C 135.574219 4.941406 130.335938 3.851562 125.316406 2.757812 C 114.292969 0.359375 107.855469 -0.625 103.707031 5.921875 C 96.722656 16.945312 96.503906 27.859375 102.941406 42.375 L 103.050781 42.59375 L 122.042969 91.921875 L 131.972656 109.492188 C 134.808594 108.617188 137.757812 108.179688 140.8125 108.179688 C 143.976562 108.179688 146.921875 108.617188 149.871094 109.492188 Z M 159.691406 91.921875"/><path d="M 41.828125 109.601562 L 42.046875 109.601562 L 91.703125 125.207031 L 111.347656 128.261719 C 113.636719 122.476562 117.566406 117.566406 122.476562 114.074219 L 115.164062 95.195312 L 89.082031 49.140625 C 81.878906 34.953125 73.695312 28.839844 60.816406 27.859375 C 60.488281 27.859375 60.164062 27.859375 59.945312 27.859375 C 53.179688 27.859375 49.902344 33.425781 44.773438 43.027344 C 42.484375 47.394531 39.972656 51.867188 36.808594 56.015625 C 33.425781 60.273438 29.386719 63.765625 25.347656 67.148438 C 16.617188 74.460938 11.816406 79.042969 14.328125 86.355469 C 18.472656 98.578125 26.660156 105.5625 41.828125 109.601562 Z M 41.828125 109.601562"/><path d="M 55.359375 200.070312 L 98.25 170.277344 L 112.875 156.527344 C 110.363281 151.835938 108.835938 146.488281 108.835938 140.8125 C 108.835938 140.15625 108.835938 139.503906 108.945312 138.847656 L 89.957031 132.738281 L 38.335938 124.769531 C 34.296875 124.003906 30.695312 123.570312 27.3125 123.570312 C 17.929688 123.570312 10.835938 126.953125 4.394531 134.15625 C -0.625 139.722656 1.667969 145.941406 5.921875 156.417969 C 7.777344 161.003906 9.742188 165.804688 10.945312 170.933594 C 12.144531 176.28125 12.253906 181.738281 12.363281 186.976562 C 12.582031 198.542969 13.015625 205.09375 20.21875 207.710938 C 32.226562 212.078125 42.703125 209.785156 55.25 200.179688 Z M 55.359375 200.070312"/><path d="M 119.3125 164.820312 L 102.941406 176.28125 L 64.636719 212.511719 C 52.742188 222.769531 48.703125 232.265625 50.667969 245.363281 C 51.757812 252.78125 57.980469 254.855469 68.675781 258.023438 C 73.367188 259.332031 78.277344 260.75 82.863281 263.042969 C 87.664062 265.441406 91.921875 268.714844 96.066406 271.992188 C 105.015625 278.976562 110.363281 282.792969 116.910156 278.648438 C 127.714844 271.773438 132.519531 262.058594 132.953125 246.125 L 132.953125 245.90625 L 136.882812 192.976562 L 135.355469 172.789062 C 129.242188 171.695312 123.789062 168.859375 119.3125 164.820312 Z M 119.3125 164.820312"/><path d="M 216.660156 212.511719 L 216.550781 212.402344 L 178.464844 176.390625 L 161.984375 164.929688 C 157.507812 168.96875 152.054688 171.804688 145.941406 172.789062 L 144.414062 192.976562 L 148.34375 246.125 C 148.777344 262.058594 153.582031 271.226562 164.820312 277.773438 C 171.261719 281.484375 176.71875 277.882812 185.773438 271.226562 C 189.703125 268.28125 193.851562 265.332031 198.542969 263.042969 C 203.34375 260.640625 208.585938 259.332031 213.605469 258.128906 C 224.625 255.402344 230.847656 253.4375 231.71875 245.6875 C 233.03125 232.703125 228.554688 222.878906 216.660156 212.511719 Z M 216.660156 212.511719"/><path d="M 277.882812 133.71875 C 268.933594 124.441406 258.457031 121.824219 243.179688 124.988281 L 242.960938 124.988281 L 191.558594 132.84375 L 172.570312 138.847656 C 172.570312 139.503906 172.570312 140.046875 172.570312 140.703125 C 172.570312 146.488281 171.042969 151.945312 168.53125 156.636719 L 183.046875 170.386719 L 226.15625 200.398438 C 238.703125 210.003906 248.636719 211.96875 260.640625 207.054688 C 267.515625 204.21875 268.171875 197.671875 268.714844 186.320312 C 268.933594 181.300781 269.261719 176.171875 270.355469 171.042969 C 271.554688 165.695312 273.738281 160.785156 275.917969 155.980469 C 280.832031 145.503906 283.230469 139.285156 277.882812 133.71875 Z M 277.882812 133.71875"/><path d="M 159.253906 114.183594 C 164.167969 117.785156 167.988281 122.695312 170.386719 128.480469 L 190.03125 125.425781 L 239.90625 109.710938 C 255.074219 105.78125 262.824219 98.90625 266.535156 86.246094 C 268.605469 79.042969 264.023438 74.460938 255.621094 66.929688 C 251.910156 63.65625 248.199219 60.164062 244.925781 56.125 C 241.542969 51.867188 239.140625 46.957031 236.847656 42.265625 C 231.71875 32.007812 228.554688 26.222656 220.917969 26.984375 C 208.257812 28.40625 199.746094 35.0625 192.542969 49.25 L 192.433594 49.359375 L 166.457031 95.195312 Z M 159.253906 114.183594"/></g><path id="natpC" d="M 141.25 180.972656 C 118.984375 180.972656 100.871094 162.855469 100.871094 140.59375 C 100.871094 118.332031 118.984375 100.214844 141.25 100.214844 C 163.511719 100.214844 181.628906 118.332031 181.628906 140.59375 C 181.628906 162.855469 163.511719 180.972656 141.25 180.972656 Z M 141.25 180.972656"/></defs></svg>
-  <div class="natp-in">
-    <div class="natp-top"><img src="https://static.tildacdn.com/tild6131-3832-4865-b465-393061363931/photo.png" alt="NARIN atelier" loading="lazy"><span><b>NARIN atelier</b>Péče o květiny a nástroje</span></div>
-    <h2>Ať kytice vydrží <em>déle</em></h2>
-    <p class="natp-lead">Sekátory, nůžky a vázy, se kterými vám květiny vydrží déle.</p>
-    <div class="natp-shop">
+  <div class="natp-row natp-care"><div>
+    <div class="txt" style="display:grid;gap:12px">
+      <div class="natp-top"><img src="https://static.tildacdn.com/tild6131-3832-4865-b465-393061363931/photo.png" alt="NARIN atelier" loading="lazy"><span><b>NARIN atelier</b>Péče o květiny a nástroje</span></div>
+      <h2>Ať kytice vydrží <em>déle</em></h2>
+      <p class="natp-lead">Ostrý sekátor stonek nerozmačká, a kytice tak lépe pije a déle vydrží.</p>
+    </div>
+    <div class="natp-grid">
       <a class="natp-p" href="https://vezminarin.cz/atelier?utm_source=home&amp;utm_content=sekator"><img src="https://narin-work.vercel.app/atelier/secateur.webp" alt="" loading="lazy"><b>Sekátor</b><span>110 Kč</span></a>
       <a class="natp-p" href="https://vezminarin.cz/atelier?utm_source=home&amp;utm_content=nuzky"><img src="https://narin-work.vercel.app/atelier/scissors.webp" alt="" loading="lazy"><b>Nůžky</b><span>110 Kč</span></a>
-      <a class="natp-p" href="https://vezminarin.cz/atelier?utm_source=home&amp;utm_content=vazy"><img src="https://narin-work.vercel.app/atelier/vase.webp" alt="" loading="lazy"><b>Vázy</b><span>Vybrat →</span></a>
-      <a class="natp-kz" href="https://vezminarin.cz/atelier?utm_source=home&amp;utm_content=kenzan" aria-label="Kenzan, japonské aranžování, od 300 Kč"><span class="seal" aria-hidden="true">剣</span><span class="jp" aria-hidden="true">剣山</span><span class="lat">Kenzan<br>→</span></a>
     </div>
-  </div>
-  <a class="natp-cta" href="https://vezminarin.cz/atelier?utm_source=home&amp;utm_content=cta"><span style="display:flex;align-items:center;gap:10px"><svg class="d" viewBox="0 0 283 283" aria-hidden="true"><use href="#natpP" fill="currentColor"/><use href="#natpC" fill="currentColor"/></svg>Vše pro péči o květiny</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h16M14 6l6 6-6 6"/></svg></a>
+  </div></div>
+
+  <div class="natp-row natp-kz"><span class="natp-tate" aria-hidden="true">剣山</span><div>
+    <div class="txt" style="display:grid;gap:10px">
+      <span class="natp-jp"><span class="natp-seal" aria-hidden="true">剣</span>Kenzan <i aria-hidden="true">剣山</i> · Made in Czechia</span>
+      <h3>Japonské aranžování doma</h3>
+      <p class="natp-lead">Kenzan drží každý stonek přesně tam, kam ho zapíchnete. Stačí nízká miska a pár květin.</p>
+    </div>
+    <div class="natp-grid">
+      <a class="natp-p" href="https://vezminarin.cz/atelier?utm_source=home&amp;utm_content=kenzan6"><img src="https://narin-work.vercel.app/atelier/k6.webp" alt="" loading="lazy"><b>Kenzan Ø 6 cm</b><span>300 Kč</span></a>
+      <a class="natp-p" href="https://vezminarin.cz/atelier?utm_source=home&amp;utm_content=kenzan55"><img src="https://narin-work.vercel.app/atelier/k55.webp" alt="" loading="lazy"><b>Kenzan 5,5×3,8</b><span>340 Kč</span></a>
+      <a class="natp-p" href="https://vezminarin.cz/atelier?utm_source=home&amp;utm_content=kartacek"><img src="https://narin-work.vercel.app/atelier/brush.webp" alt="" loading="lazy"><b>Kartáček</b><span>160 Kč</span></a>
+      <a class="natp-p" href="https://vezminarin.cz/atelier?utm_source=home&amp;utm_content=rovnatko"><img src="https://narin-work.vercel.app/atelier/rovnatko.webp" alt="" loading="lazy"><b>Rovnátko</b><span>100 Kč</span></a>
+    </div>
+  </div></div>
+
+  <a class="natp-cta" href="https://vezminarin.cz/atelier?utm_source=home&amp;utm_content=cta"><span><svg class="d" viewBox="0 0 283 283" aria-hidden="true"><use href="#natpP" fill="currentColor"/><use href="#natpC" fill="currentColor"/></svg>Vše v ateliéru NARIN</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h16M14 6l6 6-6 6"/></svg></a>
 </section>
