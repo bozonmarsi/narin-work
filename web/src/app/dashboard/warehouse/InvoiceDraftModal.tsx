@@ -7,6 +7,18 @@ import { decodeHtmlEntities } from "@/lib/format";
 import { Modal } from "./Modal";
 import type { RawMaterial, Supplier } from "./types";
 
+// Те же правила, что в панели Van Vliet и в сканере наличия.
+function coreName(name: string): string {
+  return name
+    .replace(/\(\s*imp\s*\)/gi, " ")
+    .replace(/\(\s*\d+\s*\)/g, " ")
+    .replace(/\b\d+([.,]\d+)?\s*cm\b/gi, " ")
+    .replace(/\b\d+([.,]\d+)?\s*gram\b/gi, " ")
+    .replace(/\b\d+\s*st\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 type DraftItem = {
   supplier_item_name: string;
   quantity: number;
@@ -148,7 +160,15 @@ export function InvoiceDraftModal({
       const toRemember = activeRows.filter((r) => r.wasUnmatched && r.rememberAlias);
       if (toRemember.length > 0) {
         await supabase.from("product_name_aliases").insert(
-          toRemember.map((r) => ({ supplier_id: supplierId, alias: r.supplierItemName, product_sticker_id: r.productStickerId })),
+          toRemember.map((r) => ({
+            supplier_id: supplierId,
+            // Без хвоста "(imp) 60cm" и помечено как подтверждённое человеком:
+            // иначе сканер наличия никогда не совпадёт с такой связкой, а ИИ-обновление
+            // сотрёт её при следующем прогоне.
+            alias: coreName(r.supplierItemName),
+            product_sticker_id: r.productStickerId,
+            is_manual: true,
+          })),
         );
       }
 

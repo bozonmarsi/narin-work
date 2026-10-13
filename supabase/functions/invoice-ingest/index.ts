@@ -54,6 +54,20 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Тот же хвост, что отрезают сканер Van Vliet и панель менеджера: высота,
+// граммовка, штучность и партия меняются день ото дня, сам цветок — нет.
+function coreName(name: string): string {
+  return name
+    .replace(/\(\s*imp\s*\)/gi, ' ')
+    .replace(/\(\s*\d+\s*\)/g, ' ')
+    .replace(/\b\d+([.,]\d+)?\s*cm\b/gi, ' ')
+    .replace(/\b\d+([.,]\d+)?\s*gram\b/gi, ' ')
+    .replace(/\b\d+\s*st\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -257,11 +271,15 @@ Deno.serve(async (req) => {
       : { data: [] }
     const { data: aliasesAll } = await supabase.from('product_name_aliases').select('alias, product_sticker_id')
 
+    // В фактуре название идёт с хвостом партии ("Rosa tr bombastic (imp)
+    // 60cm"), а алиасы хранятся без него — сравнение "строка в строку" почти
+    // никогда не совпадало. Приводим обе стороны к одному виду (те же правила,
+    // что у сканера Van Vliet).
     function findMatch(name: string): string | null {
-      const norm = name.trim().toLowerCase()
+      const norm = coreName(name)
       const hit =
-        (aliasesForSupplier ?? []).find((a) => a.alias.trim().toLowerCase() === norm) ??
-        (aliasesAll ?? []).find((a) => a.alias.trim().toLowerCase() === norm)
+        (aliasesForSupplier ?? []).find((a) => coreName(a.alias) === norm) ??
+        (aliasesAll ?? []).find((a) => coreName(a.alias) === norm)
       return hit?.product_sticker_id ?? null
     }
 
