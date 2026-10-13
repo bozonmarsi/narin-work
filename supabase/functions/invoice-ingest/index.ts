@@ -300,6 +300,21 @@ Deno.serve(async (req) => {
     // поставщиком и черновик становится обычным pending) или отклонить.
     const status = senderEmailRaw && !supplier ? 'needs_sender_review' : 'pending'
 
+    // 4b. Одну и ту же фактуру могут прислать дважды (два почтовых ящика,
+    // повторный запуск сценария) — второй черновик не заводим, иначе при
+    // подтверждении обоих партия и закупка задвоятся. Сравниваем по номеру
+    // документа (без номера не дедуплицируем — не из чего).
+    if (parsed.invoice_number) {
+      const { data: dup } = await supabase
+        .from('invoice_drafts')
+        .select('id, status')
+        .eq('invoice_number', parsed.invoice_number)
+        .in('status', ['pending', 'needs_sender_review', 'confirmed'])
+        .limit(1)
+        .maybeSingle()
+      if (dup) return json({ ok: true, duplicate: true, id: dup.id, status: dup.status, invoice_number: parsed.invoice_number })
+    }
+
     // 5. Сохраняем ВСЕГДА — это единственный шаг, которому разрешено
     // провалить весь запрос (значит реальная проблема с базой, не с
     // распознаванием).
