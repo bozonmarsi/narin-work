@@ -1,12 +1,15 @@
 <style>
-#narinDlvToast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 2147483000; max-width: min(520px, calc(100% - 32px)); box-sizing: border-box; padding: 14px 44px 14px 16px; border-radius: 14px; background: #16181d; color: #fff; font-family: 'Rubik', Arial, sans-serif; font-size: 14px; line-height: 1.5; box-shadow: 0 10px 30px rgba(20,30,50,0.3); display: none; }
+#narinDlvToast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 2147483000; width: 520px; max-width: calc(100% - 32px); box-sizing: border-box; padding: 14px 44px 14px 16px; border-radius: 14px; background: #16181d; color: #fff; font-family: 'Rubik', Arial, sans-serif; font-size: 14px; line-height: 1.5; box-shadow: 0 10px 30px rgba(20,30,50,0.3); display: none; }
 #narinDlvToast.is-warn { background: #c0341f; }
-#narinDlvToast small { display: block; margin-top: 4px; opacity: 0.85; font-size: 12.5px; }
+#narinDlvToast.is-ok { background: #0f6b45; }
+#narinDlvToast small { display: block; margin-top: 4px; opacity: 0.9; font-size: 12.5px; }
+#narinDlvToast .narin-note { display: block; margin-top: 6px; padding: 6px 8px; border-radius: 8px; background: rgba(255,255,255,0.16); font-size: 12.5px; }
 #narinDlvToast .narin-x { position: absolute; top: 8px; right: 10px; width: 24px; height: 24px; border: 0; border-radius: 50%; background: rgba(255,255,255,0.2); color: #fff; cursor: pointer; font-size: 13px; line-height: 1; }
+#narinDlvToast .narin-chg { margin-top: 8px; padding: 6px 12px; border: 1px solid rgba(255,255,255,0.6); border-radius: 999px; background: transparent; color: #fff; font-size: 12.5px; cursor: pointer; font-family: inherit; }
 .narin-i { display: inline-block; width: 16px; height: 16px; margin-left: 6px; border-radius: 50%; border: 1px solid currentColor; font-size: 11px; line-height: 14px; text-align: center; cursor: pointer; opacity: 0.8; vertical-align: middle; }
 </style>
 <script>
-/* Narin: delivery price by distance. Flat inside the circle, per km beyond it.
+/* Narin: delivery price by distance + address check. Flat inside the circle, per km beyond it.
    All numbers are in CFG below - change only there (and in SQL function expected_delivery_fee).
    Comments are plain ASCII on purpose (Tilda editor breaks on some characters). */
 (function () {
@@ -26,7 +29,13 @@
     deliveryLabelExtra: 'Doru\u010den\u00ed + p\u0159\u00edplatek za vzd\u00e1lenost',
     serviceNote: 'Servisn\u00ed poplatek zahrnuje p\u0159\u00edpravu a zabalen\u00ed kytice, zpracov\u00e1n\u00ed objedn\u00e1vky a dan\u011b.',
     pickTitle: 'Vyberte pros\u00edm adresu z nab\u00eddky',
-    pickText: 'Cenu doru\u010den\u00ed po\u010d\u00edt\u00e1me podle vzd\u00e1lenosti, proto adresu pot\u0159ebujeme vybrat ze seznamu p\u0159i psan\u00ed.',
+    pickText: 'Za\u010dn\u011bte ps\u00e1t ulici a \u010d\u00edslo domu a klepn\u011bte na spr\u00e1vn\u00fd n\u00e1vrh. Cenu doru\u010den\u00ed po\u010d\u00edt\u00e1me podle vzd\u00e1lenosti.',
+    checking: 'Ov\u011b\u0159ujeme adresu\u2026',
+    needNumber: 'Dopl\u0148te pros\u00edm \u010d\u00edslo domu',
+    needNumberText: 'Adresu jsme na\u0161li jen \u010d\u00e1ste\u010dn\u011b (bez \u010d\u00edsla domu). P\u0159idejte \u010d\u00edslo a vyberte adresu z nab\u00eddky.',
+    notFound: 'Adresu se nepoda\u0159ilo naj\u00edt',
+    notFoundText: 'Zkuste ji napsat znovu (ulice a \u010d\u00edslo domu) a vyberte ji z nab\u00eddky.',
+    change: 'Zm\u011bnit adresu',
     contact: 'Napi\u0161te n\u00e1m na support@vezminarin.cz nebo zavolejte na +420 776 421 993 a domluv\u00edme se na individu\u00e1ln\u00edm doru\u010den\u00ed.'
   };
 
@@ -45,22 +54,41 @@
   }
   function czk(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0') + '\u00a0K\u010d'; }
   function kmTxt(n) { return (Math.round(n * 10) / 10).toString().replace('.', ',') + '\u00a0km'; }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 
+  // ---- forms ----
+  // The customer types the address into the visible Zero Block form (its own inputs);
+  // the cart form only gets copies later. Read from the visible form first.
   function cartForm() { return document.querySelector('.t706 .t-form') || document.querySelector('.t706 form'); }
+  function addressInput() { return document.querySelector('#rec1934181743 form input[name="adres"]'); }
+  function addressForm() { var i = addressInput(); return (i && i.closest('form')) || cartForm(); }
   function field(form, name) { return form ? form.querySelector('input[name="' + name + '"]') : null; }
-  function hidden(form, name) {
+  function pick(name) {
+    var a = field(addressForm(), name);
+    if (a) return String(a.value || '').trim();
+    var b = field(cartForm(), name);
+    return b ? String(b.value || '').trim() : '';
+  }
+  function setField(form, name, value) {
+    if (!form) return;
     var i = field(form, name);
-    if (i) return i;
-    i = document.createElement('input');
-    i.type = 'hidden'; i.name = name;
-    form.appendChild(i);
-    return i;
+    if (!i) {
+      i = document.createElement('input');
+      i.type = 'hidden'; i.name = name;
+      form.appendChild(i);
+    }
+    if (i.value !== String(value)) i.value = String(value);
   }
-  function clearCalcFields(form) {
-    var a = field(form, 'delivery_km'), b = field(form, 'delivery_fee_calc');
-    if (a) a.value = '';
-    if (b) b.value = '';
+  function setBoth(name, value) { setField(addressForm(), name, value); setField(cartForm(), name, value); }
+  function clearCalcFields() {
+    setBoth('delivery_km', ''); setBoth('delivery_fee_calc', '');
   }
+  function clearCoords() {
+    setBoth('recipient_lat', ''); setBoth('recipient_lng', '');
+    setBoth('recipient_place_id', ''); setBoth('recipient_address_full', '');
+    clearCalcFields();
+  }
+
   function courierRadios() {
     var all = document.querySelectorAll('.t706 .t-form .t-radio__wrapper-delivery input');
     var out = [];
@@ -93,9 +121,7 @@
     }
     return null;
   }
-  function setText(el, txt) {
-    if (el && el.textContent !== txt) el.textContent = txt;
-  }
+  function setText(el, txt) { if (el && el.textContent !== txt) el.textContent = txt; }
   function showDeliveryRow(c) {
     var r = deliveryRowAtoms();
     if (!r) return;
@@ -111,35 +137,166 @@
     i.title = T.serviceNote;
     i.addEventListener('click', function (e) {
       e.preventDefault(); e.stopPropagation();
-      showToast(T.serviceNote, '', false, 9000);
+      showToast({ html: esc(T.serviceNote), ms: 9000 });
     });
     a.appendChild(i);
   }
 
   // ---- toast ----
   var toastTimer = null;
+  var toastKind = '';
   function toastEl() {
     var t = document.getElementById('narinDlvToast');
     if (t) return t;
     t = document.createElement('div');
     t.id = 'narinDlvToast';
     t.innerHTML = '<div class="narin-msg"></div><button type="button" class="narin-x" aria-label="Zav\u0159\u00edt">\u2715</button>';
-    t.querySelector('.narin-x').addEventListener('click', function () { t.style.display = 'none'; });
+    t.querySelector('.narin-x').addEventListener('click', function () { t.style.display = 'none'; toastKind = ''; });
+    t.addEventListener('click', function (e) {
+      if (e.target && e.target.className === 'narin-chg') changeAddress();
+    });
     document.body.appendChild(t);
     return t;
   }
-  function showToast(title, text, warn, ms) {
+  // opts: { html, kind: 'warn'|'ok'|'', ms }
+  function showToast(opts) {
     var t = toastEl();
-    t.className = warn ? 'is-warn' : '';
-    t.querySelector('.narin-msg').innerHTML = (warn ? '<b>' + title + '</b>' : title) + (text ? '<small>' + text + '</small>' : '');
+    toastKind = opts.kind || '';
+    t.className = opts.kind === 'warn' ? 'is-warn' : (opts.kind === 'ok' ? 'is-ok' : '');
+    t.querySelector('.narin-msg').innerHTML = opts.html;
     t.style.display = 'block';
     clearTimeout(toastTimer);
-    if (ms) toastTimer = setTimeout(function () { t.style.display = 'none'; }, ms);
+    if (opts.ms) toastTimer = setTimeout(function () { t.style.display = 'none'; toastKind = ''; }, opts.ms);
   }
-  function hideWarn() {
+  function hideToastKinds(kinds) {
     var t = document.getElementById('narinDlvToast');
-    if (t && t.className.indexOf('is-warn') !== -1) t.style.display = 'none';
+    if (t && kinds.indexOf(toastKind) !== -1) { t.style.display = 'none'; toastKind = ''; }
   }
+
+  // ---- address state ----
+  var A = { text: '', ok: false, pending: false, tried: '', full: '', placeId: '', numberWarn: '', needNumber: false, wantToast: false, shownSig: '', lastTyped: '' };
+  var svc = null, places = null;
+
+  function parseComponents(comps) {
+    var o = { route: '', streetNumber: '', premise: '', city: '', psc: '' };
+    (comps || []).forEach(function (c) {
+      var t = c.types;
+      if (t.indexOf('route') !== -1) o.route = c.long_name;
+      if (t.indexOf('street_number') !== -1) o.streetNumber = c.long_name;
+      if (t.indexOf('premise') !== -1) o.premise = c.long_name;
+      if (t.indexOf('locality') !== -1 || t.indexOf('postal_town') !== -1) o.city = c.long_name;
+      if (t.indexOf('sublocality') !== -1 && !o.city) o.city = c.long_name;
+      if (t.indexOf('postal_code') !== -1) o.psc = c.long_name;
+    });
+    return o;
+  }
+
+  // Czech addresses have two house numbers (cislo popisne / orientacni). The number we write
+  // into the field is the orientation number when there is one; warn if it differs from what
+  // the customer typed, so a wrong building is noticed before paying.
+  function numberWarning(typed, o) {
+    var m = String(typed || '').match(/\d+/);
+    if (!m) return '';
+    var used = o.streetNumber || o.premise;
+    var found = [o.premise, o.streetNumber].filter(function (x) { return x; });
+    if (!used || m[0] === String(used)) return '';
+    return 'Zadali jste \u010d\u00edslo ' + m[0] + ', v adrese je ' + found.join('/') + '. Zkontrolujte pros\u00edm, \u017ee je to spr\u00e1vn\u011b.';
+  }
+
+  function applyPlace(place, typed) {
+    var o = parseComponents(place.address_components);
+    var hasNumber = !!(o.streetNumber || o.premise);
+    var loc = place.geometry && place.geometry.location;
+    var inp = addressInput();
+    if (!loc) { A.ok = false; return false; }
+    if (!hasNumber) {
+      clearCoords();
+      A.ok = false; A.needNumber = true;
+      return false;
+    }
+    var line = o.route ? (o.route + ' ' + (o.streetNumber || o.premise)).trim() : ((o.city ? o.city + ' ' : '') + o.premise).trim();
+    if (inp) inp.value = line;
+    var f = addressForm();
+    var cityInput = field(f, 'city'), pscInput = field(f, 'psc');
+    if (cityInput && o.city) cityInput.value = o.city;
+    if (pscInput && o.psc) pscInput.value = o.psc;
+    setBoth('recipient_lat', loc.lat());
+    setBoth('recipient_lng', loc.lng());
+    setBoth('recipient_place_id', place.place_id || '');
+    setBoth('recipient_address_full', place.formatted_address || '');
+    A.text = line;
+    A.ok = true; A.needNumber = false;
+    A.full = place.formatted_address || line;
+    A.placeId = place.place_id || '';
+    A.numberWarn = numberWarning(typed || A.lastTyped, o);
+    A.shownSig = '';
+    return true;
+  }
+
+  // Called from the Google Autocomplete listener (the customer picked a suggestion).
+  window.narinAddrOnPlace = function (place) {
+    try { applyPlace(place, A.lastTyped); A.pending = false; window.narinDlvTick(); } catch (e) {}
+  };
+
+  function resolveTyped(text) {
+    if (!(window.google && google.maps && google.maps.places)) return;
+    if (A.pending) return;
+    A.pending = true; A.tried = text;
+    showToast({ html: esc(T.checking), ms: 0 });
+    svc = svc || new google.maps.places.AutocompleteService();
+    svc.getPlacePredictions({
+      input: text,
+      componentRestrictions: { country: 'cz' },
+      types: ['address'],
+      language: 'cs',
+      locationBias: { center: { lat: CFG.warehouse.lat, lng: CFG.warehouse.lng }, radius: 50000 }
+    }, function (preds, status) {
+      if (status !== 'OK' || !preds || !preds.length) { A.pending = false; A.ok = false; hideToastKinds(['']); window.narinDlvTick(); return; }
+      places = places || new google.maps.places.PlacesService(document.createElement('div'));
+      places.getDetails({ placeId: preds[0].place_id, fields: ['address_components', 'geometry', 'formatted_address', 'place_id'], language: 'cs' }, function (p, st) {
+        A.pending = false;
+        // the customer may have edited the text while we were waiting
+        var inp = addressInput();
+        if (inp && inp.value !== text) { window.narinDlvTick(); return; }
+        if (st === 'OK' && p) applyPlace(p, text);
+        hideToastKinds(['']);
+        window.narinDlvTick();
+      });
+    });
+  }
+
+  function changeAddress() {
+    clearCoords();
+    A.ok = false; A.text = ''; A.shownSig = ''; A.tried = '';
+    hideToastKinds(['ok']);
+    var inp = addressInput();
+    if (inp) { inp.focus(); try { inp.select(); } catch (e) {} }
+    window.narinDlvTick();
+  }
+
+  // typing invalidates the old coordinates (they belong to the previous address)
+  document.addEventListener('input', function (e) {
+    var t = e.target;
+    if (!t || t.name !== 'adres' || t !== addressInput()) return;
+    A.lastTyped = t.value;
+    if (t.value !== A.text) {
+      if (A.ok || pick('recipient_lat')) clearCoords();
+      A.ok = false; A.needNumber = false; A.wantToast = false; A.tried = '';
+      hideToastKinds(['ok', 'warn']);
+    }
+  }, true);
+  // leaving the field with typed text but no chosen suggestion: resolve it automatically
+  document.addEventListener('focusout', function (e) {
+    var t = e.target;
+    if (!t || t.name !== 'adres' || t !== addressInput()) return;
+    setTimeout(function () {
+      var v = (addressInput() || {}).value || '';
+      v = v.trim();
+      if (!v || A.ok || A.pending || pick('recipient_lat')) return;
+      A.wantToast = true;
+      if (A.tried !== v) resolveTyped(v);
+    }, 350);
+  }, true);
 
   function applyPrice(total) {
     var radios = courierRadios();
@@ -157,59 +314,89 @@
   }
 
   var blocked = false;
-  var lastWarn = '';
   function tick() {
     var form = cartForm();
     if (!form) return;
     ensureInfoIcon();
-    if (!courierSelected()) { blocked = false; hideWarn(); lastWarn = ''; return; }
-    var lat = parseFloat((field(form, 'recipient_lat') || {}).value);
-    var lng = parseFloat((field(form, 'recipient_lng') || {}).value);
-    var psc = ((field(form, 'psc') || {}).value || '').replace(/\s+/g, '');
+    if (!courierSelected()) { blocked = false; hideToastKinds(['warn', 'ok']); return; }
+    var lat = parseFloat(pick('recipient_lat'));
+    var lng = parseFloat(pick('recipient_lng'));
+    var psc = pick('psc').replace(/\s+/g, '');
+    var text = pick('adres');
     var c = null, warn = '';
     if (isFinite(lat) && isFinite(lng)) {
       var km = distanceKm(CFG.warehouse.lat, CFG.warehouse.lng, lat, lng);
       c = calc(km);
-      hidden(form, 'delivery_km').value = (Math.round(km * 10) / 10).toString();
-      hidden(form, 'delivery_fee_calc').value = c.tooFar ? 'too_far' : (CFG.baseDelivery + '+' + c.extra + '+' + CFG.serviceFee + '=' + c.total);
+      setBoth('delivery_km', (Math.round(km * 10) / 10).toString());
+      setBoth('delivery_fee_calc', c.tooFar ? 'too_far' : (CFG.baseDelivery + '+' + c.extra + '+' + CFG.serviceFee + '=' + c.total));
       if (c.tooFar) warn = 'far';
+    } else if (A.pending) {
+      warn = 'wait';
+    } else if (A.needNumber) {
+      warn = 'number';
     } else if (/^1\d{4}$/.test(psc)) {
       c = calc(0);
-      clearCalcFields(form);
-    } else if (psc) {
-      clearCalcFields(form);
+      clearCalcFields();
+    } else if (psc || text) {
+      clearCalcFields();
       warn = 'pick';
     } else {
       c = calc(0);
-      clearCalcFields(form);
+      clearCalcFields();
     }
     if (warn) {
       blocked = true;
-      if (lastWarn !== warn + (c ? Math.round(c.km) : '')) {
-        lastWarn = warn + (c ? Math.round(c.km) : '');
-        if (warn === 'far') showToast('Na tuto adresu (' + kmTxt(c.km) + ') kur\u00fdrem bohu\u017eel nedoru\u010dujeme.', T.contact, true, 0);
-        else showToast(T.pickTitle, T.pickText, true, 0);
+      if (warn === 'far') {
+        var sig = 'far' + Math.round(c.km);
+        if (A.shownSig !== sig) { A.shownSig = sig; showToast({ kind: 'warn', html: '<b>Na tuto adresu (' + kmTxt(c.km) + ') kur\u00fdrem bohu\u017eel nedoru\u010dujeme.</b><small>' + esc(T.contact) + '</small>', ms: 0 }); }
+      } else if (warn === 'number') {
+        if (A.shownSig !== 'number') { A.shownSig = 'number'; showToast({ kind: 'warn', html: '<b>' + esc(T.needNumber) + '</b><small>' + esc(T.needNumberText) + '</small>', ms: 0 }); }
+      } else if (warn === 'pick' && A.wantToast && !A.pending) {
+        if (A.shownSig !== 'pick') { A.shownSig = 'pick'; showToast({ kind: 'warn', html: '<b>' + esc(A.tried ? T.notFound : T.pickTitle) + '</b><small>' + esc(A.tried ? T.notFoundText : T.pickText) + '</small>', ms: 0 }); }
       }
       return;
     }
     blocked = false;
-    if (lastWarn) { hideWarn(); lastWarn = ''; }
+    if (toastKind === 'warn') hideToastKinds(['warn']);
     applyPrice(c.total);
     showDeliveryRow(c);
+    // confirmation card once per resolved address + price
+    if (A.ok) {
+      var s2 = 'ok' + A.placeId + '|' + c.total;
+      if (A.shownSig !== s2) {
+        A.shownSig = s2;
+        showToast({
+          kind: 'ok',
+          html: '<b>\u2713 ' + esc(A.full || text) + '</b><small>' + esc(kmTxt(c.km) + ' od ateli\u00e9ru \u00b7 doru\u010den\u00ed ' + czk(c.total)) + '</small>' +
+            (A.numberWarn ? '<span class="narin-note">' + esc(A.numberWarn) + '</span>' : '') +
+            '<button type="button" class="narin-chg">' + esc(T.change) + '</button>',
+          ms: 14000
+        });
+      }
+    }
   }
 
-  // Do not let an order go out when the address is too far or not chosen from the list.
+  window.narinDlvTick = function () { try { tick(); } catch (e) {} };
+
+  // Do not let an order go out when the address is too far, missing a house number or not confirmed.
   function guard(e) {
-    if (!blocked) return;
-    var t = e.target;
-    if (e.type === 'submit' || (t && t.closest && t.closest('.t-submit'))) {
-      e.preventDefault();
-      e.stopImmediatePropagation();
+    var t0 = e.target;
+    var isSubmit = e.type === 'submit' || (t0 && t0.closest && t0.closest('.t-submit'));
+    if (!isSubmit) return;
+    // fresh state at the moment of the click, not the one from the last timer tick
+    var v = (pick('adres') || '').trim();
+    if (v && !A.ok && !A.pending && !pick('recipient_lat') && !/^1\d{4}$/.test(pick('psc').replace(/\s+/g, ''))) {
+      A.wantToast = true;
+      if (A.tried !== v) resolveTyped(v);
     }
+    window.narinDlvTick();
+    if (!blocked) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
   }
   document.addEventListener('click', guard, true);
   document.addEventListener('submit', guard, true);
 
-  setInterval(tick, 400);
+  setInterval(tick, 150);
 })();
 </script>

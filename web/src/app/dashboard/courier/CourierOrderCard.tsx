@@ -183,9 +183,14 @@ export function CourierOrderCard({
     setTransferDate("");
   }
 
-  const mapsUrl = order.address
-    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${order.address}, ${order.city ?? ""}`)}`
-    : null;
+  // Точка, которую клиент выбрал в подсказке Google, точнее текста адреса
+  // (чешские адреса имеют два номера дома, текстом легко попасть не в тот дом).
+  const mapsUrl =
+    order.recipient_lat != null && order.recipient_lng != null
+      ? `https://www.google.com/maps/search/?api=1&query=${order.recipient_lat},${order.recipient_lng}`
+      : order.address
+        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${order.address}, ${order.city ?? ""}`)}`
+        : null;
 
   return (
     <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-2 text-xs">
@@ -207,6 +212,12 @@ export function CourierOrderCard({
         {order.delivery_slot ? ` · ${order.delivery_slot}` : ""}
         {order.delivery_time_raw ? ` · ${order.delivery_time_raw}` : ""}
       </p>
+
+      {order.address_full && (
+        <p className="text-zinc-500 dark:text-zinc-400">
+          <span className="font-medium text-zinc-600 dark:text-zinc-300">Точный адрес (Google):</span> {order.address_full}
+        </p>
+      )}
 
       {/* Всё, что клиент указал для курьера: этаж, квартира, домофон, фирма.
           Поле домофона у клиентов часто содержит целую инструкцию, поэтому
