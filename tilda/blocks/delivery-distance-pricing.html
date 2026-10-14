@@ -1,15 +1,13 @@
 <style>
-.narin-dlv { margin: 10px 0 4px; padding: 12px 14px; border-radius: 12px; background: #f4f8ff; border: 1px solid #dbe8fb; color: #16181d; font-family: 'Rubik', Arial, sans-serif; font-size: 13.5px; line-height: 1.5; }
-.narin-dlv b { font-weight: 600; }
-.narin-dlv small { display: block; margin-top: 4px; color: #7d818c; font-size: 12px; }
-.narin-dlv.is-warn { background: #fff4f2; border-color: #f7cfc8; }
-.narin-dlv-row { display: flex; justify-content: space-between; gap: 12px; }
-.narin-dlv-row + .narin-dlv-row { margin-top: 2px; }
-.narin-dlv-total { margin-top: 6px; padding-top: 6px; border-top: 1px dashed #c9d8f0; font-weight: 600; }
+#narinDlvToast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 2147483000; max-width: min(520px, calc(100% - 32px)); box-sizing: border-box; padding: 14px 44px 14px 16px; border-radius: 14px; background: #16181d; color: #fff; font-family: 'Rubik', Arial, sans-serif; font-size: 14px; line-height: 1.5; box-shadow: 0 10px 30px rgba(20,30,50,0.3); display: none; }
+#narinDlvToast.is-warn { background: #c0341f; }
+#narinDlvToast small { display: block; margin-top: 4px; opacity: 0.85; font-size: 12.5px; }
+#narinDlvToast .narin-x { position: absolute; top: 8px; right: 10px; width: 24px; height: 24px; border: 0; border-radius: 50%; background: rgba(255,255,255,0.2); color: #fff; cursor: pointer; font-size: 13px; line-height: 1; }
+.narin-i { display: inline-block; width: 16px; height: 16px; margin-left: 6px; border-radius: 50%; border: 1px solid currentColor; font-size: 11px; line-height: 14px; text-align: center; cursor: pointer; opacity: 0.8; vertical-align: middle; }
 </style>
 <script>
 /* Narin: delivery price by distance. Flat inside the circle, per km beyond it.
-   All numbers are in CFG below - change only there.
+   All numbers are in CFG below - change only there (and in SQL function expected_delivery_fee).
    Comments are plain ASCII on purpose (Tilda editor breaks on some characters). */
 (function () {
   'use strict';
@@ -18,15 +16,18 @@
     warehouse: { lat: 50.0710426, lng: 14.4883401 },
     baseDelivery: 159,
     serviceFee: 80,
-    freeRadiusKm: 17,
-    perKm: 30,
+    freeRadiusKm: 14,
+    perKm: 18,
     maxKm: 40
   };
 
-  var D = {
-    serviceNote: 'Servisn\u00ed poplatek zahrnuje p\u0159\u00edpravu a zabalen\u00ed kytice a zpracov\u00e1n\u00ed objedn\u00e1vky.',
-    contactEmail: 'support@vezminarin.cz',
-    contactPhone: '+420 776 421 993'
+  var T = {
+    deliveryLabel: 'Doru\u010den\u00ed kur\u00fdrem',
+    deliveryLabelExtra: 'Doru\u010den\u00ed + p\u0159\u00edplatek za vzd\u00e1lenost',
+    serviceNote: 'Servisn\u00ed poplatek zahrnuje p\u0159\u00edpravu a zabalen\u00ed kytice, zpracov\u00e1n\u00ed objedn\u00e1vky a dan\u011b.',
+    pickTitle: 'Vyberte pros\u00edm adresu z nab\u00eddky',
+    pickText: 'Cenu doru\u010den\u00ed po\u010d\u00edt\u00e1me podle vzd\u00e1lenosti, proto adresu pot\u0159ebujeme vybrat ze seznamu p\u0159i psan\u00ed.',
+    contact: 'Napi\u0161te n\u00e1m na support@vezminarin.cz nebo zavolejte na +420 776 421 993 a domluv\u00edme se na individu\u00e1ln\u00edm doru\u010den\u00ed.'
   };
 
   function toRad(x) { return x * Math.PI / 180; }
@@ -37,13 +38,11 @@
       Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
-
   function calc(km) {
     var extra = 0;
     if (km > CFG.freeRadiusKm) extra = Math.ceil(km - CFG.freeRadiusKm) * CFG.perKm;
     return { km: km, extra: extra, delivery: CFG.baseDelivery + extra, total: CFG.baseDelivery + extra + CFG.serviceFee, tooFar: km > CFG.maxKm };
   }
-
   function czk(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0') + '\u00a0K\u010d'; }
   function kmTxt(n) { return (Math.round(n * 10) / 10).toString().replace('.', ',') + '\u00a0km'; }
 
@@ -57,13 +56,11 @@
     form.appendChild(i);
     return i;
   }
-
   function clearCalcFields(form) {
     var a = field(form, 'delivery_km'), b = field(form, 'delivery_fee_calc');
     if (a) a.value = '';
     if (b) b.value = '';
   }
-
   function courierRadios() {
     var all = document.querySelectorAll('.t706 .t-form .t-radio__wrapper-delivery input');
     var out = [];
@@ -77,54 +74,71 @@
     return !!c && (c.value || '').toLowerCase().indexOf('kur') !== -1;
   }
 
-  function infoBox() {
-    var box = document.getElementById('narinDlvInfo');
-    if (box) return box;
-    var wrap = document.querySelector('.t706 .t-form .t-radio__wrapper-delivery');
-    if (!wrap) return null;
-    box = document.createElement('div');
-    box.id = 'narinDlvInfo';
-    box.className = 'narin-dlv';
-    wrap.parentNode.insertBefore(box, wrap.nextSibling);
-    return box;
+  // ---- visible price panel (Zero Block rows) ----
+  function deliveryRowAtoms() {
+    var g = document.querySelector('[data-group-id="1772303857124000001"]');
+    if (!g) return null;
+    var atoms = g.querySelectorAll('.tn-atom');
+    var out = { group: g, label: null, price: null };
+    for (var i = 0; i < atoms.length; i++) {
+      if (/\d/.test(atoms[i].textContent || '')) out.price = atoms[i];
+      else if (!out.label) out.label = atoms[i];
+    }
+    return out;
+  }
+  function serviceLabelAtom() {
+    var atoms = document.querySelectorAll('.tn-atom');
+    for (var i = 0; i < atoms.length; i++) {
+      if (atoms[i].children.length === 0 && (atoms[i].textContent || '').trim().indexOf('Servisn\u00ed poplatek') === 0) return atoms[i];
+    }
+    return null;
+  }
+  function setText(el, txt) {
+    if (el && el.textContent !== txt) el.textContent = txt;
+  }
+  function showDeliveryRow(c) {
+    var r = deliveryRowAtoms();
+    if (!r) return;
+    setText(r.price, czk(c.delivery));
+    setText(r.label, c.extra > 0 ? T.deliveryLabelExtra : T.deliveryLabel);
+  }
+  function ensureInfoIcon() {
+    var a = serviceLabelAtom();
+    if (!a || a.querySelector('.narin-i')) return;
+    var i = document.createElement('span');
+    i.className = 'narin-i';
+    i.textContent = 'i';
+    i.title = T.serviceNote;
+    i.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      showToast(T.serviceNote, '', false, 9000);
+    });
+    a.appendChild(i);
   }
 
-  function row(label, value) {
-    return '<div class="narin-dlv-row"><span>' + label + '</span><span>' + value + '</span></div>';
+  // ---- toast ----
+  var toastTimer = null;
+  function toastEl() {
+    var t = document.getElementById('narinDlvToast');
+    if (t) return t;
+    t = document.createElement('div');
+    t.id = 'narinDlvToast';
+    t.innerHTML = '<div class="narin-msg"></div><button type="button" class="narin-x" aria-label="Zav\u0159\u00edt">\u2715</button>';
+    t.querySelector('.narin-x').addEventListener('click', function () { t.style.display = 'none'; });
+    document.body.appendChild(t);
+    return t;
   }
-
-  var blocked = false;
-  function setBlocked(v) { blocked = v; }
-
-  function render(state) {
-    var box = infoBox();
-    if (!box) return;
-    box.className = 'narin-dlv' + (state.kind === 'far' || state.kind === 'pick' ? ' is-warn' : '');
-    var html = '';
-    if (state.kind === 'none') {
-      html = row('Doru\u010den\u00ed kur\u00fdrem po Praze', czk(CFG.baseDelivery)) +
-        row('Servisn\u00ed poplatek', czk(CFG.serviceFee)) +
-        '<div class="narin-dlv-row narin-dlv-total"><span>Celkem za doru\u010den\u00ed</span><span>' + czk(CFG.baseDelivery + CFG.serviceFee) + '</span></div>' +
-        '<small>Po zad\u00e1n\u00ed adresy zobraz\u00edme p\u0159esnou cenu. Do ' + CFG.freeRadiusKm + '\u00a0km od na\u0161eho ateli\u00e9ru plat\u00ed jednotn\u00e1 cena, d\u00e1l se p\u0159i\u010d\u00edt\u00e1 ' + czk(CFG.perKm) + ' za ka\u017ed\u00fd dal\u0161\u00ed kilometr.</small>';
-    } else if (state.kind === 'pick') {
-      html = '<b>Vyberte pros\u00edm adresu z nab\u00eddky</b><small>Cenu doru\u010den\u00ed po\u010d\u00edt\u00e1me podle vzd\u00e1lenosti, proto adresu pot\u0159ebujeme vybrat ze seznamu p\u0159i psan\u00ed.</small>';
-    } else if (state.kind === 'far') {
-      html = '<b>Na tuto adresu (' + kmTxt(state.c.km) + ') kur\u00fdrem bohu\u017eel nedoru\u010dujeme.</b>' +
-        '<small>Napi\u0161te n\u00e1m na ' + D.contactEmail + ' nebo zavolejte na ' + D.contactPhone + ' a domluv\u00edme se na individu\u00e1ln\u00edm doru\u010den\u00ed.</small>';
-    } else {
-      var c = state.c;
-      html = row('Doru\u010den\u00ed kur\u00fdrem', czk(CFG.baseDelivery));
-      if (c.extra > 0) html += row('P\u0159\u00edplatek za vzd\u00e1lenost (' + kmTxt(c.km) + ', nad ' + CFG.freeRadiusKm + '\u00a0km po ' + czk(CFG.perKm) + '/km)', czk(c.extra));
-      html += row('Servisn\u00ed poplatek', czk(CFG.serviceFee));
-      html += '<small>' + D.serviceNote + '</small>';
-      html += '<div class="narin-dlv-row narin-dlv-total"><span>Celkem za doru\u010den\u00ed</span><span>' + czk(c.total) + '</span></div>';
-      if (c.extra === 0) html += '<small>Jednotn\u00e1 cena po Praze (do ' + CFG.freeRadiusKm + '\u00a0km od ateli\u00e9ru).</small>';
-    }
-    if (box.getAttribute('data-sig') !== html) {
-      box.innerHTML = html;
-      box.setAttribute('data-sig', html);
-    }
-    box.style.display = '';
+  function showToast(title, text, warn, ms) {
+    var t = toastEl();
+    t.className = warn ? 'is-warn' : '';
+    t.querySelector('.narin-msg').innerHTML = (warn ? '<b>' + title + '</b>' : title) + (text ? '<small>' + text + '</small>' : '');
+    t.style.display = 'block';
+    clearTimeout(toastTimer);
+    if (ms) toastTimer = setTimeout(function () { t.style.display = 'none'; }, ms);
+  }
+  function hideWarn() {
+    var t = document.getElementById('narinDlvToast');
+    if (t && t.className.indexOf('is-warn') !== -1) t.style.display = 'none';
   }
 
   function applyPrice(total) {
@@ -142,42 +156,46 @@
     }
   }
 
-  var lastSig = '';
+  var blocked = false;
+  var lastWarn = '';
   function tick() {
     var form = cartForm();
     if (!form) return;
-    var box = document.getElementById('narinDlvInfo');
-    if (!courierSelected()) {
-      if (box) box.style.display = 'none';
-      setBlocked(false);
-      return;
-    }
+    ensureInfoIcon();
+    if (!courierSelected()) { blocked = false; hideWarn(); lastWarn = ''; return; }
     var lat = parseFloat((field(form, 'recipient_lat') || {}).value);
     var lng = parseFloat((field(form, 'recipient_lng') || {}).value);
     var psc = ((field(form, 'psc') || {}).value || '').replace(/\s+/g, '');
-    var state;
+    var c = null, warn = '';
     if (isFinite(lat) && isFinite(lng)) {
       var km = distanceKm(CFG.warehouse.lat, CFG.warehouse.lng, lat, lng);
-      var c = calc(km);
-      state = c.tooFar ? { kind: 'far', c: c } : { kind: 'ok', c: c };
+      c = calc(km);
       hidden(form, 'delivery_km').value = (Math.round(km * 10) / 10).toString();
       hidden(form, 'delivery_fee_calc').value = c.tooFar ? 'too_far' : (CFG.baseDelivery + '+' + c.extra + '+' + CFG.serviceFee + '=' + c.total);
+      if (c.tooFar) warn = 'far';
     } else if (/^1\d{4}$/.test(psc)) {
-      state = { kind: 'ok', c: calc(0) };
+      c = calc(0);
       clearCalcFields(form);
     } else if (psc) {
       clearCalcFields(form);
-      state = { kind: 'pick' };
+      warn = 'pick';
     } else {
-      state = { kind: 'none' };
+      c = calc(0);
       clearCalcFields(form);
     }
-    render(state);
-    if (state.kind === 'ok') { applyPrice(state.c.total); setBlocked(false); }
-    else if (state.kind === 'none') { applyPrice(CFG.baseDelivery + CFG.serviceFee); setBlocked(false); }
-    else { setBlocked(true); }
-    var sig = state.kind + (state.c ? state.c.total : '');
-    if (sig !== lastSig) { lastSig = sig; }
+    if (warn) {
+      blocked = true;
+      if (lastWarn !== warn + (c ? Math.round(c.km) : '')) {
+        lastWarn = warn + (c ? Math.round(c.km) : '');
+        if (warn === 'far') showToast('Na tuto adresu (' + kmTxt(c.km) + ') kur\u00fdrem bohu\u017eel nedoru\u010dujeme.', T.contact, true, 0);
+        else showToast(T.pickTitle, T.pickText, true, 0);
+      }
+      return;
+    }
+    blocked = false;
+    if (lastWarn) { hideWarn(); lastWarn = ''; }
+    applyPrice(c.total);
+    showDeliveryRow(c);
   }
 
   // Do not let an order go out when the address is too far or not chosen from the list.
@@ -187,13 +205,11 @@
     if (e.type === 'submit' || (t && t.closest && t.closest('.t-submit'))) {
       e.preventDefault();
       e.stopImmediatePropagation();
-      var box = document.getElementById('narinDlvInfo');
-      if (box && box.scrollIntoView) box.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }
   document.addEventListener('click', guard, true);
   document.addEventListener('submit', guard, true);
 
-  setInterval(tick, 500);
+  setInterval(tick, 400);
 })();
 </script>
