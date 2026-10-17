@@ -49,6 +49,36 @@ type PointsRowLite = {
   created_at: string | null;
 };
 
+type VoucherRowLite = {
+  id: string;
+  code: string;
+  amount: number | null;
+  status: "inactive" | "active" | "claimed" | "expired" | "void";
+  activated_at: string | null;
+  expires_at: string | null;
+  claimed_at: string | null;
+  claimed_by_email: string | null;
+  purchaser_email: string | null;
+};
+
+type DepositLotRowLite = {
+  id: string;
+  amount: number;
+  remaining: number;
+  source: "manual" | "voucher";
+  expires_at: string | null;
+  expired_at: string | null;
+  created_at: string;
+};
+
+const VOUCHER_STATUS_LABEL: Record<VoucherRowLite["status"], string> = {
+  inactive: "не включён",
+  active: "включён, ждёт клиента",
+  claimed: "получен клиентом",
+  expired: "истёк",
+  void: "аннулирован",
+};
+
 type DateRowLite = {
   id: string;
   label: string;
@@ -107,6 +137,8 @@ export default function UsersPage() {
   const [depositAmount, setDepositAmount] = useState("");
   const [depositSubmitting, setDepositSubmitting] = useState(false);
   const [depositError, setDepositError] = useState<string | null>(null);
+  const [vouchers, setVouchers] = useState<VoucherRowLite[]>([]);
+  const [depositLots, setDepositLots] = useState<DepositLotRowLite[]>([]);
 
   const [dateLabel, setDateLabel] = useState("");
   const [dateValue, setDateValue] = useState("");
@@ -247,7 +279,7 @@ export default function UsersPage() {
 
   async function loadDetail(email: string) {
     const supabase = createClient();
-    const [ordersRes, pointsRes, datesRes, recipientsRes, subRes] = await Promise.all([
+    const [ordersRes, pointsRes, datesRes, recipientsRes, subRes, vouchersRes, lotsRes] = await Promise.all([
       supabase
         .from("tilda_orders")
         .select("order_id, created_at, order_total, status, products_text")
@@ -277,6 +309,18 @@ export default function UsersPage() {
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle(),
+      supabase
+        .from("gift_vouchers")
+        .select("id, code, amount, status, activated_at, expires_at, claimed_at, claimed_by_email, purchaser_email")
+        .or(`claimed_by_email.ilike.${email},purchaser_email.ilike.${email}`)
+        .order("created_at", { ascending: false })
+        .limit(50),
+      supabase
+        .from("deposit_lots")
+        .select("id, amount, remaining, source, expires_at, expired_at, created_at")
+        .ilike("email", email)
+        .order("created_at", { ascending: false })
+        .limit(50),
     ]);
 
     setOrders(ordersRes.data ?? []);
@@ -284,6 +328,8 @@ export default function UsersPage() {
     setDates(datesRes.data ?? []);
     setRecipients(recipientsRes.data ?? []);
     setSubscription(subRes.data ?? null);
+    setVouchers((vouchersRes.data as VoucherRowLite[]) ?? []);
+    setDepositLots((lotsRes.data as DepositLotRowLite[]) ?? []);
   }
 
   async function selectCustomer(customer: CustomerRow) {
@@ -677,6 +723,83 @@ export default function UsersPage() {
             </div>
             {depositError && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{depositError}</p>}
           </div>
+
+          {/* Сертификаты клиента: что он купил или получил, и из чего состоит его депозит */}
+          {!loadingDetail && (
+            <div className="rounded-md border border-zinc-100 dark:border-zinc-800 p-3">
+              <p className="mb-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">Сертификаты и депозит</p>
+              {(() => {
+                const alive = depositLots.filter((l) => l.remaining > 0 && !l.expired_at);
+                const mail = selected.email.toLowerCase();
+                const bought = vouchers.filter((v) => (v.purchaser_email ?? "").toLowerCase() === mail);
+                const received = vouchers.filter((v) => (v.claimed_by_email ?? "").toLowerCase() === mail);
+                if (alive.length === 0 && bought.length === 0 && received.length === 0) {
+                  return <p className="text-sm text-zinc-400 dark:text-zinc-500">Сертификатов и частей депозита нет.</p>;
+                }
+                return (
+                  <div className="space-y-3 text-sm">
+                    {alive.length > 0 && (
+                      <div>
+                        <p className="mb-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                          Из чего состоит депозит (первым тратится то, что раньше сгорит)
+                        </p>
+                        <div className="space-y-1">
+                          {[...alive]
+                            .sort((a, b) => (a.expires_at ?? "9999").localeCompare(b.expires_at ?? "9999"))
+                            .map((l) => (
+                              <div key={l.id} className="flex items-center justify-between gap-2">
+                                <span>
+                                  {l.source === "voucher" ? "Из сертификата" : "Пополнение"} · осталось {Math.round(l.remaining)} Kč
+                                  {l.remaining !== l.amount ? ` из ${Math.round(l.amount)}` : ""}
+                                </span>
+                                <span
+                                  className={`text-xs ${
+                                    l.expires_at ? "text-orange-600 dark:text-orange-400" : "text-zinc-500 dark:text-zinc-400"
+                                  }`}
+                                >
+                                  {l.expires_at ? `сгорит ${formatDate(l.expires_at)}` : "без срока"}
+                                </span>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+                    {received.length > 0 && (
+                      <div>
+                        <p className="mb-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">Получил по сертификатам</p>
+                        <div className="space-y-1">
+                          {received.map((v) => (
+                            <div key={v.id} className="flex items-center justify-between gap-2">
+                              <span className="font-mono text-xs">{v.code}</span>
+                              <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                                {Math.round(v.amount ?? 0)} Kč · {v.claimed_at ? formatDate(v.claimed_at) : ""}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {bought.length > 0 && (
+                      <div>
+                        <p className="mb-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">Купил (подарил)</p>
+                        <div className="space-y-1">
+                          {bought.map((v) => (
+                            <div key={v.id} className="flex items-center justify-between gap-2">
+                              <span className="font-mono text-xs">{v.code}</span>
+                              <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                                {Math.round(v.amount ?? 0)} Kč · {VOUCHER_STATUS_LABEL[v.status]}
+                                {v.expires_at && v.status === "active" ? ` · до ${formatDate(v.expires_at)}` : ""}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
 
           {loadingDetail && <p className="text-sm text-zinc-400 dark:text-zinc-500">Загрузка…</p>}
 

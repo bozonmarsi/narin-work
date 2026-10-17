@@ -24,11 +24,19 @@ type Voucher = {
 };
 
 const STATUS_LABEL: Record<Voucher["status"], string> = {
-  inactive: "Не включена",
-  active: "Включена",
-  claimed: "Погашена",
-  expired: "Истекла",
-  void: "Аннулирована",
+  inactive: "Не включён",
+  active: "Включён",
+  claimed: "Погашен",
+  expired: "Истёк",
+  void: "Аннулирован",
+};
+
+const STATUS_HINT: Record<Voucher["status"], string> = {
+  inactive: "напечатан, но не продан, не работает",
+  active: "продан, ждёт, пока клиент отсканирует",
+  claimed: "клиент получил деньги на депозит",
+  expired: "срок вышел, деньги сгорели",
+  void: "отменён менеджером",
 };
 
 const STATUS_STYLE: Record<Voucher["status"], string> = {
@@ -56,21 +64,21 @@ function money(n: number | null) {
 
 function describeError(message: string): string {
   if (message.includes("voucher_not_found")) return "Такого кода нет. Проверьте, что ввели его без ошибок.";
-  if (message.includes("voucher_not_inactive_active")) return "Эта карточка уже включена.";
-  if (message.includes("voucher_not_inactive_claimed")) return "Эта карточка уже погашена клиентом.";
-  if (message.includes("voucher_not_inactive_void")) return "Эта карточка аннулирована.";
-  if (message.includes("voucher_not_inactive_expired")) return "У этой карточки истёк срок.";
+  if (message.includes("voucher_not_inactive_active")) return "Этот сертификат уже включён.";
+  if (message.includes("voucher_not_inactive_claimed")) return "Этот сертификат уже погашен клиентом.";
+  if (message.includes("voucher_not_inactive_void")) return "Этот сертификат аннулирован.";
+  if (message.includes("voucher_not_inactive_expired")) return "У этого сертификата истёк срок.";
   if (message.includes("amount_required")) return "Укажите сумму.";
-  if (message.includes("voucher_cannot_void")) return "Эту карточку уже нельзя аннулировать (она погашена или истекла).";
+  if (message.includes("voucher_cannot_void")) return "Этот сертификат уже нельзя аннулировать (он погашен или истёк).";
   if (message.includes("forbidden")) return "Нет прав (нужна роль менеджера).";
   if (message.includes("count_1_500")) return "Количество от 1 до 500.";
   return message;
 }
 
-// Подарочные карточки (poukazy): партия карточек с уникальными кодами,
-// менеджер включает карточку по коду (сумма + способ оплаты, срок 12 месяцев
+// Подарочные сертификаты (poukazy): партия сертификатов с уникальными кодами,
+// менеджер включает сертификат по коду (сумма + способ оплаты, срок 12 месяцев
 // с этого момента), клиент потом сканирует QR на /poukaz — сумма сразу
-// зачисляется на его депозит и сгорает в тот же день, что и сама карточка.
+// зачисляется на его депозит и сгорает в тот же день, что и сам сертификат.
 export default function VouchersPage() {
   const { profile } = useDashboard();
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
@@ -124,6 +132,15 @@ export default function VouchersPage() {
     [vouchers],
   );
 
+  const actFound = useMemo(() => {
+    const q = actCode.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (q.length < 8) return null;
+    const v = vouchers.find((x) => x.code.replace(/-/g, "") === q);
+    if (!v) return { kind: "warn" as const, text: "Такого кода нет в списке." };
+    if (v.status === "inactive") return { kind: "ok" as const, text: "Код найден, сертификат ещё не включён." };
+    return { kind: "warn" as const, text: `Код найден, но статус: ${STATUS_LABEL[v.status]}.` };
+  }, [actCode, vouchers]);
+
   const shown = useMemo(() => {
     const q = search.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
     return vouchers.filter((v) => {
@@ -142,7 +159,7 @@ export default function VouchersPage() {
     setActMsg(null);
     const amount = actAmount ? Number(actAmount) : null;
     if (!actCode.trim()) {
-      setActMsg({ ok: false, text: "Введите код карточки." });
+      setActMsg({ ok: false, text: "Введите код сертификата." });
       return;
     }
     setActBusy(true);
@@ -162,7 +179,7 @@ export default function VouchersPage() {
     const v = data as Voucher;
     setActMsg({
       ok: true,
-      text: `Карточка ${v.code} включена на ${money(v.amount)}. Действует до ${formatDate(v.expires_at)}.`,
+      text: `Сертификат ${v.code} включён на ${money(v.amount)}. Действует до ${formatDate(v.expires_at)}.`,
     });
     setActCode("");
     setActAmount("");
@@ -191,7 +208,7 @@ export default function VouchersPage() {
   }
 
   async function voidVoucher(v: Voucher) {
-    const reason = window.prompt(`Аннулировать карточку ${v.code}? Укажите причину (можно пусто):`, "");
+    const reason = window.prompt(`Аннулировать сертификат ${v.code}? Укажите причину (можно пусто):`, "");
     if (reason === null) return;
     const supabase = createClient();
     const { error } = await supabase.rpc("void_voucher", { p_code: v.code, p_reason: reason });
@@ -207,7 +224,7 @@ export default function VouchersPage() {
     const blob = new Blob(["﻿" + rows.join("\n")], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `poukazy-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `sertifikaty-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(a.href);
   }
@@ -218,11 +235,28 @@ export default function VouchersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold">Подарочные карточки (poukazy)</h1>
+        <h1 className="text-xl font-semibold">Подарочные сертификаты</h1>
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-          Карточки печатаются с уникальным кодом и не работают, пока вы их не включили. После включения 12 месяцев: клиент
-          сканирует QR, сумма зачисляется на его депозит и сгорает в тот же день, что и карточка.
+          Пластиковая карточка или письмо с уникальным кодом и QR. Пока вы не включили сертификат, он ничего не стоит.
         </p>
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-3">
+        {[
+          ["1", "Напечатать", "Создайте партию в блоке «Создать партию». Коды печатаются на карточках, сумма пока не задана."],
+          ["2", "Продать и включить", "Клиент заплатил: введите код с карточки, сумму и способ оплаты. С этого дня идут 12 месяцев."],
+          ["3", "Клиент сканирует QR", "Сумма сразу попадает на его депозит и сгорает в тот же день, что и сертификат."],
+        ].map(([n, t, d]) => (
+          <div key={n} className="flex gap-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-3">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-white">
+              {n}
+            </span>
+            <div>
+              <p className="text-sm font-medium">{t}</p>
+              <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{d}</p>
+            </div>
+          </div>
+        ))}
       </div>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
@@ -234,13 +268,14 @@ export default function VouchersPage() {
               filter === s ? "border-accent" : "border-zinc-200 dark:border-zinc-700"
             } bg-white dark:bg-zinc-900`}
           >
-            <p className="text-[11px] text-zinc-500 dark:text-zinc-400">{STATUS_LABEL[s]}</p>
+            <p className="text-[11px] font-medium text-zinc-600 dark:text-zinc-300">{STATUS_LABEL[s]}</p>
             <p className="text-lg font-semibold">{counts[s]}</p>
+            <p className="text-[10px] leading-tight text-zinc-500 dark:text-zinc-400">{STATUS_HINT[s]}</p>
           </button>
         ))}
       </div>
       <p className="text-xs text-zinc-500 dark:text-zinc-400">
-        Включённых карточек ещё не погашено на {money(activeSum)} (это обязательство перед клиентами).
+        Продано, но ещё не получено клиентами: {money(activeSum)}. Это ваше обязательство перед клиентами.
       </p>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -248,7 +283,7 @@ export default function VouchersPage() {
           onSubmit={activate}
           className="space-y-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4"
         >
-          <h2 className="text-sm font-semibold">Включить карточку</h2>
+          <h2 className="text-sm font-semibold">Включить сертификат (клиент заплатил)</h2>
           <input
             value={actCode}
             onChange={(e) => setActCode(e.target.value.toUpperCase())}
@@ -256,6 +291,15 @@ export default function VouchersPage() {
             className={`${inputCls} font-mono`}
             autoComplete="off"
           />
+          {actFound && (
+            <p
+              className={`text-xs ${
+                actFound.kind === "ok" ? "text-green-700 dark:text-green-400" : "text-orange-600 dark:text-orange-400"
+              }`}
+            >
+              {actFound.text}
+            </p>
+          )}
           <div>
             <div className="flex flex-wrap gap-1.5">
               {AMOUNT_PRESETS.map((a) => (
@@ -305,7 +349,7 @@ export default function VouchersPage() {
             disabled={actBusy}
             className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
           >
-            {actBusy ? "Включаем…" : "Включить карточку"}
+            {actBusy ? "Включаем…" : "Включить сертификат"}
           </button>
           {actMsg && (
             <p
@@ -322,7 +366,7 @@ export default function VouchersPage() {
           onSubmit={createBatch}
           className="space-y-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4"
         >
-          <h2 className="text-sm font-semibold">Создать партию карточек</h2>
+          <h2 className="text-sm font-semibold">Создать партию (перед печатью)</h2>
           <div className="flex gap-2">
             <input
               value={batchCount}
@@ -339,7 +383,7 @@ export default function VouchersPage() {
             />
           </div>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Сумма не нужна: она ставится, когда вы включаете карточку. Новые карточки неактивны.
+            Сумма не нужна: она ставится, когда вы включаете сертификат. Новые сертификаты не включены.
           </p>
           <button
             type="submit"
@@ -351,7 +395,7 @@ export default function VouchersPage() {
           {batchError && <p className="text-sm text-red-600 dark:text-red-400">{batchError}</p>}
           {batchCodes.length > 0 && (
             <div className="space-y-2">
-              <p className="text-sm font-medium">Создано {batchCodes.length}. Эти коды печатаются на карточках:</p>
+              <p className="text-sm font-medium">Создано {batchCodes.length}. Эти коды печатаются на карточках, они же в QR:</p>
               <div className="max-h-40 overflow-auto rounded-lg bg-zinc-50 dark:bg-zinc-800 p-2 font-mono text-xs">
                 {batchCodes.map((c) => (
                   <div key={c}>{c}</div>
@@ -396,7 +440,7 @@ export default function VouchersPage() {
         {loading ? (
           <p className="text-sm text-zinc-500 dark:text-zinc-400">Загрузка…</p>
         ) : shown.length === 0 ? (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">Карточек нет.</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">Сертификатов нет.</p>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900">
             <table className="w-full text-left text-sm">
@@ -405,9 +449,9 @@ export default function VouchersPage() {
                   <th className="px-3 py-2">Код</th>
                   <th className="px-3 py-2">Статус</th>
                   <th className="px-3 py-2">Сумма</th>
-                  <th className="px-3 py-2">Включена</th>
+                  <th className="px-3 py-2">Включён</th>
                   <th className="px-3 py-2">Действует до</th>
-                  <th className="px-3 py-2">Погашена</th>
+                  <th className="px-3 py-2">Получен клиентом</th>
                   <th className="px-3 py-2" />
                 </tr>
               </thead>

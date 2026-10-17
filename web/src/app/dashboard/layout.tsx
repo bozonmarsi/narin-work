@@ -271,7 +271,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   pathname.startsWith("/dashboard/vouchers") ? "bg-accent text-white" : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 }`}
               >
-                Карточки
+                Сертификаты
               </Link>
               <Link
                 href="/dashboard/logs"
