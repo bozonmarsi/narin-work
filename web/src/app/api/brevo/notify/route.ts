@@ -14,7 +14,9 @@ type NotifyPayload = {
     | "occasion_last_call"
     | "gift_sender_fallback"
     | "gift_confirmed"
-    | "gift_cancelled";
+    | "gift_cancelled"
+    | "voucher_purchased"
+    | "voucher_gift";
   order_id: string; // human-readable Tilda order number, e.g. "1948856243"
   email?: string;
   phone?: string;
@@ -34,6 +36,17 @@ type NotifyPayload = {
   sender_link?: string;
   expires_at?: string;
   reason?: "expired" | "opted_out";
+  // dárkové poukazy (SQL issue_vouchers_for_order / send_voucher_email)
+  code?: string;
+  amount?: number;
+  sender_name?: string | null;
+  message?: string | null;
+  self?: boolean;
+  count?: number;
+  total?: number;
+  recipient_email?: string | null;
+  send_at?: string;
+  send_now?: boolean;
 };
 
 type OccasionItem = {
@@ -191,6 +204,34 @@ const OCCASIONS_URL = "https://vezminarin.cz/members/occasions";
 const CZ_DAYS = ["neděle", "pondělí", "úterý", "středa", "čtvrtek", "pátek", "sobota"];
 const CZ_MONTHS = ["ledna", "února", "března", "dubna", "května", "června", "července", "srpna", "září", "října", "listopadu", "prosince"];
 const OCC_EMOJI: Record<OccasionItem["kind"], string> = { birthday: "🎂", nameday: "🌼", holiday: "💐", general: "💐", date: "📅" };
+
+function czk(n: number) {
+  return `${Math.round(n).toLocaleString("cs-CZ").replace(/\s/g, "\u00a0")}\u00a0Kč`;
+}
+function pragueDate(iso: string) {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const parts = new Intl.DateTimeFormat("cs-CZ", { timeZone: "Europe/Prague", day: "numeric", month: "numeric", year: "numeric" }).formatToParts(d);
+  const g = (t: string) => parts.find((x) => x.type === t)?.value ?? "";
+  return `${g("day")}. ${g("month")}. ${g("year")}`;
+}
+// Karta s poukazem v e-mailu: tabulka + inline styly (barva jako záloha, když klient ignoruje gradient).
+function voucherCard(amount: number, code: string, validUntil: string | null) {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;border-radius:18px;overflow:hidden;background:${ACCENT};background-image:linear-gradient(135deg,#2a7bf0 0%,#186ce0 50%,#0f4fb0 100%);">
+  <tr><td style="padding:22px 22px 20px;font-family:'Rubik',Arial,sans-serif;color:#ffffff;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+      <td style="font-size:13px;font-weight:700;letter-spacing:0.22em;color:#ffffff;">NARIN</td>
+      <td align="right" style="font-size:10.5px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:#dbe8ff;">Dárkový poukaz</td>
+    </tr></table>
+    <div style="height:22px;"></div>
+    <div style="font-size:12.5px;color:#dbe8ff;">Hodnota poukazu</div>
+    <div style="font-size:34px;font-weight:700;line-height:1.15;color:#ffffff;">${czk(amount)}</div>
+    <div style="height:14px;"></div>
+    <div style="font-size:13px;font-weight:600;letter-spacing:0.14em;color:#ffffff;">${esc(code)}</div>
+    ${validUntil ? `<div style="margin-top:6px;font-size:11.5px;color:#dbe8ff;">Platí do ${esc(validUntil)}</div>` : ""}
+  </td></tr>
+</table>`;
+}
 
 function esc(s: unknown) {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -554,6 +595,73 @@ export async function POST(request: Request) {
             ctaLabel: "Poslat kytici jinak",
             ctaUrl: "https://vezminarin.cz/page118819546.html",
             footNote: "Kdybyste chtěli kytici poslat znovu s adresou, rádi pomůžeme.",
+          }),
+        );
+      }
+      break;
+
+    // Dárkový poukaz: potvrzení kupujícímu hned po zaplacení. Samotný poukaz
+    // (kód) jde zvlášť e-mailem voucher_gift, příjemci ve vybraný den.
+    case "voucher_purchased":
+      if (email) {
+        const n = payload.count ?? 1;
+        const rec = payload.recipient_email ? esc(payload.recipient_email) : null;
+        const when = payload.send_at ? pragueDate(payload.send_at) : "";
+        const body = rec
+          ? payload.send_now
+            ? `Dobrý den, děkujeme! Platba proběhla v pořádku a poukaz jsme právě odeslali na ${rec}.`
+            : `Dobrý den, děkujeme! Platba proběhla v pořádku. Poukaz odešleme ${when ? `<b style="color:${INK};">${esc(when)}</b> ` : ""}na ${rec}, přesně v den, který jste vybrali.`
+          : `Dobrý den, děkujeme! Platba proběhla v pořádku. Poukaz vám právě posíláme v samostatném e-mailu, přeposlat ho obdarovanému můžete, kdy se vám to hodí.`;
+        await sendBrevoEmail(
+          email,
+          n > 1 ? `Dárkové poukazy jsou zaplacené 🎁` : `Dárkový poukaz je zaplacený 🎁`,
+          emailShell({
+            preheader: `Objednávka č. ${order_id}: dárkový poukaz je zaplacený.`,
+            badgeEmoji: "🎁",
+            badgeBg: ACCENT_BG,
+            headline: n > 1 ? "Poukazy jsou zaplacené" : "Poukaz je zaplacený",
+            bodyHtml: body,
+            extraHtml: `<p style="margin:0 0 14px;font-size:12.5px;color:${MUTED};">${n > 1 ? `${n} poukazy` : "Poukaz"} v celkové hodnotě <b style="color:${INK};">${czk(payload.total ?? 0)}</b>. Platí 12 měsíců od zaplacení.</p>`,
+            ctaLabel: "Jak poukazy fungují",
+            ctaUrl: "https://vezminarin.cz/to-buyers#poukazy",
+            footNote: `Do 14 dnů od nákupu můžete od smlouvy odstoupit, pokud poukaz ještě nebyl uplatněn. Stačí napsat na <a href="mailto:support@vezminarin.cz" style="color:${ACCENT};text-decoration:none;font-weight:500;">support@vezminarin.cz</a>.`,
+          }),
+        );
+      }
+      break;
+
+    // Samotný dárkový poukaz s kartou, kódem a tlačítkem pro uplatnění.
+    case "voucher_gift":
+      if (email && payload.code && payload.amount) {
+        const self = payload.self === true;
+        const sender = payload.sender_name ? esc(payload.sender_name) : null;
+        const to = payload.recipient_name ? esc(payload.recipient_name) : null;
+        const until = payload.expires_at ? pragueDate(payload.expires_at) : null;
+        const msg = payload.message
+          ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;"><tr><td style="padding:14px 16px;border-left:3px solid ${ACCENT};background:#f4f8ff;border-radius:6px;font-size:14px;line-height:1.6;color:${INK};font-style:italic;">${esc(payload.message).replace(/\n/g, "<br>")}${sender ? `<div style="margin-top:8px;font-style:normal;font-size:12px;color:${MUTED};">${sender}</div>` : ""}</td></tr></table>`
+          : "";
+        const subject = self
+          ? `Váš dárkový poukaz NARIN 🎁`
+          : sender
+            ? `${payload.sender_name} vám posílá dárek 🎁`
+            : `Máte dárek od NARIN 🎁`;
+        await sendBrevoEmail(
+          email,
+          subject,
+          emailShell({
+            preheader: self ? `Dárkový poukaz v hodnotě ${czk(payload.amount)}.` : `Dárkový poukaz v hodnotě ${czk(payload.amount)} pro vás.`,
+            badgeEmoji: "🎁",
+            badgeBg: ACCENT_BG,
+            headline: self ? "Váš dárkový poukaz je tady" : `${to ? `${to}, ` : ""}${sender ? `${sender} vám posílá dárek` : "máte dárek"}`,
+            bodyHtml: self
+              ? `Dobrý den, tady je váš dárkový poukaz. Přepošlete tento e-mail obdarovanému, nebo ho vytiskněte. Kdo poukaz uplatní jako první, získá částku na svůj účet.`
+              : `Dobrý den, v NARIN na vás čeká dárkový poukaz. Stačí kliknout na tlačítko níže, přihlásit se (registrace trvá minutu) a částka se vám hned připíše na účet. Platíte z ní kytice, doručení i další objednávky.`,
+            extraHtml: msg + voucherCard(payload.amount, payload.code, until),
+            ctaLabel: "Uplatnit poukaz",
+            ctaUrl: `https://vezminarin.cz/poukaz?c=${encodeURIComponent(payload.code)}`,
+            secondaryCtaLabel: "Jak to funguje",
+            secondaryCtaUrl: "https://vezminarin.cz/to-buyers#poukazy",
+            footNote: `Poukaz lze uplatnit jen jednou a platí do ${until ?? "12 měsíců od aktivace"}. Kód ${esc(payload.code)} chraňte jako hotovost.`,
           }),
         );
       }
