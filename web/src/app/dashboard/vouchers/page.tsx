@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useDashboard } from "../layout";
 import { formatDate } from "@/lib/format";
@@ -239,11 +240,17 @@ export default function VouchersPage() {
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
           Пластиковая карточка или письмо с уникальным кодом и QR. Пока вы не включили сертификат, он ничего не стоит.
         </p>
+        <Link
+          href="/dashboard/vouchers/print"
+          className="mt-2 inline-block rounded-lg border border-zinc-300 dark:border-zinc-600 px-3 py-1.5 text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800"
+        >
+          Печать карточек с QR
+        </Link>
       </div>
 
       <div className="grid gap-2 sm:grid-cols-3">
         {[
-          ["1", "Напечатать", "Создайте партию в блоке «Создать партию». Коды печатаются на карточках, сумма пока не задана."],
+          ["1", "Напечатать", "Партия уже создана (новая нужна редко). Нажмите «Печать карточек с QR»: коды и QR попадают на карточки, суммы нет."],
           ["2", "Продать и включить", "Клиент заплатил: введите код с карточки, сумму и способ оплаты. С этого дня идут 12 месяцев."],
           ["3", "Клиент сканирует QR", "Сумма сразу попадает на его депозит и сгорает в тот же день, что и сертификат."],
         ].map(([n, t, d]) => (
@@ -362,11 +369,9 @@ export default function VouchersPage() {
           )}
         </form>
 
-        <form
-          onSubmit={createBatch}
-          className="space-y-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4"
-        >
-          <h2 className="text-sm font-semibold">Создать партию (перед печатью)</h2>
+        <details className="self-start rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
+          <summary className="cursor-pointer text-sm font-semibold">Дополнительно: создать новую партию (редко)</summary>
+        <form onSubmit={createBatch} className="mt-3 space-y-3">
           <div className="flex gap-2">
             <input
               value={batchCount}
@@ -420,6 +425,7 @@ export default function VouchersPage() {
             </div>
           )}
         </form>
+        </details>
       </div>
 
       <div className="space-y-2">
