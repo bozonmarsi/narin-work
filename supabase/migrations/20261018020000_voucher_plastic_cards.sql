@@ -23,7 +23,7 @@ begin
       nullif(regexp_replace(coalesce(prod->>'amount', ''), '[^0-9.]', '', 'g'), '')::numeric,
       nullif(regexp_replace(coalesce(prod->>'price', ''), '[^0-9.]', '', 'g'), '')::numeric * greatest(coalesce(nullif(regexp_replace(coalesce(prod->>'quantity', ''), '[^0-9]', '', 'g'), '')::int, 1), 1),
       0);
-    if coalesce(prod->>'name', '') ilike '%poukaz%' and prod::text !~* 'plastov' then vs := vs + line; else os := os + line; end if;
+    if coalesce(prod->>'name', '') ilike '%poukaz%' and prod::text !~* 'plastov|card-' then vs := vs + line; else os := os + line; end if;
   end loop;
   voucher_sum := vs; other_sum := os;
   return next;
@@ -83,7 +83,7 @@ begin
   end if;
 
   for prod in select * from jsonb_array_elements(d->'payment'->'products') loop
-    if coalesce(prod->>'name', '') ilike '%poukaz%' and prod::text !~* 'plastov' then
+    if coalesce(prod->>'name', '') ilike '%poukaz%' and prod::text !~* 'plastov|card-' then
       v_price := nullif(regexp_replace(coalesce(prod->>'price', ''), '[^0-9.]', '', 'g'), '')::numeric;
       v_qty := greatest(coalesce(nullif(regexp_replace(coalesce(prod->>'quantity', ''), '[^0-9]', '', 'g'), '')::int, 1), 1);
       if v_price is null or v_price <= 0 then continue; end if;
@@ -172,7 +172,7 @@ begin
     end if;
     if jsonb_typeof(NEW.raw_payload->'payment'->'products') = 'array' then
       for prod in select * from jsonb_array_elements(NEW.raw_payload->'payment'->'products') loop
-        if coalesce(prod->>'name', '') ilike '%poukaz%' and prod::text ~* 'plastov' then
+        if coalesce(prod->>'name', '') ilike '%poukaz%' and prod::text ~* 'plastov|card-' then
           qty := greatest(coalesce(nullif(regexp_replace(coalesce(prod->>'quantity', ''), '[^0-9]', '', 'g'), '')::int, 1), 1);
           p_cnt := p_cnt + qty;
           p_total := p_total + coalesce(nullif(regexp_replace(coalesce(prod->>'amount', ''), '[^0-9.]', '', 'g'), '')::numeric, 0);
