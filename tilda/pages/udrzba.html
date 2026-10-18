@@ -15,26 +15,49 @@
 .nmnt-lead{margin:0;font-size:16px;line-height:1.55;color:var(--muted);max-width:42ch}
 
 /* scene */
-.nmnt-scene{width:100%;max-width:420px;margin:6px 0 2px}
-.nmnt-scene svg{display:block;width:100%;height:auto;overflow:visible}
-.nmnt-can{transform-origin:78px 86px;animation:nmntTilt 6s ease-in-out infinite}
-@keyframes nmntTilt{0%,8%{transform:rotate(0)}22%,66%{transform:rotate(-26deg)}80%,100%{transform:rotate(0)}}
-.nmnt-rain{animation:nmntRain 6s linear infinite}
-@keyframes nmntRain{0%,20%{opacity:0}26%,64%{opacity:1}70%,100%{opacity:0}}
-.nmnt-drop{animation:nmntDrop .9s linear infinite}
-.nmnt-drop:nth-child(2){animation-delay:.15s}.nmnt-drop:nth-child(3){animation-delay:.3s}.nmnt-drop:nth-child(4){animation-delay:.45s}
-.nmnt-drop:nth-child(5){animation-delay:.6s}.nmnt-drop:nth-child(6){animation-delay:.75s}
-@keyframes nmntDrop{0%{transform:translate(0,0);opacity:0}15%{opacity:1}100%{transform:translate(18px,92px);opacity:0}}
-.nmnt-fl{transform-box:fill-box;transform-origin:50% 100%;animation:nmntSway 4.5s ease-in-out infinite}
-.nmnt-fl:nth-of-type(2){animation-delay:-1.4s}.nmnt-fl:nth-of-type(3){animation-delay:-2.6s}
+.nmnt-scene{width:100%;max-width:470px;margin:6px 0 2px;border-radius:28px;overflow:hidden;box-shadow:0 24px 50px -30px rgba(0,74,173,.45)}
+.nmnt-scene svg{display:block;width:100%;height:auto}
+.nmnt-sunr{transform-box:fill-box;transform-origin:50% 50%;animation:nmntSpin 26s linear infinite}
+@keyframes nmntSpin{to{transform:rotate(360deg)}}
+.nmnt-cloud{animation:nmntCloud 22s linear infinite}
+.nmnt-cloud.c2{animation-duration:30s;animation-delay:-14s}
+@keyframes nmntCloud{0%{transform:translateX(-140px)}100%{transform:translateX(460px)}}
+/* gardener */
+.nmnt-man{animation:nmntBob 8s ease-in-out infinite}
+@keyframes nmntBob{0%,100%{transform:translateY(0)}12%,70%{transform:translateY(-1.5px)}}
+.nmnt-eyes{transform-box:fill-box;transform-origin:50% 50%;animation:nmntBlink 4.2s infinite}
+@keyframes nmntBlink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+.nmnt-arm{transform-origin:106px 148px;animation:nmntArm 8s ease-in-out infinite}
+@keyframes nmntArm{0%,8%{transform:rotate(0)}20%,68%{transform:rotate(-8deg)}80%,100%{transform:rotate(0)}}
+.nmnt-can{transform-origin:156px 140px;animation:nmntCan 8s ease-in-out infinite}
+@keyframes nmntCan{0%,8%{transform:rotate(0)}20%,68%{transform:rotate(38deg)}80%,100%{transform:rotate(0)}}
+/* water */
+.nmnt-rain{opacity:0;animation:nmntRain 8s linear infinite}
+@keyframes nmntRain{0%,20%{opacity:0}24%,66%{opacity:1}70%,100%{opacity:0}}
+.nmnt-drop{animation:nmntDrop .75s cubic-bezier(.4,0,1,1) infinite}
+.nmnt-drop:nth-child(2){animation-delay:.12s}.nmnt-drop:nth-child(3){animation-delay:.25s}.nmnt-drop:nth-child(4){animation-delay:.37s}
+.nmnt-drop:nth-child(5){animation-delay:.5s}.nmnt-drop:nth-child(6){animation-delay:.62s}
+@keyframes nmntDrop{0%{transform:translate(0,0);opacity:0}12%{opacity:1}100%{transform:translate(var(--dx),74px);opacity:.2}}
+/* flowers */
+.nmnt-fl{transform-box:fill-box;transform-origin:50% 100%;animation:nmntSway 4.6s ease-in-out infinite}
+.nmnt-fl.f2{animation-delay:-1.1s}.nmnt-fl.f3{animation-delay:-2.3s}.nmnt-fl.f4{animation-delay:-3.4s}
 @keyframes nmntSway{0%,100%{transform:rotate(-2.5deg)}50%{transform:rotate(2.5deg)}}
-.nmnt-stem{transform-box:fill-box;transform-origin:50% 100%;animation:nmntGrow 7.2s cubic-bezier(.3,.7,.3,1) infinite}
-.nmnt-head{transform-box:fill-box;transform-origin:50% 50%;animation:nmntBloom 7.2s cubic-bezier(.3,1.4,.5,1) infinite}
-.nmnt-leaf{transform-box:fill-box;transform-origin:0% 100%;animation:nmntLeaf 7.2s ease-out infinite}
-.d1{animation-delay:0s}.d2{animation-delay:.5s}.d3{animation-delay:1s}
-@keyframes nmntGrow{0%,18%{transform:scaleY(.08)}48%,92%{transform:scaleY(1)}100%{transform:scaleY(.08)}}
-@keyframes nmntBloom{0%,18%{transform:translateY(calc(var(--h) * .92px)) scale(0) rotate(-120deg)}48%{transform:translateY(0) scale(.35) rotate(-60deg)}60%,92%{transform:translateY(0) scale(1) rotate(0)}100%{transform:translateY(calc(var(--h) * .92px)) scale(0) rotate(-120deg)}}
-@keyframes nmntLeaf{0%,30%{transform:scale(0)}48%,92%{transform:scale(1)}100%{transform:scale(0)}}
+.nmnt-stem{transform-box:fill-box;transform-origin:50% 100%;animation:nmntGrow 8s cubic-bezier(.3,.7,.3,1) infinite}
+.nmnt-leaf{transform-box:fill-box;transform-origin:0% 100%;animation:nmntLeaf 8s ease-out infinite}
+.nmnt-head{transform-box:fill-box;transform-origin:50% 50%;animation:nmntBloom 8s cubic-bezier(.3,1.5,.5,1) infinite}
+.nmnt-stem,.nmnt-leaf,.nmnt-head{animation-fill-mode:both}
+.f2 *{animation-delay:.35s}.f3 *{animation-delay:.7s}.f4 *{animation-delay:1.05s}
+@keyframes nmntGrow{0%,24%{transform:scaleY(.06)}52%,94%{transform:scaleY(1)}100%{transform:scaleY(.06)}}
+@keyframes nmntLeaf{0%,34%{transform:scale(0)}52%,94%{transform:scale(1)}100%{transform:scale(0)}}
+@keyframes nmntBloom{0%,24%{transform:translateY(calc(var(--h) * .94px)) scale(0) rotate(-140deg)}50%{transform:translateY(0) scale(.3) rotate(-70deg)}62%,94%{transform:translateY(0) scale(1) rotate(0)}100%{transform:translateY(calc(var(--h) * .94px)) scale(0) rotate(-140deg)}}
+/* butterfly */
+.nmnt-bf{animation:nmntFly 11s ease-in-out infinite}
+@keyframes nmntFly{0%{transform:translate(380px,60px)}25%{transform:translate(310px,120px)}50%{transform:translate(250px,80px)}75%{transform:translate(330px,40px)}100%{transform:translate(380px,60px)}}
+.nmnt-wing{transform-box:fill-box;transform-origin:100% 50%;animation:nmntFlap .28s ease-in-out infinite alternate}
+.nmnt-wing.r{transform-origin:0% 50%}
+@keyframes nmntFlap{from{transform:scaleX(1)}to{transform:scaleX(.25)}}
+.nmnt-sign{transform-box:fill-box;transform-origin:50% 100%;animation:nmntSign 5s ease-in-out infinite}
+@keyframes nmntSign{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(2deg)}}
 
 /* status */
 .nmnt-status{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:500;color:var(--blue);min-height:22px}
@@ -77,47 +100,74 @@
     <img class="nmnt-logo" src="https://narin-work.vercel.app/brand/narin-logo.png" alt="NARIN">
     <span class="nmnt-eye">Údržba webu</span>
     <h1>Právě zaléváme,<br>brzy to tu <em>rozkvete</em></h1>
-    <p class="nmnt-lead">Na webu probíhá krátká údržba. Přesazujeme, kypříme a zaléváme, aby vám všechno rostlo ještě rychleji. Vraťte se prosím za chvilku.</p>
+    <p class="nmnt-lead">Náš zahradník právě zalévá web. Přesazujeme, kypříme a hnojíme, aby vám všechno rostlo ještě rychleji. Vraťte se prosím za chvilku.</p>
 
     <div class="nmnt-scene" aria-hidden="true">
-      <svg viewBox="0 0 360 250">
-        <!-- ground -->
-        <ellipse cx="200" cy="232" rx="150" ry="14" fill="#EAF1FC"/>
-        <path d="M70 230 Q200 214 330 230" fill="none" stroke="#C9D8F2" stroke-width="3" stroke-linecap="round"/>
+      <svg viewBox="0 0 400 290">
+        <defs>
+          <linearGradient id="nmntSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#D7E7FF"/><stop offset=".75" stop-color="#F3F7FF"/><stop offset="1" stop-color="#FFF6EA"/></linearGradient>
+        </defs>
+        <rect width="400" height="290" fill="url(#nmntSky)"/>
+        <!-- sun -->
+        <g transform="translate(338 52)">
+          <g class="nmnt-sunr"><path d="M0 -40 V-30 M0 30 V40 M-40 0 H-30 M30 0 H40 M-28 -28 L-21 -21 M21 21 L28 28 M-28 28 L-21 21 M21 -21 L28 -28" stroke="#F6C343" stroke-width="4" stroke-linecap="round"/></g>
+          <circle r="20" fill="#F6C343"/><circle r="20" fill="#FFD866" opacity=".6" transform="translate(-4 -4) scale(.7)"/>
+        </g>
+        <!-- clouds -->
+        <g class="nmnt-cloud"><path d="M20 70 a14 14 0 0 1 26 -8 a18 18 0 0 1 34 6 a12 12 0 0 1 2 24 H24 a12 12 0 0 1 -4 -22 Z" fill="#fff" opacity=".95"/></g>
+        <g class="nmnt-cloud c2"><path d="M10 34 a10 10 0 0 1 19 -6 a13 13 0 0 1 25 4 a9 9 0 0 1 1 18 H14 a9 9 0 0 1 -4 -16 Z" fill="#fff" opacity=".8"/></g>
+        <!-- hills & ground -->
+        <path d="M0 214 C70 188 140 200 210 212 C280 224 340 200 400 206 V290 H0 Z" fill="#BFE6C9"/>
+        <path d="M0 248 C90 236 200 240 400 246 V290 H0 Z" fill="#8ED3A3"/>
+        <!-- garden bed -->
+        <ellipse cx="288" cy="250" rx="92" ry="13" fill="#8B5A3C"/>
+        <ellipse cx="288" cy="247" rx="86" ry="9" fill="#A46A45"/>
+        <!-- sign -->
+        <g class="nmnt-sign"><rect x="356" y="214" width="5" height="36" rx="2" fill="#B07A4E"/><rect x="328" y="199" width="62" height="23" rx="5" fill="#C99063"/><text x="359" y="214.5" text-anchor="middle" font-family="Lexend, Arial, sans-serif" font-size="8.5" font-weight="600" fill="#fff">Brzy kvete!</text></g>
         <!-- flowers -->
-        <g class="nmnt-fl">
-          <path class="nmnt-stem d1" d="M168 230 C166 200 172 180 168 150" fill="none" stroke="#1F9E62" stroke-width="4.5" stroke-linecap="round"/>
-          <path class="nmnt-leaf d1" d="M168 205 C152 196 146 186 148 178 C160 180 168 190 168 205 Z" fill="#2DB574"/>
-          <use class="nmnt-head d1" style="--h:80" href="#nmntD" x="146" y="106" width="44" height="44" fill="#186CE0"/>
-        </g>
-        <g class="nmnt-fl">
-          <path class="nmnt-stem d2" d="M222 231 C226 196 218 160 222 118" fill="none" stroke="#1F9E62" stroke-width="4.5" stroke-linecap="round"/>
-          <path class="nmnt-leaf d2" d="M223 190 C238 180 246 168 244 160 C232 162 223 174 223 190 Z" fill="#2DB574"/>
-          <use class="nmnt-head d2" style="--h:113" href="#nmntD" x="196" y="68" width="52" height="52" fill="#E8483F"/>
-        </g>
-        <g class="nmnt-fl">
-          <path class="nmnt-stem d3" d="M276 230 C274 208 280 192 276 170" fill="none" stroke="#1F9E62" stroke-width="4.5" stroke-linecap="round"/>
-          <path class="nmnt-leaf d3" d="M276 212 C262 206 256 198 257 192 C268 193 276 200 276 212 Z" fill="#2DB574"/>
-          <use class="nmnt-head d3" style="--h:60" href="#nmntD" x="257" y="132" width="38" height="38" fill="#004AAD"/>
-        </g>
-        <!-- watering can -->
-        <g class="nmnt-can">
-          <path d="M44 78 C40 56 60 46 76 52" fill="none" stroke="#004AAD" stroke-width="5" stroke-linecap="round"/>
-          <rect x="46" y="64" width="62" height="46" rx="12" fill="#004AAD"/>
-          <rect x="54" y="74" width="30" height="6" rx="3" fill="#186CE0"/>
-          <path d="M106 80 L142 62" stroke="#004AAD" stroke-width="7" stroke-linecap="round"/>
-          <path d="M138 56 L150 70 L146 52 Z" fill="#004AAD"/>
-          <g class="nmnt-rain">
-            <g transform="translate(146 64)">
-              <circle class="nmnt-drop" cx="0" cy="0" r="3" fill="#186CE0"/>
-              <circle class="nmnt-drop" cx="4" cy="2" r="2.6" fill="#7FA9EC"/>
-              <circle class="nmnt-drop" cx="-2" cy="4" r="2.4" fill="#186CE0"/>
-              <circle class="nmnt-drop" cx="6" cy="-2" r="2.8" fill="#7FA9EC"/>
-              <circle class="nmnt-drop" cx="1" cy="6" r="2.2" fill="#186CE0"/>
-              <circle class="nmnt-drop" cx="-4" cy="0" r="2.6" fill="#7FA9EC"/>
+        <g class="nmnt-fl f1"><path class="nmnt-stem" d="M236 247 C233 224 239 207 236 190" fill="none" stroke="#1F9E62" stroke-width="4.5" stroke-linecap="round"/><path class="nmnt-leaf" d="M236 220 C220 215 216 206 218 202 C228 205 236 211 236 220 Z" fill="#2DB574"/><g transform="translate(221 164)"><use class="nmnt-head" style="--h:57" href="#nmntD" width="30" height="30" fill="#186CE0"/></g></g><g class="nmnt-fl f2"><path class="nmnt-stem" d="M266 247 C263 215 269 192 266 168" fill="none" stroke="#1F9E62" stroke-width="4.5" stroke-linecap="round"/><path class="nmnt-leaf" d="M266 210 C282 203 286 191 284 184 C274 189 266 197 266 210 Z" fill="#2DB574"/><g transform="translate(266 170)"><g class="nmnt-head" style="--h:79"><path d="M-11 0 C-13 -14 -7 -24 -3 -27 L0 -19 L3 -27 C7 -24 13 -14 11 0 C7 6 -7 6 -11 0 Z" fill="#E8483F"/><path d="M0 -19 C-3 -10 -3 -2 0 4 C3 -2 3 -10 0 -19 Z" fill="#C7332B"/></g></g></g><g class="nmnt-fl f3"><path class="nmnt-stem" d="M298 247 C295 220 301 200 298 180" fill="none" stroke="#1F9E62" stroke-width="4.5" stroke-linecap="round"/><path class="nmnt-leaf" d="M298 216 C282 209 278 199 280 194 C290 198 298 204 298 216 Z" fill="#2DB574"/><g transform="translate(283 154)"><use class="nmnt-head" style="--h:67" href="#nmntD" width="30" height="30" fill="#F28AB2"/></g></g><g class="nmnt-fl f4"><path class="nmnt-stem" d="M330 247 C327 226 333 210 330 194" fill="none" stroke="#1F9E62" stroke-width="4.5" stroke-linecap="round"/><path class="nmnt-leaf" d="M330 222 C346 217 350 209 348 205 C338 208 330 213 330 222 Z" fill="#2DB574"/><g transform="translate(330 196)"><g class="nmnt-head" style="--h:53"><path d="M-11 0 C-13 -14 -7 -24 -3 -27 L0 -19 L3 -27 C7 -24 13 -14 11 0 C7 6 -7 6 -11 0 Z" fill="#F6C343"/><path d="M0 -19 C-3 -10 -3 -2 0 4 C3 -2 3 -10 0 -19 Z" fill="#E0A92A"/></g></g></g>
+        <!-- water -->
+        <g class="nmnt-rain"><g transform="translate(199 170)"><circle class="nmnt-drop" style="--dx:22px" cx="0" cy="0" r="3" fill="#5B9BF0"/><circle class="nmnt-drop" style="--dx:30px" cx="0" cy="0" r="2.6" fill="#9CC2F5"/><circle class="nmnt-drop" style="--dx:38px" cx="0" cy="0" r="2.8" fill="#5B9BF0"/><circle class="nmnt-drop" style="--dx:26px" cx="0" cy="0" r="2.4" fill="#9CC2F5"/><circle class="nmnt-drop" style="--dx:42px" cx="0" cy="0" r="2.6" fill="#5B9BF0"/><circle class="nmnt-drop" style="--dx:34px" cx="0" cy="0" r="2.2" fill="#9CC2F5"/></g></g>
+        <!-- gardener -->
+        <g class="nmnt-man">
+          <ellipse cx="92" cy="256" rx="34" ry="6" fill="#1F9E62" opacity=".25"/>
+          <rect x="79" y="204" width="10" height="46" rx="5" fill="#14213D"/>
+          <rect x="94" y="204" width="10" height="46" rx="5" fill="#14213D"/>
+          <ellipse cx="82" cy="251" rx="9" ry="5" fill="#3B2A20"/><ellipse cx="101" cy="251" rx="9" ry="5" fill="#3B2A20"/>
+          <path d="M80 148 C78 140 86 136 92 136 C98 136 106 140 105 148 L76 150 Z" fill="#186CE0"/>
+          <path d="M72 162 C72 147 80 140 92 140 C104 140 112 147 112 162 V206 C112 210 108 212 104 212 H80 C76 212 72 210 72 206 Z" fill="#186CE0"/>
+          <path d="M80 160 H104 V208 H80 Z" fill="#004AAD"/>
+          <g transform="translate(86 176)"><use href="#nmntD" width="12" height="12" fill="#fff"/></g>
+          <path d="M76 152 C68 168 68 186 74 198" stroke="#186CE0" stroke-width="9" stroke-linecap="round" fill="none"/>
+          <circle cx="74" cy="200" r="5" fill="#F1C7A3"/>
+          <rect x="88" y="128" width="9" height="12" rx="3" fill="#E4B48E"/>
+          <circle cx="92" cy="118" r="17" fill="#F1C7A3"/>
+          <path d="M75 114 C76 102 86 98 94 99 C102 100 109 106 109 113 C102 108 90 108 75 114 Z" fill="#3B2A20"/>
+          <ellipse cx="92" cy="104" rx="27" ry="6.5" fill="#E9C46A"/>
+          <path d="M78 104 C79 90 87 86 93 86 C100 86 107 91 106 104 Z" fill="#F2D27E"/>
+          <path d="M79 100 H106" stroke="#E8483F" stroke-width="3"/>
+          <g class="nmnt-eyes"><circle cx="99" cy="117" r="1.8" fill="#14213D"/></g>
+          <path d="M98 124 Q102 127 105 123" stroke="#14213D" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+          <circle cx="104" cy="121" r="3" fill="#F28AB2" opacity=".5"/>
+          <!-- front arm + can -->
+          <g class="nmnt-arm">
+            <path d="M106 150 C122 152 138 148 152 142" stroke="#186CE0" stroke-width="9" stroke-linecap="round" fill="none"/>
+            <g class="nmnt-can">
+              <path d="M146 152 Q157 126 172 152" fill="none" stroke="#E8483F" stroke-width="5" stroke-linecap="round"/>
+              <rect x="140" y="150" width="40" height="36" rx="8" fill="#E8483F"/>
+              <rect x="146" y="158" width="18" height="5" rx="2.5" fill="#F27C74"/>
+              <path d="M178 172 L208 150" stroke="#E8483F" stroke-width="6" stroke-linecap="round"/>
+              <ellipse cx="211" cy="147" rx="5" ry="7" transform="rotate(-36 211 147)" fill="#C7332B"/>
             </g>
+            <circle cx="155" cy="141" r="5" fill="#F1C7A3"/>
           </g>
         </g>
+        <!-- butterfly -->
+        <g class="nmnt-bf"><g transform="scale(1.35)">
+          <path class="nmnt-wing" d="M0 0 C-12 -14 -18 -4 -12 4 C-8 9 -3 6 0 0 Z" fill="#F28AB2"/>
+          <path class="nmnt-wing r" d="M0 0 C12 -14 18 -4 12 4 C8 9 3 6 0 0 Z" fill="#F6C343"/>
+          <rect x="-1" y="-6" width="2" height="12" rx="1" fill="#14213D"/>
+        </g></g>
       </svg>
     </div>
 
