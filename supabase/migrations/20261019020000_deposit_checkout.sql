@@ -47,7 +47,7 @@ begin
     return;
   end if;
 
-  if coalesce(o.payment_status, '') like '%Оплачено%' then
+  if coalesce(o.payment_status::text, '') like '%Оплачено%' then
     return query select 'already_paid'::text, coalesce(o.used_deposit, 0), 0::numeric;
     return;
   end if;

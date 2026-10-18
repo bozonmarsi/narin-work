@@ -253,7 +253,7 @@ export async function create(supabase: any, email: string, body: any) {
   // opakovane volani (dvojklik, reload): vratit tu samou objednavku
   const { data: existing } = await supabase
     .from("tilda_orders")
-    .select("order_id, payment_status, stripe_session_id, customer_email")
+    .select("order_id, payment_status, stripe_session_id, customer_email, pending_deposit, order_total")
     .eq("checkout_key", key)
     .maybeSingle();
   if (existing) {
@@ -264,6 +264,15 @@ export async function create(supabase: any, email: string, body: any) {
     if (existing.stripe_session_id) {
       const s = await stripe(`checkout/sessions/${existing.stripe_session_id}`, null, "GET");
       if (s.status === "open" && s.url) return { order_id: existing.order_id, paid: false, url: s.url };
+    }
+    // cely depozitem, ale minule dokonceni selhalo (napr. vypadek DB): dokoncit znovu
+    if (!existing.stripe_session_id && Number(existing.pending_deposit) > 0 && Number(existing.pending_deposit) >= Number(existing.order_total)) {
+      const { error } = await supabase.rpc("settle_order_payment", { p_order_id: existing.order_id });
+      if (error) {
+        console.error("settle retry failed", error.message);
+        throw new Fail("settle_failed", 500);
+      }
+      return { order_id: existing.order_id, paid: true, url: SUCCESS_URL };
     }
     throw new Fail("order_already_created", 409);
   }
