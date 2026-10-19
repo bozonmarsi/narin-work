@@ -544,15 +544,32 @@ export default function BusinessPage() {
     await loadDetail(selected);
   }
 
+  // Objednavky obdobi faktury primo z DB: dodani je casove razitko (napr. "2026-03-24 00:00:00+00"),
+  // porovnani retezcem s "2026-03-24" vyrazovalo posledni den obdobi a tim i faktury za jediny den.
+  // Seznam "Posledni objednavky" navic ukazuje jen 30 kusu, proto se nacitaji znovu.
+  async function fetchPeriodOrders(inv: InvoiceRow): Promise<OrderRowLite[]> {
+    if (!selected) return [];
+    const supabase = createClient();
+    const end = new Date(`${inv.period_end}T00:00:00Z`);
+    end.setUTCDate(end.getUTCDate() + 1);
+    const { data } = await supabase
+      .from("tilda_orders")
+      .select("id, order_id, created_at, delivery_date, order_total, status, used_points, top_promo:raw_payload->promocode, payment:raw_payload->payment")
+      .eq("company_id", selected.id)
+      .eq("status", "delivered")
+      .gte("delivery_date", inv.period_start)
+      .lt("delivery_date", end.toISOString().slice(0, 10))
+      .order("delivery_date");
+    return (data ?? []) as unknown as OrderRowLite[];
+  }
+
   const [downloadingInvoiceId, setDownloadingInvoiceId] = useState<string | null>(null);
 
   async function downloadInvoice(inv: InvoiceRow) {
     if (!selected) return;
     setDownloadingInvoiceId(inv.id);
     try {
-      const periodOrders = orders.filter(
-        (o) => o.delivery_date && o.delivery_date >= inv.period_start && o.delivery_date <= inv.period_end
-      );
+      const periodOrders = await fetchPeriodOrders(inv);
       const { generateAndDownloadInvoicePdf } = await loadInvoicePdf();
       await generateAndDownloadInvoicePdf(selected, inv, periodOrders);
       await loadDetail(selected); // забираем присвоенный номер счёта
@@ -651,13 +668,11 @@ export default function BusinessPage() {
     setSendingInvoiceId(inv.id);
     setSendInvoiceError(null);
     try {
-      const periodOrders = orders.filter(
-        (o) => o.delivery_date && o.delivery_date >= inv.period_start && o.delivery_date <= inv.period_end
-      );
+      const periodOrders = await fetchPeriodOrders(inv);
       const { generateInvoicePdfAttachment } = await loadInvoicePdf();
       const { base64, filename, number } = await generateInvoicePdfAttachment(selected, inv, periodOrders);
       const { wrapBusinessEmail } = await import("@/lib/business-email-template");
-      const bodyText = `Dobrý den,\n\nposíláme fakturu č. ${number} za období ${formatDate(inv.period_start)} – ${formatDate(inv.period_end)}, celkem ${inv.total_amount} Kč, splatnost do ${inv.due_date ? formatDate(inv.due_date) : "—"}.\n\nFaktura je přiložena v PDF.\n\nDěkujeme,\ntým NARIN`;
+      const bodyText = `Dobrý den,\n\nposíláme fakturu č. ${number} za období ${formatDate(inv.period_start)} – ${formatDate(inv.period_end)}, celkem ${inv.total_amount} Kč, ${inv.status === "paid" ? "faktura je již uhrazena, prosíme, neplaťte ji znovu" : `splatnost do ${inv.due_date ? formatDate(inv.due_date) : "—"}`}.\n\nFaktura je přiložena v PDF.\n\nDěkujeme,\ntým NARIN`;
       await sendEmail(selected.contact_email, `Faktura č. ${number} — NARIN`, wrapBusinessEmail(bodyText), [{ base64, filename }]);
       if (!inv.invoice_number) await loadDetail(selected); // подтянуть присвоенный номер
       if (inv.status === "draft") await setInvoiceStatus(inv.id, "sent");
