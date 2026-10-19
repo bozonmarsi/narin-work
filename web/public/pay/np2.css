@@ -400,3 +400,5 @@ textarea.np-in { height: auto; min-height: 104px; padding: 15px 18px; resize: ve
 .np-rnudge > i, .np-rempty a { color: var(--blue); }
 .np-rempty a { font-weight: 500; }
 #npRFields { margin-top: 22px; }
+.np-rc .lo { display: flex; align-items: center; gap: 5px; margin-top: 6px; font-size: 12.5px; color: var(--mut); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.np-rc .lo i { flex: 0 0 auto; }

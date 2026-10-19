@@ -526,23 +526,8 @@
   function paintSeg() { $$('#npPcSeg button', ROOT).forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-v') === S.pcSender); }); }
   var RECS = null, REC_ADDR = null;
   var REL = { mama: 'Máma', partnerka: 'Partnerka', partner: 'Partner', babicka: 'Babička', tata: 'Táta', ucitelka: 'Učitel(ka)', kolegyne: 'Kolega/yně', kamarad: 'Kamarád(ka)' };
-  var HNAME = { valentyn: 'Valentýn', mdz: 'MDŽ', den_matek_sns: 'Den matek', skolni_rok: '1. září', vanoce: 'Vánoce', vanoce_prav: 'Vánoce', den_matek: 'Den matek', den_otcu: 'Den otců', den_ucitelu: 'Den učitelů', prvni_maj: '1. máj', novy_rok: 'Nový rok', svaty_vaclav: 'Svatý Václav', dusicky: 'Dušičky' };
-  var HFIX = { valentyn: [1, 14], mdz: [2, 8], skolni_rok: [8, 1], vanoce: [11, 24], vanoce_prav: [0, 6], prvni_maj: [4, 1], novy_rok: [0, 1], svaty_vaclav: [8, 28], dusicky: [10, 2], den_ucitelu: [2, 28] };
-  function nthSunday(y, m, n) { var d = new Date(y, m, 1); return new Date(y, m, 1 + (7 - d.getDay()) % 7 + 7 * (n - 1)); }
-  function holidayDate(k, y) {
-    if (HFIX[k]) return new Date(y, HFIX[k][0], HFIX[k][1]);
-    if (k === 'den_matek' || k === 'den_matek_sns') return nthSunday(y, 4, 2);
-    if (k === 'den_otcu') return nthSunday(y, 5, 3);
-    return null;
-  }
-  function nextOcc(keys) {
-    var now = new Date(), t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime(), best = null;
-    (keys || []).forEach(function (k) {
-      if (!HNAME[k]) return;
-      [0, 1].forEach(function (dy) { var d = holidayDate(k, now.getFullYear() + dy); if (!d) return; var days = Math.round((d.getTime() - t0) / 864e5); if (days >= 0 && (!best || days < best.days)) best = { name: HNAME[k], days: days }; });
-    });
-    return best && best.days <= 45 ? best : null;
-  }
+  var OCC = {};
+  function shortDate(v) { var m = String(v || '').match(/(\d{4})-(\d{2})-(\d{2})/); return m ? (+m[3]) + '. ' + (+m[2]) + '.' : ''; }
   function plDays(n) { return n === 1 ? 'den' : (n >= 2 && n <= 4 ? 'dny' : 'dní'); }
   function parseAddr(a) {
     var s = String(a || '').trim(); if (!s) return null;
@@ -553,10 +538,11 @@
   }
   function initials(n) { var p = String(n || '').trim().split(/\s+/).filter(Boolean); return ((p[0] || '?').charAt(0) + (p.length > 1 ? p[p.length - 1].charAt(0) : '')).toUpperCase(); }
   function recCard(x, i) {
-    var a = parseAddr(x.address), occ = nextOcc(x.holidays), rel = REL[x.relation] || '';
-    var sub = [rel, a && a.city].filter(Boolean).join(' · ');
-    var badge = occ ? '<span class="bd' + (occ.days <= 7 ? ' hot' : '') + '"><i class="ti ti-calendar-heart"></i>' + (occ.days === 0 ? 'Dnes: ' : 'Za ' + occ.days + ' ' + plDays(occ.days) + ': ') + esc(occ.name) + '</span>' : '';
-    return '<button type="button" class="np-rc' + (S.rid === x.id ? ' on' : '') + '" data-i="' + i + '" aria-pressed="' + (S.rid === x.id) + '"><span class="av a' + (i % 4) + '">' + esc(initials(x.name)) + '</span><span class="nm">' + esc(x.name) + '</span><span class="sb">' + (sub ? esc(sub) : '&nbsp;') + '</span>' + badge + '<span class="ck"><i class="ti ti-check"></i></span></button>';
+    var a = parseAddr(x.address), occ = OCC[x.id], rel = REL[x.relation] || '';
+    var sub = x.suggested ? (x.delivery_date ? 'Dodáno ' + shortDate(x.delivery_date) : 'Z vašich objednávek') : [rel, a && a.city].filter(Boolean).join(' · ');
+    var badge = occ ? '<span class="bd' + (occ.days <= 7 ? ' hot' : '') + '"><i class="ti ti-calendar-heart"></i>' + (occ.days === 0 ? 'Dnes: ' : 'Za ' + occ.days + ' ' + plDays(occ.days) + ': ') + esc(occ.title) + '</span>' : '';
+    var lo = x.last_orders && x.last_orders[0], last = lo ? '<span class="lo"><i class="ti ti-history"></i>Minule: ' + esc((lo.products && lo.products[0]) || 'kytice') + ', ' + shortDate(lo.date) + '</span>' : '';
+    return '<button type="button" class="np-rc' + (S.rid === x.id ? ' on' : '') + '" data-i="' + i + '" aria-pressed="' + (S.rid === x.id) + '"><span class="av a' + (i % 4) + '">' + esc(initials(x.name)) + '</span><span class="nm">' + esc(x.name) + '</span><span class="sb">' + (sub ? esc(sub) : '&nbsp;') + '</span>' + badge + last + '<span class="ck"><i class="ti ti-check"></i></span></button>';
   }
   function renderRecs() {
     var w = $('#npRChips'); if (!w) return;
@@ -570,7 +556,7 @@
       w.innerHTML = '<div class="np-rempty"><span class="ic"><i class="ti ti-address-book"></i></span><span class="tx"><b>Zatím tu nemáte uložené blízké</b><small>Přidejte je ve svém účtu a příště stačí jedno klepnutí. <a href="/members/occasions" target="_blank" rel="noopener">Přidat příjemce</a></small></span></div>';
       return;
     }
-    w.innerHTML = '<div class="np-rh">Vaši blízcí<small>Vyberte, komu květiny posíláte</small></div><div class="np-rcs" id="npRC">' + RECS.map(recCard).join('') + '<button type="button" class="np-rc new' + (S.rid === null && !S.same ? '' : '') + '" data-new="1"><span class="av plus"><i class="ti ti-plus"></i></span><span class="nm">Někdo nový</span><span class="sb">Zadáte ručně</span></button></div><div id="npRAddr"></div><div class="np-msg-r" id="npRHint"></div>';
+    w.innerHTML = '<div class="np-rh">' + (RECS[0] && RECS[0].suggested ? 'Komu jste už posílali' : 'Vaši blízcí') + '<small>Vyberte, komu květiny posíláte</small></div><div class="np-rcs" id="npRC">' + RECS.map(recCard).join('') + '<button type="button" class="np-rc new' + (S.rid === null && !S.same ? '' : '') + '" data-new="1"><span class="av plus"><i class="ti ti-plus"></i></span><span class="nm">Někdo nový</span><span class="sb">Zadáte ručně</span></button></div><div id="npRAddr"></div><div class="np-msg-r" id="npRHint"></div>';
     $('#npRC').addEventListener('click', function (e) {
       var nb = e.target.closest('[data-new]');
       if (nb) { pickRec(null); return; }
@@ -602,6 +588,13 @@
     $('#np_adres').value = S.adres; $('#np_city').value = S.city; $('#np_psc').value = S.psc;
     ['adres', 'city', 'psc'].forEach(function (k) { setErr(k, ''); });
     REC_ADDR = x.id; onAddress(); saveDraft(); refresh();
+    if (S.lat == null && window.google && google.maps && google.maps.Geocoder) {
+      try {
+        new google.maps.Geocoder().geocode({ address: [a.street, a.psc, a.city].filter(Boolean).join(', '), componentRestrictions: { country: 'CZ' } }, function (res, st) {
+          if (st === 'OK' && res && res[0] && S.adres === a.street) { var l = res[0].geometry.location; S.lat = l.lat(); S.lng = l.lng(); onAddress(); saveDraft(); refresh(); }
+        });
+      } catch (e) {}
+    }
   }
   function updateRAddr() {
     var el = $('#npRAddr'), hint = $('#npRHint'); if (!el) return;
@@ -618,9 +611,24 @@
   function loadRecipients() {
     renderRecs();
     var t = authToken(); if (!t || !S.loggedIn) return;
-    fn('personal-dates', { token: t, action: 'listRecipients' }).then(function (r) {
-      RECS = (r && Array.isArray(r.recipients)) ? r.recipients : [];
-      renderRecs();
+    Promise.all([
+      fn('personal-dates', { token: t, action: 'listRecipients' }),
+      fn('personal-dates', { token: t, action: 'upcoming', days: 60 }).catch(function () { return {}; })
+    ]).then(function (rs) {
+      var list = (rs[0] && Array.isArray(rs[0].recipients)) ? rs[0].recipients : [];
+      var t0 = new Date(); t0 = new Date(t0.getFullYear(), t0.getMonth(), t0.getDate()).getTime();
+      ((rs[1] && rs[1].items) || []).forEach(function (it) {
+        if (!it.recipient_id) return;
+        var m = String(it.occasion_date || '').match(/(\d{4})-(\d{2})-(\d{2})/); if (!m) return;
+        var days = Math.round((new Date(+m[1], +m[2] - 1, +m[3]).getTime() - t0) / 864e5);
+        if (days < 0 || days > 45) return;
+        if (!OCC[it.recipient_id] || days < OCC[it.recipient_id].days) OCC[it.recipient_id] = { days: days, title: String(it.title || it.occasion_key || '').replace(/\s*\(.*\)\s*$/, '') };
+      });
+      if (list.length) { RECS = list; renderRecs(); return; }
+      return fn('personal-dates', { token: t, action: 'suggestedRecipients' }).then(function (r) {
+        RECS = ((r && r.suggestions) || []).slice(0, 6).map(function (x, i) { x.id = 's' + i; x.suggested = true; return x; });
+        renderRecs();
+      });
     }).catch(function () { RECS = []; renderRecs(); });
   }
 
@@ -1133,6 +1141,6 @@
       if (window.members && typeof members.hideuserbar === 'function') { try { members.hideuserbar(); } catch (e) {} }
     });
   }
-  window.__npay = { S: S, AV: AV, validate: validate, commit: commitToCart, totals: totals, feeCalc: feeCalc, refresh: refresh, renderDep: renderDep, renderPromo: renderPromo, renderPays: renderPays, renderModes: renderModes };
+  window.__npay = { S: S, AV: AV, validate: validate, commit: commitToCart, totals: totals, feeCalc: feeCalc, refresh: refresh, renderDep: renderDep, renderPromo: renderPromo, renderPays: renderPays, renderModes: renderModes, loadRecipients: loadRecipients, renderRecs: renderRecs };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
