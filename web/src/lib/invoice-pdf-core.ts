@@ -60,6 +60,8 @@ export type OrderPayment = {
   delivery?: string | null;
   delivery_price?: string | number | null;
   amount?: string | number | null;
+  promocode?: string | null;
+  used_points?: string | number | null;
 };
 
 export type OrderLineItem = {
@@ -67,6 +69,9 @@ export type OrderLineItem = {
   delivery_date: string | null;
   order_total: number | null;
   payment?: OrderPayment | null;
+  // pri volani z aplikace manazera (platebni zaznam je surovy)
+  used_points?: number | null;
+  top_promo?: string | null;
 };
 
 const ENTITIES: Record<string, string> = {
@@ -89,7 +94,7 @@ type InvoiceLine = { name: string; qty: number; unit: number; amount: number; ki
 // Polozky jedne objednavky tak, aby souctem dali presne castku objednavky
 // (zbozi + doruceni + rozdil jako sleva nebo ostatni poplatky).
 function orderLines(o: OrderLineItem): InvoiceLine[] {
-  const pay = o.payment;
+  const pay = o.payment ? { ...o.payment, promocode: o.payment.promocode ?? o.top_promo ?? null, used_points: o.payment.used_points ?? o.used_points ?? 0 } : o.payment;
   const total = Number(o.order_total ?? 0);
   const lines: InvoiceLine[] = [];
   const products = Array.isArray(pay?.products) ? pay!.products! : [];
@@ -106,8 +111,16 @@ function orderLines(o: OrderLineItem): InvoiceLine[] {
     lines.push({ name: decodeEntities(pay?.delivery || "Doručení a servisní poplatek"), qty: 1, unit: delivery, amount: delivery, kind: "delivery" });
   }
   const diff = Math.round((goods + delivery - total) * 100) / 100;
-  if (diff > 0.5) lines.push({ name: "Sleva", qty: 1, unit: -diff, amount: -diff, kind: "discount" });
-  else if (diff < -0.5) lines.push({ name: "Ostatní poplatky", qty: 1, unit: -diff, amount: -diff, kind: "other" });
+  if (diff > 0.5) {
+    // 1 bod = 1 Kč; zbytek rozdilu je slevovy kod
+    const points = Math.min(Math.max(Number(pay?.used_points) || 0, 0), diff);
+    const rest = Math.round((diff - points) * 100) / 100;
+    if (points > 0) lines.push({ name: `Uplatněné věrnostní body (${points} b.)`, qty: 1, unit: -points, amount: -points, kind: "discount" });
+    if (rest > 0.5) {
+      const code = pay?.promocode ? String(pay.promocode).trim() : "";
+      lines.push({ name: code ? `Sleva (slevový kód ${code})` : "Sleva", qty: 1, unit: -rest, amount: -rest, kind: "discount" });
+    }
+  } else if (diff < -0.5) lines.push({ name: "Ostatní poplatky", qty: 1, unit: -diff, amount: -diff, kind: "other" });
   return lines;
 }
 

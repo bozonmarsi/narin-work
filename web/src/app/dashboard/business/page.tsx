@@ -70,6 +70,8 @@ type OrderRowLite = {
   order_total: number | null;
   status: string | null;
   payment?: import("@/lib/invoice-pdf-core").OrderPayment | null;
+  used_points?: number | null;
+  top_promo?: string | null;
 };
 
 type InvoiceRow = {
@@ -288,7 +290,7 @@ export default function BusinessPage() {
         .eq("company_id", company.id),
       supabase
         .from("tilda_orders")
-        .select("id, order_id, created_at, delivery_date, order_total, status, payment:raw_payload->payment")
+        .select("id, order_id, created_at, delivery_date, order_total, status, used_points, top_promo:raw_payload->promocode, payment:raw_payload->payment")
         .eq("company_id", company.id)
         .order("created_at", { ascending: false })
         .limit(30),
