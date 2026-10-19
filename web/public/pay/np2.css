@@ -594,3 +594,10 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
 .np-alert button { height: 38px; border-radius: 10px; padding: 0 18px; }
 .np-toast { border-radius: 12px; padding: 11px 16px; font-size: 14px; }
 .np-skel { height: 160px; border-radius: 14px; margin-bottom: 12px; }
+@media (max-width: 559px) {
+  .np-row.two { grid-template-columns: 1fr 1fr; }
+  .np-row.two:has(.np-phone) { grid-template-columns: minmax(0, 1fr); }
+  .np-row.three { grid-template-columns: 1fr 1fr 1.25fr; }
+  .np-f label.l { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .np-in { padding: 0 12px; }
+}
