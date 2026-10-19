@@ -568,10 +568,12 @@
       fn('gift-link', { action: 'check', contact: handle }).catch(function () { return {}; }).then(function (r) {
         ok.disabled = false; ok.textContent = 'Pokračovat';
         if (r && r.blocked) return err('Tomuto kontaktu bohužel nemůžeme dárek bez adresy poslat. Zadejte prosím adresu sami.');
+        var wasSame = S.same;
         S.gift = { name: name.slice(0, 60), channel: giftCh, handle: handle.slice(0, 60), visible: $('#ngVis').checked };
         S.mode = 'courier'; S.same = false; $('#np_same').checked = false;
-        if (!S.rname) { S.rname = S.gift.name; $('#np_rname').value = S.rname; }
-        if (!S.rphone && /^(phone|whatsapp)$/.test(S.gift.channel)) { S.rphone = phoneShow(S.gift.handle); $('#np_rphone').value = S.rphone; }
+        if (wasSame || !S.rname) { S.rname = S.gift.name; S.rlast = wasSame ? '' : S.rlast; $('#np_rname').value = S.rname; $('#np_rlast').value = S.rlast; }
+        if ((wasSame || !S.rphone) && /^(phone|whatsapp)$/.test(S.gift.channel)) { S.rphone = phoneShow(S.gift.handle); $('#np_rphone').value = S.rphone; }
+        else if (wasSame) { S.rphone = ''; $('#np_rphone').value = ''; }
         close(); renderModes(); renderRecipient(); refresh();
       });
     };
@@ -775,7 +777,7 @@
     if (!S.same || S.gift) {
       need('rname', S.rname.trim() ? '' : 'Vyplňte prosím jméno příjemce.', 'c3');
       need('rlast', S.rlast.trim() || S.gift ? '' : 'Vyplňte prosím příjmení příjemce.', 'c3');
-      need('rphone', phoneValid(S.rphone) ? '' : 'Zadejte prosím telefon příjemce.', 'c3');
+      need('rphone', (S.gift && !/^(phone|whatsapp)$/.test(S.gift.channel)) || phoneValid(S.rphone) ? '' : 'Zadejte prosím telefon příjemce.', 'c3');
     }
     if (hasPostcard()) {
       need('pcTo', S.pcTo.trim() ? '' : 'Napište prosím, pro koho pohlednice je.', 'c3');
@@ -840,6 +842,7 @@
     setCart('adres', adres); setCart('city', city); setCart('psc', psc);
     setCart('floor', S.mode === 'courier' && !g ? S.floor : ''); setCart('apartment-number', S.mode === 'courier' && !g ? S.apt : ''); setCart('intercom', S.mode === 'courier' && !g ? S.intercom : '');
     var rn = S.same ? S.name : S.rname, rl = S.same ? S.last : S.rlast, rp = S.same ? S.phone : S.rphone;
+    if (g && !phoneValid(rp)) rp = S.phone;
     setCart('recipients-name', rn.trim()); setCart('recipients-lastname', (rl || '').trim() || '-'); setCart('recipients-phone-number', phoneCart(rp));
     setCartCheck('recipient-customer', !!S.same && !g);
     setCart('comments', S.comment || ''); setCartCheck('personal-data', true);
@@ -893,6 +896,7 @@
     var prods = products().map(function (p) { return { uid: String(p.uid || p.lid || ''), quantity: Number(p.quantity) }; });
     var g = S.gift, date = g ? iso(addDays(new Date(), 1)) : S.date;
     var rn = S.same ? S.name : S.rname, rl = S.same ? S.last : S.rlast, rp = S.same ? S.phone : S.rphone;
+    if (g && !phoneValid(rp)) rp = S.phone;
     var form = {
       name: S.name.trim(), 'last-name': S.last.trim(), phone: phoneCart(S.phone), email: S.email.trim(), 'company-name': S.isCompany ? S.company.trim() : '',
       date: dmy(date), comments: S.comment || '', 'personal-data': 'yes',
