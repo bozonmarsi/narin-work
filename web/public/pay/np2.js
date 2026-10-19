@@ -338,6 +338,7 @@
       '<div class="np-top"><a class="back" href="/" id="npBack"><span class="arr"><i class="ti ti-arrow-left"></i></span><img src="https://narin-work.vercel.app/brand/narin-logo.png" alt="NARIN"></a><span class="np-secure"><i class="ti ti-lock"></i>Zabezpečená platba</span></div>' +
       '<div class="np-hero"><div class="np-eyebrow">Dokončení objednávky</div><h1>Skoro hotovo. <em>Ještě pár detailů.</em></h1><p>Květiny připravíme čerstvé a doručíme v den, který si vyberete.</p></div>' +
       '<div class="np-alert" id="npAlert" hidden></div>' +
+      '<div class="np-gone" id="npGone" hidden></div>' +
       '<div class="np-grid"><div class="np-main">' +
       section('c1', 1, 'Vaše údaje', 'Na tento e-mail pošleme potvrzení', s1) +
       section('c2', 2, 'Doručení', 'Kam a kdy kytice přivezeme', s2) +
@@ -502,6 +503,39 @@
   function syncSame() {
     S.rname = S.name; S.rlast = S.last; S.rphone = S.phone;
     $('#np_rname').value = S.rname; $('#np_rlast').value = S.rlast; $('#np_rphone').value = S.rphone;
+  }
+
+  /* ---------- items we can no longer supply (hidden in the catalog) must not be orderable from an old cart ---------- */
+  var GONE = [];
+  function normName(t) { return decode(String(t || '')).replace(/\s+/g, ' ').trim().toLowerCase(); }
+  function goneNames() { return GONE; }
+  function renderGone() {
+    var el = $('#npGone'); if (!el) return;
+    if (!GONE.length) { el.hidden = true; el.innerHTML = ''; return; }
+    el.hidden = false;
+    el.innerHTML = '<i class="ti ti-alert-triangle"></i><div><b>V košíku máte položku, kterou už nemáme k dispozici</b><span>' + GONE.map(esc).join(', ') + '</span><button type="button" id="npGoneBtn">Odebrat z košíku</button></div>';
+    var b = $('#npGoneBtn'); if (b) b.addEventListener('click', removeGone);
+  }
+  function removeGone() {
+    try {
+      var raw = JSON.parse(localStorage.getItem('tcart') || '{}'), drop = GONE.map(normName);
+      raw.products = (raw.products || []).filter(function (p) { return drop.indexOf(normName(p.name)) === -1; });
+      var sum = raw.products.reduce(function (a, p) { return a + (Number(p.amount) || 0); }, 0);
+      raw.prodamount = sum; raw.amount = sum; raw.total = raw.products.length;
+      delete raw.promocode; delete raw.prodamount_withdiscount; delete raw.prodamount_discountsum; delete raw.prodamount_withdyndiscount;
+      localStorage.setItem('tcart', JSON.stringify(raw));
+    } catch (e) {}
+    location.reload();
+  }
+  function checkSourceable() {
+    fetch(SB + '/rest/v1/rpc/get_catalog_page_data', { method: 'POST', headers: { apikey: ANON, Authorization: 'Bearer ' + ANON, 'Content-Type': 'application/json' }, body: '{}' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d || !Array.isArray(d.unsourceable)) return;
+        var bad = {}; d.unsourceable.forEach(function (n) { bad[normName(n)] = 1; });
+        GONE = products().filter(function (p) { return bad[normName(p.name)]; }).map(function (p) { return decode(p.name); });
+        renderGone(); refresh();
+      }).catch(function () {});
   }
 
   /* ---------- sections that re-render ---------- */
@@ -1056,7 +1090,7 @@
     var label = ctaLabel(t), arrow = ' <i class="ti ti-arrow-right"></i>';
     $('#npCta').innerHTML = S.submitting ? '<span class="sp"></span>Zpracováváme…' : label + arrow;
     $('#npBarBtn').innerHTML = S.submitting ? '<span class="sp"></span>' : label.replace(/ · .*$/, '') + arrow;
-    $('#npCta').disabled = $('#npBarBtn').disabled = S.submitting;
+    $('#npCta').disabled = $('#npBarBtn').disabled = S.submitting || goneNames().length > 0;
     setMoney($('#npBarTot'), useDep ? t.card : t.total);
     $('#npBarLbl').textContent = useDep ? (t.card > 0 ? 'Kartou zaplatíte' : 'Z depozitu') : 'Celkem';
     if (useDep && t.card <= 0) setMoney($('#npBarTot'), t.total);
@@ -1195,6 +1229,7 @@
       toast('Zkontrolujte prosím zvýrazněná pole.', true);
       return;
     }
+    if (goneNames().length) { var gb = $('#npGone'); if (gb) gb.scrollIntoView({ behavior: 'smooth', block: 'center' }); toast('V košíku je položka, která už není dostupná. Odeberte ji prosím.', true, 5200); return; }
     var t = totals();
     var f = feeCalc(); if (S.mode === 'courier' && !S.gift && (f.need || f.tooFar)) { toast(f.tooFar ? 'Na tuto adresu nedoručujeme.' : 'Vyberte prosím adresu ze seznamu.', true); return; }
     saveDraft();
@@ -1345,7 +1380,7 @@
       renderWho(); revealOnScroll();
       refresh(); initPlaces(); onAddress();
       loadAvail().then(function () { var fa2 = S.date && dateReason(parseIso(S.date)) === null ? null : firstAvailable(); if (fa2) { S.date = iso(fa2); cal.y = fa2.getFullYear(); cal.m = fa2.getMonth(); } renderCalendar(); renderChips(); renderSlots(); refresh(); });
-      loadRecipients(); loadPoints(); loadMyCompanies(); syncCartDelivery();
+      loadRecipients(); loadPoints(); loadMyCompanies(); syncCartDelivery(); checkSourceable();
       /* keep summary and cart totals in step with Tilda */
       var last = '';
       setInterval(function () { var sig = JSON.stringify([tc().prodamount, tc().prodamount_withdiscount, tc().promocode && tc().promocode.promocode, products().length]); if (sig !== last) { last = sig; renderRecipient(); recomputeSpecial(); renderDep(); renderPromo(); renderPays(); refresh(); quoteSoon(); } }, 800);
