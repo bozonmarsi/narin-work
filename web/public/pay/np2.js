@@ -129,7 +129,7 @@
   var S = {
     mode: 'courier', adres: '', city: '', psc: '', floor: '', apt: '', intercom: '', lat: null, lng: null,
     date: null, slot: null, time: null,
-    name: '', last: '', phone: '', email: '', isCompany: false, company: '',
+    name: '', last: '', phone: '', email: '', isCompany: false, company: '', co: { ico: '', name: '', dic: '', addr: '', vat: false, ok: false, manual: false, loading: false, err: '', id: null, state: '' },
     same: false, rid: null, rname: '', rlast: '', rphone: '', comment: '',
     pcSender: 'name', pcTo: '', pcText: '',
     pay: 'stripe', consent: false,
@@ -144,7 +144,7 @@
 
   function saveDraft() {
     try {
-      var d = {}; ['mode', 'adres', 'city', 'psc', 'floor', 'apt', 'intercom', 'lat', 'lng', 'date', 'slot', 'time', 'name', 'last', 'phone', 'email', 'isCompany', 'company', 'same', 'rname', 'rlast', 'rphone', 'comment', 'pcSender', 'pcTo', 'pcText'].forEach(function (k) { d[k] = S[k]; });
+      var d = {}; ['mode', 'adres', 'city', 'psc', 'floor', 'apt', 'intercom', 'lat', 'lng', 'date', 'slot', 'time', 'name', 'last', 'phone', 'email', 'isCompany', 'company', 'co', 'same', 'rname', 'rlast', 'rphone', 'comment', 'pcSender', 'pcTo', 'pcText'].forEach(function (k) { d[k] = S[k]; });
       sessionStorage.setItem(DRAFT_KEY, JSON.stringify(d));
     } catch (e) {}
   }
@@ -293,7 +293,7 @@
       '<div class="np-row two">' + field('name', 'Jméno', 'text', { ac: 'given-name' }) + field('last', 'Příjmení', 'text', { ac: 'family-name' }) + '</div>' +
       '<div class="np-row two">' + phoneField('phone', 'Telefon') + field('email', 'E-mail', 'email', { ac: 'email', mode: 'email' }) + '</div>' +
       '<label class="np-switch"><input type="checkbox" id="np_isCompany"><span class="tr"></span><span>Nakupuji na firmu</span></label>' +
-      '<div id="npCompany" hidden style="margin-top:16px">' + field('company', 'Název firmy', 'text', { req: false, ac: 'organization' }) + '<div class="np-hint" style="margin-top:-6px">Fakturační údaje (IČ a DIČ) zadáte v dalším kroku při platbě.</div></div>';
+      '<div id="npCompany" hidden class="np-co"><div id="npCoList"></div>' + field('ico', 'IČO firmy', 'text', { mode: 'numeric', ph: '8 číslic', ac: 'off' }) + '<div id="npCoCard"></div><div id="npCoManual" hidden>' + field('company', 'Název firmy', 'text', { ac: 'organization' }) + '</div><div id="npCoNudge"></div></div>';
 
     var s2 = '<div class="np-tiles" id="npModes">' +
       '<label class="np-tile" data-m="courier"><input type="radio" name="npmode" value="courier"><span class="ic"><i class="ti ti-truck-delivery"></i></span><span><b>Kurýrem</b><span class="s">Až ke dveřím po Praze a okolí</span></span><span class="pr" id="npModePrC"></span></label>' +
@@ -384,8 +384,121 @@
     $('#np_comment').value = S.comment || '';
     $('#np_comment').addEventListener('input', function (e) { S.comment = e.target.value; saveDraft(); });
     var co = $('#np_isCompany'); co.checked = !!S.isCompany; $('#npCompany').hidden = !S.isCompany;
-    co.addEventListener('change', function () { S.isCompany = co.checked; $('#npCompany').hidden = !co.checked; if (!co.checked) { S.company = ''; $('#np_company').value = ''; } saveDraft(); });
+    co.addEventListener('change', function () { S.isCompany = co.checked; $('#npCompany').hidden = !co.checked; if (!co.checked) { S.company = ''; $('#np_company').value = ''; } else { coAutoPick(); } renderCompany(); saveDraft(); });
+    bindCompany();
     var cs = $('#np_consent'); cs.addEventListener('change', function () { S.consent = cs.checked; setErr('consent', ''); $('#npConsentL').classList.remove('bad'); });
+  }
+  /* ---------- company (ARES) ---------- */
+  var ARES = 'https://ares.gov.cz/ekonomicke-subjekty-v-be/rest/ekonomicke-subjekty/';
+  var MYCO = null;
+  function icoValid(v) {
+    if (!/^\d{8}$/.test(v)) return false;
+    var w = [8, 7, 6, 5, 4, 3, 2], sum = 0;
+    for (var i = 0; i < 7; i++) sum += (+v.charAt(i)) * w[i];
+    return ((11 - (sum % 11)) % 10) === +v.charAt(7);
+  }
+  function coReset(keepIco) { var i = keepIco ? S.co.ico : ''; S.co = { ico: i, name: '', dic: '', addr: '', vat: false, ok: false, manual: false, loading: false, err: '', id: null, state: '' }; S.company = ''; }
+  function aresFetch(ico) {
+    var ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var to = setTimeout(function () { if (ctrl) ctrl.abort(); }, 8000);
+    return fetch(ARES + ico, ctrl ? { signal: ctrl.signal } : {}).then(function (r) {
+      clearTimeout(to);
+      if (r.status === 404 || r.status === 400) return { notFound: true };
+      if (!r.ok) throw new Error('ares');
+      return r.json();
+    });
+  }
+  function bindCompany() {
+    var el = $('#np_ico'); if (!el) return;
+    var wrap = $('[data-k="ico"]', ROOT); if (wrap && !$('#npIcoSt')) { var sp = document.createElement('span'); sp.id = 'npIcoSt'; sp.className = 'np-icost'; wrap.appendChild(sp); }
+    el.value = S.co.ico || '';
+    el.addEventListener('input', function () {
+      var v = el.value.replace(/\D/g, '').slice(0, 8); el.value = v;
+      if (v === S.co.ico) return;
+      coReset(false); S.co.ico = v; setErr('ico', '');
+      if (v.length === 8) { if (!icoValid(v)) { S.co.err = 'IČO nevypadá správně, zkontrolujte prosím číslice.'; } else lookupCompany(v); }
+      renderCompany(); saveDraft();
+    });
+    $('#npCompany').addEventListener('click', function (e) {
+      var ch = e.target.closest('[data-co]'); if (ch) { var i = ch.getAttribute('data-co'); if (i === 'new') { coReset(false); var inp = $('#np_ico'); if (inp) { inp.value = ''; inp.focus(); } renderCompany(); saveDraft(); } else pickCompany(MYCO[+i]); return; }
+      if (e.target.closest('#npCoChange')) { coReset(false); var i2 = $('#np_ico'); if (i2) { i2.value = ''; i2.focus(); } renderCompany(); saveDraft(); return; }
+      if (e.target.closest('#npCoManualBtn')) { S.co.manual = true; S.co.err = ''; renderCompany(); var c = $('#np_company'); if (c) c.focus(); }
+    });
+    var cm = $('#np_company'); if (cm) cm.addEventListener('input', function () { S.co.name = cm.value.trim(); S.co.ok = !!S.co.name; S.company = S.co.name; saveDraft(); });
+    renderCompany();
+  }
+  function lookupCompany(ico) {
+    S.co.loading = true; renderCompany();
+    aresFetch(ico).then(function (j) {
+      if (S.co.ico !== ico) return;
+      S.co.loading = false;
+      if (j && j.notFound) { S.co.err = 'Firmu s tímto IČO jsme v ARES nenašli. Zkontrolujte prosím číslice.'; renderCompany(); return; }
+      if (!j || !j.obchodniJmeno) { S.co.err = 'Firmu s tímto IČO jsme v ARES nenašli.'; renderCompany(); return; }
+      var reg = j.seznamRegistraci || {};
+      S.co.name = String(j.obchodniJmeno); S.co.addr = String((j.sidlo && j.sidlo.textovaAdresa) || ''); S.co.dic = String(j.dic || '');
+      S.co.vat = reg.stavZdrojeDph === 'AKTIVNI'; S.co.ok = true; S.company = S.co.name;
+      renderCompany(); saveDraft(); claimCompany();
+    }).catch(function () {
+      if (S.co.ico !== ico) return;
+      S.co.loading = false; S.co.err = 'ARES teď neodpovídá. Název firmy můžete napsat ručně a fakturu vám připravíme podle něj.'; renderCompany();
+    });
+  }
+  function claimCompany() {
+    var token = authToken(); if (!token || !S.loggedIn || !S.co.ok || S.co.manual || S.co.id || S.co.claimed === S.co.ico) return;
+    var ico = S.co.ico; S.co.claimed = ico;
+    fn('company-checkout', { action: 'claim', token: token, ico: ico }).then(function (r) {
+      if (r && r.state && S.co.ico === ico) { S.co.state = r.state; if (r.company_id) S.co.id = r.company_id; renderCompany(); }
+    }).catch(function () {});
+  }
+  function pickCompany(c) {
+    if (!c) return;
+    S.co = { ico: String(c.ico || ''), name: String(c.name || ''), dic: String(c.dic || ''), addr: String(c.billing_address || ''), vat: !!c.is_vat_payer, ok: true, manual: false, loading: false, err: '', id: c.id, state: 'member' };
+    S.company = S.co.name; var inp = $('#np_ico'); if (inp) inp.value = S.co.ico;
+    setErr('ico', ''); renderCompany(); saveDraft();
+  }
+  function coAutoPick() {
+    if (S.co.ok || S.co.ico) return;
+    if (MYCO && MYCO.length) pickCompany(MYCO[0]);
+  }
+  function loadMyCompanies() {
+    var t = authToken(); if (!t || !S.loggedIn) return;
+    var em = tokenEmail(t); if (!em) return;
+    fetch(SB + '/rest/v1/rpc/list_my_companies', { method: 'POST', headers: { apikey: ANON, Authorization: 'Bearer ' + ANON, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_email: em }) })
+      .then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; })
+      .then(function (list) { MYCO = Array.isArray(list) ? list : []; if (S.isCompany) { coAutoPick(); } renderCompany(); });
+  }
+  function renderCompany() {
+    var box = $('#npCompany'); if (!box) return;
+    var co = S.co, list = $('#npCoList'), card = $('#npCoCard'), st = $('#npIcoSt'), man = $('#npCoManual'), nud = $('#npCoNudge');
+    /* my companies */
+    if (MYCO && MYCO.length) {
+      list.innerHTML = '<div class="np-rh" style="margin-top:0">Vaše firmy<small>Vyberte, na koho fakturujeme</small></div><div class="np-cochips">' + MYCO.map(function (c, i) { return '<button type="button" class="np-cochip' + (co.id && co.id === c.id ? ' on' : '') + '" data-co="' + i + '"><i class="ti ti-building"></i><span><b>' + esc(c.name) + '</b><small>IČO ' + esc(c.ico || '') + '</small></span></button>'; }).join('') + '<button type="button" class="np-cochip new" data-co="new"><i class="ti ti-plus"></i><span><b>Jiná firma</b><small>podle IČO</small></span></button></div>';
+    } else list.innerHTML = '';
+    /* status next to the field */
+    st.innerHTML = co.loading ? '<span class="sp2"></span>' : (co.ok && !co.manual ? '<i class="ti ti-circle-check"></i>' : '');
+    st.className = 'np-icost' + (co.ok ? ' ok' : '');
+    /* card / errors */
+    var h = '';
+    if (co.ok && !co.manual) {
+      h = '<div class="np-cocard"><span class="ic"><i class="ti ti-building-skyscraper"></i></span><div class="tx"><b>' + esc(co.name) + '</b><small>IČO ' + esc(co.ico) + (co.dic ? ' · DIČ ' + esc(co.dic) : '') + (co.vat ? ' · plátce DPH' : '') + '</small><small>' + esc(co.addr) + '</small></div><div class="bd"><span class="vf"><i class="ti ti-shield-check"></i>' + (co.id ? 'Vaše firma' : 'Ověřeno v ARES') + '</span><button type="button" id="npCoChange">Změnit</button></div></div>';
+    } else if (co.err) {
+      h = '<div class="np-coerr"><i class="ti ti-alert-circle"></i><span>' + esc(co.err) + (/ARES teď/.test(co.err) && !co.manual ? ' <button type="button" id="npCoManualBtn">Napsat ručně</button>' : '') + '</span></div>';
+    } else if (!co.ico) {
+      h = '<div class="np-hint" style="margin-top:6px">Zadejte IČO a údaje o firmě (název, adresu, DIČ) doplníme z registru ARES.</div>';
+    }
+    card.innerHTML = h;
+    man.hidden = !co.manual; if (co.manual) { var c2 = $('#np_company'); if (c2 && !c2.value && co.name) c2.value = co.name; }
+    /* nudge */
+    var n = '';
+    if (!S.loggedIn) n = '<div class="np-conudge"><i class="ti ti-user-circle"></i><span><a href="/members/login" id="npCoLogin">Přihlaste se</a> a firmu uložíme do vašeho účtu. Příště ji předvyplníme jedním klepnutím.</span></div>';
+    else if (co.state === 'created') n = '<div class="np-conudge ok"><i class="ti ti-circle-check"></i><span>Firmu jsme uložili do vašeho účtu. Příště ji najdete mezi svými firmami.</span></div>';
+    else if (co.state === 'pending') n = '<div class="np-conudge"><i class="ti ti-clock"></i><span>Tato firma už u nás existuje. Žádost o přístup jsme odeslali ke schválení. Objednávka půjde s fakturačními údaji firmy hned.</span></div>';
+    nud.innerHTML = n;
+    var lg = $('#npCoLogin'); if (lg) lg.addEventListener('click', function () { try { localStorage.setItem('lkReturnUrl', location.pathname); } catch (e) {} });
+  }
+  function companyForm() {
+    if (!S.isCompany) return { 'company-name': '', 'company-ico': '', 'company-dic': '', 'company-address': '', 'company-vat': '' };
+    return { 'company-name': (S.co.name || S.company || '').trim(), 'company-ico': S.co.manual ? '' : S.co.ico, 'company-dic': S.co.dic || '', 'company-address': S.co.addr || '', 'company-vat': S.co.vat ? 'yes' : '' };
   }
   function syncSame() {
     S.rname = S.name; S.rlast = S.last; S.rphone = S.phone;
@@ -965,6 +1078,7 @@
     need('last', S.last.trim() ? '' : 'Vyplňte prosím příjmení.', 'c1');
     need('phone', phoneValid(S.phone) ? '' : 'Zadejte prosím telefon (9 číslic).', 'c1');
     need('email', emailOk ? '' : 'Zadejte prosím platný e-mail.', 'c1');
+    if (S.isCompany) need('ico', S.co.ok ? '' : (S.co.manual ? 'Napište prosím název firmy.' : (S.co.err || 'Zadejte prosím IČO firmy (8 číslic).')), 'c1');
     var f = feeCalc();
     if (S.mode === 'courier' && !S.gift) {
       need('adres', S.adres.trim() ? (f.tooFar ? 'Na tuto adresu kurýrem nedoručujeme.' : (f.need ? 'Vyberte prosím adresu ze seznamu.' : (S.noNum ? 'Doplňte prosím číslo popisné: vyberte ze seznamu adresu s číslem.' : ''))) : 'Vyplňte prosím adresu.', 'c2');
@@ -1037,7 +1151,7 @@
     var f = cartForm(); if (!f) return false;
     var g = S.gift;
     setCart('name', S.name.trim()); setCart('last-name', S.last.trim()); setCart('phone', phoneCart(S.phone)); setCart('email', S.email.trim());
-    setCart('company-name', S.isCompany ? S.company.trim() : '');
+    var cf = companyForm(); Object.keys(cf).forEach(function (k) { setCart(k, cf[k]); });
     var date = S.gift ? iso(addDays(new Date(), 1)) : S.date; setCart('date', dmy(date));
     if (S.mode === 'pickup') { setCart('time', S.time || ''); }
     else {
@@ -1134,7 +1248,7 @@
     var rn = S.same ? S.name : S.rname, rl = S.same ? S.last : S.rlast, rp = S.same ? S.phone : S.rphone;
     if (g && !phoneValid(rp)) rp = S.phone;
     var form = {
-      name: S.name.trim(), 'last-name': S.last.trim(), phone: phoneCart(S.phone), email: S.email.trim(), 'company-name': S.isCompany ? S.company.trim() : '',
+      name: S.name.trim(), 'last-name': S.last.trim(), phone: phoneCart(S.phone), email: S.email.trim(), 'company-name': companyForm()['company-name'], 'company-ico': companyForm()['company-ico'], 'company-dic': companyForm()['company-dic'], 'company-address': companyForm()['company-address'], 'company-vat': companyForm()['company-vat'],
       date: dmy(date), comments: S.comment || '', 'personal-data': 'yes',
       'recipients-name': rn.trim(), 'recipients-lastname': (rl || '').trim() || '-', 'recipients-phone-number': phoneCart(rp), 'recipient-customer': S.same && !g ? 'yes' : '',
       adres: g ? 'Adresu zadá příjemce' : (S.mode === 'courier' ? S.adres.trim() : ''), city: g ? 'Praha' : (S.mode === 'courier' ? S.city.trim() : ''), psc: g ? '110 00' : (S.mode === 'courier' ? S.psc.trim() : ''),
@@ -1225,7 +1339,7 @@
       renderWho(); revealOnScroll();
       refresh(); initPlaces(); onAddress();
       loadAvail().then(function () { var fa2 = S.date && dateReason(parseIso(S.date)) === null ? null : firstAvailable(); if (fa2) { S.date = iso(fa2); cal.y = fa2.getFullYear(); cal.m = fa2.getMonth(); } renderCalendar(); renderChips(); renderSlots(); refresh(); });
-      loadRecipients(); loadPoints(); syncCartDelivery();
+      loadRecipients(); loadPoints(); loadMyCompanies(); syncCartDelivery();
       /* keep summary and cart totals in step with Tilda */
       var last = '';
       setInterval(function () { var sig = JSON.stringify([tc().prodamount, tc().prodamount_withdiscount, tc().promocode && tc().promocode.promocode, products().length]); if (sig !== last) { last = sig; renderRecipient(); recomputeSpecial(); renderDep(); renderPromo(); renderPays(); refresh(); quoteSoon(); } }, 800);
