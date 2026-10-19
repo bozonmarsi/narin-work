@@ -1350,7 +1350,7 @@
   function loadPoints() {
     var token = authToken(); if (!token) return;
     fn('member-data', { token: token }).then(function (d) { if (d && !d.error && d.balance != null) { S.pts.balance = Number(d.balance) || 0; S.pts.earned = Number(d.totalEarned) || 0; S.pts.tierName = d.tier || ''; S.pts.ma = d.ma_id || ''; renderPromo(); } }).catch(function () {});
-    fn('customer-deposit', { action: 'get', token: token }).then(function (d) { if (d && d.balance != null) { S.dep.balance = Math.max(0, Number(d.balance) || 0); renderDep(); renderPromo(); renderPays(); refresh(); quoteSoon(); } }).catch(function () {});
+    fn('customer-deposit', { action: 'get', token: token }).then(function (d) { if (d && d.balance != null) { S.dep.balance = Math.max(0, Number(d.balance) || 0); if (S.dep.balance >= 1) fn('checkout-order', { action: 'warm', token: token }).catch(function () {}); renderDep(); renderPromo(); renderPays(); refresh(); quoteSoon(); } }).catch(function () {});
   }
 
   /* ---------- delivery-name fix (phones): Tilda leaves tcart.delivery.name empty in full-screen mode ---------- */

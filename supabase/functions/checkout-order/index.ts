@@ -87,6 +87,29 @@ let catalogCache: { at: number; items: Map<string, CatalogItem> } | null = null;
 export async function loadCatalog(supabase: any): Promise<Map<string, CatalogItem>> {
   if (catalogCache && Date.now() - catalogCache.at < 10 * 60 * 1000) return catalogCache.items;
 
+  // Rychla cesta: kopie v tabulce catalog_prices, kterou kazdou hodinu obnovuje catalog-sync
+  // (stejny zdroj cen jako pro sklad). Cteni z DB trva desitky ms, zivy katalog Tilda vic vterin.
+  // Zivy katalog se pouzije jen kdyz je kopie starsi nez 70 minut.
+  try {
+    const { data: mirror } = await supabase
+      .from("catalog_prices")
+      .select("uid, title, price, portion, seen_at")
+      .eq("active", true);
+    if (mirror && mirror.length >= 10) {
+      const newest = Math.max(...mirror.map((r: any) => new Date(r.seen_at).getTime() || 0));
+      if (Date.now() - newest < 70 * 60 * 1000) {
+        const fast = new Map<string, CatalogItem>();
+        for (const r of mirror) {
+          fast.set(String(r.uid), { uid: String(r.uid), title: String(r.title), price: Number(r.price), portion: Number(r.portion) || 0 });
+        }
+        catalogCache = { at: Date.now(), items: fast };
+        return fast;
+      }
+    }
+  } catch (e) {
+    console.warn("catalog mirror fast path failed", String(e));
+  }
+
   let items = new Map<string, CatalogItem>();
   try {
     const ctrl = new AbortController();
@@ -187,12 +210,17 @@ async function deliveryFee(supabase: any, mode: string, form: Record<string, any
 }
 
 export async function quote(supabase: any, email: string, body: any) {
-  const catalog = await loadCatalog(supabase);
+  // katalog, cena dopravy a zustatek depozitu jsou nezavisle: bezi zaroven
+  const [catalog, delivery, depRes] = await Promise.all([
+    loadCatalog(supabase),
+    deliveryFee(supabase, body.delivery, body.form || {}),
+    supabase.from("customer_deposits").select("balance").ilike("email", email).maybeSingle(),
+  ]);
   const { lines, goods } = priceCart(catalog, body.products);
-  const { fee, km } = await deliveryFee(supabase, body.delivery, body.form || {});
+  const { fee, km } = delivery;
   const total = Math.round((goods + fee) * 100) / 100;
 
-  const { data: dep } = await supabase.from("customer_deposits").select("balance").ilike("email", email).maybeSingle();
+  const dep = depRes?.data;
   const balance = Math.max(0, Number(dep?.balance || 0));
   // cele koruny, aby Stripe castka byla cele cislo
   const deposit = body.use_deposit === false ? 0 : Math.floor(Math.min(balance, total));
@@ -319,6 +347,11 @@ export async function create(supabase: any, email: string, body: any) {
   delete data.promocode;
   delete data["promo-code"];
 
+  // Stripe session vznika zaroven s ulozenim objednavky (potrebuje jen cislo a castku).
+  // Kdyby se objednavka neulozila, session jen vyprsi (31 min) a nikdo za ni nezaplati.
+  const sessionPromise = q.card > 0 ? createStripeSession(orderId, q.card, String(form.email), q.deposit) : null;
+  if (sessionPromise) sessionPromise.catch(() => {});
+
   const hook = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/tilda-webhook`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -326,10 +359,8 @@ export async function create(supabase: any, email: string, body: any) {
   });
   if (!hook.ok) throw new Fail("order_not_saved", 502);
 
-  const { data: row } = await supabase.from("tilda_orders").select("id").eq("order_id", orderId).maybeSingle();
-  if (!row) throw new Fail("order_not_saved", 502);
-
-  await supabase
+  // jeden dotaz misto "najit radek" + "upravit": vrati id upraveneho radku
+  const { data: rows } = await supabase
     .from("tilda_orders")
     .update({
       pending_deposit: q.deposit,
@@ -337,7 +368,10 @@ export async function create(supabase: any, email: string, body: any) {
       checkout_key: key,
       customer_email: email,
     })
-    .eq("id", row.id);
+    .eq("order_id", orderId)
+    .select("id");
+  const row = rows && rows[0];
+  if (!row) throw new Fail("order_not_saved", 502);
 
   if (q.card <= 0) {
     const { data: r, error } = await supabase.rpc("settle_order_payment", { p_order_id: orderId });
@@ -349,7 +383,7 @@ export async function create(supabase: any, email: string, body: any) {
     return { order_id: orderId, paid: true, url: SUCCESS_URL };
   }
 
-  const session = await createStripeSession(orderId, q.card, String(form.email), q.deposit);
+  const session = await sessionPromise!;
   await supabase.from("tilda_orders").update({ stripe_session_id: session.id }).eq("id", row.id);
   return { order_id: orderId, paid: false, url: session.url, deposit: q.deposit, card: q.card };
 }
@@ -366,6 +400,11 @@ if (Deno.env.get("CHECKOUT_TEST") !== "1") {
 
       const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
+      if (body.action === "warm") {
+        // zahrati funkce a pameti s katalogem, aby prvni skutecny dotaz nebyl pomaly
+        await loadCatalog(supabase);
+        return json({ ok: true });
+      }
       if (body.action === "quote") {
         const q = await quote(supabase, email, body);
         return json({ ok: true, goods: q.goods, delivery: q.delivery, total: q.total, balance: q.balance, deposit: q.deposit, card: q.card });
