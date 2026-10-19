@@ -380,7 +380,7 @@
     ['phone', 'rphone'].forEach(function (k) {
       var el = $('#np_' + k); if (!el) return;
       el.value = S[k] || '';
-      el.addEventListener('input', function () { var v = phoneShow(el.value); el.value = v; S[k] = v; setErr(k, ''); if (k === 'phone' && S.same) syncSame(); saveDraft(); });
+      el.addEventListener('input', function () { var v = phoneShow(el.value); el.value = v; S[k] = v; setErr(k, ''); if (k === 'phone' && S.same) syncSame(); saveDraft(); paintPhones(); });
     });
     $('#np_comment').value = S.comment || '';
     $('#np_comment').addEventListener('input', function (e) { S.comment = e.target.value; saveDraft(); });
@@ -1100,7 +1100,9 @@
     if (S.pay === 'cash') return 'Odeslat objednávku';
     return 'Pokračovat k platbě';
   }
-  function refresh() { modePrice(); renderSummary(); updateSteps(); }
+  /* a number that starts with "+" (not +420) is international: hide the fixed +420 prefix so it does not read "+420 +777..." */
+  function paintPhones() { $$('.np-phone', ROOT).forEach(function (w) { var i = $('input', w); w.classList.toggle('intl', !!(i && i.value.charAt(0) === '+' && !/^\+420/.test(i.value))); }); }
+  function refresh() { modePrice(); renderSummary(); updateSteps(); paintPhones(); }
 
   /* ---------- validation ---------- */
   function validate() {
