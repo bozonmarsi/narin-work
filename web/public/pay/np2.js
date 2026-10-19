@@ -73,7 +73,7 @@
     mode: 'courier', adres: '', city: '', psc: '', floor: '', apt: '', intercom: '', lat: null, lng: null,
     date: null, slot: null, time: null,
     name: '', last: '', phone: '', email: '', isCompany: false, company: '',
-    same: false, rname: '', rlast: '', rphone: '', comment: '',
+    same: false, rid: null, rname: '', rlast: '', rphone: '', comment: '',
     pcSender: 'name', pcTo: '', pcText: '',
     pay: 'stripe', consent: false,
     promo: { code: '', applied: false, busy: false },
@@ -452,7 +452,7 @@
   function setWho(w) {
     var was = S.same; S.same = (w === 'me');
     if (S.same) syncSame();
-    else if (was) { S.rname = S.rlast = S.rphone = ''; ['rname', 'rlast', 'rphone'].forEach(function (k) { $('#np_' + k).value = ''; }); }
+    else if (was) { S.rid = null; if (RECS) renderRecs(); S.rname = S.rlast = S.rphone = ''; ['rname', 'rlast', 'rphone'].forEach(function (k) { $('#np_' + k).value = ''; }); }
     renderWho(); saveDraft(); refresh();
   }
 
@@ -503,7 +503,9 @@
   function renderRecipient() {
     renderWho();
     var note = $('#npRNote');
-    note.innerHTML = '<i class="ti ti-bell-ringing"></i>' + (S.loggedIn ? '<span>Příjemce i datum si zapamatujeme a příště vám je připomeneme. Upravit je můžete ve svém <a href="/members/occasions" target="_blank" rel="noopener">účtu</a>.</span>' : '<span>Zapamatujeme si příjemce i datum a příště vám je připomeneme. <a href="/members/login">Přihlaste se</a> a půjde to samo.</span>');
+    note.hidden = !S.loggedIn;
+    note.innerHTML = '<i class="ti ti-bell-ringing"></i><span>Příjemce i datum si zapamatujeme a příště vám je připomeneme. Upravit je můžete ve svém <a href="/members/occasions" target="_blank" rel="noopener">účtu</a>.</span>';
+    updateRAddr();
     var pc = $('#npPostcard');
     if (hasPostcard()) {
       pc.hidden = false;
@@ -522,21 +524,104 @@
     } else { pc.hidden = true; }
   }
   function paintSeg() { $$('#npPcSeg button', ROOT).forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-v') === S.pcSender); }); }
+  var RECS = null, REC_ADDR = null;
+  var REL = { mama: 'Máma', partnerka: 'Partnerka', partner: 'Partner', babicka: 'Babička', tata: 'Táta', ucitelka: 'Učitel(ka)', kolegyne: 'Kolega/yně', kamarad: 'Kamarád(ka)' };
+  var HNAME = { valentyn: 'Valentýn', mdz: 'MDŽ', den_matek_sns: 'Den matek', skolni_rok: '1. září', vanoce: 'Vánoce', vanoce_prav: 'Vánoce', den_matek: 'Den matek', den_otcu: 'Den otců', den_ucitelu: 'Den učitelů', prvni_maj: '1. máj', novy_rok: 'Nový rok', svaty_vaclav: 'Svatý Václav', dusicky: 'Dušičky' };
+  var HFIX = { valentyn: [1, 14], mdz: [2, 8], skolni_rok: [8, 1], vanoce: [11, 24], vanoce_prav: [0, 6], prvni_maj: [4, 1], novy_rok: [0, 1], svaty_vaclav: [8, 28], dusicky: [10, 2], den_ucitelu: [2, 28] };
+  function nthSunday(y, m, n) { var d = new Date(y, m, 1); return new Date(y, m, 1 + (7 - d.getDay()) % 7 + 7 * (n - 1)); }
+  function holidayDate(k, y) {
+    if (HFIX[k]) return new Date(y, HFIX[k][0], HFIX[k][1]);
+    if (k === 'den_matek' || k === 'den_matek_sns') return nthSunday(y, 4, 2);
+    if (k === 'den_otcu') return nthSunday(y, 5, 3);
+    return null;
+  }
+  function nextOcc(keys) {
+    var now = new Date(), t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime(), best = null;
+    (keys || []).forEach(function (k) {
+      if (!HNAME[k]) return;
+      [0, 1].forEach(function (dy) { var d = holidayDate(k, now.getFullYear() + dy); if (!d) return; var days = Math.round((d.getTime() - t0) / 864e5); if (days >= 0 && (!best || days < best.days)) best = { name: HNAME[k], days: days }; });
+    });
+    return best && best.days <= 45 ? best : null;
+  }
+  function plDays(n) { return n === 1 ? 'den' : (n >= 2 && n <= 4 ? 'dny' : 'dní'); }
+  function parseAddr(a) {
+    var s = String(a || '').trim(); if (!s) return null;
+    var parts = s.split(','), street = parts[0].trim(), rest = parts.slice(1).join(',').trim();
+    var m = rest.match(/(\d{3})\s?(\d{2})/), psc = m ? m[1] + ' ' + m[2] : '';
+    var city = rest.replace(/\d{3}\s?\d{2}/, '').replace(/^[\s,]+|[\s,]+$/g, '').replace(/\s+\d.*$/, '').trim();
+    return street ? { street: street, city: city, psc: psc } : null;
+  }
+  function initials(n) { var p = String(n || '').trim().split(/\s+/).filter(Boolean); return ((p[0] || '?').charAt(0) + (p.length > 1 ? p[p.length - 1].charAt(0) : '')).toUpperCase(); }
+  function recCard(x, i) {
+    var a = parseAddr(x.address), occ = nextOcc(x.holidays), rel = REL[x.relation] || '';
+    var sub = [rel, a && a.city].filter(Boolean).join(' · ');
+    var badge = occ ? '<span class="bd' + (occ.days <= 7 ? ' hot' : '') + '"><i class="ti ti-calendar-heart"></i>' + (occ.days === 0 ? 'Dnes: ' : 'Za ' + occ.days + ' ' + plDays(occ.days) + ': ') + esc(occ.name) + '</span>' : '';
+    return '<button type="button" class="np-rc' + (S.rid === x.id ? ' on' : '') + '" data-i="' + i + '" aria-pressed="' + (S.rid === x.id) + '"><span class="av a' + (i % 4) + '">' + esc(initials(x.name)) + '</span><span class="nm">' + esc(x.name) + '</span><span class="sb">' + (sub ? esc(sub) : '&nbsp;') + '</span>' + badge + '<span class="ck"><i class="ti ti-check"></i></span></button>';
+  }
+  function renderRecs() {
+    var w = $('#npRChips'); if (!w) return;
+    if (!S.loggedIn) {
+      w.innerHTML = '<a class="np-rnudge" href="/members/login" id="npRLogin"><span class="ic"><i class="ti ti-heart-handshake"></i></span><span class="tx"><b>Posíláte často? Přihlaste se.</b><small>Příjemce vyberete jedním klepnutím, doplníme jeho adresu a včas vám připomeneme jeho svátek.</small></span><i class="ti ti-chevron-right"></i></a>';
+      var lb = $('#npRLogin'); if (lb) lb.addEventListener('click', function () { try { localStorage.setItem('lkReturnUrl', location.pathname); } catch (e) {} });
+      return;
+    }
+    if (RECS === null) { w.innerHTML = '<div class="np-rh">Vaši blízcí</div><div class="np-rcs"><div class="np-rc sk"></div><div class="np-rc sk"></div><div class="np-rc sk"></div></div>'; return; }
+    if (!RECS.length) {
+      w.innerHTML = '<div class="np-rempty"><span class="ic"><i class="ti ti-address-book"></i></span><span class="tx"><b>Zatím tu nemáte uložené blízké</b><small>Přidejte je ve svém účtu a příště stačí jedno klepnutí. <a href="/members/occasions" target="_blank" rel="noopener">Přidat příjemce</a></small></span></div>';
+      return;
+    }
+    w.innerHTML = '<div class="np-rh">Vaši blízcí<small>Vyberte, komu květiny posíláte</small></div><div class="np-rcs" id="npRC">' + RECS.map(recCard).join('') + '<button type="button" class="np-rc new' + (S.rid === null && !S.same ? '' : '') + '" data-new="1"><span class="av plus"><i class="ti ti-plus"></i></span><span class="nm">Někdo nový</span><span class="sb">Zadáte ručně</span></button></div><div id="npRAddr"></div><div class="np-msg-r" id="npRHint"></div>';
+    $('#npRC').addEventListener('click', function (e) {
+      var nb = e.target.closest('[data-new]');
+      if (nb) { pickRec(null); return; }
+      var b = e.target.closest('[data-i]'); if (b) pickRec(RECS[+b.getAttribute('data-i')]);
+    });
+    updateRAddr();
+  }
+  function pickRec(x) {
+    S.same = false;
+    if (!x) {
+      S.rid = null; S.rname = S.rlast = S.rphone = '';
+      ['rname', 'rlast', 'rphone'].forEach(function (k) { $('#np_' + k).value = ''; });
+      renderRecs(); renderWho(); saveDraft(); refresh();
+      var f = $('#np_rname'); if (f) { try { f.focus({ preventScroll: true }); } catch (e) { f.focus(); } }
+      return;
+    }
+    var parts = String(x.name || '').trim().split(/\s+/);
+    S.rid = x.id; S.rname = parts[0] || ''; S.rlast = parts.slice(1).join(' '); S.rphone = phoneShow(x.phone || '');
+    $('#np_rname').value = S.rname; $('#np_rlast').value = S.rlast; $('#np_rphone').value = S.rphone;
+    ['rname', 'rlast', 'rphone'].forEach(function (k) { setErr(k, ''); });
+    var autoAddr = S.mode === 'courier' && !S.gift && parseAddr(x.address) && (!S.adres || REC_ADDR);
+    if (autoAddr) applySavedAddr(x);
+    renderRecs(); renderWho(); saveDraft(); refresh();
+  }
+  function applySavedAddr(x) {
+    var a = parseAddr(x.address); if (!a) return;
+    S.adres = a.street; S.city = a.city; S.psc = a.psc; S.noNum = !/\d/.test(a.street);
+    if (x.address_lat != null && x.address_lng != null) { S.lat = Number(x.address_lat); S.lng = Number(x.address_lng); } else { S.lat = null; S.lng = null; }
+    $('#np_adres').value = S.adres; $('#np_city').value = S.city; $('#np_psc').value = S.psc;
+    ['adres', 'city', 'psc'].forEach(function (k) { setErr(k, ''); });
+    REC_ADDR = x.id; onAddress(); saveDraft(); refresh();
+  }
+  function updateRAddr() {
+    var el = $('#npRAddr'), hint = $('#npRHint'); if (!el) return;
+    var x = RECS && S.rid != null ? RECS.filter(function (r) { return r.id === S.rid; })[0] : null;
+    if (hint) hint.textContent = x && !x.phone ? 'U tohoto příjemce nemáme telefon, doplňte ho prosím níže. Kurýr se mu před doručením ozve.' : '';
+    var a = x && parseAddr(x.address);
+    if (!x || !a || S.mode !== 'courier' || S.gift) { el.innerHTML = ''; return; }
+    var line = esc(a.street + (a.city ? ', ' + a.city : ''));
+    if (REC_ADDR === x.id && S.adres === a.street) el.innerHTML = '<div class="np-raddr ok"><i class="ti ti-map-pin-check"></i><span>Adresu příjemce jsme doplnili do doručení: <b>' + line + '</b>. <a href="#c2" id="npRChg">Změnit</a></span></div>';
+    else el.innerHTML = '<div class="np-raddr"><i class="ti ti-map-pin"></i><span>Uložená adresa: <b>' + line + '</b></span><button type="button" id="npRUse">Použít</button></div>';
+    var u = $('#npRUse'); if (u) u.addEventListener('click', function () { applySavedAddr(x); updateRAddr(); });
+    var c = $('#npRChg'); if (c) c.addEventListener('click', function (e) { e.preventDefault(); var t = $('#np_adres'); if (t) { t.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(function () { t.focus(); }, 400); } });
+  }
   function loadRecipients() {
-    var t = authToken(); var w = $('#npRChips'); if (!t || !w) return;
+    renderRecs();
+    var t = authToken(); if (!t || !S.loggedIn) return;
     fn('personal-dates', { token: t, action: 'listRecipients' }).then(function (r) {
-      var list = (r && r.recipients) || []; if (!list.length) return;
-      w.innerHTML = '<div class="np-sub-h" style="margin-top:0"><span>Komu posíláte?</span></div><div class="np-rchips" id="npRC">' + list.map(function (x, i) { return '<button type="button" class="np-rchip" data-i="' + i + '">' + esc(x.name) + '</button>'; }).join('') + '</div>';
-      $('#npRC').addEventListener('click', function (e) {
-        var b = e.target.closest('[data-i]'); if (!b) return;
-        $$('#npRC .np-rchip').forEach(function (x) { x.classList.remove('on'); }); b.classList.add('on');
-        var x = list[+b.getAttribute('data-i')], parts = String(x.name || '').trim().split(/\s+/);
-        S.same = false;
-        S.rname = parts[0] || ''; S.rlast = parts.slice(1).join(' '); S.rphone = phoneShow(x.phone || '');
-        $('#np_rname').value = S.rname; $('#np_rlast').value = S.rlast; $('#np_rphone').value = S.rphone;
-        renderRecipient(); saveDraft(); refresh();
-      });
-    }).catch(function () {});
+      RECS = (r && Array.isArray(r.recipients)) ? r.recipients : [];
+      renderRecs();
+    }).catch(function () { RECS = []; renderRecs(); });
   }
 
   /* ---------- gift without address ---------- */
@@ -624,25 +709,34 @@
     var el = $('#npPromo'); if (!el) return;
     var depOn = canDeposit() && S.dep.use, applied = promoActive();
     if (applied) S.accOpen = true;
-    var sub = applied ? 'Uplatněno' : (S.loggedIn && S.pts.balance != null && S.pts.balance >= 100 ? 'Máte ' + S.pts.balance + ' bodů k využití' : 'Zadejte kód a uplatníme slevu');
-    var h = '<div class="np-acc' + (S.accOpen ? ' open' : '') + (depOn ? ' disabled' : '') + '"><button type="button" id="npAccBtn"><span class="ic"><i class="ti ti-ticket"></i></span><span class="tx">Máte slevový kód nebo body?<small>' + sub + '</small></span><i class="ti ti-chevron-down chev"></i></button><div class="bd">';
-    if (depOn) h += '<div class="np-hint" style="margin:0">Depozit nelze kombinovat se slevou. <a href="#" id="npDepOff" style="color:var(--blue);font-weight:500">Použít kód nebo body místo depozitu</a></div>';
-    else if (applied) {
-      var pc = tc().promocode || {};
-      h += '<div class="np-applied"><span>Uplatněno' + (pc.promocode ? ': ' + esc(String(pc.promocode)) : '') + ' (−' + kc(discountSum()) + ')</span><button type="button" id="npPromoX">Odebrat</button></div>';
+    var h = '';
+    if (applied) {
+      var pc = tc().promocode || {}, isPts = S.pts.applied > 0 || /^uplatn/i.test(String(pc.promocode || ''));
+      h = '<div class="np-done"><span class="ic"><i class="ti ti-' + (isPts ? 'coins' : 'ticket') + '"></i></span><span class="tx"><b>' + (isPts ? 'Body uplatněny' : 'Sleva uplatněna') + '</b><small>' + (isPts ? '' : (pc.promocode ? esc(String(pc.promocode)) + ' · ' : '')) + 'ušetříte ' + kc(discountSum()) + '</small></span><button type="button" id="npPromoX">Odebrat</button></div>';
     } else {
-      h += '<div class="np-promo-row"><input class="np-in" id="np_promo" type="text" placeholder="Slevový kód" autocomplete="off" value="' + esc(S.promo.code) + '"><button type="button" class="np-btn2" id="npPromoGo"' + (S.promo.busy ? ' disabled' : '') + '>' + (S.promo.busy ? '…' : 'Použít') + '</button></div><div class="np-err-box" id="npPromoErr"></div>';
-      if (S.loggedIn && S.pts.balance != null && S.pts.balance >= 100) {
-        var maxAllowed = Math.min(1000, Math.floor((goodsNet()) * 0.3 / 100) * 100, Math.floor(S.pts.balance / 100) * 100);
+      if (S.loggedIn && S.pts.balance != null && S.pts.balance > 0) {
+        var capGoods = Math.floor(goodsNet() * 0.3 / 100) * 100;
+        var maxAllowed = Math.min(1000, capGoods, Math.floor(S.pts.balance / 100) * 100);
+        h += '<div class="np-ptscard"><div class="top"><span class="ic"><i class="ti ti-coins"></i></span><span class="tx">Vaše body<small>1 bod = 1 Kč, uplatnit lze až 30 % zboží</small></span><span class="bal">' + S.pts.balance + ' b.</span></div>';
         if (maxAllowed >= 100) {
           if (S.pts.sel > maxAllowed) S.pts.sel = maxAllowed; if (S.pts.sel < 100) S.pts.sel = 100;
-          h += '<div class="np-pts"><div class="head"><span>Vaše body</span><b>' + S.pts.balance + ' b.</b></div><div class="np-hint">Body lze využít až na 30 % zboží, 1 bod = 1 Kč, po 100 bodech (max. 1000).</div><div class="stepper"><button type="button" class="s" id="npPm" aria-label="Méně">−</button><span class="v" id="npPv">' + S.pts.sel + ' b.</span><button type="button" class="s" id="npPp" aria-label="Více">+</button><button type="button" class="np-btn2 go" id="npPtsGo"' + (S.pts.busy ? ' disabled' : '') + '>' + (S.pts.busy ? '…' : 'Uplatnit') + '</button></div></div>';
+          h += '<div class="stepper"><button type="button" class="s" id="npPm" aria-label="Méně">−</button><span class="v" id="npPv">' + S.pts.sel + ' b.</span><button type="button" class="s" id="npPp" aria-label="Více">+</button><button type="button" class="np-btn2 go" id="npPtsGo"' + (S.pts.busy ? ' disabled' : '') + '>' + (S.pts.busy ? '…' : 'Uplatnit') + '</button></div>';
+          h += '<div class="np-err-box" id="npPtsErr"></div>';
+          if (depOn) h += '<div class="note">Po uplatnění bodů se depozit nepoužije, body a depozit nelze kombinovat.</div>';
+        } else if (S.pts.balance < 100) {
+          h += '<div class="note">Body lze uplatnit od 100 b. Každá objednávka vám je přidá.</div>';
+        } else {
+          h += '<div class="note">Body lze uplatnit u zboží od ' + kc(334) + '. Přidejte do košíku další květiny.</div>';
         }
+        h += '</div>';
       }
+      h += '<div class="np-acc' + (S.accOpen ? ' open' : '') + '"><button type="button" id="npAccBtn"><span class="ic"><i class="ti ti-ticket"></i></span><span class="tx">Máte slevový kód?<small>Zadejte kód a uplatníme slevu</small></span><i class="ti ti-chevron-down chev"></i></button><div class="bd">';
+      h += '<div class="np-promo-row"><input class="np-in" id="np_promo" type="text" placeholder="Slevový kód" autocomplete="off" value="' + esc(S.promo.code) + '"><button type="button" class="np-btn2" id="npPromoGo"' + (S.promo.busy ? ' disabled' : '') + '>' + (S.promo.busy ? '…' : 'Použít') + '</button></div><div class="np-err-box" id="npPromoErr"></div>';
+      if (depOn) h += '<div class="np-hint">Po uplatnění kódu se depozit nepoužije.</div>';
+      h += '</div></div>';
     }
-    el.innerHTML = h + '</div></div>';
-    var ab = $('#npAccBtn'); if (ab) ab.addEventListener('click', function () { if (depOn) return; S.accOpen = !S.accOpen; ab.parentNode.classList.toggle('open', S.accOpen); });
-    var doff = $('#npDepOff'); if (doff) doff.addEventListener('click', function (e) { e.preventDefault(); S.dep.use = false; S.accOpen = true; renderDep(); renderPromo(); renderPays(); refresh(); });
+    el.innerHTML = h;
+    var ab = $('#npAccBtn'); if (ab) ab.addEventListener('click', function () { S.accOpen = !S.accOpen; ab.parentNode.classList.toggle('open', S.accOpen); });
     var go = $('#npPromoGo'); if (go) go.addEventListener('click', applyPromo);
     var inp = $('#np_promo'); if (inp) { inp.addEventListener('input', function () { S.promo.code = inp.value; }); inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); applyPromo(); } }); }
     var x = $('#npPromoX'); if (x) x.addEventListener('click', removePromo);
@@ -651,7 +745,7 @@
     if (pp) pp.addEventListener('click', function () { var mx = Math.min(1000, Math.floor(goodsNet() * 0.3 / 100) * 100, Math.floor(S.pts.balance / 100) * 100); S.pts.sel = Math.min(mx, S.pts.sel + 100); $('#npPv').textContent = S.pts.sel + ' b.'; });
     if (pg) pg.addEventListener('click', applyPoints);
   }
-  function promoErr(m) { var e = $('#npPromoErr'); if (!e) return toast(m, true); e.textContent = m; e.classList.add('on'); }
+  function promoErr(m, pts) { var e = $(pts ? '#npPtsErr' : '#npPromoErr'); if (!e) return toast(m, true); e.textContent = m; e.classList.add('on'); }
   function tildaPromo(code) {
     return new Promise(function (res) {
       var root = cartRoot(); if (!root) return res({ ok: false });
@@ -680,17 +774,17 @@
     });
   }
   function applyPoints() {
-    var token = authToken(); if (!token) return promoErr('Přihlaste se prosím.');
+    var token = authToken(); if (!token) return promoErr('Přihlaste se prosím.', true);
     if (S.pts.busy) return; S.pts.busy = true; renderPromo();
     var cartTotal = Math.round(goodsNet() + feeCalc().fee);
     fn('tilda-webhook', { action: 'get_promo', token: token, amount: S.pts.sel, total_sum: cartTotal, check_only: true }).then(function (r) {
-      if (!r || r.status !== 'success') { S.pts.busy = false; renderPromo(); return promoErr((r && r.message) || 'Chyba.'); }
+      if (!r || r.status !== 'success') { S.pts.busy = false; renderPromo(); return promoErr((r && r.message) || 'Chyba.', true); }
       return tildaPromo('Uplatněno' + S.pts.sel + 'bodů').then(function (x) {
         S.pts.busy = false;
         if (x.ok) { S.pts.applied = S.pts.sel; S.dep.use = false; if (S.pts.balance != null) S.pts.balance -= S.pts.sel; syncCartDelivery(); renderDep(); renderPromo(); renderPays(); refresh(); toast('Body byly uplatněny.'); }
-        else { renderPromo(); promoErr('Kód s body se nepodařilo uplatnit, zkuste to prosím znovu.'); }
+        else { renderPromo(); promoErr('Body se nepodařilo uplatnit, zkuste to prosím znovu.', true); }
       });
-    }).catch(function () { S.pts.busy = false; renderPromo(); promoErr('Chyba spojení.'); });
+    }).catch(function () { S.pts.busy = false; renderPromo(); promoErr('Chyba spojení.', true); });
   }
   function removePromo() {
     try {
