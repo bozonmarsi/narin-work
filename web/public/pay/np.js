@@ -77,7 +77,7 @@
     promo: { code: '', applied: false, busy: false },
     pts: { balance: null, sel: 100, applied: 0, busy: false },
     dep: { balance: 0, use: true, quote: null, err: '', loading: false },
-    gift: null, submitting: false, token: null, loggedIn: false
+    gift: null, noNum: false, submitting: false, token: null, loggedIn: false
   };
   var AV = { weekdays: {}, dates: {}, slots: {}, available: null, special: null, specialDate: null, loaded: false };
   var cal = { y: 0, m: 0 };
@@ -320,7 +320,7 @@
         var v = el.value;
         if (k === 'name' || k === 'last' || k === 'rname' || k === 'rlast') { var c = cleanName(v); if (c !== v) { v = c; el.value = c; } }
         S[k] = v; setErr(k, '');
-        if (k === 'adres') { S.lat = S.lng = null; onAddress(); }
+        if (k === 'adres') { S.lat = S.lng = null; S.noNum = false; onAddress(); }
         if (k === 'psc' || k === 'city') { onAddress(); }
         if (S.same && (k === 'name' || k === 'last')) syncSame();
         saveDraft(); refresh();
@@ -453,6 +453,7 @@
     if (S.mode !== 'courier') return;
     if (f.tooFar) { h.style.color = 'var(--err)'; h.textContent = 'Na tuto adresu (' + (Math.round(f.km * 10) / 10).toString().replace('.', ',') + ' km) kurýrem bohužel nedoručujeme. Napište nám na support@vezminarin.cz nebo zavolejte na +420 776 421 993.'; }
     else if (f.need) { h.style.color = 'var(--err)'; h.textContent = 'Vyberte prosím adresu ze seznamu, cenu doručení počítáme podle vzdálenosti.'; }
+    else if (S.noNum) { h.style.color = 'var(--err)'; h.textContent = 'Chybí číslo popisné. Dopište číslo za ulici a vyberte adresu ze seznamu.'; }
     else if (f.km != null) { h.style.color = 'var(--ok)'; h.textContent = 'Vzdálenost od skladu ' + (Math.round(f.km * 10) / 10).toString().replace('.', ',') + ' km. Cena doručení ' + kc(f.delivery) + (f.extra ? ' (včetně příplatku za vzdálenost)' : '') + '.'; }
     else { h.style.color = ''; h.textContent = 'Podle vybrané adresy spočítáme cenu doručení.'; }
     quoteSoon();
@@ -479,7 +480,7 @@
         if (t.indexOf('sublocality') > -1 && !city) city = c.long_name;
         if (t.indexOf('postal_code') > -1) psc = c.long_name;
       });
-      S.adres = (route + ' ' + num).trim(); $('#np_adres').value = S.adres;
+      S.adres = (route + ' ' + num).trim(); $('#np_adres').value = S.adres; S.noNum = !num;
       if (city) { S.city = city; $('#np_city').value = city; }
       if (psc) { S.psc = psc; $('#np_psc').value = psc; }
       if (p.geometry && p.geometry.location) { S.lat = p.geometry.location.lat(); S.lng = p.geometry.location.lng(); }
@@ -766,7 +767,7 @@
     need('email', emailOk ? '' : 'Zadejte prosím platný e-mail.', 'c1');
     var f = feeCalc();
     if (S.mode === 'courier' && !S.gift) {
-      need('adres', S.adres.trim() ? (f.tooFar ? 'Na tuto adresu kurýrem nedoručujeme.' : (f.need ? 'Vyberte prosím adresu ze seznamu.' : '')) : 'Vyplňte prosím adresu.', 'c2');
+      need('adres', S.adres.trim() ? (f.tooFar ? 'Na tuto adresu kurýrem nedoručujeme.' : (f.need ? 'Vyberte prosím adresu ze seznamu.' : (S.noNum ? 'Doplňte prosím číslo popisné: vyberte ze seznamu adresu s číslem.' : ''))) : 'Vyplňte prosím adresu.', 'c2');
       need('city', S.city.trim() ? '' : 'Vyplňte prosím město.', 'c2');
       need('psc', /^\d{3}\s?\d{2}$/.test(S.psc.trim()) ? '' : 'Zadejte prosím PSČ (5 číslic).', 'c2');
     }
