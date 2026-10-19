@@ -1,71 +1,64 @@
-import { createClient } from "@supabase/supabase-js";
 import { buildInvoiceDoc } from "@/lib/invoice-pdf-core";
 
-// Вызывается прямо со страницы /members/business на Tilda (не из
-// NARIN WORK) — у клиента нет сессии менеджера, только email из
-// localStorage. Владение счётом проверяется внутри RPC
-// get_invoice_with_company/list_invoice_period_orders — тот же принцип
-// "доступ по email", что и у остальных customer-facing RPC этой сессии.
+// Vola se ze stranky /members/b2b na Tilda (ne z NARIN WORK). Klient se prokazuje tokenem
+// (lk_auth_token) v hlavicce Authorization, nikoli e-mailem v URL. Vlastnictvi faktury a
+// sestaveni dat dela edge funkce company-portal (action "invoice"), tady se jen kresli PDF.
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Headers": "Authorization, Content-Type",
+};
+
+export function OPTIONS() {
+  return new Response(null, { status: 204, headers: CORS });
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const email = searchParams.get("email");
   const invoiceId = searchParams.get("invoice");
+  const token = (request.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
 
-  if (!email || !invoiceId) {
-    return Response.json({ error: "Chybí email nebo invoice" }, { status: 400 });
+  if (!token || !invoiceId) {
+    return Response.json({ error: "Chybí přihlášení nebo číslo faktury" }, { status: 400, headers: CORS });
   }
 
-  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-
-  const { data: invoiceRows, error: invoiceErr } = await supabase.rpc("get_invoice_with_company", {
-    p_email: email,
-    p_invoice_id: invoiceId,
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const res = await fetch(`${base}/functions/v1/company-portal`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` },
+    body: JSON.stringify({ action: "invoice", token, invoice_id: invoiceId }),
   });
 
-  if (invoiceErr || !invoiceRows || invoiceRows.length === 0) {
-    return Response.json({ error: "Faktura nenalezena nebo nemáte oprávnění" }, { status: 404 });
-  }
+  if (res.status === 401) return Response.json({ error: "Přihlášení vypršelo" }, { status: 401, headers: CORS });
+  if (!res.ok) return Response.json({ error: "Faktura nenalezena nebo nemáte oprávnění" }, { status: 404, headers: CORS });
 
-  const row = invoiceRows[0];
-
-  if (!row.invoice_number || !row.due_date) {
-    // Черновик (менеджер ещё не отправил) клиенту не показываем вообще
-    // на странице списка, но подстраховываемся и тут.
-    return Response.json({ error: "Faktura ještě není vystavena" }, { status: 404 });
-  }
-
-  const { data: orders } = await supabase.rpc("list_invoice_period_orders", {
-    p_email: email,
-    p_invoice_id: invoiceId,
-  });
+  const data = await res.json();
+  const inv = data.invoice;
+  const company = data.company;
+  if (!inv || !company) return Response.json({ error: "Faktura nenalezena" }, { status: 404, headers: CORS });
 
   const { doc, filename } = await buildInvoiceDoc(
+    { name: company.name, ico: company.ico, dic: company.dic, billing_address: company.billing_address },
     {
-      name: row.company_name,
-      ico: row.company_ico,
-      dic: row.company_dic,
-      billing_address: row.company_billing_address,
+      id: inv.id,
+      invoice_number: inv.invoice_number,
+      period_start: inv.period_start,
+      period_end: inv.period_end,
+      total_amount: inv.total_amount,
+      due_date: inv.due_date,
+      status: inv.status,
+      issued_at: inv.issued_at ?? null,
+      paid_at: inv.paid_at ?? null,
     },
-    {
-      id: row.invoice_id,
-      invoice_number: row.invoice_number,
-      period_start: row.period_start,
-      period_end: row.period_end,
-      total_amount: row.total_amount,
-      due_date: row.due_date,
-      status: row.status,
-      issued_at: row.issued_at ?? null,
-      paid_at: row.paid_at ?? null,
-    },
-    orders ?? [],
-    row.invoice_number,
-    row.due_date,
+    data.orders ?? [],
+    inv.invoice_number,
+    inv.due_date,
   );
 
-  const bytes = doc.output("arraybuffer");
-
-  return new Response(bytes, {
+  return new Response(doc.output("arraybuffer"), {
     headers: {
+      ...CORS,
       "Content-Type": "application/pdf",
       "Content-Disposition": `attachment; filename="${filename}"`,
     },

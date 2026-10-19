@@ -462,10 +462,9 @@
   }
   function loadMyCompanies() {
     var t = authToken(); if (!t || !S.loggedIn) return;
-    var em = tokenEmail(t); if (!em) return;
-    fetch(SB + '/rest/v1/rpc/list_my_companies', { method: 'POST', headers: { apikey: ANON, Authorization: 'Bearer ' + ANON, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_email: em }) })
-      .then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; })
-      .then(function (list) { MYCO = Array.isArray(list) ? list : []; if (S.isCompany) { coAutoPick(); } renderCompany(); });
+    fn('company-portal', { action: 'companies', token: t })
+      .then(function (r) { MYCO = (r && Array.isArray(r.companies)) ? r.companies : []; if (S.isCompany) { coAutoPick(); } renderCompany(); })
+      .catch(function () { MYCO = []; });
   }
   function renderCompany() {
     var box = $('#npCompany'); if (!box) return;
