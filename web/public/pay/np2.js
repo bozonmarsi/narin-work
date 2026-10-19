@@ -722,12 +722,13 @@
     { name: 'Platinum', label: 'Platinum', from: 900, cb: 2, color: '#8b5fbf', img: 'https://static.tildacdn.com/tild3339-3738-4961-b133-666235386264/E5D597BE-7B84-4E59-A.webp' }
   ];
   function tierIdx(earned) { var i = 0; TIERS.forEach(function (t, k) { if (earned >= t.from) i = k; }); return i; }
-  function loyCard(t, badge, label, big, num) {
-    return '<div class="np-lcard" style="background-image:url(' + t.img + ')"><span class="sheen"></span><div class="in"><div class="tp">' + (badge ? '<span class="tag" style="background:' + t.color + '">' + esc(badge) + '</span>' : '') + '</div><div class="mid"><div class="lb">' + esc(label) + '</div><div class="bl">' + big + '</div></div><div class="bt"><span class="nr">' + esc(num) + '</span><span class="br">NARIN</span></div></div></div>';
+  function loyCard(t, badge, label, big) {
+    var txt = label ? '<div class="mid"><div class="lb">' + esc(label) + '</div><div class="bl">' + big + '</div></div>' : '';
+    return '<div class="np-lcard" style="background-image:url(' + t.img + ')"><span class="sheen"></span>' + (txt ? '<div class="in">' + txt + '</div>' : '') + '</div>';
   }
   function loyBlock(depOn, noRedeem) {
     if (!S.loggedIn) {
-      return '<div class="np-loy out">' + loyCard(TIERS[0], 'Sapphire', 'Dárek za registraci', '150 <small>b.</small>', '●● ●● ●● ••••') +
+      return '<div class="np-loy out">' + loyCard(TIERS[0], '', '', '') +
         '<div class="sd"><div class="hd">Zaregistrujte se a získejte 150 bodů</div><ul><li><i class="ti ti-check"></i>až 2 % z každé objednávky zpět v bodech</li><li><i class="ti ti-check"></i>1 bod = 1 Kč, body nevyprší</li><li><i class="ti ti-check"></i>body uplatníte až na 30 % objednávky</li></ul>' +
         '<div class="ac"><a class="go" href="/members/login" id="npLoyReg">Zaregistrovat se</a><a class="lk" href="/bonussystem" target="_blank" rel="noopener">Jak to funguje</a></div></div></div>';
     }
@@ -736,7 +737,7 @@
     var tr = TIERS[ti], nx = TIERS[ti + 1];
     var bal = S.pts.balance, tt = totals(), gain = Math.floor(tt.total * tr.cb / 100);
     var num = S.pts.ma ? '●● ●● ●● ' + String(S.pts.ma).slice(-4) : '●● ●● ●● ••••';
-    var h = '<div class="np-loy">' + loyCard(tr, '', 'Věrnostní karta', esc(tr.label), num) + '<div class="sd">';
+    var h = '<div class="np-loy">' + loyCard(tr, '', '', '') + '<div class="sd">';
     h += '<div class="gn"><i class="ti ti-sparkles"></i><span>Z této objednávky získáte <b>+' + gain + ' b.</b> <small>(' + String(tr.cb).replace('.', ',') + ' % zpět)</small></span></div>';
     if (nx) {
       var need = Math.max(0, nx.from - earned), pct = Math.max(4, Math.min(100, Math.round((earned - tr.from) / (nx.from - tr.from) * 100)));
@@ -747,7 +748,11 @@
     if (noRedeem) { /* points or code already applied */ }
     else if (bal != null && maxAllowed >= 100) {
       if (S.pts.sel > maxAllowed) S.pts.sel = maxAllowed; if (S.pts.sel < 100) S.pts.sel = 100;
-      h += '<div class="rd"><div class="rl">Uplatnit body <small>máte ' + bal + ' b., 1 b. = 1 Kč</small></div><div class="stepper"><button type="button" class="s" id="npPm" aria-label="Méně">−</button><span class="v" id="npPv">' + S.pts.sel + ' b.</span><button type="button" class="s" id="npPp" aria-label="Více">+</button><button type="button" class="np-btn2 go" id="npPtsGo"' + (S.pts.busy ? ' disabled' : '') + '>' + (S.pts.busy ? '…' : 'Uplatnit') + '</button></div><div class="np-err-box" id="npPtsErr"></div>' + (depOn ? '<div class="note">Po uplatnění bodů se depozit nepoužije.</div>' : '') + '</div>';
+      var one = maxAllowed <= 100;
+      h += '<div class="rd"><div class="rl">Uplatnit body <small>máte ' + bal + ' b., 1 b. = 1 Kč</small></div>';
+      if (one) h += '<div class="stepper"><span class="lim">Z této objednávky lze uplatnit <b>100 b.</b> (až 30 % zboží)</span><button type="button" class="np-btn2 go" id="npPtsGo"' + (S.pts.busy ? ' disabled' : '') + '>' + (S.pts.busy ? '…' : 'Uplatnit 100 b.') + '</button></div>';
+      else h += '<div class="stepper"><button type="button" class="s" id="npPm" aria-label="Méně"' + (S.pts.sel <= 100 ? ' disabled' : '') + '>−</button><span class="v" id="npPv">' + S.pts.sel + ' b.</span><button type="button" class="s" id="npPp" aria-label="Více"' + (S.pts.sel >= maxAllowed ? ' disabled' : '') + '>+</button><button type="button" class="np-btn2 go" id="npPtsGo"' + (S.pts.busy ? ' disabled' : '') + '>' + (S.pts.busy ? '…' : 'Uplatnit') + '</button></div><div class="lim2">Nejvíc ' + maxAllowed + ' b. (až 30 % zboží)</div>';
+      h += '<div class="np-err-box" id="npPtsErr"></div>' + (depOn ? '<div class="note">Po uplatnění bodů se depozit nepoužije.</div>' : '') + '</div>';
     } else if (bal != null) {
       h += '<div class="rd"><div class="note">' + (bal < 100 ? 'Body lze uplatnit od 100 b. Každá objednávka vám je přidá.' : 'Body lze uplatnit u zboží od ' + kc(334) + '. Přidejte do košíku další květiny.') + '</div></div>';
     }
@@ -775,8 +780,8 @@
     var inp = $('#np_promo'); if (inp) { inp.addEventListener('input', function () { S.promo.code = inp.value; }); inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); applyPromo(); } }); }
     var x = $('#npPromoX'); if (x) x.addEventListener('click', removePromo);
     var pm = $('#npPm'), pp = $('#npPp'), pg = $('#npPtsGo');
-    if (pm) pm.addEventListener('click', function () { S.pts.sel = Math.max(100, S.pts.sel - 100); $('#npPv').textContent = S.pts.sel + ' b.'; });
-    if (pp) pp.addEventListener('click', function () { var mx = Math.min(1000, Math.floor(goodsNet() * 0.3 / 100) * 100, Math.floor(S.pts.balance / 100) * 100); S.pts.sel = Math.min(mx, S.pts.sel + 100); $('#npPv').textContent = S.pts.sel + ' b.'; });
+    if (pm) pm.addEventListener('click', function () { S.pts.sel = Math.max(100, S.pts.sel - 100); renderPromo(); });
+    if (pp) pp.addEventListener('click', function () { var mx = Math.min(1000, Math.floor(goodsNet() * 0.3 / 100) * 100, Math.floor(S.pts.balance / 100) * 100); S.pts.sel = Math.min(mx, S.pts.sel + 100); renderPromo(); });
     if (pg) pg.addEventListener('click', applyPoints);
   }
   function promoErr(m, pts) { var e = $(pts ? '#npPtsErr' : '#npPromoErr'); if (!e) return toast(m, true); e.textContent = m; e.classList.add('on'); }
