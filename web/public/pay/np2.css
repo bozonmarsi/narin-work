@@ -651,3 +651,27 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
 }
 .np-loy { align-items: center; }
 .np-loy .np-lcard { width: 100%; min-width: 0; align-self: center; }
+
+/* small loyalty card */
+.np-loy { grid-template-columns: 196px minmax(0, 1fr); gap: 14px; padding: 10px 12px; border-radius: 14px; }
+.np-lcard { border-radius: 10px; box-shadow: 0 10px 18px -12px rgba(16,40,90,.7); }
+.np-lcard .in { padding: 8px 10px; }
+.np-lcard .tag { font-size: 9.5px; padding: 2px 7px; border-radius: 5px; }
+.np-lcard .lb { font-size: 10px; margin-bottom: 2px; }
+.np-lcard .bl { font-size: 21px; }
+.np-lcard .bl small { font-size: 13px; }
+.np-lcard .nr { font-size: 9.5px; letter-spacing: .12em; }
+.np-lcard .br { font-size: 9px; }
+.np-loy .hd { font-size: 15px; }
+@media (max-width: 600px) {
+  .np-loy { grid-template-columns: 138px minmax(0, 1fr); column-gap: 12px; row-gap: 8px; padding: 10px; align-items: center; }
+  .np-lcard { aspect-ratio: 1.68; height: auto; grid-row: 1 / span 2; }
+  .np-loy .sd { display: contents; }
+  .np-loy.out .hd { font-size: 14px; }
+  .np-loy.out ul { display: none; }
+  .np-loy.out .ac { grid-column: 1 / -1; margin-top: 0; }
+  .np-loy .gn { padding: 6px 9px; font-size: 12.5px; }
+  .np-loy .gn small { display: none; }
+  .np-loy .rd { grid-column: 1 / -1; }
+  .np-loy .pg { align-self: start; }
+}
