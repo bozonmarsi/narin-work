@@ -446,7 +446,7 @@
   function claimCompany() {
     var token = authToken(); if (!token || !S.loggedIn || !S.co.ok || S.co.manual || S.co.id || S.co.claimed === S.co.ico) return;
     var ico = S.co.ico; S.co.claimed = ico;
-    fn('company-checkout', { action: 'claim', token: token, ico: ico }).then(function (r) {
+    fn('company-checkout', { action: 'claim', token: token, ico: ico, full_name: (S.name + ' ' + S.last).trim(), phone: phoneCart(S.phone) }).then(function (r) {
       if (r && r.state && S.co.ico === ico) { S.co.state = r.state; if (r.company_id) S.co.id = r.company_id; renderCompany(); }
     }).catch(function () {});
   }
