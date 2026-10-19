@@ -1,0 +1,1044 @@
+(function () {
+  'use strict';
+  if (window.__npayInit) return;
+  window.__npayInit = 1;
+
+  var SB = 'https://wqburlamuipxmenqsjnx.supabase.co';
+  var ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxYnVybGFtdWlweG1lbnFzam54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTY2MTIsImV4cCI6MjA4ODgzMjYxMn0.NYnQoorm3z5gkjr954JdYhzDNmYfCjefzK1ddq3cflw';
+  var PUB = 'sb_publishable_ORMmBYvVjH6i2GanWa2JyA_mWm3fTCZ';
+  var PLACES_KEY = 'AIzaSyDEuFdJdQRQSrxlkZO_hc2hvZAhGACJ3IU';
+  var CART_ID = 'rec1915296063', FORM_ID = 'form1915296063';
+  var CFG = { wh: { lat: 50.0710426, lng: 14.4883401 }, base: 159, service: 80, free: 14, perKm: 18, maxKm: 40 };
+  var SLOTS = ['9-12', '12-15', '15-18', '18-20'];
+  var TIMES = []; for (var h = 9; h <= 20; h++) { TIMES.push((h < 10 ? '0' : '') + h + ':00'); if (h < 20) TIMES.push((h < 10 ? '0' : '') + h + ':30'); }
+  var DRAFT_KEY = 'npay_draft_v2';
+  var WD = ['Po', 'Út', 'St', 'Čt', 'Pá', 'So', 'Ne'];
+  var MONTH_SHORT = ['led', 'úno', 'bře', 'dub', 'kvě', 'čvn', 'čvc', 'srp', 'zář', 'říj', 'lis', 'pro'];
+  var CAPTIONS = { '9-12': 'dopoledne', '12-15': 'poledne', '15-18': 'odpoledne', '18-20': 'podvečer' };
+  var MONTHS = ['leden', 'únor', 'březen', 'duben', 'květen', 'červen', 'červenec', 'srpen', 'září', 'říjen', 'listopad', 'prosinec'];
+  var DAYS_LONG = ['neděle', 'pondělí', 'úterý', 'středa', 'čtvrtek', 'pátek', 'sobota'];
+
+  /* ---------- helpers ---------- */
+  function $(s, r) { return (r || document).querySelector(s); }
+  function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function kc(n) { return String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0') + '\u00a0Kč'; }
+  function decode(s) { var t = document.createElement('textarea'); t.innerHTML = s || ''; return t.value; }
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+  function iso(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function dmy(isoStr) { var p = isoStr.split('-'); return p[2] + '-' + p[1] + '-' + p[0]; }
+  function sod(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+  function addDays(d, n) { var x = sod(d); x.setDate(x.getDate() + n); return x; }
+  function parseIso(s) { var p = s.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function longDate(isoStr) { var d = parseIso(isoStr); return DAYS_LONG[d.getDay()] + ' ' + d.getDate() + '. ' + (d.getMonth() + 1) + '. ' + d.getFullYear(); }
+  function debounce(fn, ms) { var t; return function () { var a = arguments, c = this; clearTimeout(t); t = setTimeout(function () { fn.apply(c, a); }, ms); }; }
+  function fire(el, types) { (types || ['input', 'change']).forEach(function (t) { el.dispatchEvent(new Event(t, { bubbles: true })); }); }
+  function waitFor(test, ms) {
+    return new Promise(function (res) {
+      var t0 = Date.now();
+      (function tick() { var v; try { v = test(); } catch (e) { v = null; } if (v) return res(v); if (Date.now() - t0 > ms) return res(null); setTimeout(tick, 120); })();
+    });
+  }
+  function sbGet(path) {
+    return fetch(SB + '/rest/v1/' + path, { headers: { apikey: ANON, Authorization: 'Bearer ' + ANON } }).then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; });
+  }
+  function sbRpc(name) {
+    return fetch(SB + '/rest/v1/rpc/' + name, { method: 'POST', headers: { apikey: ANON, Authorization: 'Bearer ' + ANON, 'Content-Type': 'application/json' }, body: '{}' }).then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; });
+  }
+  function fn(name, payload) {
+    return fetch(SB + '/functions/v1/' + name, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: PUB, Authorization: 'Bearer ' + PUB }, body: JSON.stringify(payload) }).then(function (r) { return r.json().catch(function () { return {}; }); });
+  }
+
+  /* ---------- auth (same rules as the other site widgets) ---------- */
+  function tildaProfile() {
+    for (var k in localStorage) {
+      if (k.indexOf('tilda_members_profile') === 0 && k.indexOf('_timestamp') === -1) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) {} }
+    }
+    return null;
+  }
+  function tokenEmail(t) { try { var p = JSON.parse(atob(String(t).split('.')[0])); return p.email ? String(p.email).trim().toLowerCase() : null; } catch (e) { return null; } }
+  function authToken() {
+    try {
+      var raw = localStorage.getItem('lk_auth_token'); if (!raw) return null;
+      var d = JSON.parse(raw); if (!d.token || !d.exp || d.exp < Date.now()) return null;
+      var pr = tildaProfile(); var te = pr && (pr.login || pr.email); te = te ? String(te).trim().toLowerCase() : null;
+      var ke = tokenEmail(d.token);
+      if (te && ke && te !== ke) { localStorage.removeItem('lk_auth_token'); return null; }
+      return d.token;
+    } catch (e) { return null; }
+  }
+
+  /* ---------- state ---------- */
+  var S = {
+    mode: 'courier', adres: '', city: '', psc: '', floor: '', apt: '', intercom: '', lat: null, lng: null,
+    date: null, slot: null, time: null,
+    name: '', last: '', phone: '', email: '', isCompany: false, company: '',
+    same: false, rname: '', rlast: '', rphone: '', comment: '',
+    pcSender: 'name', pcTo: '', pcText: '',
+    pay: 'stripe', consent: false,
+    promo: { code: '', applied: false, busy: false },
+    pts: { balance: null, sel: 100, applied: 0, busy: false },
+    dep: { balance: 0, use: true, quote: null, err: '', loading: false },
+    gift: null, noNum: false, showCal: false, accOpen: false, submitting: false, token: null, loggedIn: false
+  };
+  var AV = { weekdays: {}, dates: {}, slots: {}, available: null, special: null, specialDate: null, loaded: false };
+  var cal = { y: 0, m: 0 };
+  var ROOT;
+
+  function saveDraft() {
+    try {
+      var d = {}; ['mode', 'adres', 'city', 'psc', 'floor', 'apt', 'intercom', 'lat', 'lng', 'date', 'slot', 'time', 'name', 'last', 'phone', 'email', 'isCompany', 'company', 'same', 'rname', 'rlast', 'rphone', 'comment', 'pcSender', 'pcTo', 'pcText'].forEach(function (k) { d[k] = S[k]; });
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify(d));
+    } catch (e) {}
+  }
+  function loadDraft() {
+    try { var d = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || 'null'); if (d) Object.keys(d).forEach(function (k) { if (k in S) S[k] = d[k]; }); } catch (e) {}
+  }
+
+  /* ---------- cart adapter ---------- */
+  function cartRoot() { return document.getElementById(CART_ID); }
+  function cartForm() { return document.getElementById(FORM_ID); }
+  function tc() { return window.tcart || {}; }
+  function products() { return (tc().products || []).filter(function (p) { return p && p.name && p.deleted !== 'yes'; }); }
+  function pieces(p) { var por = parseInt(p.portion, 10) || 0, q = Number(p.quantity) || 0; return por > 0 ? q * por : q; }
+  function hasPostcard() { return products().some(function (p) { return /pohlednice/i.test(p.name); }); }
+  function goodsRaw() { var t = tc(); var s = Number(t.prodamount); if (!isFinite(s) || !s) { s = products().reduce(function (a, p) { return a + (Number(p.amount) || 0); }, 0); } return s; }
+  function goodsNet() {
+    var t = tc(), raw = goodsRaw();
+    if (t.promocode && typeof t.promocode === 'object' && t.prodamount_withdiscount != null && isFinite(Number(t.prodamount_withdiscount))) return Number(t.prodamount_withdiscount);
+    if (t.prodamount_withdyndiscount != null && isFinite(Number(t.prodamount_withdyndiscount))) return Number(t.prodamount_withdyndiscount);
+    return raw;
+  }
+  function discountSum() { return Math.max(0, Math.round((goodsRaw() - goodsNet()) * 100) / 100); }
+  function promoActive() { var p = tc().promocode; return !!(p && typeof p === 'object' && (p.promocode || p.discountsum || p.discountpercent)); }
+
+  /* ---------- delivery price (same numbers as the SQL function expected_delivery_fee) ---------- */
+  function toRad(x) { return x * Math.PI / 180; }
+  function distKm(a, b, c, d) { var R = 6371, dl = toRad(c - a), dn = toRad(d - b); var x = Math.sin(dl / 2) * Math.sin(dl / 2) + Math.cos(toRad(a)) * Math.cos(toRad(c)) * Math.sin(dn / 2) * Math.sin(dn / 2); return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x)); }
+  function feeCalc() {
+    if (S.mode === 'pickup') return { fee: CFG.service, delivery: 0, service: CFG.service, km: null, extra: 0, need: false, tooFar: false };
+    if (S.gift) return { fee: CFG.base + CFG.service, delivery: CFG.base, service: CFG.service, km: null, extra: 0, need: false, tooFar: false };
+    if (S.lat != null && S.lng != null) {
+      var km = distKm(CFG.wh.lat, CFG.wh.lng, S.lat, S.lng);
+      var extra = km > CFG.free ? Math.ceil(km - CFG.free) * CFG.perKm : 0;
+      return { fee: CFG.base + extra + CFG.service, delivery: CFG.base + extra, service: CFG.service, km: km, extra: extra, need: false, tooFar: km > CFG.maxKm };
+    }
+    var psc = String(S.psc || '').replace(/\s+/g, '');
+    if (/^1\d{4}$/.test(psc)) return { fee: CFG.base + CFG.service, delivery: CFG.base, service: CFG.service, km: null, extra: 0, need: false, tooFar: false, approx: true };
+    return { fee: CFG.base + CFG.service, delivery: CFG.base, service: CFG.service, km: null, extra: 0, need: !!(S.adres || S.psc), tooFar: false, empty: !(S.adres || S.psc) };
+  }
+  function totals() {
+    var f = feeCalc(), g = goodsNet(), raw = goodsRaw();
+    var total = Math.max(0, g) + f.fee;
+    var dep = 0;
+    if (canDeposit() && S.dep.use) dep = depositAmount(total);
+    return { raw: raw, goods: g, disc: Math.max(0, raw - g), f: f, total: total, dep: dep, card: total - dep };
+  }
+  function canDeposit() { return S.loggedIn && S.dep.balance >= 1 && S.pay === 'stripe' && !promoActive() && !(S.pts.applied > 0) && !hasVoucher(); }
+  function hasVoucher() { return products().some(function (p) { return /poukaz/i.test(p.name); }); }
+  function depositAmount(total) {
+    var q = S.dep.quote;
+    if (q && q.ok && Math.abs(q.total - total) < 1) return q.deposit;
+    return Math.floor(Math.min(S.dep.balance, total));
+  }
+
+  /* ---------- availability (closed days / slots / special items) ---------- */
+  function normName(s) { return decode(s).replace(/\s+/g, ' ').trim(); }
+  function loadAvail() {
+    try { applyClosed(JSON.parse(localStorage.getItem('narin_closed_dates_cache_v1') || '[]'), JSON.parse(localStorage.getItem('narin_closed_slots_cache_v1') || '[]')); } catch (e) {}
+    return Promise.all([
+      sbRpc('get_available_products'), sbRpc('get_special_order_products'),
+      sbGet('shop_weekly_closed_days?select=weekday'), sbGet('shop_closed_dates?select=closed_date'),
+      sbGet('shop_closed_slots?select=closed_date,slot_label,reason')
+    ]).then(function (r) {
+      AV.available = {}; (r[0] || []).forEach(function (x) { AV.available[normName(x.product_name)] = 1; });
+      AV.special = {}; (r[1] || []).forEach(function (x) { AV.special[normName(x.product_name)] = 1; });
+      AV.weekdays = {}; (r[2] || []).forEach(function (x) { AV.weekdays[x.weekday] = 1; });
+      try { localStorage.setItem('narin_closed_dates_cache_v1', JSON.stringify(r[3] || [])); localStorage.setItem('narin_closed_slots_cache_v1', JSON.stringify(r[4] || [])); } catch (e) {}
+      applyClosed(r[3] || [], r[4] || []);
+      AV.loaded = true;
+      recomputeSpecial();
+    });
+  }
+  function applyClosed(dates, slots) {
+    AV.dates = {}; (dates || []).forEach(function (x) { AV.dates[x.closed_date] = 1; });
+    AV.slots = {}; (slots || []).forEach(function (x) { (AV.slots[x.closed_date] = AV.slots[x.closed_date] || {})[x.slot_label] = x.reason || 'Omlouváme se, tento čas je již obsazený.'; });
+  }
+  function isClosedDay(d) { return !!AV.weekdays[d.getDay()] || !!AV.dates[iso(d)]; }
+  function recomputeSpecial() {
+    AV.specialDate = null;
+    var prods = products();
+    if (AV.special && prods.some(function (p) { return AV.special[normName(p.name)]; })) {
+      var d = new Date();
+      do { d = addDays(d, 1); } while (d.getDay() === 0 || d.getDay() === 6);
+      do { d = addDays(d, 1); } while (isClosedDay(d));
+      AV.specialDate = d;
+    }
+    AV.unavailToday = !!(AV.available && prods.some(function (p) { return !AV.available[normName(p.name)]; }));
+    renderCalendar(); renderSlots(); renderChips();
+  }
+  function dateReason(d) {
+    var today = sod(new Date());
+    if (d < today) return '';
+    if (+d === +today) return 'Doručení ještě dnes nestihneme. Nejbližší den je zítra.';
+    if (new Date().getHours() >= 20 && +d === +addDays(today, 1)) return 'Objednávky po 20:00 doručujeme nejdříve pozítří.';
+    if (d > addDays(today, 120)) return '';
+    if (AV.dates[iso(d)]) return 'V tento den máme zavřeno.';
+    if (AV.weekdays[d.getDay()]) return 'V tento den nedoručujeme.';
+    if (AV.specialDate && d < AV.specialDate) return 'Ve vašem košíku je položka, kterou objednáváme ze zahraničí. Nejbližší doručení je ' + AV.specialDate.getDate() + '. ' + (AV.specialDate.getMonth() + 1) + '.';
+    return null; /* available */
+  }
+  function firstAvailable() { var d = addDays(new Date(), 1); for (var i = 0; i < 120; i++) { if (dateReason(d) === null) return d; d = addDays(d, 1); } return null; }
+  function slotReason(slot) { return S.date && AV.slots[S.date] && AV.slots[S.date][slot] || ''; }
+
+  /* ---------- toast ---------- */
+  var toastT;
+  function toast(msg, warn, ms) {
+    var t = $('#npToast'); if (!t) return;
+    t.textContent = msg; t.className = 'np-toast on' + (warn ? ' warn' : '');
+    clearTimeout(toastT); toastT = setTimeout(function () { t.className = 'np-toast'; }, ms || 3600);
+  }
+
+  /* ---------- phone ---------- */
+  function phoneDigits(v) { return String(v || '').replace(/[^\d+]/g, ''); }
+  function phoneShow(raw) {
+    var v = String(raw || '').trim();
+    if (v.charAt(0) === '+' && !/^\+420/.test(v)) return v.replace(/[^\d+]/g, '').slice(0, 17);
+    var d = v.replace(/\D/g, ''); if (/^420/.test(d) && d.length > 9) d = d.slice(3);
+    d = d.slice(0, 9);
+    return d.replace(/(\d{3})(?=\d)/g, '$1 ');
+  }
+  function phoneValid(v) { var d = String(v || '').replace(/\D/g, ''); return String(v).charAt(0) === '+' && !/^\+420/.test(v) ? d.length >= 8 : d.replace(/^420(?=\d{9}$)/, '').length === 9; }
+  function phoneCart(v) {
+    var s = String(v || '').trim();
+    if (s.charAt(0) === '+' && !/^\+420/.test(s)) return s;
+    var d = s.replace(/\D/g, ''); if (/^420/.test(d) && d.length > 9) d = d.slice(3);
+    return '+420 ' + d.slice(0, 3) + '-' + d.slice(3, 6) + '-' + d.slice(6, 9);
+  }
+
+  /* ---------- render: skeleton ---------- */
+  var ICON_CHECK = '<i class="ti ti-check"></i>';
+  function field(k, label, type, opts) {
+    opts = opts || {};
+    return '<div class="np-f" data-k="' + k + '"><label class="l" for="np_' + k + '">' + label + (opts.req === false ? '' : ' <em>*</em>') + '</label>' +
+      '<input class="np-in" id="np_' + k + '" type="' + (type || 'text') + '" autocomplete="' + (opts.ac || 'off') + '"' + (opts.mode ? ' inputmode="' + opts.mode + '"' : '') + (opts.ph ? ' placeholder="' + opts.ph + '"' : '') + '>' +
+      '<div class="np-msg"></div></div>';
+  }
+  function phoneField(k, label) {
+    return '<div class="np-f" data-k="' + k + '"><label class="l" for="np_' + k + '">' + label + ' <em>*</em></label>' +
+      '<div class="np-phone"><b>+420</b><input class="np-in" id="np_' + k + '" type="tel" inputmode="tel" autocomplete="tel-national" placeholder="777 123 456"></div><div class="np-msg"></div></div>';
+  }
+  function section(id, n, title, sub, body) {
+    return '<section class="np-sec" id="' + id + '"><div class="np-sh"><span class="np-num" data-d="0">' + n + '</span><div><h2>' + title + '</h2><p>' + sub + '</p></div></div><div class="np-bd">' + body + '</div></section>';
+  }
+  function template() {
+    var s1 = '<div id="npLogin"></div>' +
+      '<div class="np-row two">' + field('name', 'Jméno', 'text', { ac: 'given-name' }) + field('last', 'Příjmení', 'text', { ac: 'family-name' }) + '</div>' +
+      '<div class="np-row two">' + phoneField('phone', 'Telefon') + field('email', 'E-mail', 'email', { ac: 'email', mode: 'email' }) + '</div>' +
+      '<label class="np-switch"><input type="checkbox" id="np_isCompany"><span class="tr"></span><span>Nakupuji na firmu</span></label>' +
+      '<div id="npCompany" hidden style="margin-top:16px">' + field('company', 'Název firmy', 'text', { req: false, ac: 'organization' }) + '<div class="np-hint" style="margin-top:-6px">Fakturační údaje (IČ a DIČ) zadáte v dalším kroku při platbě.</div></div>';
+
+    var s2 = '<div class="np-tiles" id="npModes">' +
+      '<label class="np-tile" data-m="courier"><input type="radio" name="npmode" value="courier"><span class="ic"><i class="ti ti-truck-delivery"></i></span><span><b>Kurýrem</b><span class="s">Až ke dveřím po Praze a okolí</span></span><span class="pr" id="npModePrC"></span></label>' +
+      '<label class="np-tile" data-m="pickup"><input type="radio" name="npmode" value="pickup"><span class="ic"><i class="ti ti-building-store"></i></span><span><b>Osobní odběr</b><span class="s">Vyzvednutí v Praze 10</span></span><span class="pr free">Zdarma</span></label>' +
+      '</div>' +
+      '<div id="npGiftWrap"></div>' +
+      '<div id="npCourier">' +
+      '<div class="np-row">' + field('adres', 'Ulice a číslo popisné', 'text', { ac: 'off', ph: 'Začněte psát a vyberte ze seznamu' }) + '</div>' +
+      '<div class="np-hint" id="npAdrHint" style="margin:-6px 4px 16px">Podle vybrané adresy spočítáme cenu doručení.</div>' +
+      '<div class="np-row two">' + field('city', 'Město', 'text', { ac: 'address-level2' }) + field('psc', 'PSČ', 'text', { ac: 'postal-code', mode: 'numeric' }) + '</div>' +
+      '<div class="np-row three">' + field('floor', 'Patro', 'text', { req: false }) + field('apt', 'Číslo bytu', 'text', { req: false }) + field('intercom', 'Kód interkomu', 'text', { req: false }) + '</div>' +
+      '</div>' +
+      '<div id="npPickup" hidden><div class="np-pick"><span class="ic"><i class="ti ti-map-pin"></i></span><div><b>Na Hroudě 63, 100 00 Praha 10</b><br>Zatím nemáme prodejnu, vyzvednutí probíhá vedle skladu. Podrobné info dostanete e-mailem.</div></div></div>' +
+      '<div id="npWhen">' +
+      '<div class="np-group" id="g_date"><div class="np-sub"><span id="npDateLbl">Datum doručení</span><small id="npDateErr"></small></div>' +
+      '<div class="np-chips" id="npChips"></div>' +
+      '<div class="np-cal" id="npCal" hidden><div class="np-cal-h"><button type="button" id="npPrev" aria-label="Předchozí měsíc"><i class="ti ti-chevron-left"></i></button><b id="npMonth"></b><button type="button" id="npNext" aria-label="Další měsíc"><i class="ti ti-chevron-right"></i></button></div><div class="np-cal-g" id="npCalG"></div><div class="np-cal-note">Přeškrtnuté dny nejsou k dispozici. Klepnutím zjistíte proč.</div></div>' +
+      '<div class="np-picked" id="npPicked"></div></div>' +
+      '<div class="np-group" id="g_time"><div class="np-sub"><span id="npTimeLbl">Doba doručení</span><small id="npTimeErr"></small></div>' +
+      '<div class="np-slots" id="npSlots"></div><div class="np-times" id="npTimes" hidden></div></div>' +
+      '</div>';
+
+    var s3 = '<div class="np-tiles" id="npWho">' +
+      '<button type="button" class="np-tile" data-w="me"><span class="ic"><i class="ti ti-user"></i></span><span><b>Pro mě</b><span class="s">Doručíme na vaše jméno a telefon</span></span></button>' +
+      '<button type="button" class="np-tile" data-w="other"><span class="ic"><i class="ti ti-gift"></i></span><span><b>Pro někoho jiného</b><span class="s">Zadáte jméno a telefon příjemce</span></span></button>' +
+      '</div>' +
+      '<div id="npRChips"></div>' +
+      '<div id="npRFields"><div class="np-row two">' + field('rname', 'Jméno příjemce', 'text') + field('rlast', 'Příjmení příjemce', 'text') + '</div>' +
+      '<div class="np-row">' + phoneField('rphone', 'Telefon příjemce') + '</div></div>' +
+      '<div class="np-row"><div class="np-f"><label class="l" for="np_comment">Komentář k objednávce</label><textarea class="np-in" id="np_comment" rows="3" placeholder="Např. kdy zazvonit nebo kam květiny odložit"></textarea></div></div>' +
+      '<div id="npPostcard" hidden></div>' +
+      '<div class="np-note" id="npRNote"></div>';
+
+    var s4 = '<div id="npDep"></div><div id="npPromo"></div>' +
+      '<div class="np-sub" style="margin-top:6px"><span>Způsob platby</span></div>' +
+      '<div class="np-tiles one" id="npPays"></div>' +
+      '<div class="np-f" data-k="consent" style="margin-top:26px"><label class="np-check" id="npConsentL"><input type="checkbox" id="np_consent"><span class="bx">' + ICON_CHECK + '</span><span>Přečetl(a) jsem si a souhlasím s <a href="/obchodni-podminky" target="_blank" rel="noopener">podmínkami</a> a <a href="/privacy-policy" target="_blank" rel="noopener">pravidly webových stránek</a> <em style="color:var(--tulip);font-style:normal">*</em></span></label><div class="np-msg" style="margin-left:40px">Pro odeslání objednávky je potřeba souhlas.</div></div>' +
+      '<div class="np-hint" style="margin-top:14px">Vaše osobní údaje použijeme k vyřízení objednávky, k podpoře používání těchto stránek a k dalším účelům popsaným v našich zásadách ochrany osobních údajů.</div>';
+
+    return '' +
+      '<div class="np-prog" id="npProg"><i></i><i></i><i></i><i></i></div>' +
+      '<div class="np-top"><a class="back" href="/" id="npBack"><span class="arr"><i class="ti ti-arrow-left"></i></span><img src="https://narin-work.vercel.app/brand/narin-logo.png" alt="NARIN"></a><span class="np-secure"><i class="ti ti-lock"></i>Zabezpečená platba</span></div>' +
+      '<div class="np-hero"><div class="np-eyebrow">Dokončení objednávky</div><h1>Skoro hotovo. <em>Ještě pár detailů.</em></h1><p>Květiny připravíme čerstvé a doručíme v den, který si vyberete.</p></div>' +
+      '<div class="np-alert" id="npAlert" hidden></div>' +
+      '<div class="np-grid"><div class="np-main">' +
+      section('c1', 1, 'Vaše údaje', 'Na tento e-mail pošleme potvrzení', s1) +
+      section('c2', 2, 'Doručení', 'Kam a kdy kytice přivezeme', s2) +
+      section('c3', 3, 'Příjemce', 'Komu květiny patří', s3) +
+      section('c4', 4, 'Platba', 'Vše je připraveno k odeslání', s4) +
+      '</div>' +
+      '<aside class="np-side"><div class="np-sum" id="npSum"><h2>Vaše objednávka</h2><div class="np-items" id="npItems"></div><div class="np-lines" id="npLines"></div>' +
+      '<div class="np-tot"><span>Celkem</span><b id="npTotal">0&nbsp;Kč</b></div><div class="np-split" id="npSplit"></div>' +
+      '<button type="button" class="np-cta" id="npCta">Pokračovat k platbě</button>' +
+      '<div class="np-trust"><i class="ti ti-shield-check"></i><span>Platbu zpracovává Stripe. Údaje o kartě nikdy nevidíme.</span></div></div></aside>' +
+      '</div>' +
+      '<div class="np-bar" id="npBar"><div class="t"><small id="npBarLbl">Celkem</small><b id="npBarTot">0&nbsp;Kč</b></div><button type="button" id="npBarBtn">Pokračovat k platbě</button></div>' +
+      '<div class="np-toast" id="npToast" role="status" aria-live="polite"></div>' +
+      '<div class="np-pop" id="npPop" role="dialog" aria-modal="true"></div>';
+  }
+
+  /* ---------- binders for plain fields ---------- */
+  var SIMPLE = { name: 'name', last: 'last', email: 'email', company: 'company', adres: 'adres', city: 'city', psc: 'psc', floor: 'floor', apt: 'apt', intercom: 'intercom', rname: 'rname', rlast: 'rlast' };
+  function cleanName(v) { return String(v || '').replace(/[0-9!@#$%^&*()_=+\[\]{};:"\\|,.<>\/?]/g, ''); }
+  function setErr(k, msg) {
+    var w = $('[data-k="' + k + '"]', ROOT); if (!w) return;
+    w.classList.toggle('bad', !!msg);
+    var m = $('.np-msg', w); if (m && msg) m.textContent = msg;
+  }
+  function bindFields() {
+    Object.keys(SIMPLE).forEach(function (k) {
+      var el = $('#np_' + k); if (!el) return;
+      el.value = S[k] || '';
+      el.addEventListener('input', function () {
+        var v = el.value;
+        if (k === 'name' || k === 'last' || k === 'rname' || k === 'rlast') { var c = cleanName(v); if (c !== v) { v = c; el.value = c; } }
+        S[k] = v; setErr(k, '');
+        if (k === 'adres') { S.lat = S.lng = null; S.noNum = false; onAddress(); }
+        if (k === 'psc' || k === 'city') { onAddress(); }
+        if (S.same && (k === 'name' || k === 'last')) syncSame();
+        saveDraft(); refresh();
+      });
+    });
+    ['phone', 'rphone'].forEach(function (k) {
+      var el = $('#np_' + k); if (!el) return;
+      el.value = S[k] || '';
+      el.addEventListener('input', function () { var v = phoneShow(el.value); el.value = v; S[k] = v; setErr(k, ''); if (k === 'phone' && S.same) syncSame(); saveDraft(); });
+    });
+    $('#np_comment').value = S.comment || '';
+    $('#np_comment').addEventListener('input', function (e) { S.comment = e.target.value; saveDraft(); });
+    var co = $('#np_isCompany'); co.checked = !!S.isCompany; $('#npCompany').hidden = !S.isCompany;
+    co.addEventListener('change', function () { S.isCompany = co.checked; $('#npCompany').hidden = !co.checked; if (!co.checked) { S.company = ''; $('#np_company').value = ''; } saveDraft(); });
+    var cs = $('#np_consent'); cs.addEventListener('change', function () { S.consent = cs.checked; setErr('consent', ''); $('#npConsentL').classList.remove('bad'); });
+  }
+  function syncSame() {
+    S.rname = S.name; S.rlast = S.last; S.rphone = S.phone;
+    $('#np_rname').value = S.rname; $('#np_rlast').value = S.rlast; $('#np_rphone').value = S.rphone;
+  }
+
+  /* ---------- sections that re-render ---------- */
+  function renderLogin() {
+    var el = $('#npLogin'); if (!el) return;
+    if (S.loggedIn) {
+      var pr = tildaProfile(); var who = pr && (pr.name || pr.login) || S.email;
+      el.innerHTML = '<div class="np-note" style="margin:0 0 24px"><i class="ti ti-circle-check" style="color:#00b86f"></i><span>Přihlášeni jako <b>' + esc(who) + '</b>. Údaje jsme předvyplnili.</span></div>';
+    } else {
+      el.innerHTML = '<div class="np-note" style="margin:0 0 24px"><i class="ti ti-user-circle"></i><span>Nakupovali jste u nás již dříve? <a href="/members/login" id="npLoginBtn">Přihlaste se</a> a předvyplníme údaje. Využijete i body a depozit.</span></div>';
+      var b = $('#npLoginBtn'); if (b) b.addEventListener('click', function () { try { localStorage.setItem('lkReturnUrl', location.pathname); } catch (e) {} });
+    }
+  }
+  function renderModes() {
+    $$('input[name="npmode"]', ROOT).forEach(function (r) { r.checked = r.value === S.mode; var t = r.closest('.np-tile'); if (t) t.classList.toggle('on', r.checked); });
+    $('#npCourier').hidden = S.mode !== 'courier' || !!S.gift;
+    $('#npPickup').hidden = S.mode !== 'pickup';
+    modePrice();
+    $('#npDateLbl').textContent = S.mode === 'pickup' ? 'Datum vyzvednutí' : 'Datum doručení';
+    $('#npTimeLbl').textContent = S.mode === 'pickup' ? 'Čas vyzvednutí (9:00 až 20:00)' : 'Doba doručení';
+    $('#npSlots').hidden = S.mode === 'pickup';
+    $('#npTimes').hidden = S.mode !== 'pickup';
+    $('#npWhen').hidden = !!S.gift;
+    renderGift(); renderPays();
+  }
+  function modePrice() {
+    var f = feeCalc(), pr = $('#npModePrC'); if (!pr) return;
+    pr.textContent = (S.mode === 'courier' && !f.need && !f.empty) ? kc(f.delivery) : 'od ' + kc(CFG.base);
+  }
+  function renderGift() {
+    var w = $('#npGiftWrap'); if (!w) return;
+    if (S.mode !== 'courier') { w.innerHTML = ''; return; }
+    if (S.gift) {
+      w.innerHTML = '<div class="np-gift"><div class="ic"><i class="ti ti-gift"></i></div><div class="tx">Adresu zadá ' + esc(S.gift.name) + '<small>Napíšeme přes ' + esc(CH_LABEL[S.gift.channel]) + ': ' + esc(S.gift.handle) + (S.gift.visible ? '' : ', anonymně') + '</small></div><button type="button" class="go" id="npGiftBtn">Změnit</button><button type="button" class="x" id="npGiftX" aria-label="Zrušit"><i class="ti ti-x"></i></button></div>';
+      $('#npGiftX').addEventListener('click', function () { S.gift = null; renderModes(); refresh(); });
+    } else {
+      w.innerHTML = '<div class="np-gift"><div class="ic"><i class="ti ti-gift"></i></div><div class="tx">Neznáte adresu příjemce?<small>Pošleme mu odkaz, adresu a čas si zadá sám</small></div><button type="button" class="go" id="npGiftBtn">Ať ji zadá sám</button></div>';
+    }
+    $('#npGiftBtn').addEventListener('click', openGift);
+  }
+  function renderChips() {
+    var el = $('#npChips'); if (!el) return;
+    var out = [], d = addDays(new Date(), 1), n = 0;
+    for (var i = 0; i < 40 && n < 7; i++) { if (dateReason(d) === null) { out.push(d); n++; } d = addDays(d, 1); }
+    if (S.date) { var sel = parseIso(S.date); if (!out.some(function (x) { return iso(x) === S.date; }) && dateReason(sel) === null) out.unshift(sel); }
+    el.innerHTML = out.map(function (x) {
+      var k = iso(x);
+      return '<button type="button" class="np-chip' + (S.date === k ? ' on' : '') + '" data-d="' + k + '"><small>' + WD[(x.getDay() + 6) % 7] + '</small><b>' + x.getDate() + '</b><span>' + MONTH_SHORT[x.getMonth()] + '</span></button>';
+    }).join('') + '<button type="button" class="np-chip more" id="npMore"><i class="ti ti-calendar-event"></i>' + (S.showCal ? 'Skrýt' : 'Jiný den') + '</button>';
+  }
+  function renderCalendar() {
+    var g = $('#npCalG'); if (!g) return;
+    var y = cal.y, m = cal.m, first = new Date(y, m, 1), startWd = (first.getDay() + 6) % 7, days = new Date(y, m + 1, 0).getDate();
+    var html = WD.map(function (w) { return '<div class="w">' + w + '</div>'; }).join('');
+    for (var i = 0; i < startWd; i++) html += '<button type="button" class="np-day mute" tabindex="-1" aria-hidden="true"></button>';
+    var today = sod(new Date());
+    for (var d = 1; d <= days; d++) {
+      var dt = new Date(y, m, d), why = dateReason(dt), off = why !== null, k = iso(dt);
+      html += '<button type="button" class="np-day' + (off ? ' off' : '') + (+dt === +today ? ' today' : '') + (S.date === k ? ' on' : '') + '" data-d="' + k + '" data-why="' + esc(why || '') + '"' + (off ? ' aria-disabled="true"' : '') + '>' + d + '</button>';
+    }
+    g.innerHTML = html;
+    $('#npMonth').textContent = MONTHS[m] + ' ' + y;
+    var now = new Date(); $('#npPrev').disabled = (y === now.getFullYear() && m === now.getMonth());
+    $('#npNext').disabled = (y * 12 + m) >= (now.getFullYear() * 12 + now.getMonth() + 4);
+    $('#npCal').hidden = !S.showCal;
+    var p = $('#npPicked'); p.innerHTML = S.date ? '<i class="ti ti-calendar-check"></i><span>Vybráno: <b>' + esc(longDate(S.date)) + '</b></span>' : '';
+  }
+  function renderSlots() {
+    var sl = $('#npSlots'), tm = $('#npTimes'); if (!sl) return;
+    sl.innerHTML = SLOTS.map(function (s) { var why = slotReason(s); return '<button type="button" class="np-slot' + (S.slot === s ? ' on' : '') + (why ? ' off' : '') + '" data-s="' + s + '" data-why="' + esc(why) + '"><b>' + s.replace('-', '–') + '</b><span>' + CAPTIONS[s] + '</span></button>'; }).join('');
+    tm.innerHTML = TIMES.map(function (t) { return '<button type="button" class="np-time' + (S.time === t ? ' on' : '') + '" data-t="' + t + '">' + t.replace(/^0/, '') + '</button>'; }).join('');
+  }
+  function pickDate(k) {
+    S.date = k; S.showCal = false;
+    if (S.slot && slotReason(S.slot)) S.slot = null;
+    $('#npDateErr').textContent = ''; $('#g_date').classList.remove('bad');
+    renderCalendar(); renderChips(); renderSlots(); saveDraft(); refresh();
+  }
+  function bindWhen() {
+    $('#npChips').addEventListener('click', function (e) {
+      if (e.target.closest('#npMore')) { S.showCal = !S.showCal; renderChips(); renderCalendar(); return; }
+      var b = e.target.closest('[data-d]'); if (b) pickDate(b.getAttribute('data-d'));
+    });
+    $('#npCalG').addEventListener('click', function (e) {
+      var b = e.target.closest('.np-day[data-d]'); if (!b) return;
+      if (b.classList.contains('off')) { var w = b.getAttribute('data-why'); if (w) toast(w); return; }
+      pickDate(b.getAttribute('data-d'));
+    });
+    $('#npPrev').addEventListener('click', function () { cal.m--; if (cal.m < 0) { cal.m = 11; cal.y--; } renderCalendar(); });
+    $('#npNext').addEventListener('click', function () { cal.m++; if (cal.m > 11) { cal.m = 0; cal.y++; } renderCalendar(); });
+    $('#npSlots').addEventListener('click', function (e) {
+      var b = e.target.closest('.np-slot'); if (!b) return;
+      if (b.classList.contains('off')) { toast(b.getAttribute('data-why') || 'Tento čas je již obsazený.'); return; }
+      S.slot = b.getAttribute('data-s'); $('#g_time').classList.remove('bad'); $('#npTimeErr').textContent = ''; renderSlots(); saveDraft();
+    });
+    $('#npTimes').addEventListener('click', function (e) {
+      var b = e.target.closest('.np-time'); if (!b) return;
+      S.time = b.getAttribute('data-t'); $('#g_time').classList.remove('bad'); $('#npTimeErr').textContent = ''; renderSlots(); saveDraft();
+    });
+    $$('input[name="npmode"]', ROOT).forEach(function (r) {
+      r.addEventListener('change', function () {
+        S.mode = r.value;
+        if (S.mode === 'pickup') S.gift = null;
+        if (S.mode === 'courier' && S.pay === 'cash') S.pay = 'stripe';
+        renderModes(); saveDraft(); refresh(); quoteSoon();
+      });
+    });
+  }
+  function bindWho() {
+    $('#npWho').addEventListener('click', function (e) { var b = e.target.closest('[data-w]'); if (b) setWho(b.getAttribute('data-w')); });
+  }
+  function renderWho() {
+    $$('#npWho .np-tile', ROOT).forEach(function (b) { b.classList.toggle('on', (b.getAttribute('data-w') === 'me') === !!S.same); });
+    $('#npRFields').hidden = !!S.same;
+    var rc = $('#npRChips'); if (rc) rc.hidden = !!S.same;
+  }
+  function setWho(w) {
+    var was = S.same; S.same = (w === 'me');
+    if (S.same) syncSame();
+    else if (was) { S.rname = S.rlast = S.rphone = ''; ['rname', 'rlast', 'rphone'].forEach(function (k) { $('#np_' + k).value = ''; }); }
+    renderWho(); saveDraft(); refresh();
+  }
+
+  /* ---------- address (Google Places) ---------- */
+  function onAddress() {
+    var h = $('#npAdrHint'); if (!h) return;
+    var f = feeCalc();
+    if (S.mode !== 'courier') return;
+    if (f.tooFar) { h.style.color = 'var(--err)'; h.textContent = 'Na tuto adresu (' + (Math.round(f.km * 10) / 10).toString().replace('.', ',') + ' km) kurýrem bohužel nedoručujeme. Napište nám na support@vezminarin.cz nebo zavolejte na +420 776 421 993.'; }
+    else if (f.need) { h.style.color = 'var(--err)'; h.textContent = 'Vyberte prosím adresu ze seznamu, cenu doručení počítáme podle vzdálenosti.'; }
+    else if (S.noNum) { h.style.color = 'var(--err)'; h.textContent = 'Chybí číslo popisné. Dopište číslo za ulici a vyberte adresu ze seznamu.'; }
+    else if (f.km != null) { h.style.color = 'var(--ok)'; h.textContent = 'Vzdálenost od skladu ' + (Math.round(f.km * 10) / 10).toString().replace('.', ',') + ' km. Cena doručení ' + kc(f.delivery) + (f.extra ? ' (včetně příplatku za vzdálenost)' : '') + '.'; }
+    else { h.style.color = ''; h.textContent = 'Podle vybrané adresy spočítáme cenu doručení.'; }
+    quoteSoon();
+  }
+  function initPlaces() {
+    if (window.google && google.maps && google.maps.places) return attachPlaces();
+    window.__npPlacesReady = attachPlaces;
+    if (document.getElementById('npPlacesJs')) return;
+    var s = document.createElement('script'); s.id = 'npPlacesJs'; s.async = true; s.defer = true;
+    s.src = 'https://maps.googleapis.com/maps/api/js?key=' + PLACES_KEY + '&libraries=places&language=cs&region=CZ&callback=__npPlacesReady';
+    document.head.appendChild(s);
+  }
+  function attachPlaces() {
+    var input = $('#np_adres'); if (!input || input.__np) return; input.__np = 1;
+    var ac = new google.maps.places.Autocomplete(input, { componentRestrictions: { country: 'cz' }, fields: ['address_components', 'geometry'], types: ['address'] });
+    ac.addListener('place_changed', function () {
+      var p = ac.getPlace(); if (!p || !p.address_components) return;
+      var route = '', num = '', city = '', psc = '';
+      p.address_components.forEach(function (c) {
+        var t = c.types;
+        if (t.indexOf('route') > -1) route = c.long_name;
+        if (t.indexOf('street_number') > -1) num = c.long_name;
+        if (t.indexOf('locality') > -1 || t.indexOf('postal_town') > -1) city = c.long_name;
+        if (t.indexOf('sublocality') > -1 && !city) city = c.long_name;
+        if (t.indexOf('postal_code') > -1) psc = c.long_name;
+      });
+      S.adres = (route + ' ' + num).trim(); $('#np_adres').value = S.adres; S.noNum = !num;
+      if (city) { S.city = city; $('#np_city').value = city; }
+      if (psc) { S.psc = psc; $('#np_psc').value = psc; }
+      if (p.geometry && p.geometry.location) { S.lat = p.geometry.location.lat(); S.lng = p.geometry.location.lng(); }
+      ['adres', 'city', 'psc'].forEach(function (k) { setErr(k, ''); });
+      onAddress(); saveDraft(); refresh();
+    });
+  }
+
+  /* ---------- recipient ---------- */
+  function renderRecipient() {
+    renderWho();
+    var note = $('#npRNote');
+    note.innerHTML = '<i class="ti ti-bell-ringing"></i>' + (S.loggedIn ? '<span>Příjemce i datum si zapamatujeme a příště vám je připomeneme. Upravit je můžete ve svém <a href="/members/occasions" target="_blank" rel="noopener">účtu</a>.</span>' : '<span>Zapamatujeme si příjemce i datum a příště vám je připomeneme. <a href="/members/login">Přihlaste se</a> a půjde to samo.</span>');
+    var pc = $('#npPostcard');
+    if (hasPostcard()) {
+      pc.hidden = false;
+      if (!pc.__built) {
+        pc.__built = 1;
+        pc.innerHTML = '<div class="np-pc"><h3><i class="ti ti-mail"></i>Pohlednice: napište své přání</h3>' +
+          '<div class="np-seg" id="npPcSeg"><button type="button" data-v="name">Podepsat mým jménem</button><button type="button" data-v="anon">Poslat anonymně</button></div>' +
+          '<div class="np-row">' + field('pcTo', 'Pro koho', 'text') + '</div>' +
+          '<div class="np-row"><div class="np-f" data-k="pcText"><label class="l" for="np_pcText">Váš text na pohlednici <em>*</em></label><textarea class="np-in" id="np_pcText" rows="4"></textarea><div class="np-msg"></div></div></div></div>';
+        $('#npPcSeg').addEventListener('click', function (e) { var b = e.target.closest('[data-v]'); if (!b) return; S.pcSender = b.getAttribute('data-v'); paintSeg(); saveDraft(); });
+        $('#np_pcTo').value = S.pcTo; $('#np_pcText').value = S.pcText;
+        $('#np_pcTo').addEventListener('input', function (e) { S.pcTo = e.target.value; setErr('pcTo', ''); saveDraft(); });
+        $('#np_pcText').addEventListener('input', function (e) { S.pcText = e.target.value; setErr('pcText', ''); saveDraft(); });
+      }
+      paintSeg();
+    } else { pc.hidden = true; }
+  }
+  function paintSeg() { $$('#npPcSeg button', ROOT).forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-v') === S.pcSender); }); }
+  function loadRecipients() {
+    var t = authToken(); var w = $('#npRChips'); if (!t || !w) return;
+    fn('personal-dates', { token: t, action: 'listRecipients' }).then(function (r) {
+      var list = (r && r.recipients) || []; if (!list.length) return;
+      w.innerHTML = '<div class="np-sub-h" style="margin-top:0"><span>Komu posíláte?</span></div><div class="np-rchips" id="npRC">' + list.map(function (x, i) { return '<button type="button" class="np-rchip" data-i="' + i + '">' + esc(x.name) + '</button>'; }).join('') + '</div>';
+      $('#npRC').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-i]'); if (!b) return;
+        $$('#npRC .np-rchip').forEach(function (x) { x.classList.remove('on'); }); b.classList.add('on');
+        var x = list[+b.getAttribute('data-i')], parts = String(x.name || '').trim().split(/\s+/);
+        S.same = false;
+        S.rname = parts[0] || ''; S.rlast = parts.slice(1).join(' '); S.rphone = phoneShow(x.phone || '');
+        $('#np_rname').value = S.rname; $('#np_rlast').value = S.rlast; $('#np_rphone').value = S.rphone;
+        renderRecipient(); saveDraft(); refresh();
+      });
+    }).catch(function () {});
+  }
+
+  /* ---------- gift without address ---------- */
+  var CH_LABEL = { phone: 'SMS', whatsapp: 'WhatsApp', telegram: 'Telegram', instagram: 'Instagram' };
+  var CH_PH = { phone: '+420 777 123 456', whatsapp: '+420 777 123 456', telegram: '@jmeno nebo telefon', instagram: '@jmeno' };
+  var giftCh = 'phone';
+  function validHandle(c, v) {
+    var d = v.replace(/\D/g, '');
+    if (c === 'phone' || c === 'whatsapp') return d.length >= 9 && d.length <= 15 && !/[a-z]/i.test(v);
+    if (c === 'telegram') return /^@?[A-Za-z0-9_]{4,32}$/.test(v) || (d.length >= 9 && !/[a-z]/i.test(v));
+    return /^@?[A-Za-z0-9._]{2,30}$/.test(v);
+  }
+  function openGift() {
+    var pop = $('#npPop');
+    var g = S.gift || { name: S.rname || '', channel: 'phone', handle: '', visible: true }; giftCh = g.channel;
+    pop.innerHTML = '<div class="np-box"><button type="button" class="x" id="npGx" aria-label="Zavřít"><i class="ti ti-x"></i></button><div class="gi"><i class="ti ti-gift"></i></div><h3>Dárek bez adresy</h3>' +
+      '<p class="lead">Neznáte adresu nebo chcete překvapit? Nevadí. Příjemci napíšeme a on si sám vybere, kam a kdy mu kytici přivezeme.</p>' +
+      '<ol><li><b>1</b><span>Objednáte a zaplatíte jako obvykle.</span></li><li><b>2</b><span>Příjemci osobně napíšeme a pošleme odkaz. Žádný robot.</span></li><li><b>3</b><span>Zadá adresu a čas, nejdřív na zítřek. Když to do 48 hodin neudělá nebo dárek odmítne, vrátíme vám peníze.</span></li></ol>' +
+      '<div class="np-f"><label class="l" for="ngName">Jméno příjemce</label><input class="np-in" id="ngName" type="text" autocomplete="off" placeholder="např. Jana" value="' + esc(g.name) + '"></div>' +
+      '<div class="np-sub" style="margin:18px 0 10px"><span>Kde mu máme napsat?</span></div><div class="np-chs" id="ngCh">' +
+      ['phone', 'whatsapp', 'telegram', 'instagram'].map(function (c) { return '<button type="button" data-c="' + c + '"' + (c === giftCh ? ' class="on"' : '') + '>' + (c === 'phone' ? '<i class="ti ti-device-mobile"></i>SMS / telefon' : CH_LABEL[c]) + '</button>'; }).join('') + '</div>' +
+      '<input class="np-in" id="ngHandle" type="text" autocomplete="off" placeholder="' + esc(CH_PH[giftCh]) + '" value="' + esc(g.handle) + '">' +
+      '<label class="np-check" style="margin-top:20px"><input type="checkbox" id="ngVis"' + (g.visible ? ' checked' : '') + '><span class="bx">' + ICON_CHECK + '</span><span>Příjemce může vědět, že je dárek ode mě<br><small style="color:var(--mut)">Když ne, napíšeme jen „někdo vám posílá květiny“.</small></span></label>' +
+      '<p class="np-hint">Kontakt použijeme jen kvůli tomuto doručení a po 30 dnech ho smažeme. <a href="/darek-bez-adresy" target="_blank" rel="noopener" style="color:var(--blue)">Jak to funguje</a></p>' +
+      '<div class="np-err-box" id="ngErr"></div>' +
+      '<div class="row2"><button type="button" id="ngCancel">Zpět</button><button type="button" class="pri" id="ngOk">Pokračovat</button></div></div>';
+    pop.classList.add('on');
+    function close() { pop.classList.remove('on'); }
+    function err(m) { var e = $('#ngErr'); e.textContent = m || ''; e.classList.toggle('on', !!m); }
+    $('#npGx').onclick = close; $('#ngCancel').onclick = close;
+    pop.onclick = function (e) { if (e.target === pop) close(); };
+    $('#ngCh').onclick = function (e) {
+      var b = e.target.closest('[data-c]'); if (!b) return; giftCh = b.getAttribute('data-c');
+      $$('#ngCh button').forEach(function (x) { x.classList.toggle('on', x === b); });
+      $('#ngHandle').placeholder = CH_PH[giftCh];
+    };
+    $('#ngOk').onclick = function () {
+      var name = $('#ngName').value.trim(), handle = $('#ngHandle').value.trim();
+      if (name.length < 2) return err('Napište prosím jméno příjemce.');
+      if (!validHandle(giftCh, handle)) return err(giftCh === 'instagram' || (giftCh === 'telegram' && /[a-z]/i.test(handle)) ? 'Zkontrolujte prosím uživatelské jméno.' : 'Zkontrolujte prosím telefonní číslo (aspoň 9 číslic).');
+      var ok = $('#ngOk'); ok.disabled = true; ok.textContent = 'Ověřujeme…';
+      fn('gift-link', { action: 'check', contact: handle }).catch(function () { return {}; }).then(function (r) {
+        ok.disabled = false; ok.textContent = 'Pokračovat';
+        if (r && r.blocked) return err('Tomuto kontaktu bohužel nemůžeme dárek bez adresy poslat. Zadejte prosím adresu sami.');
+        var wasSame = S.same;
+        S.gift = { name: name.slice(0, 60), channel: giftCh, handle: handle.slice(0, 60), visible: $('#ngVis').checked };
+        S.mode = 'courier'; S.same = false;
+        if (wasSame || !S.rname) { S.rname = S.gift.name; S.rlast = wasSame ? '' : S.rlast; $('#np_rname').value = S.rname; $('#np_rlast').value = S.rlast; }
+        if ((wasSame || !S.rphone) && /^(phone|whatsapp)$/.test(S.gift.channel)) { S.rphone = phoneShow(S.gift.handle); $('#np_rphone').value = S.rphone; }
+        else if (wasSame) { S.rphone = ''; $('#np_rphone').value = ''; }
+        close(); renderModes(); renderRecipient(); refresh();
+      });
+    };
+  }
+
+  /* ---------- payment section ---------- */
+  function renderPays() {
+    var el = $('#npPays'); if (!el) return;
+    var cashOk = S.mode === 'pickup';
+    if (S.pay === 'cash' && !cashOk) S.pay = 'stripe';
+    var tt = totals(), useDep = canDeposit() && S.dep.use && tt.dep >= tt.total;
+    el.innerHTML =
+      '<label class="np-tile row' + (S.pay === 'stripe' ? ' on' : '') + '"><input type="radio" name="nppay" value="stripe"' + (S.pay === 'stripe' ? ' checked' : '') + '><span class="ic"><i class="ti ti-credit-card"></i></span><span class="tx"><b>Kartou online</b><span class="s">Visa, Mastercard, Apple Pay a Google Pay přes Stripe' + (useDep ? ' (nebude potřeba, platíte depozitem)' : '') + '</span></span><span class="rd"></span></label>' +
+      '<label class="np-tile row' + (S.pay === 'cash' ? ' on' : '') + (cashOk ? '' : ' dis') + '"><input type="radio" name="nppay" value="cash"' + (S.pay === 'cash' ? ' checked' : '') + (cashOk ? '' : ' disabled') + '><span class="ic"><i class="ti ti-cash"></i></span><span class="tx"><b>Hotově při převzetí</b><span class="s">' + (cashOk ? 'Zaplatíte při vyzvednutí' : 'Jen při osobním odběru') + '</span></span><span class="rd"></span></label>';
+    $$('input[name="nppay"]', el).forEach(function (r) { r.addEventListener('change', function () { S.pay = r.value; renderPays(); renderDep(); renderPromo(); refresh(); }); });
+  }
+  function renderDep() {
+    var el = $('#npDep'); if (!el) return;
+    if (!S.loggedIn || S.dep.balance < 1) { el.innerHTML = ''; return; }
+    var blocked = promoActive() || S.pts.applied > 0 || S.pay !== 'stripe' || hasVoucher();
+    var t = totals(), use = S.dep.use && !blocked, err = S.dep.err;
+    var h = '<div class="np-wallet' + (use ? '' : ' off') + (err && !blocked ? ' err' : '') + '"><div class="t"><div><div class="lb"><i class="ti ti-wallet"></i>Depozit NARIN</div><div class="bal">' + kc(S.dep.balance) + '</div></div>';
+    if (!blocked) h += '<label class="np-switch"><input type="checkbox" id="np_dep"' + (S.dep.use ? ' checked' : '') + '><span class="tr"></span><span>Použít</span></label>';
+    h += '</div>';
+    if (blocked) h += '<div class="why">' + (S.pay !== 'stripe' ? 'Depozitem lze platit jen online.' : 'Depozit nelze kombinovat se slevou nebo body.') + '</div>';
+    else if (err) h += '<div class="why">' + esc(err) + '</div>';
+    else if (use) {
+      var dep = t.dep, card = Math.max(0, t.total - dep);
+      h += '<div class="calc"><div><span>Objednávka</span><b>' + kc(t.total) + '</b></div><div class="g"><span>Z depozitu</span><b>−' + kc(dep) + '</b></div><div class="tot"><span>' + (card > 0 ? 'Zbytek zaplatíte kartou' : 'Kartou nic neplatíte') + '</span><b>' + kc(card) + '</b></div></div>';
+    } else h += '<div class="why">Zůstatek zůstane na vašem účtu.</div>';
+    el.innerHTML = h + '</div>';
+    var cb = $('#np_dep'); if (cb) cb.addEventListener('change', function () { S.dep.use = cb.checked; renderDep(); renderPromo(); renderPays(); refresh(); quoteSoon(); });
+  }
+  function renderPromo() {
+    var el = $('#npPromo'); if (!el) return;
+    var depOn = canDeposit() && S.dep.use, applied = promoActive();
+    if (applied) S.accOpen = true;
+    var sub = applied ? 'Uplatněno' : (S.loggedIn && S.pts.balance != null && S.pts.balance >= 100 ? 'Máte ' + S.pts.balance + ' bodů k využití' : 'Zadejte kód a uplatníme slevu');
+    var h = '<div class="np-acc' + (S.accOpen ? ' open' : '') + (depOn ? ' disabled' : '') + '"><button type="button" id="npAccBtn"><span class="ic"><i class="ti ti-ticket"></i></span><span class="tx">Máte slevový kód nebo body?<small>' + sub + '</small></span><i class="ti ti-chevron-down chev"></i></button><div class="bd">';
+    if (depOn) h += '<div class="np-hint" style="margin:0">Depozit nelze kombinovat se slevou. <a href="#" id="npDepOff" style="color:var(--blue);font-weight:500">Použít kód nebo body místo depozitu</a></div>';
+    else if (applied) {
+      var pc = tc().promocode || {};
+      h += '<div class="np-applied"><span>Uplatněno' + (pc.promocode ? ': ' + esc(String(pc.promocode)) : '') + ' (−' + kc(discountSum()) + ')</span><button type="button" id="npPromoX">Odebrat</button></div>';
+    } else {
+      h += '<div class="np-promo-row"><input class="np-in" id="np_promo" type="text" placeholder="Slevový kód" autocomplete="off" value="' + esc(S.promo.code) + '"><button type="button" class="np-btn2" id="npPromoGo"' + (S.promo.busy ? ' disabled' : '') + '>' + (S.promo.busy ? '…' : 'Použít') + '</button></div><div class="np-err-box" id="npPromoErr"></div>';
+      if (S.loggedIn && S.pts.balance != null && S.pts.balance >= 100) {
+        var maxAllowed = Math.min(1000, Math.floor((goodsNet()) * 0.3 / 100) * 100, Math.floor(S.pts.balance / 100) * 100);
+        if (maxAllowed >= 100) {
+          if (S.pts.sel > maxAllowed) S.pts.sel = maxAllowed; if (S.pts.sel < 100) S.pts.sel = 100;
+          h += '<div class="np-pts"><div class="head"><span>Vaše body</span><b>' + S.pts.balance + ' b.</b></div><div class="np-hint">Body lze využít až na 30 % zboží, 1 bod = 1 Kč, po 100 bodech (max. 1000).</div><div class="stepper"><button type="button" class="s" id="npPm" aria-label="Méně">−</button><span class="v" id="npPv">' + S.pts.sel + ' b.</span><button type="button" class="s" id="npPp" aria-label="Více">+</button><button type="button" class="np-btn2 go" id="npPtsGo"' + (S.pts.busy ? ' disabled' : '') + '>' + (S.pts.busy ? '…' : 'Uplatnit') + '</button></div></div>';
+        }
+      }
+    }
+    el.innerHTML = h + '</div></div>';
+    var ab = $('#npAccBtn'); if (ab) ab.addEventListener('click', function () { if (depOn) return; S.accOpen = !S.accOpen; ab.parentNode.classList.toggle('open', S.accOpen); });
+    var doff = $('#npDepOff'); if (doff) doff.addEventListener('click', function (e) { e.preventDefault(); S.dep.use = false; S.accOpen = true; renderDep(); renderPromo(); renderPays(); refresh(); });
+    var go = $('#npPromoGo'); if (go) go.addEventListener('click', applyPromo);
+    var inp = $('#np_promo'); if (inp) { inp.addEventListener('input', function () { S.promo.code = inp.value; }); inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); applyPromo(); } }); }
+    var x = $('#npPromoX'); if (x) x.addEventListener('click', removePromo);
+    var pm = $('#npPm'), pp = $('#npPp'), pg = $('#npPtsGo');
+    if (pm) pm.addEventListener('click', function () { S.pts.sel = Math.max(100, S.pts.sel - 100); $('#npPv').textContent = S.pts.sel + ' b.'; });
+    if (pp) pp.addEventListener('click', function () { var mx = Math.min(1000, Math.floor(goodsNet() * 0.3 / 100) * 100, Math.floor(S.pts.balance / 100) * 100); S.pts.sel = Math.min(mx, S.pts.sel + 100); $('#npPv').textContent = S.pts.sel + ' b.'; });
+    if (pg) pg.addEventListener('click', applyPoints);
+  }
+  function promoErr(m) { var e = $('#npPromoErr'); if (!e) return toast(m, true); e.textContent = m; e.classList.add('on'); }
+  function tildaPromo(code) {
+    return new Promise(function (res) {
+      var root = cartRoot(); if (!root) return res({ ok: false });
+      var input = $('.t-inputpromocode', root), btn = $('.t-inputpromocode__btn', root);
+      if (!input || !btn) return res({ ok: false });
+      var oa = window.alert; window.alert = function () {};
+      input.value = code; fire(input, ['input', 'change']); btn.click();
+      var n = 0, iv = setInterval(function () {
+        n++;
+        if (promoActive()) { clearInterval(iv); window.alert = oa; return res({ ok: true }); }
+        var txt = ($('.t-inputpromocode__wrapper', root) || { textContent: '' }).textContent.toLowerCase();
+        var okTxt = txt.indexOf('aktivov') > -1 || txt.indexOf('активиров') > -1;
+        var bad = input.classList.contains('t-input_error') || (function () { var e = $('.t-inputpromocode__error', root); return e && e.offsetParent !== null && e.textContent.length > 2; })();
+        if (okTxt) { clearInterval(iv); window.alert = oa; return res({ ok: true }); }
+        if (bad || n > 40) { clearInterval(iv); window.alert = oa; res({ ok: false }); }
+      }, 100);
+    });
+  }
+  function applyPromo() {
+    var code = (S.promo.code || '').trim(); if (!code) return promoErr('Napište prosím slevový kód.');
+    if (S.promo.busy) return; S.promo.busy = true; renderPromo();
+    tildaPromo(code).then(function (r) {
+      S.promo.busy = false;
+      if (r.ok) { S.dep.use = false; syncCartDelivery(); renderDep(); renderPromo(); renderPays(); refresh(); toast('Slevový kód byl uplatněn.'); }
+      else { renderPromo(); promoErr('Slevový kód nebyl nalezen.'); }
+    });
+  }
+  function applyPoints() {
+    var token = authToken(); if (!token) return promoErr('Přihlaste se prosím.');
+    if (S.pts.busy) return; S.pts.busy = true; renderPromo();
+    var cartTotal = Math.round(goodsNet() + feeCalc().fee);
+    fn('tilda-webhook', { action: 'get_promo', token: token, amount: S.pts.sel, total_sum: cartTotal, check_only: true }).then(function (r) {
+      if (!r || r.status !== 'success') { S.pts.busy = false; renderPromo(); return promoErr((r && r.message) || 'Chyba.'); }
+      return tildaPromo('Uplatněno' + S.pts.sel + 'bodů').then(function (x) {
+        S.pts.busy = false;
+        if (x.ok) { S.pts.applied = S.pts.sel; S.dep.use = false; if (S.pts.balance != null) S.pts.balance -= S.pts.sel; syncCartDelivery(); renderDep(); renderPromo(); renderPays(); refresh(); toast('Body byly uplatněny.'); }
+        else { renderPromo(); promoErr('Kód s body se nepodařilo uplatnit, zkuste to prosím znovu.'); }
+      });
+    }).catch(function () { S.pts.busy = false; renderPromo(); promoErr('Chyba spojení.'); });
+  }
+  function removePromo() {
+    try {
+      var raw = JSON.parse(localStorage.getItem('tcart') || '{}');
+      delete raw.promocode; delete raw.prodamount_withdiscount; delete raw.prodamount_discountsum;
+      localStorage.setItem('tcart', JSON.stringify(raw));
+    } catch (e) {}
+    location.reload();
+  }
+
+  /* ---------- deposit quote (server decides) ---------- */
+  var quoteSoon = debounce(function () { quoteDeposit(); }, 500);
+  function quoteDeposit() {
+    var token = authToken(); if (!token || !S.loggedIn || S.dep.balance < 1) return;
+    var prods = products().map(function (p) { return { uid: String(p.uid || p.lid || ''), quantity: pieces(p) }; });
+    if (!prods.length || prods.some(function (p) { return !p.uid; })) { S.dep.err = 'Tento košík zatím nelze zaplatit depozitem.'; S.dep.quote = null; renderDep(); return; }
+    var f = feeCalc();
+    if (S.mode === 'courier' && !S.gift && (f.need || f.tooFar)) { S.dep.err = f.tooFar ? 'Na tuto adresu nedoručujeme.' : 'Vyberte adresu ze seznamu, spočítáme cenu.'; S.dep.quote = null; renderDep(); return; }
+    S.dep.loading = true;
+    fn('checkout-order', { action: 'quote', token: token, use_deposit: true, delivery: S.mode, form: { recipient_lat: S.lat, recipient_lng: S.lng, psc: S.gift ? '11000' : S.psc }, products: prods }).then(function (q) {
+      S.dep.loading = false;
+      if (q && q.ok) { S.dep.quote = q; S.dep.balance = q.balance; S.dep.err = ''; }
+      else { S.dep.quote = null; S.dep.err = quoteErrText(q && q.error); }
+      renderDep(); renderPays(); refresh();
+    }).catch(function () { S.dep.loading = false; });
+  }
+  function quoteErrText(code) {
+    code = String(code || '');
+    if (code.indexOf('product_unavailable') === 0) return 'Tento košík zatím nelze zaplatit depozitem. Zaplaťte prosím kartou.';
+    if (code === 'address_not_selected') return 'Vyberte adresu ze seznamu, spočítáme cenu.';
+    if (code === 'too_far') return 'Na tuto adresu nedoručujeme.';
+    if (code === 'voucher_not_supported') return 'Dárkový poukaz nelze zaplatit depozitem.';
+    return 'Depozit se teď nepodařilo načíst. Můžete zaplatit kartou.';
+  }
+
+  /* ---------- summary ---------- */
+  function renderSummary() {
+    var items = $('#npItems'), lines = $('#npLines');
+    if (!items) return;
+    var ps = products();
+    items.innerHTML = ps.map(function (p) {
+      var img = p.img ? String(p.img).replace(/"/g, '') : '';
+      return '<div class="np-item"><div class="im"' + (img ? ' style="background-image:url(\'' + esc(img) + '\')"' : '') + '></div><div class="nm">' + esc(decode(p.name)) + '<small>' + esc(pieces(p)) + ' ks</small></div><div class="pr">' + kc(p.amount) + '</div></div>';
+    }).join('');
+    var t = totals(), f = t.f, h = '';
+    h += '<div><span>Zboží</span><b>' + kc(t.raw) + '</b></div>';
+    if (t.disc > 0) h += '<div class="disc"><span>Sleva</span><b>−' + kc(t.disc) + '</b></div>';
+    if (S.mode === 'courier') h += '<div><span>Doručení kurýrem' + (f.extra ? ' (vč. příplatku za vzdálenost)' : '') + '</span><b>' + (f.need || f.empty ? 'od ' + kc(f.delivery) : kc(f.delivery)) + '</b></div>';
+    else h += '<div class="free"><span>Osobní odběr</span><b>Zdarma</b></div>';
+    h += '<div class="info" id="npSvc"><span>Servisní poplatek<i class="ti ti-info-circle"></i></span><b>' + kc(f.service) + '</b></div>';
+    lines.innerHTML = h;
+    $('#npTotal').textContent = kc(t.total);
+    var sp = $('#npSplit'), useDep = canDeposit() && S.dep.use && t.dep > 0;
+    if (useDep) {
+      sp.className = 'np-split on'; sp.innerHTML = '<div class="g"><span>Z depozitu</span><b>−' + kc(t.dep) + '</b></div><div><span>' + (t.card > 0 ? 'Kartou zaplatíte' : 'Kartou nic neplatíte') + '</span><b>' + kc(t.card) + '</b></div>';
+    } else sp.className = 'np-split';
+    var label = ctaLabel(t), arrow = ' <i class="ti ti-arrow-right"></i>';
+    $('#npCta').innerHTML = S.submitting ? '<span class="sp"></span>Zpracováváme…' : label + arrow;
+    $('#npBarBtn').innerHTML = S.submitting ? '<span class="sp"></span>' : label.replace(/ · .*$/, '') + arrow;
+    $('#npCta').disabled = $('#npBarBtn').disabled = S.submitting;
+    $('#npBarTot').textContent = kc(useDep ? t.card : t.total);
+    $('#npBarLbl').textContent = useDep ? (t.card > 0 ? 'Kartou zaplatíte' : 'Z depozitu') : 'Celkem';
+    if (useDep && t.card <= 0) $('#npBarTot').textContent = kc(t.total);
+  }
+  function ctaLabel(t) {
+    if (canDeposit() && S.dep.use && t.dep > 0 && t.card <= 0) return 'Zaplatit z depozitu · ' + kc(t.total);
+    if (S.pay === 'cash') return 'Odeslat objednávku';
+    return 'Pokračovat k platbě';
+  }
+  function refresh() { modePrice(); renderSummary(); updateSteps(); }
+
+  /* ---------- validation ---------- */
+  function validate() {
+    var bad = [], sec = {};
+    function need(k, msg, s) { setErr(k, msg); if (msg) { bad.push({ k: k, s: s }); sec[s] = 1; } }
+    var emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((S.email || '').trim());
+    need('name', S.name.trim() ? '' : 'Vyplňte prosím jméno.', 'c1');
+    need('last', S.last.trim() ? '' : 'Vyplňte prosím příjmení.', 'c1');
+    need('phone', phoneValid(S.phone) ? '' : 'Zadejte prosím telefon (9 číslic).', 'c1');
+    need('email', emailOk ? '' : 'Zadejte prosím platný e-mail.', 'c1');
+    var f = feeCalc();
+    if (S.mode === 'courier' && !S.gift) {
+      need('adres', S.adres.trim() ? (f.tooFar ? 'Na tuto adresu kurýrem nedoručujeme.' : (f.need ? 'Vyberte prosím adresu ze seznamu.' : (S.noNum ? 'Doplňte prosím číslo popisné: vyberte ze seznamu adresu s číslem.' : ''))) : 'Vyplňte prosím adresu.', 'c2');
+      need('city', S.city.trim() ? '' : 'Vyplňte prosím město.', 'c2');
+      need('psc', /^\d{3}\s?\d{2}$/.test(S.psc.trim()) ? '' : 'Zadejte prosím PSČ (5 číslic).', 'c2');
+    }
+    if (!S.gift) {
+      var dm = !S.date ? 'Vyberte datum.' : (dateReason(parseIso(S.date)) !== null ? 'Toto datum už není k dispozici.' : '');
+      $('#npDateErr').textContent = dm; $('#g_date').classList.toggle('bad', !!dm); if (dm) { bad.push({ k: 'date', s: 'c2', el: '#g_date' }); sec.c2 = 1; }
+      var tm = S.mode === 'pickup' ? (S.time ? '' : 'Vyberte čas.') : (S.slot && !slotReason(S.slot) ? '' : 'Vyberte dobu doručení.');
+      $('#npTimeErr').textContent = tm; $('#g_time').classList.toggle('bad', !!tm); if (tm) { bad.push({ k: 'time', s: 'c2', el: '#g_time' }); sec.c2 = 1; }
+    }
+    if (!S.same || S.gift) {
+      need('rname', S.rname.trim() ? '' : 'Vyplňte prosím jméno příjemce.', 'c3');
+      need('rlast', S.rlast.trim() || S.gift ? '' : 'Vyplňte prosím příjmení příjemce.', 'c3');
+      need('rphone', (S.gift && !/^(phone|whatsapp)$/.test(S.gift.channel)) || phoneValid(S.rphone) ? '' : 'Zadejte prosím telefon příjemce.', 'c3');
+    }
+    if (hasPostcard()) {
+      need('pcTo', S.pcTo.trim() ? '' : 'Napište prosím, pro koho pohlednice je.', 'c3');
+      need('pcText', S.pcText.trim() ? '' : 'Napište prosím text pohlednice.', 'c3');
+    }
+    if (!S.consent) { setErr('consent', 'x'); $('#npConsentL').classList.add('bad'); bad.push({ k: 'consent', s: 'c4', el: '#npConsentL' }); sec.c4 = 1; }
+    ['c1', 'c2', 'c3', 'c4'].forEach(function (id) { $('#' + id).classList.toggle('err', !!sec[id]); });
+    return bad;
+  }
+  function updateSteps() {
+    var ok = {
+      c1: S.name.trim() && S.last.trim() && phoneValid(S.phone) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((S.email || '').trim()),
+      c2: S.gift ? true : ((S.mode === 'pickup' || (S.adres.trim() && !feeCalc().need && !feeCalc().tooFar && !S.noNum && S.city.trim())) && S.date && (S.mode === 'pickup' ? S.time : S.slot)),
+      c3: S.same ? (S.name.trim() && S.last.trim() && phoneValid(S.phone)) : (S.rname.trim() && S.rlast.trim() && phoneValid(S.rphone)),
+      c4: S.consent
+    };
+    var prog = $$('#npProg i', ROOT);
+    ['c1', 'c2', 'c3', 'c4'].forEach(function (id, i) {
+      var done = !!ok[id], sec = $('#' + id); if (!sec) return;
+      sec.classList.toggle('done', done);
+      var num = $('.np-num', sec), want = done ? '1' : '0';
+      if (num && num.getAttribute('data-d') !== want) { num.setAttribute('data-d', want); num.innerHTML = done ? '<i class="ti ti-check"></i>' : id.charAt(1); }
+      if (prog[i]) prog[i].classList.toggle('on', done);
+    });
+  }
+
+  /* ---------- hand data to the real Tilda cart ---------- */
+  function setCart(name, val) {
+    var f = cartForm(); if (!f) return;
+    var el = f.querySelector('[name="' + name + '"]');
+    if (!el) { el = document.createElement('input'); el.type = 'hidden'; el.name = name; f.appendChild(el); }
+    el.value = val; if (el.type !== 'hidden') fire(el);
+  }
+  function setCartClick(name, valueMatch) {
+    var f = cartForm(); if (!f) return false;
+    var r = $$('input[name="' + name + '"]', f).filter(function (x) { return valueMatch(x.value); })[0];
+    if (!r) return false;
+    if (!r.checked) { var lab = r.closest('label'); (lab || r).click(); if (!r.checked) r.click(); }
+    return true;
+  }
+  function setCartCheck(name, on) {
+    var f = cartForm(); if (!f) return; var el = f.querySelector('input[type="checkbox"][name="' + name + '"]');
+    if (el && el.checked !== on) { el.checked = on; fire(el); }
+  }
+  function syncCartDelivery() {
+    var f = cartForm(); if (!f) return;
+    var fee = feeCalc();
+    $$('input[name="delivery"]', f).forEach(function (r) { if (/kur/i.test(r.value)) r.setAttribute('data-delivery-price', String(fee.fee)); });
+    var want = S.mode === 'courier' ? function (v) { return /kur/i.test(v); } : function (v) { return !/kur/i.test(v); };
+    setCartClick('delivery', want);
+    if (typeof window.tcart__updateDelivery === 'function') { try { window.tcart__updateDelivery(); } catch (e) {} }
+  }
+  function commitToCart() {
+    var f = cartForm(); if (!f) return false;
+    var g = S.gift;
+    setCart('name', S.name.trim()); setCart('last-name', S.last.trim()); setCart('phone', phoneCart(S.phone)); setCart('email', S.email.trim());
+    setCart('company-name', S.isCompany ? S.company.trim() : '');
+    var date = S.gift ? iso(addDays(new Date(), 1)) : S.date; setCart('date', dmy(date));
+    if (S.mode === 'pickup') { setCart('time', S.time || ''); }
+    else {
+      var te = cartForm().querySelector('[name="time"]'); if (te && te.value && te.value.indexOf('_') === -1) te.value = '';
+      var slot = S.gift ? (SLOTS.filter(function (s) { return !(AV.slots[date] && AV.slots[date][s]); })[0] || SLOTS[0]) : S.slot;
+      setCartClick('delivery-time', function (v) { return v === slot; });
+    }
+    var adres = g ? 'Adresu zadá příjemce' : (S.mode === 'courier' ? S.adres.trim() : ''), city = g ? 'Praha' : (S.mode === 'courier' ? S.city.trim() : ''), psc = g ? '110 00' : (S.mode === 'courier' ? S.psc.trim() : '');
+    setCart('adres', adres); setCart('city', city); setCart('psc', psc);
+    setCart('floor', S.mode === 'courier' && !g ? S.floor : ''); setCart('apartment-number', S.mode === 'courier' && !g ? S.apt : ''); setCart('intercom', S.mode === 'courier' && !g ? S.intercom : '');
+    var rn = S.same ? S.name : S.rname, rl = S.same ? S.last : S.rlast, rp = S.same ? S.phone : S.rphone;
+    if (g && !phoneValid(rp)) rp = S.phone;
+    setCart('recipients-name', rn.trim()); setCart('recipients-lastname', (rl || '').trim() || '-'); setCart('recipients-phone-number', phoneCart(rp));
+    setCartCheck('recipient-customer', !!S.same && !g);
+    setCart('comments', S.comment || ''); setCartCheck('personal-data', true);
+    setCart('recipient_lat', S.lat != null && !g ? S.lat : ''); setCart('recipient_lng', S.lng != null && !g ? S.lng : '');
+    var fee = feeCalc();
+    setCart('delivery_km', fee.km != null ? (Math.round(fee.km * 10) / 10).toString() : '');
+    setCart('delivery_fee_calc', S.mode === 'courier' ? (fee.tooFar ? 'too_far' : CFG.base + '+' + fee.extra + '+' + CFG.service + '=' + fee.fee) : '');
+    ['gift-no-address', 'gift-channel', 'gift-handle', 'gift-recipient-name', 'gift-sender-visible'].forEach(function (n) { var e = f.querySelector('[name="' + n + '"]'); if (e) e.remove(); });
+    if (g) { setCart('gift-no-address', 'yes'); setCart('gift-channel', g.channel); setCart('gift-handle', g.handle); setCart('gift-recipient-name', g.name); setCart('gift-sender-visible', g.visible ? 'yes' : 'no'); }
+    if (hasPostcard()) {
+      setCartClick('senders_name_postcard', function (v) { return S.pcSender === 'anon' ? /anonym/i.test(v) : /jmén|jmen|zákazn/i.test(v); });
+      setCart('recipients_name_postcard', S.pcTo.trim()); setCart('postcard_comment', S.pcText.trim());
+    }
+    syncCartDelivery();
+    var want = S.pay === 'cash' ? 'cash' : 'stripe';
+    var pr = $('.t-radio_payment[value="' + want + '"]', f) || $('input[name="paymentsystem"][value="' + want + '"]', f);
+    if (pr && !pr.checked) { (pr.closest('label') || pr).click(); if (!pr.checked) pr.click(); }
+    return true;
+  }
+
+  /* ---------- submit ---------- */
+  function setBusy(b) { S.submitting = b; renderSummary(); }
+  function submit() {
+    if (S.submitting) return;
+    var bad = validate();
+    if (bad.length) {
+      var first = bad[0]; var el = first.el ? $(first.el) : $('[data-k="' + first.k + '"]', ROOT);
+      (el || $('#' + first.s)).scrollIntoView({ behavior: 'smooth', block: 'center' });
+      var inp = el && $('input,textarea', el); if (inp) setTimeout(function () { try { inp.focus({ preventScroll: true }); } catch (e) {} }, 400);
+      toast('Zkontrolujte prosím zvýrazněná pole.', true);
+      return;
+    }
+    var t = totals();
+    var f = feeCalc(); if (S.mode === 'courier' && !S.gift && (f.need || f.tooFar)) { toast(f.tooFar ? 'Na tuto adresu nedoručujeme.' : 'Vyberte prosím adresu ze seznamu.', true); return; }
+    saveDraft();
+    if (canDeposit() && S.dep.use && t.dep > 0) return submitDeposit(t);
+    return submitTilda();
+  }
+  function tildaErrText() {
+    var root = cartRoot(); if (!root) return '';
+    var els = $$('.js-errorbox-all, .t-form__errorbox-text', root);
+    for (var i = 0; i < els.length; i++) { var t = String(els[i].textContent || '').replace(/\s+/g, ' ').trim(); if (t) return t; }
+    return '';
+  }
+  function clearTildaErr() {
+    var root = cartRoot(); if (!root) return;
+    $$('.js-errorbox-all', root).forEach(function (e) { e.style.display = 'none'; });
+    $$('.t-form__errorbox-text', root).forEach(function (e) { e.textContent = ''; });
+  }
+  function showAlert(text) {
+    var a = $('#npAlert'); if (!a) return;
+    var msg = text;
+    if (/измени|цена|price/i.test(text)) msg = 'U některé položky v košíku se změnila cena nebo dostupnost. Obnovte prosím stránku a přidejte zboží do košíku znovu.';
+    else if (/доставк|delivery/i.test(text)) msg = 'Vyberte prosím způsob doručení a zkuste to znovu.';
+    a.innerHTML = '<b>Objednávku se nepodařilo odeslat</b><span>' + esc(msg) + '</span><span class="sm">Pokud problém trvá, napište nám na support@vezminarin.cz nebo zavolejte +420 776 421 993.</span><button type="button" id="npReload">Obnovit stránku</button>';
+    a.hidden = false; a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    var b = $('#npReload'); if (b) b.addEventListener('click', function () { location.reload(); });
+  }
+  function watchTildaResult() {
+    var n = 0, iv = setInterval(function () {
+      n++;
+      var t = tildaErrText();
+      if (t) { clearInterval(iv); setBusy(false); showAlert(t); console.warn('tilda cart error:', t); return; }
+      if (n > 60) clearInterval(iv);
+    }, 250);
+  }
+  function submitTilda() {
+    setBusy(true);
+    if (!commitToCart()) { setBusy(false); return toast('Košík se nepodařilo načíst. Obnovte prosím stránku.', true); }
+    var btn = $('.t-submit', cartRoot());
+    if (!btn) { setBusy(false); return toast('Odeslání se nepodařilo. Obnovte prosím stránku.', true); }
+    var al = $('#npAlert'); if (al) al.hidden = true; clearTildaErr();
+    setTimeout(function () { btn.click(); watchTildaResult(); }, 200);
+    /* Tilda redirects to the payment page; if it stays (captcha, error), let the customer retry */
+    setTimeout(function () { if (S.submitting) setBusy(false); }, 12000);
+  }
+  function submitDeposit(t) {
+    var token = authToken(); if (!token) return toast('Přihlaste se prosím znovu.', true);
+    setBusy(true);
+    var prods = products().map(function (p) { return { uid: String(p.uid || p.lid || ''), quantity: pieces(p) }; });
+    var g = S.gift, date = g ? iso(addDays(new Date(), 1)) : S.date;
+    var rn = S.same ? S.name : S.rname, rl = S.same ? S.last : S.rlast, rp = S.same ? S.phone : S.rphone;
+    if (g && !phoneValid(rp)) rp = S.phone;
+    var form = {
+      name: S.name.trim(), 'last-name': S.last.trim(), phone: phoneCart(S.phone), email: S.email.trim(), 'company-name': S.isCompany ? S.company.trim() : '',
+      date: dmy(date), comments: S.comment || '', 'personal-data': 'yes',
+      'recipients-name': rn.trim(), 'recipients-lastname': (rl || '').trim() || '-', 'recipients-phone-number': phoneCart(rp), 'recipient-customer': S.same && !g ? 'yes' : '',
+      adres: g ? 'Adresu zadá příjemce' : (S.mode === 'courier' ? S.adres.trim() : ''), city: g ? 'Praha' : (S.mode === 'courier' ? S.city.trim() : ''), psc: g ? '110 00' : (S.mode === 'courier' ? S.psc.trim() : ''),
+      floor: S.mode === 'courier' && !g ? S.floor : '', 'apartment-number': S.mode === 'courier' && !g ? S.apt : '', intercom: S.mode === 'courier' && !g ? S.intercom : '',
+      recipient_lat: S.lat != null && !g ? String(S.lat) : '', recipient_lng: S.lng != null && !g ? String(S.lng) : ''
+    };
+    if (S.mode === 'pickup') form.time = S.time || '';
+    else form['delivery-time'] = g ? (SLOTS.filter(function (s) { return !(AV.slots[date] && AV.slots[date][s]); })[0] || SLOTS[0]) : S.slot;
+    if (g) { form['gift-no-address'] = 'yes'; form['gift-channel'] = g.channel; form['gift-handle'] = g.handle; form['gift-recipient-name'] = g.name; form['gift-sender-visible'] = g.visible ? 'yes' : 'no'; }
+    if (hasPostcard()) { form.senders_name_postcard = S.pcSender === 'anon' ? 'Poslat anonymně' : 'Podepsat mým jménem'; form.recipients_name_postcard = S.pcTo.trim(); form.postcard_comment = S.pcText.trim(); }
+    var key = 'np' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+    try { var old = sessionStorage.getItem('npay_key'); if (old && /^np[a-z0-9]{16,}/.test(old) && sessionStorage.getItem('npay_key_sig') === JSON.stringify([form.date, prods])) key = old; sessionStorage.setItem('npay_key', key); sessionStorage.setItem('npay_key_sig', JSON.stringify([form.date, prods])); } catch (e) {}
+    fn('checkout-order', { action: 'create', token: token, checkout_key: key, use_deposit: true, delivery: S.mode, form: form, products: prods }).then(function (r) {
+      if (r && r.ok && r.url) { try { sessionStorage.removeItem('npay_key'); sessionStorage.removeItem(DRAFT_KEY); } catch (e) {} location.href = r.url; return; }
+      setBusy(false);
+      var code = String(r && r.error || '');
+      var msg = code === 'too_far' ? 'Na tuto adresu nedoručujeme.' : code === 'address_not_selected' ? 'Vyberte prosím adresu ze seznamu.' :
+        code.indexOf('product_unavailable') === 0 ? 'Některou položku v košíku nelze zaplatit depozitem. Zaplaťte prosím kartou.' :
+        code === 'no_deposit' ? 'Na depozitu není dost prostředků.' : code === 'invalid_token' ? 'Přihlášení vypršelo. Přihlaste se prosím znovu.' : 'Objednávku se nepodařilo odeslat. Zkuste to prosím znovu nebo zaplaťte kartou.';
+      toast(msg, true, 5200);
+    }).catch(function () { setBusy(false); toast('Chyba spojení. Zkuste to prosím znovu.', true); });
+  }
+
+  /* ---------- prefill ---------- */
+  function prefill() {
+    var pr = tildaProfile(), token = authToken();
+    S.token = token; S.loggedIn = !!(token && pr);
+    if (!pr) return;
+    var full = String(pr.name || '').trim().split(/\s+/);
+    if (!S.name && full[0]) S.name = cleanName(full[0]);
+    if (!S.last && full.slice(1).join(' ')) S.last = cleanName(full.slice(1).join(' '));
+    if (!S.email && (pr.login || pr.email)) S.email = pr.login || pr.email;
+    if (!S.phone && pr.phone) S.phone = phoneShow(pr.phone);
+  }
+  function loadPoints() {
+    var token = authToken(); if (!token) return;
+    fn('member-data', { token: token }).then(function (d) { if (d && !d.error && d.balance != null) { S.pts.balance = Number(d.balance) || 0; renderPromo(); } }).catch(function () {});
+    fn('customer-deposit', { action: 'get', token: token }).then(function (d) { if (d && d.balance != null) { S.dep.balance = Math.max(0, Number(d.balance) || 0); renderDep(); renderPromo(); renderPays(); refresh(); quoteSoon(); } }).catch(function () {});
+  }
+
+  /* ---------- delivery-name fix (phones): Tilda leaves tcart.delivery.name empty in full-screen mode ---------- */
+  function installDeliveryFix() {
+    if (window.__narinDelFix) return;
+    function fixNow() { try { var d = tc().delivery; if (d && !d.name) { var r = $('.t706 .t-form .t-radio__wrapper-delivery input:checked'); if (r && r.value) d.name = String(r.value).split('=')[0].trim(); } } catch (e) {} }
+    function wrap() {
+      if (window.__narinDelFix) return true;
+      if (typeof window.tcart__processDelivery !== 'function') return false;
+      var orig = window.tcart__processDelivery;
+      window.tcart__processDelivery = function (el) { var ok = orig.apply(this, arguments); try { if (ok && el && window.tcart && window.tcart.delivery && !window.tcart.delivery.name) window.tcart.delivery.name = String(el.value || '').split('=')[0].trim(); } catch (e) {} return ok; };
+      window.__narinDelFix = 1; fixNow(); return true;
+    }
+    if (!wrap()) { var n = 0, t = setInterval(function () { if (wrap() || ++n > 200) clearInterval(t); }, 100); }
+    document.addEventListener('click', fixNow, true); document.addEventListener('change', function () { setTimeout(fixNow, 0); }, true);
+  }
+
+  /* ---------- boot ---------- */
+  function revealOnScroll() {
+    ROOT.classList.add('js');
+    var els = $$('.np-sec, .np-sum', ROOT);
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce || !('IntersectionObserver' in window)) { els.forEach(function (e) { e.classList.add('in'); }); return; }
+    var io = new IntersectionObserver(function (en) { en.forEach(function (x) { if (x.isIntersecting) { x.target.classList.add('in'); io.unobserve(x.target); } }); }, { threshold: 0.08 });
+    els.forEach(function (e, i) { e.style.transitionDelay = Math.min(i, 3) * 60 + 'ms'; io.observe(e); });
+    setTimeout(function () { els.forEach(function (e) { e.classList.add('in'); }); }, 2500);
+  }
+  function showEmpty() {
+    ROOT.innerHTML = '<div class="np-empty"><h2>Váš košík je prázdný</h2><p>Vyberte si květiny v našem katalogu a vraťte se k objednávce.</p><a href="/">Do katalogu</a></div>';
+  }
+  function boot() {
+    ROOT = document.getElementById('npay'); if (!ROOT) return;
+    try { var m = document.createElement('meta'); m.name = 'robots'; m.content = 'noindex'; document.head.appendChild(m); } catch (e) {}
+    ROOT.innerHTML = '<div class="np-skel"></div><div class="np-skel"></div>';
+    installDeliveryFix();
+    waitFor(function () { return cartForm() && window.tcart && typeof window.tcart__updateDelivery === 'function'; }, 20000).then(function (ok) {
+      if (!ok) { ROOT.innerHTML = '<div class="np-empty"><h2>Stránku se nepodařilo načíst</h2><p>Obnovte ji prosím, případně nám napište na support@vezminarin.cz.</p></div>'; return; }
+      if (!products().length) return showEmpty();
+      loadDraft(); prefill();
+      var now = new Date(); cal.y = now.getFullYear(); cal.m = now.getMonth();
+      ROOT.innerHTML = template();
+      bindFields(); bindWhen(); bindWho();
+      $('#npCta').addEventListener('click', submit); $('#npBarBtn').addEventListener('click', submit);
+      ROOT.addEventListener('click', function (e) { if (e.target.closest('#npSvc')) toast('Servisní poplatek zahrnuje přípravu a zabalení kytice, zpracování objednávky a daně.', false, 6000); });
+      if (S.date && dateReason(parseIso(S.date)) !== null && AV.loaded) S.date = null;
+      var fa = !S.date && firstAvailable(); if (fa) { S.date = iso(fa); cal.y = fa.getFullYear(); cal.m = fa.getMonth(); }
+      else if (S.date) { var sd = parseIso(S.date); cal.y = sd.getFullYear(); cal.m = sd.getMonth(); }
+      renderLogin(); renderModes(); renderCalendar(); renderChips(); renderSlots(); renderRecipient(); renderDep(); renderPromo(); renderPays();
+      if (S.same) syncSame();
+      renderWho(); revealOnScroll();
+      refresh(); initPlaces(); onAddress();
+      loadAvail().then(function () { var fa2 = S.date && dateReason(parseIso(S.date)) === null ? null : firstAvailable(); if (fa2) { S.date = iso(fa2); cal.y = fa2.getFullYear(); cal.m = fa2.getMonth(); } renderCalendar(); renderChips(); renderSlots(); refresh(); });
+      loadRecipients(); loadPoints(); syncCartDelivery();
+      /* keep summary and cart totals in step with Tilda */
+      var last = '';
+      setInterval(function () { var sig = JSON.stringify([tc().prodamount, tc().prodamount_withdiscount, tc().promocode && tc().promocode.promocode, products().length]); if (sig !== last) { last = sig; renderRecipient(); recomputeSpecial(); renderDep(); renderPromo(); renderPays(); refresh(); quoteSoon(); } }, 800);
+      var hb = $('#npBack'); if (hb) hb.addEventListener('click', function (e) { if (history.length > 1 && document.referrer && document.referrer.indexOf(location.host) > -1) { e.preventDefault(); history.back(); } });
+      if (window.members && typeof members.hideuserbar === 'function') { try { members.hideuserbar(); } catch (e) {} }
+    });
+  }
+  window.__npay = { S: S, AV: AV, validate: validate, commit: commitToCart, totals: totals, feeCalc: feeCalc, refresh: refresh, renderDep: renderDep, renderPromo: renderPromo, renderPays: renderPays, renderModes: renderModes };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+})();
