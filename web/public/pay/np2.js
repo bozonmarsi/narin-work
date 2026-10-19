@@ -717,13 +717,13 @@
   }
   var TIERS = [
     { name: 'Klient', label: 'Sapphire', from: 0, cb: 0.5, color: '#186ce0', img: 'https://static.tildacdn.com/tild6237-3062-4338-b234-373762313165/E3941E6E-7AD6-4B84-B.webp' },
-    { name: 'Silver', label: 'Silver', from: 300, cb: 1, color: '#8d97a3', img: 'https://static.tildacdn.com/tild3339-3738-4961-b133-666235386264/E5D597BE-7B84-4E59-A.webp' },
+    { name: 'Silver', label: 'Silver', from: 300, cb: 1, color: '#8d97a3', img: 'https://static.tildacdn.com/tild6136-3638-4164-b931-313537363164/21443537-178F-45E1-B.webp' },
     { name: 'Gold', label: 'Gold', from: 600, cb: 1.5, color: '#d4a017', img: 'https://static.tildacdn.com/tild3663-3137-4866-b164-396435303064/95B11AD8-8D5F-4112-B.webp' },
-    { name: 'Platinum', label: 'Platinum', from: 900, cb: 2, color: '#8b5fbf', img: 'https://static.tildacdn.com/tild3164-3637-4465-a366-326439393231/IMG_8838.PNG' }
+    { name: 'Platinum', label: 'Platinum', from: 900, cb: 2, color: '#8b5fbf', img: 'https://static.tildacdn.com/tild3339-3738-4961-b133-666235386264/E5D597BE-7B84-4E59-A.webp' }
   ];
   function tierIdx(earned) { var i = 0; TIERS.forEach(function (t, k) { if (earned >= t.from) i = k; }); return i; }
   function loyCard(t, badge, label, big, num) {
-    return '<div class="np-lcard" style="background-image:url(' + t.img + ')"><span class="sheen"></span><div class="in"><div class="tp"><span class="tag" style="background:' + t.color + '">' + esc(badge) + '</span></div><div class="mid"><div class="lb">' + esc(label) + '</div><div class="bl">' + big + '</div></div><div class="bt"><span class="nr">' + esc(num) + '</span><span class="br">NARIN</span></div></div></div>';
+    return '<div class="np-lcard" style="background-image:url(' + t.img + ')"><span class="sheen"></span><div class="in"><div class="tp">' + (badge ? '<span class="tag" style="background:' + t.color + '">' + esc(badge) + '</span>' : '') + '</div><div class="mid"><div class="lb">' + esc(label) + '</div><div class="bl">' + big + '</div></div><div class="bt"><span class="nr">' + esc(num) + '</span><span class="br">NARIN</span></div></div></div>';
   }
   function loyBlock(depOn, noRedeem) {
     if (!S.loggedIn) {
@@ -736,7 +736,7 @@
     var tr = TIERS[ti], nx = TIERS[ti + 1];
     var bal = S.pts.balance, tt = totals(), gain = Math.floor(tt.total * tr.cb / 100);
     var num = S.pts.ma ? '●● ●● ●● ' + String(S.pts.ma).slice(-4) : '●● ●● ●● ••••';
-    var h = '<div class="np-loy">' + loyCard(tr, tr.label, 'Zůstatek', bal == null ? '…' : bal + ' <small>b.</small>', num) + '<div class="sd">';
+    var h = '<div class="np-loy">' + loyCard(tr, '', 'Věrnostní karta', esc(tr.label), num) + '<div class="sd">';
     h += '<div class="gn"><i class="ti ti-sparkles"></i><span>Z této objednávky získáte <b>+' + gain + ' b.</b> <small>(' + String(tr.cb).replace('.', ',') + ' % zpět)</small></span></div>';
     if (nx) {
       var need = Math.max(0, nx.from - earned), pct = Math.max(4, Math.min(100, Math.round((earned - tr.from) / (nx.from - tr.from) * 100)));
@@ -747,7 +747,7 @@
     if (noRedeem) { /* points or code already applied */ }
     else if (bal != null && maxAllowed >= 100) {
       if (S.pts.sel > maxAllowed) S.pts.sel = maxAllowed; if (S.pts.sel < 100) S.pts.sel = 100;
-      h += '<div class="rd"><div class="rl">Uplatnit body <small>1 b. = 1 Kč, až 30 % zboží</small></div><div class="stepper"><button type="button" class="s" id="npPm" aria-label="Méně">−</button><span class="v" id="npPv">' + S.pts.sel + ' b.</span><button type="button" class="s" id="npPp" aria-label="Více">+</button><button type="button" class="np-btn2 go" id="npPtsGo"' + (S.pts.busy ? ' disabled' : '') + '>' + (S.pts.busy ? '…' : 'Uplatnit') + '</button></div><div class="np-err-box" id="npPtsErr"></div>' + (depOn ? '<div class="note">Po uplatnění bodů se depozit nepoužije.</div>' : '') + '</div>';
+      h += '<div class="rd"><div class="rl">Uplatnit body <small>máte ' + bal + ' b., 1 b. = 1 Kč</small></div><div class="stepper"><button type="button" class="s" id="npPm" aria-label="Méně">−</button><span class="v" id="npPv">' + S.pts.sel + ' b.</span><button type="button" class="s" id="npPp" aria-label="Více">+</button><button type="button" class="np-btn2 go" id="npPtsGo"' + (S.pts.busy ? ' disabled' : '') + '>' + (S.pts.busy ? '…' : 'Uplatnit') + '</button></div><div class="np-err-box" id="npPtsErr"></div>' + (depOn ? '<div class="note">Po uplatnění bodů se depozit nepoužije.</div>' : '') + '</div>';
     } else if (bal != null) {
       h += '<div class="rd"><div class="note">' + (bal < 100 ? 'Body lze uplatnit od 100 b. Každá objednávka vám je přidá.' : 'Body lze uplatnit u zboží od ' + kc(334) + '. Přidejte do košíku další květiny.') + '</div></div>';
     }
