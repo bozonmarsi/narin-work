@@ -687,3 +687,18 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
 .np-loy .stepper .lim { font-size: 13px; color: var(--ink2); line-height: 1.35; flex: 1; }
 .np-loy .stepper button.s:disabled { opacity: .35; cursor: default; }
 .np-loy .lim2 { font-size: 12px; color: var(--mut); margin-top: 5px; }
+
+/* apply animation */
+.np-fly { position: fixed; z-index: 100002; pointer-events: none; padding: 7px 13px; border-radius: 10px; background: #02e590; color: #06301f; font: 700 15px 'Rubik', sans-serif; box-shadow: 0 10px 22px -8px rgba(2,160,100,.7); white-space: nowrap; }
+.np-spark { position: fixed; z-index: 100002; pointer-events: none; width: 7px; height: 7px; border-radius: 50%; }
+.np-flash { animation: npflash .95s ease-out; border-radius: 8px; }
+@keyframes npflash { 0% { background: rgba(2,229,144,.38); transform: scale(1.07); } 100% { background: rgba(2,229,144,0); transform: none; } }
+.np-lines .disc.new { animation: npdisc .7s cubic-bezier(.2,.8,.3,1); }
+@keyframes npdisc { 0% { opacity: 0; transform: translateX(-14px); background: rgba(2,229,144,.35); } 60% { opacity: 1; } 100% { transform: none; background: rgba(2,229,144,0); } }
+.np-done { animation: npdone .55s cubic-bezier(.2,.9,.3,1.2); }
+.np-done .ic { animation: npcheck .6s cubic-bezier(.3,1.7,.5,1) .15s both; }
+@keyframes npdone { 0% { opacity: 0; transform: translateY(8px) scale(.97); } 100% { opacity: 1; transform: none; } }
+@keyframes npcheck { 0% { transform: scale(0) rotate(-40deg); } 100% { transform: none; } }
+.np-lcard.pulse { animation: nppulse .7s cubic-bezier(.3,1.6,.5,1); }
+.np-lcard.pulse .sheen { animation-duration: 1.1s; animation-iteration-count: 1; }
+@keyframes nppulse { 0% { transform: scale(1); } 35% { transform: scale(1.06) rotate(-1.2deg); } 100% { transform: none; } }

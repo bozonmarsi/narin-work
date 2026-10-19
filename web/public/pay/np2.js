@@ -23,6 +23,61 @@
   function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function kc(n) { return String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0') + '\u00a0Kč'; }
+  function reduceMotion() { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+  /* money that counts up/down instead of jumping */
+  function setMoney(el, val) {
+    if (!el) return;
+    var to = Math.round(Number(val) || 0), from = el.__v;
+    el.__v = to;
+    if (from == null || from === to || reduceMotion()) { el.textContent = kc(to); return; }
+    var delay = S.tweenDelay || 0;
+    cancelAnimationFrame(el.__raf); clearTimeout(el.__to);
+    el.__to = setTimeout(function () {
+      var t0 = performance.now(), dur = 700;
+      el.classList.remove('np-flash'); void el.offsetWidth; el.classList.add('np-flash');
+      (function step(now) {
+        var p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+        el.textContent = kc(from + (to - from) * e);
+        if (p < 1) el.__raf = requestAnimationFrame(step); else el.textContent = kc(to);
+      })(t0);
+    }, delay);
+  }
+  function inView(r) { return r.width > 0 && r.top >= 0 && r.bottom <= (window.innerHeight || 800); }
+  function totalTarget() {
+    var a = $('#npTotal'), b = $('#npBarTot');
+    if (a && inView(a.getBoundingClientRect())) return a;
+    if (b && b.getBoundingClientRect().width > 0) return b;
+    return a;
+  }
+  /* small reward: green chip flies from the button to the total, a few sparks, the card bounces */
+  function celebrate(from, text) {
+    if (reduceMotion() || !from || !ROOT) return;
+    var tgt = totalTarget(); if (!tgt || !tgt.getBoundingClientRect) return;
+    var tr = tgt.getBoundingClientRect(), x0 = from.left + from.width / 2, y0 = from.top + from.height / 2, x1 = tr.left + tr.width / 2, y1 = tr.top + tr.height / 2;
+    var dx = x1 - x0, dy = y1 - y0;
+    try {
+      var chip = document.createElement('div'); chip.className = 'np-fly'; chip.textContent = text; chip.style.left = x0 + 'px'; chip.style.top = y0 + 'px';
+      ROOT.appendChild(chip);
+      var an = chip.animate([
+        { transform: 'translate(-50%,-50%) scale(.5)', opacity: 0 },
+        { transform: 'translate(-50%,-50%) scale(1.12)', opacity: 1, offset: .16 },
+        { transform: 'translate(calc(-50% + ' + (dx * .45) + 'px), calc(-50% + ' + (dy * .45 - 46) + 'px)) scale(1)', opacity: 1, offset: .55 },
+        { transform: 'translate(calc(-50% + ' + dx + 'px), calc(-50% + ' + dy + 'px)) scale(.7)', opacity: 0 }
+      ], { duration: 900, easing: 'cubic-bezier(.4,0,.2,1)' });
+      an.onfinish = function () { if (chip.parentNode) chip.parentNode.removeChild(chip); };
+      var cols = ['#02e590', '#ffd56b', '#186ce0', '#02e590', '#ffd56b', '#ff2a20', '#186ce0', '#02e590'];
+      for (var i = 0; i < 8; i++) {
+        var d = document.createElement('i'); d.className = 'np-spark'; d.style.left = x0 + 'px'; d.style.top = y0 + 'px'; d.style.background = cols[i];
+        ROOT.appendChild(d);
+        var ang = (Math.PI * 2 * i) / 8 + .3, rad = 26 + (i % 3) * 10;
+        (function (dd) {
+          var a2 = dd.animate([{ transform: 'translate(-50%,-50%) scale(1)', opacity: 1 }, { transform: 'translate(calc(-50% + ' + Math.cos(ang) * rad + 'px), calc(-50% + ' + Math.sin(ang) * rad + 'px)) scale(0)', opacity: 0 }], { duration: 600, easing: 'cubic-bezier(.2,.7,.3,1)' });
+          a2.onfinish = function () { if (dd.parentNode) dd.parentNode.removeChild(dd); };
+        })(d);
+      }
+    } catch (e) {}
+    var c = $('.np-lcard'); if (c) { c.classList.remove('pulse'); void c.offsetWidth; c.classList.add('pulse'); }
+  }
   function decode(s) { var t = document.createElement('textarea'); t.innerHTML = s || ''; return t.value; }
   function pad(n) { return n < 10 ? '0' + n : '' + n; }
   function iso(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
@@ -805,22 +860,24 @@
   }
   function applyPromo() {
     var code = (S.promo.code || '').trim(); if (!code) return promoErr('Napište prosím slevový kód.');
+    var pgo = $('#npPromoGo'), pRect = pgo ? pgo.getBoundingClientRect() : null;
     if (S.promo.busy) return; S.promo.busy = true; renderPromo();
     tildaPromo(code).then(function (r) {
       S.promo.busy = false;
-      if (r.ok) { S.dep.use = false; syncCartDelivery(); renderDep(); renderPromo(); renderPays(); refresh(); toast('Slevový kód byl uplatněn.'); }
+      if (r.ok) { S.dep.use = false; S.tweenDelay = 420; syncCartDelivery(); renderDep(); renderPromo(); renderPays(); refresh(); S.tweenDelay = 0; celebrate(pRect, '−' + kc(discountSum())); toast('Slevový kód byl uplatněn.'); }
       else { renderPromo(); promoErr('Slevový kód nebyl nalezen.'); }
     });
   }
   function applyPoints() {
     var token = authToken(); if (!token) return promoErr('Přihlaste se prosím.', true);
+    var goBtn = $('#npPtsGo'), fromRect = goBtn ? goBtn.getBoundingClientRect() : null;
     if (S.pts.busy) return; S.pts.busy = true; renderPromo();
     var cartTotal = Math.round(goodsNet() + feeCalc().fee);
     fn('tilda-webhook', { action: 'get_promo', token: token, amount: S.pts.sel, total_sum: cartTotal, check_only: true }).then(function (r) {
       if (!r || r.status !== 'success') { S.pts.busy = false; renderPromo(); return promoErr((r && r.message) || 'Chyba.', true); }
       return tildaPromo('Uplatněno' + S.pts.sel + 'bodů').then(function (x) {
         S.pts.busy = false;
-        if (x.ok) { S.pts.applied = S.pts.sel; S.dep.use = false; if (S.pts.balance != null) S.pts.balance -= S.pts.sel; syncCartDelivery(); renderDep(); renderPromo(); renderPays(); refresh(); toast('Body byly uplatněny.'); }
+        if (x.ok) { S.pts.applied = S.pts.sel; S.dep.use = false; if (S.pts.balance != null) S.pts.balance -= S.pts.sel; S.tweenDelay = 420; syncCartDelivery(); renderDep(); renderPromo(); renderPays(); refresh(); S.tweenDelay = 0; celebrate(fromRect, '−' + kc(S.pts.applied)); toast('Body byly uplatněny.'); }
         else { renderPromo(); promoErr('Body se nepodařilo uplatnit, zkuste to prosím znovu.', true); }
       });
     }).catch(function () { S.pts.busy = false; renderPromo(); promoErr('Chyba spojení.', true); });
@@ -870,12 +927,13 @@
     }).join('');
     var t = totals(), f = t.f, h = '';
     h += '<div><span>Zboží</span><b>' + kc(t.raw) + '</b></div>';
-    if (t.disc > 0) h += '<div class="disc"><span>Sleva</span><b>−' + kc(t.disc) + '</b></div>';
+    if (t.disc > 0) h += '<div class="disc' + (t.disc > (S.prevDisc || 0) && !reduceMotion() ? ' new' : '') + '"><span>Sleva</span><b>−' + kc(t.disc) + '</b></div>';
+    S.prevDisc = t.disc;
     if (S.mode === 'courier') h += '<div><span>Doručení kurýrem' + (f.extra ? ' (vč. příplatku za vzdálenost)' : '') + '</span><b>' + (f.need || f.empty ? 'od ' + kc(f.delivery) : kc(f.delivery)) + '</b></div>';
     else h += '<div class="free"><span>Osobní odběr</span><b>Zdarma</b></div>';
     h += '<div class="info" id="npSvc"><span>Servisní poplatek<i class="ti ti-info-circle"></i></span><b>' + kc(f.service) + '</b></div>';
     lines.innerHTML = h;
-    $('#npTotal').textContent = kc(t.total);
+    setMoney($('#npTotal'), t.total);
     var sp = $('#npSplit'), useDep = canDeposit() && S.dep.use && t.dep > 0;
     if (useDep) {
       sp.className = 'np-split on'; sp.innerHTML = '<div class="g"><span>Z depozitu</span><b>−' + kc(t.dep) + '</b></div><div><span>' + (t.card > 0 ? 'Kartou zaplatíte' : 'Kartou nic neplatíte') + '</span><b>' + kc(t.card) + '</b></div>';
@@ -884,9 +942,9 @@
     $('#npCta').innerHTML = S.submitting ? '<span class="sp"></span>Zpracováváme…' : label + arrow;
     $('#npBarBtn').innerHTML = S.submitting ? '<span class="sp"></span>' : label.replace(/ · .*$/, '') + arrow;
     $('#npCta').disabled = $('#npBarBtn').disabled = S.submitting;
-    $('#npBarTot').textContent = kc(useDep ? t.card : t.total);
+    setMoney($('#npBarTot'), useDep ? t.card : t.total);
     $('#npBarLbl').textContent = useDep ? (t.card > 0 ? 'Kartou zaplatíte' : 'Z depozitu') : 'Celkem';
-    if (useDep && t.card <= 0) $('#npBarTot').textContent = kc(t.total);
+    if (useDep && t.card <= 0) setMoney($('#npBarTot'), t.total);
   }
   function ctaLabel(t) {
     if (canDeposit() && S.dep.use && t.dep > 0 && t.card <= 0) return 'Zaplatit z depozitu · ' + kc(t.total);
