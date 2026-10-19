@@ -675,3 +675,11 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
   .np-loy .rd { grid-column: 1 / -1; }
   .np-loy .pg { align-self: start; }
 }
+@media (max-width: 600px) {
+  .np-loy { grid-template-columns: 150px minmax(0, 1fr); }
+  .np-lcard .nr { display: none; }
+  .np-lcard .tp { position: absolute; top: 8px; right: 8px; }
+  .np-lcard .mid { justify-content: flex-end; padding-bottom: 2px; }
+  .np-lcard .bt { position: absolute; left: 10px; bottom: 7px; }
+  .np-lcard .bl { font-size: 20px; }
+}
