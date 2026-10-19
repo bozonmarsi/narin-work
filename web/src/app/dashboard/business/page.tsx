@@ -200,6 +200,8 @@ export default function BusinessPage() {
   const [invoiceTo, setInvoiceTo] = useState("");
   const [invoiceSubmitting, setInvoiceSubmitting] = useState(false);
   const [invoiceError, setInvoiceError] = useState<string | null>(null);
+  const [invoiceInfo, setInvoiceInfo] = useState<string | null>(null);
+  const [invoiceAlreadyPaid, setInvoiceAlreadyPaid] = useState(false);
 
   async function loadPendingRequests() {
     const supabase = createClient();
@@ -544,6 +546,68 @@ export default function BusinessPage() {
     await loadDetail(selected);
   }
 
+  // Jedno tlacitko: vytvori fakturu za obdobi, prideli cislo, ZOBRAZI JI KLIENTOVI V KABINETU
+  // (stav "sent"/"paid" misto draft) a posle PDF e-mailem na kontakt firmy.
+  async function issueAndSendInvoice() {
+    if (!selected || !invoiceFrom || !invoiceTo) {
+      setInvoiceError("Укажите период");
+      return;
+    }
+    setInvoiceSubmitting(true);
+    setInvoiceError(null);
+    setInvoiceInfo(null);
+    const supabase = createClient();
+    const end = new Date(`${invoiceTo}T00:00:00Z`);
+    end.setUTCDate(end.getUTCDate() + 1);
+    const { data: periodOrders, error: ordersErr } = await supabase
+      .from("tilda_orders")
+      .select("order_total")
+      .eq("company_id", selected.id)
+      .eq("status", "delivered")
+      .gte("delivery_date", invoiceFrom)
+      .lt("delivery_date", end.toISOString().slice(0, 10));
+    if (ordersErr) {
+      setInvoiceError(ordersErr.message);
+      setInvoiceSubmitting(false);
+      return;
+    }
+    if (!periodOrders || periodOrders.length === 0) {
+      setInvoiceError("За этот период нет доставленных заказов этой компании.");
+      setInvoiceSubmitting(false);
+      return;
+    }
+    const total = periodOrders.reduce((sum, o) => sum + (o.order_total ?? 0), 0);
+    const nowIso = new Date().toISOString();
+    const { data: created, error } = await supabase
+      .from("company_invoices")
+      .insert({
+        company_id: selected.id,
+        period_start: invoiceFrom,
+        period_end: invoiceTo,
+        total_amount: total,
+        status: invoiceAlreadyPaid ? "paid" : "sent",
+        paid_at: invoiceAlreadyPaid ? nowIso : null,
+      })
+      .select("id, invoice_number, period_start, period_end, total_amount, status, due_date, paid_at, issued_at")
+      .single();
+    if (error || !created) {
+      setInvoiceError(error?.message ?? "Не удалось создать счёт");
+      setInvoiceSubmitting(false);
+      return;
+    }
+    // sendInvoiceByEmail: prideli cislo faktury + splatnost a odesle PDF
+    const sent = await sendInvoiceByEmail(created as InvoiceRow);
+    setInvoiceFrom("");
+    setInvoiceTo("");
+    setInvoiceSubmitting(false);
+    await loadDetail(selected);
+    setInvoiceInfo(
+      sent
+        ? `Счёт выставлен: клиент видит его в кабинете, PDF отправлен на ${selected.contact_email}.`
+        : "Счёт выставлен и виден клиенту в кабинете, но письмо не отправилось (см. ошибку выше). Можно нажать «Отправить на email» у счёта."
+    );
+  }
+
   // Objednavky obdobi faktury primo z DB: dodani je casove razitko (napr. "2026-03-24 00:00:00+00"),
   // porovnani retezcem s "2026-03-24" vyrazovalo posledni den obdobi a tim i faktury za jediny den.
   // Seznam "Posledni objednavky" navic ukazuje jen 30 kusu, proto se nacitaji znovu.
@@ -663,8 +727,8 @@ export default function BusinessPage() {
   const [sendingInvoiceId, setSendingInvoiceId] = useState<string | null>(null);
   const [sendInvoiceError, setSendInvoiceError] = useState<string | null>(null);
 
-  async function sendInvoiceByEmail(inv: InvoiceRow) {
-    if (!selected) return;
+  async function sendInvoiceByEmail(inv: InvoiceRow): Promise<boolean> {
+    if (!selected) return false;
     setSendingInvoiceId(inv.id);
     setSendInvoiceError(null);
     try {
@@ -676,8 +740,10 @@ export default function BusinessPage() {
       await sendEmail(selected.contact_email, `Faktura č. ${number} — NARIN`, wrapBusinessEmail(bodyText), [{ base64, filename }]);
       if (!inv.invoice_number) await loadDetail(selected); // подтянуть присвоенный номер
       if (inv.status === "draft") await setInvoiceStatus(inv.id, "sent");
+      return true;
     } catch (err) {
       setSendInvoiceError(err instanceof Error ? err.message : "Не удалось отправить");
+      return false;
     } finally {
       setSendingInvoiceId(null);
     }
@@ -1274,9 +1340,25 @@ export default function BusinessPage() {
                     disabled={invoiceSubmitting}
                     className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
                   >
-                    Сгенерировать счёт за период
+                    Только черновик
                   </button>
+                  <button
+                    onClick={issueAndSendInvoice}
+                    disabled={invoiceSubmitting}
+                    className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+                    title="Создаёт счёт за период, присваивает номер, показывает его клиенту в кабинете и отправляет PDF на email компании"
+                  >
+                    {invoiceSubmitting ? "Выставляем…" : "Выставить и отправить клиенту"}
+                  </button>
+                  <label className="flex items-center gap-2 pb-1.5 text-sm text-zinc-600 dark:text-zinc-300">
+                    <input type="checkbox" checked={invoiceAlreadyPaid} onChange={(e) => setInvoiceAlreadyPaid(e.target.checked)} />
+                    Заказы уже оплачены (счёт со статусом «Оплачен»)
+                  </label>
                 </div>
+                <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
+                  «Выставить и отправить» сразу показывает счёт клиенту в кабинете и шлёт PDF на email компании. «Только черновик» ничего клиенту не показывает.
+                </p>
+                {invoiceInfo && <p className="mt-2 text-sm text-green-700 dark:text-green-400">{invoiceInfo}</p>}
                 {invoiceError && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{invoiceError}</p>}
               </div>
             </div>
