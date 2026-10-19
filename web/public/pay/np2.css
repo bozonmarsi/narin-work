@@ -601,3 +601,7 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
   .np-f label.l { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .np-in { padding: 0 12px; }
 }
+.np-slots { grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.np-slot { padding: 8px 2px 7px; }
+.np-slot b { font-size: 14.5px; letter-spacing: -.01em; }
+.np-slot span { font-size: 10.5px; }
