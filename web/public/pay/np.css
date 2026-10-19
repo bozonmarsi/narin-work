@@ -26,8 +26,8 @@ body { margin: 0; }
 /* stepper */
 .np-steps { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px 0 14px; position: sticky; top: 0; z-index: 20; background: linear-gradient(#f7fbfc 80%, rgba(247,251,252,0)); }
 .np-steps::-webkit-scrollbar { display: none; }
-.np-step { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 14px 0 8px; border-radius: 999px; background: #fff; border: 1px solid var(--line); color: var(--ink2); font-size: 13.5px; font-weight: 500; text-decoration: none; cursor: pointer; }
-.np-step i { font-style: normal; width: 22px; height: 22px; border-radius: 50%; background: var(--tint2); color: var(--blue); font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+.np-step { flex: 1 1 0; min-width: 0; justify-content: center; display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 8px 0 6px; white-space: nowrap; overflow: hidden; border-radius: 999px; background: #fff; border: 1px solid var(--line); color: var(--ink2); font-size: 13px; font-weight: 500; text-decoration: none; cursor: pointer; }
+.np-step i { flex: 0 0 auto; font-style: normal; width: 20px; height: 20px; border-radius: 50%; background: var(--tint2); color: var(--blue); font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
 .np-step.done i { background: var(--ok); color: #fff; }
 .np-step.err { border-color: var(--err); color: var(--err); }
 .np-step.err i { background: var(--err); color: #fff; }

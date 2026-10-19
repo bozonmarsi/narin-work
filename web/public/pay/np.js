@@ -723,7 +723,7 @@
     var t = totals(), f = t.f, h = '';
     h += '<div><span>Zboží</span><b>' + kc(t.raw) + '</b></div>';
     if (t.disc > 0) h += '<div class="disc"><span>Sleva</span><b>−' + kc(t.disc) + '</b></div>';
-    if (S.mode === 'courier') h += '<div><span>Doručení kurýrem' + (f.extra ? ' (vč. příplatku za vzdálenost)' : '') + '</span><b>' + (f.need ? 'dle adresy' : kc(f.delivery)) + '</b></div>';
+    if (S.mode === 'courier') h += '<div><span>Doručení kurýrem' + (f.extra ? ' (vč. příplatku za vzdálenost)' : '') + '</span><b>' + (f.need || f.empty ? 'od ' + kc(f.delivery) : kc(f.delivery)) + '</b></div>';
     h += '<div class="info" id="npSvc"><span>Servisní poplatek ⓘ</span><b>' + kc(f.service) + '</b></div>';
     lines.innerHTML = h;
     $('#npTotal').textContent = kc(t.total).replace(/\u00a0/g, '\u00a0');
@@ -788,7 +788,7 @@
     var ok = {
       c1: S.name.trim() && S.last.trim() && phoneValid(S.phone) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((S.email || '').trim()),
       c2: S.gift ? true : ((S.mode === 'pickup' || (S.adres.trim() && !feeCalc().need && !feeCalc().tooFar && S.city.trim())) && S.date && (S.mode === 'pickup' ? S.time : S.slot)),
-      c3: (S.same || (S.rname.trim() && phoneValid(S.rphone))) ,
+      c3: S.same ? (S.name.trim() && S.last.trim() && phoneValid(S.phone)) : (S.rname.trim() && S.rlast.trim() && phoneValid(S.rphone)),
       c4: S.consent
     };
     ['c1', 'c2', 'c3', 'c4'].forEach(function (id) {
@@ -983,5 +983,6 @@
       if (window.members && typeof members.hideuserbar === 'function') { try { members.hideuserbar(); } catch (e) {} }
     });
   }
+  window.__npay = { S: S, AV: AV, validate: validate, commit: commitToCart, totals: totals, feeCalc: feeCalc, refresh: refresh, renderDep: renderDep, renderPromo: renderPromo, renderPays: renderPays, renderModes: renderModes };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
