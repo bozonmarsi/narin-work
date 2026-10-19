@@ -950,8 +950,8 @@
     var inp = $('#np_promo'); if (inp) { inp.addEventListener('input', function () { S.promo.code = inp.value; }); inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); applyPromo(); } }); }
     var x = $('#npPromoX'); if (x) x.addEventListener('click', removePromo);
     var pm = $('#npPm'), pp = $('#npPp'), pg = $('#npPtsGo');
-    if (pm) pm.addEventListener('click', function () { S.pts.sel = Math.max(100, S.pts.sel - 100); renderPromo(); });
-    if (pp) pp.addEventListener('click', function () { var mx = Math.min(1000, Math.floor(goodsNet() * 0.3 / 100) * 100, Math.floor(S.pts.balance / 100) * 100); S.pts.sel = Math.min(mx, S.pts.sel + 100); renderPromo(); });
+    if (pm) pm.addEventListener('click', function () { S.pts.touched = true; S.pts.sel = Math.max(100, S.pts.sel - 100); renderPromo(); });
+    if (pp) pp.addEventListener('click', function () { var mx = Math.min(1000, Math.floor(goodsNet() * 0.3 / 100) * 100, Math.floor(S.pts.balance / 100) * 100); S.pts.touched = true; S.pts.sel = Math.min(mx, S.pts.sel + 100); renderPromo(); });
     if (pg) pg.addEventListener('click', applyPoints);
   }
   function promoErr(m, pts) { var e = $(pts ? '#npPtsErr' : '#npPromoErr'); if (!e) return toast(m, true); e.textContent = m; e.classList.add('on'); }
@@ -1198,6 +1198,13 @@
     var t = totals();
     var f = feeCalc(); if (S.mode === 'courier' && !S.gift && (f.need || f.tooFar)) { toast(f.tooFar ? 'Na tuto adresu nedoručujeme.' : 'Vyberte prosím adresu ze seznamu.', true); return; }
     saveDraft();
+    /* points chosen with the stepper but never applied: ask once instead of silently paying full price */
+    if (S.pts.touched && !(S.pts.applied > 0) && !promoActive()) {
+      S.pts.touched = false;
+      var pc = $('.np-loy'); if (pc) pc.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      toast('Vybrali jste body, ale ještě jste je neuplatnili. Klepněte na „Uplatnit“, nebo pokračujte bez nich dalším klepnutím.', true, 6500);
+      return;
+    }
     if (canDeposit() && S.dep.use && t.dep > 0) return submitDeposit(t);
     return submitTilda();
   }
