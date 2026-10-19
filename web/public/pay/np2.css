@@ -703,3 +703,7 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
 .np-lcard.pulse .sheen { animation-duration: 1.1s; animation-iteration-count: 1; }
 @keyframes nppulse { 0% { transform: scale(1); } 35% { transform: scale(1.06) rotate(-1.2deg); } 100% { transform: none; } }
 #npTotal, #npBarTot { display: inline-block; padding: 0 4px; margin: 0 -4px; }
+
+.np-chip.off { background: repeating-linear-gradient(135deg, #f6f7f9, #f6f7f9 6px, #eef0f3 6px, #eef0f3 12px); border-style: dashed; color: #9aa1ac; cursor: not-allowed; box-shadow: none; }
+.np-chip.off b { text-decoration: line-through; text-decoration-color: #c3cad6; }
+.np-chip.off small, .np-chip.off span { color: #9aa1ac; }

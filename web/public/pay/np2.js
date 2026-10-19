@@ -432,12 +432,13 @@
   }
   function renderChips() {
     var el = $('#npChips'); if (!el) return;
-    var out = [], d = addDays(new Date(), 1), n = 0;
-    for (var i = 0; i < 40 && n < 7; i++) { if (dateReason(d) === null) { out.push(d); n++; } d = addDays(d, 1); }
+    /* 7 consecutive days from tomorrow: closed days stay in the row (struck through), they are not removed */
+    var out = [], d = addDays(new Date(), 1);
+    for (var i = 0; i < 7; i++) { out.push(d); d = addDays(d, 1); }
     if (S.date) { var sel = parseIso(S.date); if (!out.some(function (x) { return iso(x) === S.date; }) && dateReason(sel) === null) out.unshift(sel); }
     el.innerHTML = out.map(function (x) {
-      var k = iso(x);
-      return '<button type="button" class="np-chip' + (S.date === k ? ' on' : '') + '" data-d="' + k + '"><small>' + WD[(x.getDay() + 6) % 7] + '</small><b>' + x.getDate() + '</b><span>' + MONTH_SHORT[x.getMonth()] + '</span></button>';
+      var k = iso(x), why = dateReason(x), off = why !== null;
+      return '<button type="button" class="np-chip' + (S.date === k ? ' on' : '') + (off ? ' off' : '') + '" data-d="' + k + '" data-why="' + esc(why || '') + '"' + (off ? ' aria-disabled="true"' : '') + '><small>' + WD[(x.getDay() + 6) % 7] + '</small><b>' + x.getDate() + '</b><span>' + (off ? 'zavřeno' : MONTH_SHORT[x.getMonth()]) + '</span></button>';
     }).join('') + '<button type="button" class="np-chip more" id="npMore"><i class="ti ti-calendar-event"></i>' + (S.showCal ? 'Skrýt' : 'Jiný den') + '</button>';
   }
   function renderCalendar() {
@@ -471,7 +472,9 @@
   function bindWhen() {
     $('#npChips').addEventListener('click', function (e) {
       if (e.target.closest('#npMore')) { S.showCal = !S.showCal; renderChips(); renderCalendar(); return; }
-      var b = e.target.closest('[data-d]'); if (b) pickDate(b.getAttribute('data-d'));
+      var b = e.target.closest('[data-d]'); if (!b) return;
+      if (b.classList.contains('off')) { var w = b.getAttribute('data-why'); if (w) toast(w); return; }
+      pickDate(b.getAttribute('data-d'));
     });
     $('#npCalG').addEventListener('click', function (e) {
       var b = e.target.closest('.np-day[data-d]'); if (!b) return;
