@@ -1256,15 +1256,28 @@
     $$('.js-errorbox-all', root).forEach(function (e) { e.style.display = 'none'; });
     $$('.t-form__errorbox-text', root).forEach(function (e) { e.textContent = ''; });
   }
-  function showAlert(text) {
+  function showAlert(text, raw) {
     var a = $('#npAlert'); if (!a) return;
     var msg = text;
-    if (/измени|цена|price/i.test(text)) msg = 'U některé položky v košíku se změnila cena nebo dostupnost. Obnovte prosím stránku a přidejte zboží do košíku znovu.';
+    if (raw) { /* diagnostic text: show as is */ }
+    else if (/измени|цена|price/i.test(text)) msg = 'U některé položky v košíku se změnila cena nebo dostupnost. Obnovte prosím stránku a přidejte zboží do košíku znovu.';
     else if (/доставк|delivery/i.test(text)) msg = 'Vyberte prosím způsob doručení a zkuste to znovu.';
     a.innerHTML = '<b>Objednávku se nepodařilo odeslat</b><span>' + esc(msg) + '</span><span class="sm">Pokud problém trvá, napište nám na support@vezminarin.cz nebo zavolejte +420 776 421 993.</span><button type="button" id="npReload">Obnovit stránku</button>';
     a.hidden = false; a.scrollIntoView({ behavior: 'smooth', block: 'center' });
     var b = $('#npReload'); if (b) b.addEventListener('click', function () { location.reload(); });
   }
+  /* remember the last answer of Tilda's order endpoint so a silent failure can be shown to the customer (and to us) */
+  var TILDA_LAST = null;
+  (function () {
+    if (window.__npTildaWatch) return; window.__npTildaWatch = 1;
+    var xo = XMLHttpRequest.prototype.open, xs = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.open = function (m, u) { this.__npu = u; return xo.apply(this, arguments); };
+    XMLHttpRequest.prototype.send = function () {
+      var self = this, u = String(this.__npu || '');
+      if (/forms\.tilda[a-z]*\.[a-z]+\/procces/i.test(u)) this.addEventListener('loadend', function () { TILDA_LAST = { status: self.status, text: String(self.responseText || '').replace(/\s+/g, ' ').slice(0, 300) }; try { console.warn('tilda order answer', self.status, TILDA_LAST.text); } catch (e) {} });
+      return xs.apply(this, arguments);
+    };
+  })();
   function watchTildaResult() {
     var n = 0, iv = setInterval(function () {
       n++;
@@ -1281,7 +1294,15 @@
     var al = $('#npAlert'); if (al) al.hidden = true; clearTildaErr();
     setTimeout(function () { btn.click(); watchTildaResult(); }, 200);
     /* Tilda redirects to the payment page; if it stays (captcha, error), let the customer retry */
-    setTimeout(function () { if (S.submitting) setBusy(false); }, 12000);
+    setTimeout(function () {
+      if (!S.submitting) return;
+      setBusy(false);
+      var al2 = $('#npAlert');
+      if (al2 && al2.hidden) {
+        var why = TILDA_LAST ? ' (odpověď ' + TILDA_LAST.status + ': ' + TILDA_LAST.text + ')' : ' (bez odpovědi)';
+        showAlert('Platební bránu se nepodařilo otevřít. Zkuste to prosím znovu za chvíli' + why, true);
+      }
+    }, 12000);
   }
   function submitDeposit(t) {
     var token = authToken(); if (!token) return toast('Přihlaste se prosím znovu.', true);
