@@ -80,6 +80,7 @@ type InvoiceRow = {
   status: "draft" | "sent" | "paid" | "overdue" | "cancelled";
   due_date: string | null;
   paid_at: string | null;
+  issued_at: string | null;
 };
 
 const INVOICE_STATUS_LABELS: Record<InvoiceRow["status"], string> = {
@@ -292,7 +293,7 @@ export default function BusinessPage() {
         .limit(30),
       supabase
         .from("company_invoices")
-        .select("id, invoice_number, period_start, period_end, total_amount, status, due_date, paid_at")
+        .select("id, invoice_number, period_start, period_end, total_amount, status, due_date, paid_at, issued_at")
         .eq("company_id", company.id)
         .order("period_start", { ascending: false }),
       supabase

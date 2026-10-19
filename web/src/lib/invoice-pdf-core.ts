@@ -30,6 +30,8 @@ const INK: [number, number, number] = [22, 24, 29];
 const MUTED: [number, number, number] = [125, 129, 140];
 const LINE: [number, number, number] = [225, 228, 234];
 const PANEL: [number, number, number] = [247, 248, 250];
+const GREEN: [number, number, number] = [10, 138, 60];
+const GREEN_LIGHT: [number, number, number] = [227, 251, 241];
 
 export type CompanyInfo = {
   name: string;
@@ -45,6 +47,10 @@ export type InvoiceInfo = {
   period_end: string;
   total_amount: number;
   due_date: string | null;
+  // Neni-li zname (starsi volani), faktura se chova jako dosud: vystaveno dnes, k uhrade.
+  status?: string | null;
+  issued_at?: string | null;
+  paid_at?: string | null;
 };
 
 export type OrderLineItem = {
@@ -79,7 +85,11 @@ export async function buildInvoiceDoc(
   dueDate: string,
 ) {
   const variableSymbol = number.replace(/\D/g, "");
-  const qrDataUrl = await buildQrDataUrl(invoice.total_amount, variableSymbol);
+  // Uz uhrazena faktura (napr. objednavky zaplacene kartou): zadne platebni udaje ani QR,
+  // aby ji odberatel omylem nezaplatil podruhe.
+  const paid = invoice.status === "paid";
+  const issuedDate = invoice.issued_at ? new Date(invoice.issued_at) : new Date();
+  const qrDataUrl = paid ? "" : await buildQrDataUrl(invoice.total_amount, variableSymbol);
 
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   // jsPDF-ové vestavěné fonty (Helvetica) nepodporují českou diakritiku
@@ -110,6 +120,13 @@ export async function buildInvoiceDoc(
   doc.setFontSize(8.5);
   doc.setTextColor(...MUTED);
   doc.text(SUPPLIER.isVatPayer ? "Daňový doklad" : "Není plátcem DPH", pageW - marginX, 27, { align: "right" });
+  if (paid) {
+    doc.setFillColor(...GREEN);
+    doc.roundedRect(pageW - marginX - 30, 28.6, 30, 4.6, 1.2, 1.2, "F");
+    doc.setFontSize(7.5);
+    doc.setTextColor(255, 255, 255);
+    doc.text("UHRAZENO", pageW - marginX - 15, 31.9, { align: "center" });
+  }
 
   let y = 47;
   doc.setTextColor(...INK);
@@ -118,8 +135,10 @@ export async function buildInvoiceDoc(
   doc.roundedRect(marginX, y, contentW, 16, 2, 2, "F");
   const dateColW = contentW / 3;
   const dateCols: [string, string][] = [
-    ["Datum vystavení", formatDateCz(new Date())],
-    ["Datum splatnosti", formatDateCz(dueDate)],
+    ["Datum vystavení", formatDateCz(issuedDate)],
+    paid
+      ? ["Uhrazeno dne", formatDateCz(invoice.paid_at ?? issuedDate)]
+      : ["Datum splatnosti", formatDateCz(dueDate)],
     ["Období plnění", `${formatDateCz(invoice.period_start)} – ${formatDateCz(invoice.period_end)}`],
   ];
   dateCols.forEach(([label, value], i) => {
@@ -173,7 +192,12 @@ export async function buildInvoiceDoc(
     ),
   );
 
-  y += 40;
+  y += 36;
+
+  doc.setFontSize(9);
+  doc.setTextColor(...MUTED);
+  doc.text("Předmět plnění: dodání květin a souvisejícího zboží, objednávky uvedené níže.", marginX, y);
+  y += 6;
 
   doc.setFillColor(...BLUE_LIGHT);
   doc.rect(marginX, y, contentW, 8, "F");
@@ -207,40 +231,56 @@ export async function buildInvoiceDoc(
 
   const totalBoxW = 78;
   const totalBoxX = marginX + contentW - totalBoxW;
-  doc.setFillColor(...BLUE);
+  doc.setFillColor(...(paid ? GREEN : BLUE));
   doc.roundedRect(totalBoxX, y, totalBoxW, 16, 2, 2, "F");
   doc.setFontSize(9);
   doc.setTextColor(220, 232, 253);
-  doc.text("CELKEM K ÚHRADĚ", totalBoxX + 6, y + 6);
+  doc.text(paid ? "CELKEM (UHRAZENO)" : "CELKEM K ÚHRADĚ", totalBoxX + 6, y + 6);
   doc.setFontSize(14);
   doc.setTextColor(255, 255, 255);
   doc.text(`${invoice.total_amount.toLocaleString("cs-CZ")} Kč`, totalBoxX + totalBoxW - 6, y + 12.5, { align: "right" });
   y += 28;
 
-  doc.setFontSize(7.5);
-  doc.setTextColor(...MUTED);
-  doc.text("PLATEBNÍ ÚDAJE", marginX, y);
-  y += 7;
-  doc.setFontSize(10);
-  doc.setTextColor(...INK);
-  doc.text(`Číslo účtu: ${SUPPLIER.bankAccount}`, marginX, y);
-  y += 6;
-  doc.text(`IBAN: ${SUPPLIER.iban}`, marginX, y);
-  y += 6;
-  doc.text(`Variabilní symbol: ${variableSymbol}`, marginX, y);
-  y += 6;
-  doc.setTextColor(...RED);
-  doc.setFontSize(9);
-  doc.text(`Splatnost do ${formatDateCz(dueDate)} (${SUPPLIER.paymentTermDays} dní)`, marginX, y);
-  doc.setTextColor(...INK);
+  if (paid) {
+    doc.setFillColor(...GREEN_LIGHT);
+    doc.roundedRect(marginX, y - 4, contentW, 22, 2, 2, "F");
+    doc.setFontSize(7.5);
+    doc.setTextColor(...GREEN);
+    doc.text("STAV PLATBY", marginX + 5, y + 2);
+    doc.setFontSize(11);
+    doc.text("Tato faktura je již uhrazena. Prosíme, neplaťte ji znovu.", marginX + 5, y + 9);
+    doc.setFontSize(9);
+    doc.setTextColor(...MUTED);
+    doc.text(`Uhrazeno dne ${formatDateCz(invoice.paid_at ?? issuedDate)}. Variabilní symbol: ${variableSymbol}.`, marginX + 5, y + 14.5);
+    doc.setTextColor(...INK);
+  } else {
+    doc.setFontSize(7.5);
+    doc.setTextColor(...MUTED);
+    doc.text("PLATEBNÍ ÚDAJE", marginX, y);
+    y += 7;
+    doc.setFontSize(10);
+    doc.setTextColor(...INK);
+    doc.text(`Číslo účtu: ${SUPPLIER.bankAccount}`, marginX, y);
+    y += 6;
+    doc.text(`IBAN: ${SUPPLIER.iban}`, marginX, y);
+    y += 6;
+    doc.text(`Variabilní symbol: ${variableSymbol}`, marginX, y);
+    y += 6;
+    doc.setTextColor(...RED);
+    doc.setFontSize(9);
+    const termDays = Math.round((new Date(dueDate).getTime() - issuedDate.getTime()) / 86400000);
+    doc.text(`Splatnost do ${formatDateCz(dueDate)}${termDays > 0 ? ` (${termDays} dní)` : ""}`, marginX, y);
+    doc.setTextColor(...INK);
 
-  const qrSize = 32;
-  const qrX = marginX + contentW - qrSize;
-  const qrY = y - 30;
-  doc.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
-  doc.setFontSize(7.5);
-  doc.setTextColor(...MUTED);
-  doc.text("Naskenujte v bankovní aplikaci", qrX + qrSize / 2, qrY + qrSize + 4, { align: "center" });
+    const qrSize = 32;
+    const qrX = marginX + contentW - qrSize;
+    const qrY = y - 30;
+    doc.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
+    doc.setFontSize(7.5);
+    doc.setTextColor(...MUTED);
+    doc.text("Naskenujte v bankovní aplikaci", qrX + qrSize / 2, qrY + qrSize + 4, { align: "center" });
+
+  }
 
   const pageCount = doc.getNumberOfPages();
   for (let p = 1; p <= pageCount; p++) {
