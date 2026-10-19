@@ -402,3 +402,195 @@ textarea.np-in { height: auto; min-height: 104px; padding: 15px 18px; resize: ve
 #npRFields { margin-top: 22px; }
 .np-rc .lo { display: flex; align-items: center; gap: 5px; margin-top: 6px; font-size: 12.5px; color: var(--mut); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .np-rc .lo i { flex: 0 0 auto; }
+
+/* ===== compact layer: slimmer, rectangular, less air ===== */
+.np { max-width: 1040px; padding: 0 16px 120px; }
+.np-top { padding: 14px 0 0; }
+.np-top .arr { width: 34px; height: 34px; border-radius: 10px; font-size: 16px; }
+.np-top img { height: 22px; }
+.np-secure { font-size: 13px; }
+.np-hero { padding: 18px 0 8px; }
+.np-eyebrow { font-size: 13px; margin-bottom: 6px; }
+.np-hero h1 { font-size: clamp(26px, 6.4vw, 38px); line-height: 1.08; letter-spacing: -.022em; }
+.np-hero h1 em { display: inline; }
+.np-hero p { margin: 8px 0 0; font-size: 15px; line-height: 1.45; }
+@media (min-width: 980px) { .np-grid { grid-template-columns: minmax(0, 1fr) 340px; gap: 40px; } }
+
+.np-sec { padding: 20px 0 22px; }
+.np-sh { gap: 12px; margin: 0 0 14px; }
+.np-num { width: 30px; height: 30px; border-radius: 9px; font-size: 14px; }
+.np-sh h2 { font-size: clamp(19px, 4.6vw, 22px); }
+.np-sh p { margin: 2px 0 0; font-size: 13px; }
+@media (min-width: 980px) {
+  .np-sec { padding-left: 42px; }
+  .np-sh { margin-left: -42px; }
+  .np-sec::before { left: 14px; top: 56px; bottom: -20px; width: 2px; }
+}
+.np.js .np-sec, .np.js .np-sum { transform: translateY(10px); }
+
+.np-row { gap: 10px; margin-bottom: 10px; }
+.np-f label.l { font-size: 12.5px; margin: 0 0 4px 2px; }
+.np-in { height: 46px; border-radius: 10px; padding: 0 14px; font-size: 15.5px; }
+textarea.np-in { min-height: 78px; padding: 11px 14px; }
+.np-phone { border-radius: 10px; }
+.np-phone b { padding: 0 2px 0 14px; font-size: 15.5px; }
+.np-msg { margin: 5px 2px 0; font-size: 12.5px; }
+.np-hint { font-size: 13px; margin: 6px 2px 0; }
+.np-switch { font-size: 14.5px; gap: 10px; }
+.np-switch .tr { width: 42px; height: 25px; }
+.np-switch .tr::after { width: 19px; height: 19px; }
+.np-switch input:checked + .tr::after { transform: translateX(17px); }
+.np-check .bx { width: 22px; height: 22px; border-radius: 6px; }
+.np-check { gap: 11px; font-size: 14px; }
+
+.np-tiles { gap: 8px; margin-bottom: 12px; }
+.np-tile { gap: 8px; padding: 12px 12px; border-radius: 12px; }
+.np-tile .ic { width: 34px; height: 34px; border-radius: 10px; font-size: 18px; }
+.np-tile b { font-size: 15px; }
+.np-tile span.s { margin-top: 1px; font-size: 12.5px; line-height: 1.35; }
+.np-tile .pr { top: 10px; right: 10px; font-size: 12.5px; padding: 3px 8px; border-radius: 8px; }
+.np-tile.on { box-shadow: 0 0 0 3px rgba(24,108,224,.09); }
+.np-tile.row { gap: 12px; padding: 10px 12px; }
+.np-tile.row .rd { width: 20px; height: 20px; }
+.np-tile.row.on .rd::after { inset: 3px; }
+@media (min-width: 521px) {
+  .np-tile:not(.row) { flex-direction: row; align-items: center; gap: 12px; padding: 11px 14px; }
+  .np-tile:not(.row):has(.pr) { padding-right: 86px; }
+}
+.np-sub { font-size: 14px; margin: 16px 0 8px; }
+
+.np-pick { padding: 12px 14px; border-radius: 12px; font-size: 14px; gap: 12px; }
+.np-pick .ic { width: 34px; height: 34px; border-radius: 10px; font-size: 18px; }
+.np-gift { padding: 10px 12px; border-radius: 12px; gap: 12px; margin: 2px 0 14px; }
+.np-gift .ic { width: 34px; height: 34px; border-radius: 10px; font-size: 18px; }
+.np-gift .tx { font-size: 14px; }
+.np-gift .tx small { font-size: 12.5px; margin-top: 1px; }
+.np-gift button.go { height: 34px; padding: 0 14px; border-radius: 9px; font-size: 13px; }
+
+.np-chips { gap: 8px; padding: 2px 16px 8px 2px; margin: 0 -16px 0 -2px; }
+.np-chip { width: 60px; padding: 8px 0 7px; border-radius: 10px; }
+.np-chip small { font-size: 11px; }
+.np-chip b { font-size: 17px; margin-top: 2px; }
+.np-chip span { font-size: 11px; }
+.np-chip.more { width: 70px; font-size: 12px; }
+.np-chip.more i { font-size: 18px; }
+.np-cal { border-radius: 14px; padding: 12px 10px 10px; }
+.np-cal-h { margin: 0 2px 6px; }
+.np-cal-h b { font-size: 15px; }
+.np-cal-h button { width: 30px; height: 30px; border-radius: 8px; font-size: 16px; }
+.np-cal-g { gap: 2px; }
+.np-cal-g .w { padding: 2px 0 5px; font-size: 11px; }
+.np-day { max-height: 38px; border-radius: 9px; font-size: 14px; }
+.np-cal-note { font-size: 12px; margin: 8px 2px 0; }
+.np-picked { margin-top: 8px; font-size: 14px; }
+
+.np-slots { gap: 8px; }
+.np-slot { padding: 9px 6px 8px; border-radius: 10px; }
+.np-slot b { font-size: 16px; }
+.np-slot span { font-size: 11.5px; margin-top: 1px; }
+.np-time { height: 36px; padding: 0 13px; border-radius: 9px; font-size: 14px; }
+.np-times { gap: 6px; }
+
+.np-note { padding: 10px 12px; border-radius: 12px; font-size: 13px; margin: 12px 0 0; gap: 10px; }
+.np-note i { font-size: 18px; }
+.np-pc { margin-top: 12px; border-radius: 14px; padding: 14px 14px 4px; }
+.np-pc h3 { font-size: 16px; margin: 0 0 10px; }
+.np-seg { gap: 6px; margin-bottom: 10px; }
+.np-seg button { height: 40px; border-radius: 10px; font-size: 14px; flex: 1 1 130px; }
+
+/* recipient picker: compact horizontal cards */
+.np-rh { font-size: 15px; margin: 14px 0 8px; }
+.np-rh small { font-size: 12.5px; }
+.np-rcs { gap: 8px; padding: 2px 16px 6px 2px; margin: 0 -16px 0 -2px; }
+.np-rc { flex: 0 0 214px; display: grid; grid-template-columns: 38px minmax(0, 1fr); column-gap: 10px; align-items: center; align-content: center; padding: 10px 12px; border-radius: 12px; }
+.np-rc .av { grid-row: 1 / span 4; width: 38px; height: 38px; border-radius: 10px; font-size: 14px; margin: 0; align-self: start; }
+.np-rc .nm { font-size: 14.5px; padding-right: 22px; }
+.np-rc .sb { font-size: 12.5px; }
+.np-rc .bd { margin-top: 4px; font-size: 11.5px; padding: 2px 7px; border-radius: 6px; justify-self: start; }
+.np-rc .lo { margin-top: 3px; font-size: 11.5px; }
+.np-rc .ck { top: 8px; right: 8px; width: 20px; height: 20px; font-size: 12px; }
+.np-rc.on { box-shadow: 0 0 0 3px rgba(24,108,224,.09); }
+.np-rc.sk { min-height: 62px; }
+@media (min-width: 760px) { .np-rc { flex: 0 1 calc(50% - 4px); min-width: 0; } }
+.np-raddr { margin-top: 8px; padding: 9px 12px; border-radius: 10px; font-size: 13px; gap: 10px; }
+.np-raddr > i { font-size: 19px; }
+.np-raddr button { border-radius: 8px; padding: 6px 13px; font-size: 13px; }
+.np-rnudge, .np-rempty { padding: 11px 13px; border-radius: 12px; margin: 0 0 14px; gap: 12px; }
+.np-rnudge .ic, .np-rempty .ic { width: 36px; height: 36px; border-radius: 10px; font-size: 19px; }
+.np-rnudge .tx, .np-rempty .tx { font-size: 14px; }
+.np-rnudge small, .np-rempty small { font-size: 12.5px; margin-top: 1px; line-height: 1.4; }
+#npRFields { margin-top: 12px; }
+
+/* wallet, points, promo */
+.np-wallet { border-radius: 14px; padding: 14px 16px 13px; margin-bottom: 10px; box-shadow: 0 14px 26px -20px rgba(24,108,224,.9); }
+.np-wallet .lb { font-size: 12.5px; }
+.np-wallet .bal { font-size: 24px; margin-top: 2px; }
+.np-wallet .np-switch { font-size: 13.5px; }
+.np-wallet .calc { margin-top: 10px; padding-top: 10px; gap: 5px; font-size: 14px; }
+.np-wallet .calc .tot { font-size: 14.5px; }
+.np-wallet .calc .g b { padding: 1px 8px; border-radius: 6px; }
+.np-wallet .why { margin-top: 6px; font-size: 12.5px; }
+.np-ptscard { border-radius: 14px; padding: 11px 14px 11px; margin-bottom: 10px; }
+.np-ptscard .top { gap: 10px; }
+.np-ptscard .ic { width: 34px; height: 34px; border-radius: 10px; font-size: 18px; }
+.np-ptscard .tx { font-size: 14.5px; }
+.np-ptscard .tx small { font-size: 12px; }
+.np-ptscard .bal { font-size: 14.5px; padding: 4px 10px; border-radius: 8px; }
+.np-ptscard .stepper { margin-top: 10px; gap: 8px; }
+.np-ptscard .stepper button.s { width: 36px; height: 36px; border-radius: 10px; font-size: 18px; }
+.np-ptscard .stepper .v { min-width: 62px; font-size: 16px; }
+.np-ptscard .stepper .go { height: 36px; }
+.np-ptscard .note { margin-top: 8px; font-size: 12.5px; }
+.np-done { border-radius: 14px; padding: 10px 14px; margin-bottom: 10px; gap: 10px; }
+.np-done .ic { width: 34px; height: 34px; border-radius: 10px; font-size: 18px; }
+.np-done .tx { font-size: 14.5px; }
+.np-done .tx small { font-size: 12.5px; }
+.np-acc { border-radius: 12px; margin-bottom: 10px; }
+.np-acc > button { padding: 10px 12px; gap: 10px; font-size: 14.5px; }
+.np-acc > button .ic { width: 32px; height: 32px; border-radius: 9px; font-size: 17px; }
+.np-acc > button .tx small { font-size: 12.5px; margin-top: 0; }
+.np-acc .bd { padding: 0 12px 12px; }
+.np-btn2 { height: 46px; padding: 0 16px; border-radius: 10px; font-size: 14px; }
+.np-err-box { border-radius: 8px; padding: 8px 11px; font-size: 13px; margin-top: 8px; }
+.np-applied { border-radius: 8px; padding: 9px 12px; }
+
+/* summary */
+.np-side { margin-top: 4px; }
+@media (min-width: 980px) { .np-side { top: 16px; margin-top: 20px; } }
+.np-sum { border-radius: 16px; padding: 16px 16px 14px; }
+.np-sum h2 { margin: 0 0 12px; font-size: 17px; }
+.np-items { gap: 9px; margin-bottom: 10px; max-height: 260px; }
+.np-item { gap: 10px; }
+.np-item .im { flex: 0 0 44px; width: 44px; height: 44px; border-radius: 10px; }
+.np-item .nm { font-size: 14px; }
+.np-item .nm small { font-size: 12px; margin-top: 1px; }
+.np-item .pr { font-size: 14px; }
+.np-lines { font-size: 14px; }
+.np-lines div { padding: 8px 0; }
+.np-tot { padding-top: 11px; }
+.np-tot span { font-size: 14.5px; }
+.np-tot b { font-size: 28px; }
+.np-split { margin-top: 10px; border-radius: 10px; padding: 10px 12px; font-size: 14px; gap: 5px; }
+.np-cta { height: 50px; margin-top: 12px; border-radius: 12px; font-size: 16px; box-shadow: 0 10px 20px -14px rgba(24,108,224,.9); }
+.np-trust { margin: 10px 2px 0; font-size: 12.5px; gap: 8px; }
+.np-trust i { font-size: 16px; }
+
+.np-bar { padding: 8px 16px calc(8px + env(safe-area-inset-bottom)); gap: 12px; }
+.np-bar .t b { font-size: 19px; }
+.np-bar .t small { font-size: 11.5px; }
+.np-bar button { height: 44px; padding: 0 20px; border-radius: 12px; font-size: 15px; }
+
+.np-box { border-radius: 16px 16px 0 0; padding: 22px 18px 18px; }
+@media (min-width: 560px) { .np-box { border-radius: 16px; } }
+.np-box .x { border-radius: 10px; width: 32px; height: 32px; }
+.np-box .gi { width: 44px; height: 44px; border-radius: 12px; font-size: 22px; }
+.np-box h3 { font-size: 20px; margin: 10px 0 6px; }
+.np-box .lead { font-size: 14px; margin: 0 0 12px; }
+.np-box ol { border-radius: 12px; padding: 8px 12px; margin-bottom: 12px; }
+.np-box .row2 { margin-top: 14px; }
+.np-box .row2 button { height: 46px; border-radius: 12px; font-size: 15px; }
+.np-chs button { height: 36px; border-radius: 10px; padding: 0 13px; font-size: 14px; }
+.np-alert { border-radius: 12px; padding: 12px 14px; margin: 4px 0 12px; font-size: 14px; }
+.np-alert button { height: 38px; border-radius: 10px; padding: 0 18px; }
+.np-toast { border-radius: 12px; padding: 11px 16px; font-size: 14px; }
+.np-skel { height: 160px; border-radius: 14px; margin-bottom: 12px; }
