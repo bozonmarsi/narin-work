@@ -649,3 +649,5 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
   .np-loy { grid-template-columns: minmax(0, 1fr); padding: 10px; }
   .np-lcard { aspect-ratio: auto; height: 150px; }
 }
+.np-loy { align-items: center; }
+.np-loy .np-lcard { width: 100%; min-width: 0; align-self: center; }
