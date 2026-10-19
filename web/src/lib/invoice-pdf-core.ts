@@ -53,11 +53,63 @@ export type InvoiceInfo = {
   paid_at?: string | null;
 };
 
+// Cast platebniho zaznamu objednavky, ze ktere skladame polozky faktury.
+export type OrderPayment = {
+  products?: { name?: string | null; price?: string | number | null; amount?: string | number | null; quantity?: string | number | null }[] | null;
+  subtotal?: string | number | null;
+  delivery?: string | null;
+  delivery_price?: string | number | null;
+  amount?: string | number | null;
+};
+
 export type OrderLineItem = {
   order_id: string | null;
   delivery_date: string | null;
   order_total: number | null;
+  payment?: OrderPayment | null;
 };
+
+const ENTITIES: Record<string, string> = {
+  aacute: "á", Aacute: "Á", eacute: "é", Eacute: "É", iacute: "í", Iacute: "Í", oacute: "ó", Oacute: "Ó",
+  uacute: "ú", Uacute: "Ú", yacute: "ý", Yacute: "Ý", scaron: "š", Scaron: "Š", ccaron: "č", Ccaron: "Č",
+  rcaron: "ř", Rcaron: "Ř", zcaron: "ž", Zcaron: "Ž", ecaron: "ě", Ecaron: "Ě", ncaron: "ň", Ncaron: "Ň",
+  dcaron: "ď", Dcaron: "Ď", tcaron: "ť", Tcaron: "Ť", uring: "ů", Uring: "Ů", amp: "&", quot: '"', apos: "'",
+  lt: "<", gt: ">", nbsp: " ",
+};
+
+function decodeEntities(text: string) {
+  return String(text ?? "")
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/&([a-zA-Z]+);/g, (m, n) => ENTITIES[n] ?? m);
+}
+
+type InvoiceLine = { name: string; qty: number; unit: number; amount: number; kind: "item" | "delivery" | "discount" | "other" };
+
+// Polozky jedne objednavky tak, aby souctem dali presne castku objednavky
+// (zbozi + doruceni + rozdil jako sleva nebo ostatni poplatky).
+function orderLines(o: OrderLineItem): InvoiceLine[] {
+  const pay = o.payment;
+  const total = Number(o.order_total ?? 0);
+  const lines: InvoiceLine[] = [];
+  const products = Array.isArray(pay?.products) ? pay!.products! : [];
+  for (const p of products) {
+    const qty = Number(p.quantity) || 1;
+    const amount = Number(p.amount) || (Number(p.price) || 0) * qty;
+    if (!p.name) continue;
+    lines.push({ name: decodeEntities(String(p.name)), qty, unit: qty ? amount / qty : amount, amount, kind: "item" });
+  }
+  if (!lines.length) return [];
+  const goods = lines.reduce((sum, l) => sum + l.amount, 0);
+  const delivery = Number(pay?.delivery_price) || 0;
+  if (delivery > 0) {
+    lines.push({ name: decodeEntities(pay?.delivery || "Doručení a servisní poplatek"), qty: 1, unit: delivery, amount: delivery, kind: "delivery" });
+  }
+  const diff = Math.round((goods + delivery - total) * 100) / 100;
+  if (diff > 0.5) lines.push({ name: "Sleva", qty: 1, unit: -diff, amount: -diff, kind: "discount" });
+  else if (diff < -0.5) lines.push({ name: "Ostatní poplatky", qty: 1, unit: -diff, amount: -diff, kind: "other" });
+  return lines;
+}
 
 function formatDateCz(d: string | Date) {
   const date = typeof d === "string" ? new Date(d) : d;
@@ -199,30 +251,52 @@ export async function buildInvoiceDoc(
   doc.text("Předmět plnění: dodání květin a souvisejícího zboží, objednávky uvedené níže.", marginX, y);
   y += 6;
 
+  const money = (n: number) => `${n < 0 ? "−" : ""}${Math.abs(n).toLocaleString("cs-CZ", { maximumFractionDigits: 2 })} Kč`;
+  const xName = marginX + 4;
+  const xQty = marginX + contentW - 36;
+  const xAmt = marginX + contentW - 4;
+
   doc.setFillColor(...BLUE_LIGHT);
   doc.rect(marginX, y, contentW, 8, "F");
   doc.setFontSize(8);
   doc.setTextColor(...BLUE);
-  doc.text("DATUM DORUČENÍ", marginX + 4, y + 5.5);
-  doc.text("OBJEDNÁVKA", marginX + 60, y + 5.5);
-  doc.text("ČÁSTKA", marginX + contentW - 4, y + 5.5, { align: "right" });
+  doc.text("POLOŽKA", xName, y + 5.5);
+  doc.text("MNOŽSTVÍ A CENA", xQty, y + 5.5, { align: "right" });
+  doc.text("ČÁSTKA", xAmt, y + 5.5, { align: "right" });
   y += 8;
 
-  doc.setFontSize(10);
-  orders.forEach((o, i) => {
-    if (y > 262) {
+  function ensureSpace(h: number) {
+    if (y + h > 266) {
       doc.addPage();
       y = 20;
     }
-    if (i % 2 === 1) {
-      doc.setFillColor(...PANEL);
-      doc.rect(marginX, y, contentW, 8, "F");
-    }
-    doc.setTextColor(...INK);
-    doc.text(o.delivery_date ? formatDateCz(o.delivery_date) : "—", marginX + 4, y + 5.5);
-    doc.text(`č. ${o.order_id ?? "—"}`, marginX + 60, y + 5.5);
-    doc.text(`${(o.order_total ?? 0).toLocaleString("cs-CZ")} Kč`, marginX + contentW - 4, y + 5.5, { align: "right" });
-    y += 8;
+  }
+
+  orders.forEach((o) => {
+    const lines = orderLines(o);
+    ensureSpace(lines.length ? 16 : 10);
+    doc.setFillColor(...PANEL);
+    doc.rect(marginX, y, contentW, 7, "F");
+    doc.setFontSize(9);
+    doc.setTextColor(...BLUE);
+    doc.text(`Objednávka č. ${o.order_id ?? "—"} · doručeno ${o.delivery_date ? formatDateCz(o.delivery_date) : "—"}`, xName, y + 5);
+    if (!lines.length) doc.text(money(Number(o.order_total ?? 0)), xAmt, y + 5, { align: "right" });
+    y += 7;
+    lines.forEach((l) => {
+      const nameLines = (doc.splitTextToSize(l.name, xQty - xName - 38) as string[]).slice(0, 2);
+      ensureSpace(nameLines.length * 4.6 + 3);
+      doc.setFontSize(9.5);
+      doc.setTextColor(...(l.kind === "discount" ? GREEN : INK));
+      doc.text(nameLines, xName, y + 5);
+      if (l.kind === "item") {
+        doc.setTextColor(...MUTED);
+        doc.text(`${l.qty} × ${money(l.unit)}`, xQty, y + 5, { align: "right" });
+      }
+      doc.setTextColor(...(l.kind === "discount" ? GREEN : INK));
+      doc.text(money(l.amount), xAmt, y + 5, { align: "right" });
+      y += nameLines.length * 4.6 + 2.4;
+    });
+    y += 2;
   });
 
   doc.setDrawColor(...LINE);
