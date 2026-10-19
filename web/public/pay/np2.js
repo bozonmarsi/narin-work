@@ -715,6 +715,44 @@
     el.innerHTML = h + '</div>';
     var cb = $('#np_dep'); if (cb) cb.addEventListener('change', function () { S.dep.use = cb.checked; renderDep(); renderPromo(); renderPays(); refresh(); quoteSoon(); });
   }
+  var TIERS = [
+    { name: 'Klient', label: 'Sapphire', from: 0, cb: 0.5, color: '#186ce0', img: 'https://static.tildacdn.com/tild6237-3062-4338-b234-373762313165/E3941E6E-7AD6-4B84-B.webp' },
+    { name: 'Silver', label: 'Silver', from: 300, cb: 1, color: '#8d97a3', img: 'https://static.tildacdn.com/tild3339-3738-4961-b133-666235386264/E5D597BE-7B84-4E59-A.webp' },
+    { name: 'Gold', label: 'Gold', from: 600, cb: 1.5, color: '#d4a017', img: 'https://static.tildacdn.com/tild3663-3137-4866-b164-396435303064/95B11AD8-8D5F-4112-B.webp' },
+    { name: 'Platinum', label: 'Platinum', from: 900, cb: 2, color: '#8b5fbf', img: 'https://static.tildacdn.com/tild3164-3637-4465-a366-326439393231/IMG_8838.PNG' }
+  ];
+  function tierIdx(earned) { var i = 0; TIERS.forEach(function (t, k) { if (earned >= t.from) i = k; }); return i; }
+  function loyCard(t, badge, label, big, num) {
+    return '<div class="np-lcard" style="background-image:url(' + t.img + ')"><span class="sheen"></span><div class="in"><div class="tp"><span class="tag" style="background:' + t.color + '">' + esc(badge) + '</span></div><div class="mid"><div class="lb">' + esc(label) + '</div><div class="bl">' + big + '</div></div><div class="bt"><span class="nr">' + esc(num) + '</span><span class="br">NARIN</span></div></div></div>';
+  }
+  function loyBlock(depOn, noRedeem) {
+    if (!S.loggedIn) {
+      return '<div class="np-loy out">' + loyCard(TIERS[0], 'Sapphire', 'Dárek za registraci', '150 <small>b.</small>', '●● ●● ●● ••••') +
+        '<div class="sd"><div class="hd">Zaregistrujte se a získejte 150 bodů</div><ul><li><i class="ti ti-check"></i>až 2 % z každé objednávky zpět v bodech</li><li><i class="ti ti-check"></i>1 bod = 1 Kč, body nevyprší</li><li><i class="ti ti-check"></i>body uplatníte až na 30 % objednávky</li></ul>' +
+        '<div class="ac"><a class="go" href="/members/login" id="npLoyReg">Zaregistrovat se</a><a class="lk" href="/bonussystem" target="_blank" rel="noopener">Jak to funguje</a></div></div></div>';
+    }
+    var earned = S.pts.earned || 0, ti = tierIdx(earned);
+    TIERS.forEach(function (x, k) { if (x.name === S.pts.tierName) ti = k; });
+    var tr = TIERS[ti], nx = TIERS[ti + 1];
+    var bal = S.pts.balance, tt = totals(), gain = Math.floor(tt.total * tr.cb / 100);
+    var num = S.pts.ma ? '●● ●● ●● ' + String(S.pts.ma).slice(-4) : '●● ●● ●● ••••';
+    var h = '<div class="np-loy">' + loyCard(tr, tr.label, 'Zůstatek', bal == null ? '…' : bal + ' <small>b.</small>', num) + '<div class="sd">';
+    h += '<div class="gn"><i class="ti ti-sparkles"></i><span>Z této objednávky získáte <b>+' + gain + ' b.</b> <small>(' + String(tr.cb).replace('.', ',') + ' % zpět)</small></span></div>';
+    if (nx) {
+      var need = Math.max(0, nx.from - earned), pct = Math.max(4, Math.min(100, Math.round((earned - tr.from) / (nx.from - tr.from) * 100)));
+      h += '<div class="pg"><div class="tx">Do úrovně <b>' + nx.label + '</b> chybí ' + need + ' b.</div><div class="bar"><i style="width:' + pct + '%;background:' + nx.color + '"></i></div></div>';
+    } else h += '<div class="pg"><div class="tx"><b>Nejvyšší úroveň</b>, máte 2 % zpět.</div></div>';
+    var capGoods = Math.floor(goodsNet() * 0.3 / 100) * 100;
+    var maxAllowed = Math.min(1000, capGoods, bal == null ? 0 : Math.floor(bal / 100) * 100);
+    if (noRedeem) { /* points or code already applied */ }
+    else if (bal != null && maxAllowed >= 100) {
+      if (S.pts.sel > maxAllowed) S.pts.sel = maxAllowed; if (S.pts.sel < 100) S.pts.sel = 100;
+      h += '<div class="rd"><div class="rl">Uplatnit body <small>1 b. = 1 Kč, až 30 % zboží</small></div><div class="stepper"><button type="button" class="s" id="npPm" aria-label="Méně">−</button><span class="v" id="npPv">' + S.pts.sel + ' b.</span><button type="button" class="s" id="npPp" aria-label="Více">+</button><button type="button" class="np-btn2 go" id="npPtsGo"' + (S.pts.busy ? ' disabled' : '') + '>' + (S.pts.busy ? '…' : 'Uplatnit') + '</button></div><div class="np-err-box" id="npPtsErr"></div>' + (depOn ? '<div class="note">Po uplatnění bodů se depozit nepoužije.</div>' : '') + '</div>';
+    } else if (bal != null) {
+      h += '<div class="rd"><div class="note">' + (bal < 100 ? 'Body lze uplatnit od 100 b. Každá objednávka vám je přidá.' : 'Body lze uplatnit u zboží od ' + kc(334) + '. Přidejte do košíku další květiny.') + '</div></div>';
+    }
+    return h + '</div></div>';
+  }
   function renderPromo() {
     var el = $('#npPromo'); if (!el) return;
     var depOn = canDeposit() && S.dep.use, applied = promoActive();
@@ -722,30 +760,16 @@
     var h = '';
     if (applied) {
       var pc = tc().promocode || {}, isPts = S.pts.applied > 0 || /^uplatn/i.test(String(pc.promocode || ''));
-      h = '<div class="np-done"><span class="ic"><i class="ti ti-' + (isPts ? 'coins' : 'ticket') + '"></i></span><span class="tx"><b>' + (isPts ? 'Body uplatněny' : 'Sleva uplatněna') + '</b><small>' + (isPts ? '' : (pc.promocode ? esc(String(pc.promocode)) + ' · ' : '')) + 'ušetříte ' + kc(discountSum()) + '</small></span><button type="button" id="npPromoX">Odebrat</button></div>';
+      h = (S.loggedIn ? loyBlock(false, true) : '') + '<div class="np-done"><span class="ic"><i class="ti ti-' + (isPts ? 'coins' : 'ticket') + '"></i></span><span class="tx"><b>' + (isPts ? 'Body uplatněny' : 'Sleva uplatněna') + '</b><small>' + (isPts ? '' : (pc.promocode ? esc(String(pc.promocode)) + ' · ' : '')) + 'ušetříte ' + kc(discountSum()) + '</small></span><button type="button" id="npPromoX">Odebrat</button></div>';
     } else {
-      if (S.loggedIn && S.pts.balance != null && S.pts.balance > 0) {
-        var capGoods = Math.floor(goodsNet() * 0.3 / 100) * 100;
-        var maxAllowed = Math.min(1000, capGoods, Math.floor(S.pts.balance / 100) * 100);
-        h += '<div class="np-ptscard"><div class="top"><span class="ic"><i class="ti ti-coins"></i></span><span class="tx">Vaše body<small>1 bod = 1 Kč, uplatnit lze až 30 % zboží</small></span><span class="bal">' + S.pts.balance + ' b.</span></div>';
-        if (maxAllowed >= 100) {
-          if (S.pts.sel > maxAllowed) S.pts.sel = maxAllowed; if (S.pts.sel < 100) S.pts.sel = 100;
-          h += '<div class="stepper"><button type="button" class="s" id="npPm" aria-label="Méně">−</button><span class="v" id="npPv">' + S.pts.sel + ' b.</span><button type="button" class="s" id="npPp" aria-label="Více">+</button><button type="button" class="np-btn2 go" id="npPtsGo"' + (S.pts.busy ? ' disabled' : '') + '>' + (S.pts.busy ? '…' : 'Uplatnit') + '</button></div>';
-          h += '<div class="np-err-box" id="npPtsErr"></div>';
-          if (depOn) h += '<div class="note">Po uplatnění bodů se depozit nepoužije, body a depozit nelze kombinovat.</div>';
-        } else if (S.pts.balance < 100) {
-          h += '<div class="note">Body lze uplatnit od 100 b. Každá objednávka vám je přidá.</div>';
-        } else {
-          h += '<div class="note">Body lze uplatnit u zboží od ' + kc(334) + '. Přidejte do košíku další květiny.</div>';
-        }
-        h += '</div>';
-      }
+      h += loyBlock(depOn);
       h += '<div class="np-acc' + (S.accOpen ? ' open' : '') + '"><button type="button" id="npAccBtn"><span class="ic"><i class="ti ti-ticket"></i></span><span class="tx">Máte slevový kód?<small>Zadejte kód a uplatníme slevu</small></span><i class="ti ti-chevron-down chev"></i></button><div class="bd">';
       h += '<div class="np-promo-row"><input class="np-in" id="np_promo" type="text" placeholder="Slevový kód" autocomplete="off" value="' + esc(S.promo.code) + '"><button type="button" class="np-btn2" id="npPromoGo"' + (S.promo.busy ? ' disabled' : '') + '>' + (S.promo.busy ? '…' : 'Použít') + '</button></div><div class="np-err-box" id="npPromoErr"></div>';
       if (depOn) h += '<div class="np-hint">Po uplatnění kódu se depozit nepoužije.</div>';
       h += '</div></div>';
     }
     el.innerHTML = h;
+    var reg = $('#npLoyReg'); if (reg) reg.addEventListener('click', function () { try { localStorage.setItem('lkReturnUrl', location.pathname); } catch (e) {} });
     var ab = $('#npAccBtn'); if (ab) ab.addEventListener('click', function () { S.accOpen = !S.accOpen; ab.parentNode.classList.toggle('open', S.accOpen); });
     var go = $('#npPromoGo'); if (go) go.addEventListener('click', applyPromo);
     var inp = $('#np_promo'); if (inp) { inp.addEventListener('input', function () { S.promo.code = inp.value; }); inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); applyPromo(); } }); }
@@ -1081,7 +1105,7 @@
   }
   function loadPoints() {
     var token = authToken(); if (!token) return;
-    fn('member-data', { token: token }).then(function (d) { if (d && !d.error && d.balance != null) { S.pts.balance = Number(d.balance) || 0; renderPromo(); } }).catch(function () {});
+    fn('member-data', { token: token }).then(function (d) { if (d && !d.error && d.balance != null) { S.pts.balance = Number(d.balance) || 0; S.pts.earned = Number(d.totalEarned) || 0; S.pts.tierName = d.tier || ''; S.pts.ma = d.ma_id || ''; renderPromo(); } }).catch(function () {});
     fn('customer-deposit', { action: 'get', token: token }).then(function (d) { if (d && d.balance != null) { S.dep.balance = Math.max(0, Number(d.balance) || 0); renderDep(); renderPromo(); renderPays(); refresh(); quoteSoon(); } }).catch(function () {});
   }
 
