@@ -339,3 +339,4 @@ textarea.np-in { height: auto; min-height: 104px; padding: 15px 18px; resize: ve
   .np-gift { position: relative; }
 }
 .np-bar .t small { white-space: nowrap; }
+.np-hero h1 em { display: block; }
