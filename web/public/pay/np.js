@@ -613,7 +613,7 @@
     var busy = depOn;
     var applied = promoActive();
     var html = '<div class="np-promo' + (busy ? ' disabled' : '') + '"><div class="t">🎟️ Slevový kód nebo body</div>';
-    if (busy) html += '<div class="np-hint" style="margin:0">Máte zapnutý depozit, ten nelze kombinovat se slevou. Vypněte ho, pokud chcete použít kód nebo body.</div>';
+    if (busy) html += '<div class="np-hint" style="margin:0">Depozit nelze kombinovat se slevou. <a href="#" id="npDepOff" style="color:var(--blue);font-weight:500">Použít kód nebo body místo depozitu</a></div>';
     else if (applied) {
       var pc = tc().promocode || {};
       html += '<div class="np-applied"><span>✓ Uplatněno' + (pc.promocode ? ': ' + esc(String(pc.promocode)) : '') + ' (−' + kc(discountSum()) + ')</span><button type="button" id="npPromoX">Odebrat</button></div>';
@@ -628,6 +628,7 @@
       }
     }
     el.innerHTML = html + '</div>';
+    var doff = $('#npDepOff'); if (doff) doff.addEventListener('click', function (e) { e.preventDefault(); S.dep.use = false; renderDep(); renderPromo(); renderPays(); refresh(); });
     var go = $('#npPromoGo'); if (go) go.addEventListener('click', applyPromo);
     var inp = $('#np_promo'); if (inp) { inp.addEventListener('input', function () { S.promo.code = inp.value; }); inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); applyPromo(); } }); }
     var x = $('#npPromoX'); if (x) x.addEventListener('click', removePromo);
@@ -831,7 +832,7 @@
     var date = S.gift ? iso(addDays(new Date(), 1)) : S.date; setCart('date', dmy(date));
     if (S.mode === 'pickup') { setCart('time', S.time || ''); }
     else {
-      setCart('time', '');
+      var te = cartForm().querySelector('[name="time"]'); if (te && te.value && te.value.indexOf('_') === -1) te.value = '';
       var slot = S.gift ? (SLOTS.filter(function (s) { return !(AV.slots[date] && AV.slots[date][s]); })[0] || SLOTS[0]) : S.slot;
       setCartClick('delivery-time', function (v) { return v === slot; });
     }

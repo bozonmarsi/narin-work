@@ -276,3 +276,8 @@ textarea.np-in { height: auto; min-height: 96px; padding: 12px 14px; resize: ver
 @keyframes npskel { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
 .np [hidden] { display: none !important; }
 @media (prefers-reduced-motion: reduce) { .np * { animation: none !important; transition: none !important; } }
+
+@media (max-width: 520px) {
+  .np-steps { gap: 6px; }
+  .np-step { flex-direction: column; height: 58px; gap: 3px; padding: 7px 2px 5px; font-size: 11.5px; border-radius: 18px; }
+}
