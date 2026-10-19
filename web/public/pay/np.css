@@ -281,3 +281,9 @@ textarea.np-in { height: auto; min-height: 96px; padding: 12px 14px; resize: ver
   .np-steps { gap: 6px; }
   .np-step { flex-direction: column; height: 58px; gap: 3px; padding: 7px 2px 5px; font-size: 11.5px; border-radius: 18px; }
 }
+
+.np-alert { display: grid; gap: 6px; background: var(--err-soft); border: 1px solid #f2b9b2; color: #7a1d14; border-radius: 18px; padding: 16px 18px; margin: 0 0 18px; font-size: 14.5px; line-height: 1.5; }
+.np-alert[hidden] { display: none; }
+.np-alert b { font-size: 16px; color: #8b2118; }
+.np-alert .sm { font-size: 13px; color: #8b4a43; }
+.np-alert button { justify-self: start; height: 42px; padding: 0 20px; border-radius: 999px; border: 0; background: var(--ink); color: #fff; font: 500 14px 'Rubik', sans-serif; cursor: pointer; margin-top: 4px; }

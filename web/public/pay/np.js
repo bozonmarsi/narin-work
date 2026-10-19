@@ -98,6 +98,7 @@
   function cartForm() { return document.getElementById(FORM_ID); }
   function tc() { return window.tcart || {}; }
   function products() { return (tc().products || []).filter(function (p) { return p && p.name && p.deleted !== 'yes'; }); }
+  function pieces(p) { var por = parseInt(p.portion, 10) || 0, q = Number(p.quantity) || 0; return por > 0 ? q * por : q; }
   function hasPostcard() { return products().some(function (p) { return /pohlednice/i.test(p.name); }); }
   function goodsRaw() { var t = tc(); var s = Number(t.prodamount); if (!isFinite(s) || !s) { s = products().reduce(function (a, p) { return a + (Number(p.amount) || 0); }, 0); } return s; }
   function goodsNet() {
@@ -233,6 +234,7 @@
       '<p class="np-sub">Čerstvé květiny doručujeme po Praze. Vyplňte údaje a my se pustíme do práce.</p>' +
       '<div class="np-steps" id="npSteps">' +
       '<a class="np-step" data-s="c1"><i>1</i>Zákazník</a><a class="np-step" data-s="c2"><i>2</i>Doručení</a><a class="np-step" data-s="c3"><i>3</i>Příjemce</a><a class="np-step" data-s="c4"><i>4</i>Platba</a></div>' +
+      '<div class="np-alert" id="npAlert" hidden></div>' +
       '<div class="np-grid"><div class="np-main">' +
 
       /* 1 */
@@ -693,7 +695,7 @@
   var quoteSoon = debounce(function () { quoteDeposit(); }, 500);
   function quoteDeposit() {
     var token = authToken(); if (!token || !S.loggedIn || S.dep.balance < 1) return;
-    var prods = products().map(function (p) { return { uid: String(p.uid || p.lid || ''), quantity: Number(p.quantity) }; });
+    var prods = products().map(function (p) { return { uid: String(p.uid || p.lid || ''), quantity: pieces(p) }; });
     if (!prods.length || prods.some(function (p) { return !p.uid; })) { S.dep.err = 'Tento košík zatím nelze zaplatit depozitem.'; S.dep.quote = null; renderDep(); return; }
     var f = feeCalc();
     if (S.mode === 'courier' && !S.gift && (f.need || f.tooFar)) { S.dep.err = f.tooFar ? 'Na tuto adresu nedoručujeme.' : 'Vyberte adresu ze seznamu, spočítáme cenu.'; S.dep.quote = null; renderDep(); return; }
@@ -721,7 +723,7 @@
     var ps = products();
     items.innerHTML = ps.map(function (p) {
       var img = p.img ? String(p.img).replace(/"/g, '') : '';
-      return '<div class="np-item"><div class="im"' + (img ? ' style="background-image:url(\'' + esc(img) + '\')"' : '') + '></div><div class="nm">' + esc(decode(p.name)) + '<small>' + esc(p.quantity) + ' ks</small></div><div class="pr">' + kc(p.amount) + '</div></div>';
+      return '<div class="np-item"><div class="im"' + (img ? ' style="background-image:url(\'' + esc(img) + '\')"' : '') + '></div><div class="nm">' + esc(decode(p.name)) + '<small>' + esc(pieces(p)) + ' ks</small></div><div class="pr">' + kc(p.amount) + '</div></div>';
     }).join('');
     var t = totals(), f = t.f, h = '';
     h += '<div><span>Zboží</span><b>' + kc(t.raw) + '</b></div>';
@@ -881,19 +883,48 @@
     if (canDeposit() && S.dep.use && t.dep > 0) return submitDeposit(t);
     return submitTilda();
   }
+  function tildaErrText() {
+    var root = cartRoot(); if (!root) return '';
+    var els = $$('.js-errorbox-all, .t-form__errorbox-text', root);
+    for (var i = 0; i < els.length; i++) { var t = String(els[i].textContent || '').replace(/\s+/g, ' ').trim(); if (t) return t; }
+    return '';
+  }
+  function clearTildaErr() {
+    var root = cartRoot(); if (!root) return;
+    $$('.js-errorbox-all', root).forEach(function (e) { e.style.display = 'none'; });
+    $$('.t-form__errorbox-text', root).forEach(function (e) { e.textContent = ''; });
+  }
+  function showAlert(text) {
+    var a = $('#npAlert'); if (!a) return;
+    var msg = text;
+    if (/измени|цена|price/i.test(text)) msg = 'U některé položky v košíku se změnila cena nebo dostupnost. Obnovte prosím stránku a přidejte zboží do košíku znovu.';
+    else if (/доставк|delivery/i.test(text)) msg = 'Vyberte prosím způsob doručení a zkuste to znovu.';
+    a.innerHTML = '<b>Objednávku se nepodařilo odeslat</b><span>' + esc(msg) + '</span><span class="sm">Pokud problém trvá, napište nám na support@vezminarin.cz nebo zavolejte +420 776 421 993.</span><button type="button" id="npReload">Obnovit stránku</button>';
+    a.hidden = false; a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    var b = $('#npReload'); if (b) b.addEventListener('click', function () { location.reload(); });
+  }
+  function watchTildaResult() {
+    var n = 0, iv = setInterval(function () {
+      n++;
+      var t = tildaErrText();
+      if (t) { clearInterval(iv); setBusy(false); showAlert(t); console.warn('tilda cart error:', t); return; }
+      if (n > 60) clearInterval(iv);
+    }, 250);
+  }
   function submitTilda() {
     setBusy(true);
     if (!commitToCart()) { setBusy(false); return toast('Košík se nepodařilo načíst. Obnovte prosím stránku.', true); }
     var btn = $('.t-submit', cartRoot());
     if (!btn) { setBusy(false); return toast('Odeslání se nepodařilo. Obnovte prosím stránku.', true); }
-    setTimeout(function () { btn.click(); }, 200);
+    var al = $('#npAlert'); if (al) al.hidden = true; clearTildaErr();
+    setTimeout(function () { btn.click(); watchTildaResult(); }, 200);
     /* Tilda redirects to the payment page; if it stays (captcha, error), let the customer retry */
     setTimeout(function () { if (S.submitting) setBusy(false); }, 12000);
   }
   function submitDeposit(t) {
     var token = authToken(); if (!token) return toast('Přihlaste se prosím znovu.', true);
     setBusy(true);
-    var prods = products().map(function (p) { return { uid: String(p.uid || p.lid || ''), quantity: Number(p.quantity) }; });
+    var prods = products().map(function (p) { return { uid: String(p.uid || p.lid || ''), quantity: pieces(p) }; });
     var g = S.gift, date = g ? iso(addDays(new Date(), 1)) : S.date;
     var rn = S.same ? S.name : S.rname, rl = S.same ? S.last : S.rlast, rp = S.same ? S.phone : S.rphone;
     if (g && !phoneValid(rp)) rp = S.phone;
