@@ -46,7 +46,9 @@
     return fetch(SB + '/rest/v1/rpc/' + name, { method: 'POST', headers: { apikey: ANON, Authorization: 'Bearer ' + ANON, 'Content-Type': 'application/json' }, body: '{}' }).then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; });
   }
   function fn(name, payload) {
-    return fetch(SB + '/functions/v1/' + name, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: PUB, Authorization: 'Bearer ' + PUB }, body: JSON.stringify(payload) }).then(function (r) { return r.json().catch(function () { return {}; }); });
+    /* tilda-webhook answers CORS preflight only for Content-Type/Authorization (no apikey header), and has verify_jwt off */
+    var hd = name === 'tilda-webhook' ? { 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json', apikey: PUB, Authorization: 'Bearer ' + PUB };
+    return fetch(SB + '/functions/v1/' + name, { method: 'POST', headers: hd, body: JSON.stringify(payload) }).then(function (r) { return r.json().catch(function () { return {}; }); });
   }
 
   /* ---------- auth (same rules as the other site widgets) ---------- */
