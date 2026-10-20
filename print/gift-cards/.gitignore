@@ -3,3 +3,4 @@ cards.csv
 build/
 out/narin-gift-card-backs.pdf
 out/narin-gift-card-duplex.pdf
+__pycache__/
