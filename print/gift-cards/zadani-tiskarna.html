@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="cs"><head><meta charset="utf-8"><title>NARIN – zadání tisku dárkových karet</title>
+<style>
+@font-face{font-family:Rubik;font-weight:400;src:url(assets/fonts/rubik-latin-400-normal.woff2)}
+@font-face{font-family:Rubik;font-weight:400;src:url(assets/fonts/rubik-latin-ext-400-normal.woff2);unicode-range:U+0100-02BA,U+1E00-1EFF}
+@font-face{font-family:Rubik;font-weight:500;src:url(assets/fonts/rubik-latin-500-normal.woff2)}
+@font-face{font-family:Rubik;font-weight:500;src:url(assets/fonts/rubik-latin-ext-500-normal.woff2);unicode-range:U+0100-02BA,U+1E00-1EFF}
+@page{size:A4;margin:16mm 16mm 14mm}
+body{font-family:Rubik,sans-serif;font-size:9.5pt;line-height:1.45;color:#0f1b2d}
+h1{font-size:17pt;font-weight:500;color:#186ce0;margin:0 0 2mm}
+h2{font-size:11pt;font-weight:500;color:#186ce0;margin:6mm 0 1.5mm}
+p{margin:0 0 2mm}
+table{border-collapse:collapse;width:100%;margin:1mm 0 2mm}
+td,th{border:.2mm solid #d5e3f9;padding:1.3mm 2mm;text-align:left;vertical-align:top}
+th{background:#eef4fd;font-weight:500}
+ul{margin:0 0 2mm;padding-left:5mm} li{margin:.6mm 0}
+.muted{color:#6b7485}
+img.pv{width:48%;border:.2mm solid #ddd;border-radius:2mm}
+</style></head><body>
+<h1>Zadání tisku: dárkové karty NARIN</h1>
+<p class="muted">Květinářství NARIN, Praha · vezminarin.cz · kontakt: support@vezminarin.cz</p>
+
+<h2>1. Produkt</h2>
+<table>
+<tr><th style="width:34%">Formát</th><td>CR80 – 85,6 × 54 mm, na šířku, zaoblené rohy r = 3 mm</td></tr>
+<tr><th>Materiál</th><td>Bílé PVC 0,76 mm (standardní platební karta)</td></tr>
+<tr><th>Povrch</th><td>Lícní strana: <b>matná laminace</b> (malba vypadá lépe než v lesku). Rub: matný nebo lesklý, podle vašeho doporučení. QR kód musí jít bez odlesků naskenovat telefonem.</td></tr>
+<tr><th>Tisk</th><td>4/4 CMYK. Líc je stejný pro všechny karty jednoho nominálu. Rub je <b>personalizovaný</b>: každá karta má vlastní QR kód a číslo.</td></tr>
+<tr><th>Bez</th><td>magnetického proužku, čipu, podpisového proužku a embosingu</td></tr>
+<tr><th>Náklad</th><td><b>20 ks</b>, z toho 4 motivy lícní strany (viz tabulka níže)</td></tr>
+</table>
+
+<table>
+<tr><th>Nominál (rub)</th><th>Motiv lícní strany</th><th>Počet</th><th>Pořadí v souborech</th></tr>
+<tr><td>500 Kč</td><td>scene-1 (černá kočka v lučních květech)</td><td>6</td><td>karty 01–06</td></tr>
+<tr><td>1 000 Kč</td><td>scene-2 (siamská kočka na louce)</td><td>6</td><td>karty 07–12</td></tr>
+<tr><td>1 500 Kč</td><td>scene-3 (bílá kočka ve fialových květech)</td><td>4</td><td>karty 13–16</td></tr>
+<tr><td>2 000 Kč</td><td>scene-4 (zrzavé kotě na cestě)</td><td>4</td><td>karty 17–20</td></tr>
+</table>
+
+<h2>2. Podklady</h2>
+<ul>
+<li><b>narin-gift-card-duplex.pdf</b>: 40 stran, pořadí líc / rub / líc / rub… (karta 01 = strany 1–2). Hlavní tiskový soubor.</li>
+<li>Totéž odděleně: <b>narin-gift-card-fronts.pdf</b> (4 strany: líc 500 / 1 000 / 1 500 / 2 000) a <b>narin-gift-card-backs.pdf</b> (20 stran rubů v pořadí 01–20).</li>
+<li><b>cards.csv</b>: data pro variabilní tisk (číslo karty, kód, nominál, motiv, URL v QR), pokud personalizujete z vlastní šablony.</li>
+<li><b>narin-gift-card-back-templates.pdf</b>: rub bez QR a kódu (4 nominály). Je pro případ, že QR a číslo tisknete vlastní technologií. Pozice: QR plocha 20 × 20 mm uvnitř bílého rámečku 24 × 24 mm v pravém horním rohu bezpečné zóny; kód je vycentrovaný pod rámečkem.</li>
+</ul>
+<table>
+<tr><th style="width:34%">Velikost stránky PDF</th><td>89,6 × 58 mm = čistý formát + <b>spadávka 2 mm</b> na každé straně</td></tr>
+<tr><th>Bezpečná zóna</th><td>4 mm od čistého formátu. Všechny texty a QR jsou uvnitř.</td></tr>
+<tr><th>Rozlišení</th><td>ilustrace líce 410–440 dpi ve finální velikosti. Texty, QR a modré plochy jsou vektorové, fonty (Rubik) jsou vložené.</td></tr>
+<tr><th>Barvy</th><td>Soubory jsou v RGB (sRGB). Prosíme o převod do CMYK vaším profilem pro PVC. Firemní modrá #186ce0 ≈ <b>C85 M50 Y0 K0</b>. Hlídejte, aby nesklouzla do fialova. QR kód a číslo tiskněte <b>čistou černou K100</b>, ne soutiskovou.</td></tr>
+<tr><th>Ořez, rohy</th><td>PDF neobsahují ořezové značky ani výsek. Zaoblení r = 3 mm dělá standardní výsek CR80.</td></tr>
+</table>
+
+<h2>3. Kontrola a dodání</h2>
+<ul>
+<li>Před tiskem prosíme <b>PDF nátah</b> a, pokud to jde, <b>1 fyzický vzorek</b> (barva modré, čitelnost písma 6 pt, naskenování QR).</li>
+<li>Každý QR musí po naskenování otevřít adresu <i>https://vezminarin.cz/poukaz?c=NR-XXXX-XXXX</i> s kódem, který je natištěný pod ním. Kód a nominál na stejné kartě musí odpovídat souboru cards.csv.</li>
+<li>Kódy jsou jedinečné a <b>neopakují se</b>. Prosíme netisknout přebytky s kódy. Zmetky s kódem skartujte, nebo je vraťte s kartami a jejich čísla nám napište.</li>
+<li>Dodání: karty seřazené po nominálech (01–20), každý nominál zvlášť (sáček nebo páska s popisem).</li>
+<li>Data (cards.csv, PDF s kódy) jsou důvěrná: nesdílet, po dokončení zakázky smazat.</li>
+</ul>
+
+<h2>4. Prosíme o nabídku</h2>
+<ul>
+<li>Cena za 20 ks (4 motivy, personalizace) a termín.</li>
+<li>Pro srovnání i cena za 100 / 250 ks: předtištěné líce a personalizace rubů po dávkách. Další karty budeme objednávat znovu.</li>
+</ul>
+
+<h2>Náhled (čára ořezu fialově, bezpečná zóna modře)</h2>
+<p><img class="pv" src="preview/500-front.png"> <img class="pv" src="preview/500-back.png"></p>
+<p class="muted">Kód a QR na náhledu jsou ukázkové. Skutečné jsou v tiskových souborech.</p>
+</body></html>
