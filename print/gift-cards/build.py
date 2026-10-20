@@ -10,7 +10,7 @@ import html
 from pathlib import Path
 
 import qrcode
-from PIL import Image
+from PIL import Image, ImageOps
 
 ROOT = Path(__file__).resolve().parent
 BUILD = ROOT / "build"
@@ -25,7 +25,6 @@ GREY = "#7b8494"
 
 NOMINAL_LABEL = {500: "500", 1000: "1 000", 1500: "1 500", 2000: "2 000"}
 STEPS = ["Naskenujte QR kód", "Přihlaste se nebo se zaregistrujte", "Částka je na vašem účtu"]
-STRIP = "Platí 12 měsíců od aktivace · Lze uplatnit jen jednou"
 
 FONT_FACES = "".join(
     f"""@font-face{{font-family:Rubik;font-weight:{w};src:url(../assets/fonts/rubik-latin-{w}-normal.woff2) format('woff2');
@@ -91,19 +90,51 @@ def front_page(scene: str, guides: bool) -> str:
             f'style="left:0;top:0;width:{PAGE_W}mm;height:{PAGE_H}mm;object-fit:cover">{g}</div>')
 
 
-def back_page(nominal: int, code: str | None, url: str | None, guides: bool) -> str:
+PANEL_X = BLEED + 52.0  # левая граница синей колонки (от края страницы с вылетом)
+
+
+def make_back_panels(scenes: set[str]) -> None:
+    """Фактура для синей колонки оборота: правая часть той же картины в синем дуотоне."""
+    ratio = (PAGE_W - PANEL_X) / PAGE_H
+    dark, light = (12, 62, 158), (32, 108, 224)
+    for s in sorted(scenes):
+        im = Image.open(ROOT / "assets" / "scenes" / f"{s}.webp").convert("L")
+        w, h = im.size
+        nw = round(h * ratio)
+        im = ImageOps.autocontrast(im.crop((w - nw, 0, w, h)), cutoff=2)
+        im = ImageOps.colorize(im, dark, light)
+        im.save(BUILD / f"panel-{s}.jpg", quality=92)
+
+
+def ruler() -> str:
+    """Шкала 0–4 см для подрезки стеблей; ноль отнесён от края карты, чтобы не зависеть от точности вырубки."""
+    ticks = []
+    for i in range(41):
+        hgt = 2.6 if i % 10 == 0 else 1.7 if i % 5 == 0 else 1.0
+        ticks.append(f'<line x1="{i}" y1="3.2" x2="{i}" y2="{3.2 - hgt}" stroke="{INK}" stroke-width=".16"/>')
+        if i % 10 == 0:
+            ticks.append(f'<text x="{i}" y="-.5" font-size="1.75" text-anchor="middle" fill="{INK}" '
+                         f'font-family="Rubik" font-weight="500">{i // 10}</text>')
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1 -2.6 42 5.9" style="width:42mm;height:5.9mm;display:block;overflow:visible">'
+            f'<rect x="20" y="0" width="10" height="3.2" fill="#dbe8fc"/>'
+            f'<line x1="0" y1="3.2" x2="40" y2="3.2" stroke="{INK}" stroke-width=".2"/>{"".join(ticks)}'
+            f'<text x="41.2" y="3.1" font-size="1.6" fill="{GREY}" font-family="Rubik">cm</text></svg>')
+
+
+def back_page(nominal: int, scene: str, code: str | None, url: str | None, guides: bool) -> str:
     x0 = y0 = BLEED + 4  # левый верхний угол безопасной зоны
     right = BLEED + TRIM_W - 4
+    panel_w = PAGE_W - PANEL_X
     qr_size = 24.0
-    qr_x = right - qr_size
-    qr_y = y0 + 0.5
-    strip_top = BLEED + 46.0
+    qr_x = PANEL_X + (BLEED + TRIM_W - PANEL_X - qr_size) / 2  # по центру видимой части колонки
+    qr_y = y0
+    col_l, col_w = PANEL_X + 1, BLEED + TRIM_W - PANEL_X - 2
 
     steps = "".join(
-        f'<div style="display:flex;align-items:center;gap:1.4mm;height:3.6mm">'
-        f'<span style="flex:none;width:3.2mm;height:3.2mm;border-radius:50%;background:{BLUE};color:#fff;'
-        f'font-size:5.2pt;font-weight:500;display:flex;align-items:center;justify-content:center;line-height:1">{i}</span>'
-        f'<span style="font-size:6.2pt;line-height:1;color:{INK}">{html.escape(t)}</span></div>'
+        f'<div style="display:flex;align-items:center;gap:1.5mm;height:3.3mm">'
+        f'<span style="flex:none;width:3mm;height:3mm;border-radius:50%;border:.22mm solid {BLUE};color:{BLUE};'
+        f'font-size:4.9pt;font-weight:500;display:flex;align-items:center;justify-content:center;line-height:1">{i}</span>'
+        f'<span style="font-size:6pt;line-height:1;color:{INK}">{html.escape(t)}</span></div>'
         for i, t in enumerate(STEPS, 1)
     )
 
@@ -118,23 +149,27 @@ def back_page(nominal: int, code: str | None, url: str | None, guides: bool) -> 
 
     g = '<div class="guides"><div class="trim"></div><div class="safe"></div></div>' if guides else ""
     return f"""<div class="page">
-  <img class="abs" src="../assets/narin-logo.png" style="left:{mm(x0)};top:{mm(y0)};width:24mm">
-  <div class="abs" style="left:{mm(x0)};top:{mm(y0 + 8.6)};font-size:6pt;line-height:1;color:{GREY};letter-spacing:.06em">gift card</div>
-  <div class="abs" style="left:{mm(x0 - 0.4)};top:{mm(y0 + 11.4)};font-weight:700;line-height:1;color:{BLUE};white-space:nowrap">
-    <span style="font-size:25pt;letter-spacing:-.01em">{NOMINAL_LABEL[nominal]}</span><span style="font-size:15pt">&nbsp;Kč</span>
+  <img class="abs" src="../assets/narin-logo.png" style="left:{mm(x0)};top:{mm(y0)};width:22mm">
+  <div class="abs" style="left:{mm(x0)};top:{mm(y0 + 8.6)};height:3.2mm;padding:0 1.6mm;border-radius:1.6mm;background:#e8f0fd;
+       color:{BLUE};font-size:4.9pt;font-weight:500;letter-spacing:.16em;display:flex;align-items:center;line-height:1">GIFT CARD</div>
+  <div class="abs" style="left:{mm(x0 - 0.5)};top:{mm(y0 + 13.3)};font-weight:700;line-height:1;color:{INK};white-space:nowrap">
+    <span style="font-size:27pt;letter-spacing:-.025em">{NOMINAL_LABEL[nominal]}</span><span style="font-size:13pt;color:{BLUE};margin-left:1.2mm">Kč</span>
   </div>
-  <div class="abs" style="left:{mm(x0)};top:{mm(y0 + 23.2)};display:flex;flex-direction:column;gap:.55mm">{steps}</div>
+  <div class="abs" style="left:{mm(x0)};top:{mm(y0 + 24.6)};display:flex;flex-direction:column;gap:.45mm">{steps}</div>
 
+  <div class="abs" style="left:{mm(x0)};top:{mm(y0 + 36.6)};font-size:4.7pt;line-height:1;color:{GREY};white-space:nowrap">
+    <span style="color:{BLUE};font-weight:500">Tip:</span> stonky zastřihněte šikmo o 2–3 cm</div>
+  <div class="abs" style="left:{mm(x0)};top:{mm(y0 + 39.4)}">{ruler()}</div>
+
+  <img class="abs" src="panel-{scene}.jpg" style="left:{mm(PANEL_X)};top:0;width:{mm(panel_w)};height:{PAGE_H}mm;object-fit:cover">
   <div class="abs" style="left:{mm(qr_x)};top:{mm(qr_y)};width:{mm(qr_size)};height:{mm(qr_size)};background:#fff;
-       border:.2mm solid #d5e3f9;border-radius:1.6mm">{qr_inner}</div>
-  <div class="abs" style="left:{mm(qr_x - 3)};width:{mm(qr_size + 6)};top:{mm(qr_y + qr_size + 2.1)};text-align:center;
-       font-size:7.2pt;font-weight:500;line-height:1;letter-spacing:.05em;color:{INK};white-space:nowrap">{code_text}</div>
-  <div class="abs" style="left:{mm(qr_x - 3)};width:{mm(qr_size + 6)};top:{mm(qr_y + qr_size + 5.6)};text-align:center;
-       font-size:5.8pt;line-height:1;color:{BLUE};white-space:nowrap">vezminarin.cz/poukaz</div>
-
-  <div class="abs" style="left:0;top:{mm(strip_top)};width:{PAGE_W}mm;height:{mm(PAGE_H - strip_top)};background:{BLUE}"></div>
-  <div class="abs" style="left:{mm(x0)};width:{mm(right - x0)};top:{mm(strip_top)};height:5.4mm;
-       display:flex;align-items:center;justify-content:center;color:#fff;font-size:5.9pt;font-weight:500;white-space:nowrap">{html.escape(STRIP)}</div>
+       border-radius:2mm">{qr_inner}</div>
+  <div class="abs" style="left:{mm(col_l)};width:{mm(col_w)};top:{mm(qr_y + qr_size + 2.2)};text-align:center;
+       font-size:7.2pt;font-weight:500;line-height:1;letter-spacing:.06em;color:#fff;white-space:nowrap">{code_text}</div>
+  <div class="abs" style="left:{mm(col_l)};width:{mm(col_w)};top:{mm(qr_y + qr_size + 5.6)};text-align:center;
+       font-size:5.8pt;line-height:1;color:#d6e6ff;white-space:nowrap">vezminarin.cz/poukaz</div>
+  <div class="abs" style="left:{mm(col_l)};width:{mm(col_w)};top:{mm(y0 + 38.6)};text-align:center;
+       font-size:4.8pt;line-height:1.45;color:#fff;font-weight:500">Platí 12 měsíců od aktivace<br>Lze uplatnit jen jednou</div>
   {g}
 </div>"""
 
@@ -154,20 +189,21 @@ def main() -> None:
     scene_of = {c["nominal_czk"]: c["front"] for c in cards}
 
     make_front_images(set(scene_of.values()))
+    make_back_panels(set(scene_of.values()))
 
     # Лицевые стороны: по одной на номинал (без текста, одинаковые для всех карт номинала).
     write("fronts", [front_page(scene_of[n], False) for n in nominals])
     # Обороты с персонализацией: 20 страниц, порядок = cards.csv.
-    write("backs", [back_page(c["nominal_czk"], c["code"], c["qr_url"], False) for c in cards])
+    write("backs", [back_page(c["nominal_czk"], c["front"], c["code"], c["qr_url"], False) for c in cards])
     # Шаблоны оборота без QR/кода — если типография персонализирует сама.
-    write("back-templates", [back_page(n, None, None, False) for n in nominals])
+    write("back-templates", [back_page(n, scene_of[n], None, None, False) for n in nominals])
     # Дуплекс: лицо, оборот, лицо, оборот… — 40 страниц.
     write("duplex", [p for c in cards for p in (front_page(c["front"], False),
-                                                    back_page(c["nominal_czk"], c["code"], c["qr_url"], False))])
+                                                    back_page(c["nominal_czk"], c["front"], c["code"], c["qr_url"], False))])
     # Превью с линией реза и безопасной зоной — только для согласования.
     write("preview", [p for n in nominals for p in (
         front_page(scene_of[n], True),
-        back_page(n, "NR-XXXX-XXXX", "https://vezminarin.cz/poukaz", True))])  # без реальных кодов: репо публичный
+        back_page(n, scene_of[n], "NR-XXXX-XXXX", "https://vezminarin.cz/poukaz", True))])  # без реальных кодов: репо публичный
     print(f"{len(cards)} карт, номиналы: " + ", ".join(
         f"{n} Kč x{sum(c['nominal_czk'] == n for c in cards)}" for n in nominals))
 
