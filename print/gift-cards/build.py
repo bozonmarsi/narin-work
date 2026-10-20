@@ -24,7 +24,6 @@ INK = "#0f1b2d"
 GREY = "#7b8494"
 
 NOMINAL_LABEL = {500: "500", 1000: "1 000", 1500: "1 500", 2000: "2 000"}
-STEPS = ["Naskenujte QR kód", "Přihlaste se nebo se zaregistrujte", "Částka je na vašem účtu"]
 
 FONT_FACES = "".join(
     f"""@font-face{{font-family:Rubik;font-weight:{w};src:url(../assets/fonts/rubik-latin-{w}-normal.woff2) format('woff2');
@@ -107,18 +106,24 @@ def make_back_panels(scenes: set[str]) -> None:
 
 
 def ruler() -> str:
-    """Шкала 0–4 см для подрезки стеблей; ноль отнесён от края карты, чтобы не зависеть от точности вырубки."""
-    ticks = []
-    for i in range(41):
-        hgt = 2.6 if i % 10 == 0 else 1.7 if i % 5 == 0 else 1.0
-        ticks.append(f'<line x1="{i}" y1="3.2" x2="{i}" y2="{3.2 - hgt}" stroke="{INK}" stroke-width=".16"/>')
-        if i % 10 == 0:
-            ticks.append(f'<text x="{i}" y="-.5" font-size="1.75" text-anchor="middle" fill="{INK}" '
-                         f'font-family="Rubik" font-weight="500">{i // 10}</text>')
-    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1 -2.6 42 5.9" style="width:42mm;height:5.9mm;display:block;overflow:visible">'
-            f'<rect x="20" y="0" width="10" height="3.2" fill="#dbe8fc"/>'
-            f'<line x1="0" y1="3.2" x2="40" y2="3.2" stroke="{INK}" stroke-width=".2"/>{"".join(ticks)}'
-            f'<text x="41.2" y="3.1" font-size="1.6" fill="{GREY}" font-family="Rubik">cm</text></svg>')
+    """Шкала 0–8 см по нижнему краю: ноль = левый край карты, риски уходят в вылет, чтобы после реза касаться края.
+    На синей колонке риски белые. Цифры держим в безопасной зоне (не ближе 4 мм к краю)."""
+    edge = BLEED + TRIM_H  # нижний край карты
+    out = [f'<rect x="{BLEED + 20}" y="{edge - 3.2}" width="10" height="{3.2 + BLEED}" fill="#dbe8fc"/>']
+    for i in range(int(TRIM_W) + 1):
+        x = BLEED + i
+        hgt = 3.0 if i % 10 == 0 else 2.0 if i % 5 == 0 else 1.2
+        col = "#fff" if x > PANEL_X else INK
+        out.append(f'<line x1="{x}" y1="{PAGE_H}" x2="{x}" y2="{edge - hgt}" stroke="{col}" stroke-width=".16"/>')
+        if i % 10 == 0 and 0 < i < 85:
+            out.append(f'<text x="{x}" y="{edge - 4.1}" font-size="1.8" text-anchor="middle" fill="{col}" '
+                       f'font-family="Rubik" font-weight="500">{i // 10}</text>')
+    out.append(f'<text x="{BLEED + 4.2}" y="{edge - 4.1}" font-size="1.6" fill="{GREY}" font-family="Rubik">cm</text>')
+    return (f'<svg class="abs" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {PAGE_W} {PAGE_H}" '
+            f'style="left:0;top:0;width:{PAGE_W}mm;height:{PAGE_H}mm;z-index:2">{"".join(out)}</svg>')
+
+
+CARE = ["Stonky zastřihněte šikmo o 2–3 cm", "Vodu měňte každé 2 dny", "Mimo slunce, topení a ovoce"]
 
 
 def back_page(nominal: int, scene: str, code: str | None, url: str | None, guides: bool) -> str:
@@ -130,12 +135,11 @@ def back_page(nominal: int, scene: str, code: str | None, url: str | None, guide
     qr_y = y0
     col_l, col_w = PANEL_X + 1, BLEED + TRIM_W - PANEL_X - 2
 
-    steps = "".join(
-        f'<div style="display:flex;align-items:center;gap:1.5mm;height:3.3mm">'
-        f'<span style="flex:none;width:3mm;height:3mm;border-radius:50%;border:.22mm solid {BLUE};color:{BLUE};'
-        f'font-size:4.9pt;font-weight:500;display:flex;align-items:center;justify-content:center;line-height:1">{i}</span>'
-        f'<span style="font-size:6pt;line-height:1;color:{INK}">{html.escape(t)}</span></div>'
-        for i, t in enumerate(STEPS, 1)
+    care = "".join(
+        f'<div style="display:flex;align-items:center;gap:1.3mm;height:2.9mm">'
+        f'<span style="flex:none;width:1.1mm;height:1.1mm;border-radius:50%;background:{BLUE}"></span>'
+        f'<span style="font-size:5.6pt;line-height:1;color:{INK}">{html.escape(t)}</span></div>'
+        for t in CARE
     )
 
     if code:
@@ -155,11 +159,8 @@ def back_page(nominal: int, scene: str, code: str | None, url: str | None, guide
   <div class="abs" style="left:{mm(x0 - 0.5)};top:{mm(y0 + 13.3)};font-weight:700;line-height:1;color:{INK};white-space:nowrap">
     <span style="font-size:27pt;letter-spacing:-.025em">{NOMINAL_LABEL[nominal]}</span><span style="font-size:13pt;color:{BLUE};margin-left:1.2mm">Kč</span>
   </div>
-  <div class="abs" style="left:{mm(x0)};top:{mm(y0 + 24.6)};display:flex;flex-direction:column;gap:.45mm">{steps}</div>
-
-  <div class="abs" style="left:{mm(x0)};top:{mm(y0 + 36.6)};font-size:4.7pt;line-height:1;color:{GREY};white-space:nowrap">
-    <span style="color:{BLUE};font-weight:500">Tip:</span> stonky zastřihněte šikmo o 2–3 cm</div>
-  <div class="abs" style="left:{mm(x0)};top:{mm(y0 + 39.4)}">{ruler()}</div>
+  <div class="abs" style="left:{mm(x0)};top:{mm(y0 + 25.2)};font-size:4.9pt;font-weight:500;letter-spacing:.16em;color:{BLUE};line-height:1">PÉČE O KYTICI</div>
+  <div class="abs" style="left:{mm(x0)};top:{mm(y0 + 27.6)};display:flex;flex-direction:column">{care}</div>
 
   <img class="abs" src="panel-{scene}.jpg" style="left:{mm(PANEL_X)};top:0;width:{mm(panel_w)};height:{PAGE_H}mm;object-fit:cover">
   <div class="abs" style="left:{mm(qr_x)};top:{mm(qr_y)};width:{mm(qr_size)};height:{mm(qr_size)};background:#fff;
@@ -168,8 +169,9 @@ def back_page(nominal: int, scene: str, code: str | None, url: str | None, guide
        font-size:7.2pt;font-weight:500;line-height:1;letter-spacing:.06em;color:#fff;white-space:nowrap">{code_text}</div>
   <div class="abs" style="left:{mm(col_l)};width:{mm(col_w)};top:{mm(qr_y + qr_size + 5.6)};text-align:center;
        font-size:5.8pt;line-height:1;color:#d6e6ff;white-space:nowrap">vezminarin.cz/poukaz</div>
-  <div class="abs" style="left:{mm(col_l)};width:{mm(col_w)};top:{mm(y0 + 38.6)};text-align:center;
+  <div class="abs" style="left:{mm(col_l)};width:{mm(col_w)};top:{mm(y0 + 33.6)};text-align:center;
        font-size:4.8pt;line-height:1.45;color:#fff;font-weight:500">Platí 12 měsíců od aktivace<br>Lze uplatnit jen jednou</div>
+  {ruler()}
   {g}
 </div>"""
 

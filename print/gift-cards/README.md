@@ -16,6 +16,7 @@ QR ведёт на `https://vezminarin.cz/poukaz?c=<код>`. Так же фор
 - `out/narin-gift-card-fronts.pdf`: 4 лицевые стороны.
 - `out/narin-gift-card-back-templates.pdf`: обороты без QR и кода, по одному на номинал.
 - `out/NARIN-zadani-tisku-darkove-karty.pdf`: задание для типографии (на чешском), исходник `zadani-tiskarna.html`.
+- Оборот: QR, код, срок действия; памятка по уходу и шкала 0–8 см от края карты (для подрезки стеблей).
 - `preview/`: PNG с линией реза и безопасной зоной. На них образец кода, не реальный.
 - **Не в git** (репозиторий публичный): `cards.csv` с реальными кодами, `out/narin-gift-card-backs.pdf` (20 оборотов) и `out/narin-gift-card-duplex.pdf` (40 страниц, лицо и оборот по очереди). Формат CSV показан в `cards.example.csv`.
 
