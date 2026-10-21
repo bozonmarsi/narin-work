@@ -16,7 +16,8 @@ type NotifyPayload = {
     | "gift_confirmed"
     | "gift_cancelled"
     | "voucher_purchased"
-    | "voucher_gift";
+    | "voucher_gift"
+    | "deposit_expiring";
   order_id: string; // human-readable Tilda order number, e.g. "1948856243"
   email?: string;
   phone?: string;
@@ -47,6 +48,8 @@ type NotifyPayload = {
   recipient_email?: string | null;
   send_at?: string;
   send_now?: boolean;
+  // deposit_expiring (SQL send_deposit_expiry_reminders)
+  lots?: { remaining: number; expires_at: string }[];
 };
 
 type OccasionItem = {
@@ -675,6 +678,38 @@ export async function POST(request: Request) {
             secondaryCtaLabel: "Jak to funguje",
             secondaryCtaUrl: "https://vezminarin.cz/to-buyers#poukazy",
             footNote: `Poukaz lze uplatnit jen jednou a platí do ${until ?? "12 měsíců od aktivace"}. Kód ${esc(payload.code)} chraňte jako hotovost.`,
+          }),
+        );
+      }
+      break;
+
+    // Cast zustatku z dárkového poukazu brzy propadne (30 a 7 dní předem, SQL
+    // send_deposit_expiry_reminders). Jen přátelská zpráva s tím, kolik a dokdy.
+    case "deposit_expiring":
+      if (email && Array.isArray(payload.lots) && payload.lots.length) {
+        const days = Number(payload.days) === 7 ? 7 : 30;
+        const total = payload.total ?? payload.lots.reduce((s, l) => s + Number(l.remaining || 0), 0);
+        const rows = payload.lots
+          .map(
+            (l) =>
+              `<tr><td style="padding:9px 0;border-top:1px solid ${LINE};font-size:13.5px;color:${INK};font-weight:600;">${czk(Number(l.remaining) || 0)}</td><td align="right" style="padding:9px 0;border-top:1px solid ${LINE};font-size:13px;color:${MUTED};">platí do ${esc(pragueDate(l.expires_at))}</td></tr>`,
+          )
+          .join("");
+        await sendBrevoEmail(
+          email,
+          days === 7 ? `Za týden vám propadne ${czk(total)} z depozitu` : `Část vašeho depozitu (${czk(total)}) brzy propadne`,
+          emailShell({
+            preheader: `Z depozitu vám do ${days} dnů propadne ${czk(total)}.`,
+            badgeEmoji: "⏳",
+            badgeBg: PREPARING_BG,
+            headline: days === 7 ? "Za týden vám propadne část depozitu" : "Část depozitu vám brzy propadne",
+            bodyHtml: `Dobrý den, připomínáme, že částka z dárkového poukazu platí jen 12 měsíců. Stačí s ní zaplatit kytici nebo jakoukoli další objednávku. Při placení ji vyberete jako depozit a my ji použijeme jako první.`,
+            extraHtml: `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;">${rows}</table>`,
+            ctaLabel: "Vybrat květiny",
+            ctaUrl: "https://vezminarin.cz/",
+            secondaryCtaLabel: "Můj depozit",
+            secondaryCtaUrl: "https://vezminarin.cz/members/",
+            footNote: "Po uplynutí platnosti částku z poukazu už nelze použít, proto vám to raději připomínáme.",
           }),
         );
       }
