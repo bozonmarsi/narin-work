@@ -70,6 +70,7 @@ function describeError(message: string): string {
   if (message.includes("voucher_not_inactive_void")) return "Этот сертификат аннулирован.";
   if (message.includes("voucher_not_inactive_expired")) return "У этого сертификата истёк срок.";
   if (message.includes("amount_required")) return "Укажите сумму.";
+  if (message.includes("amount_mismatch")) return "Сумма не совпадает с номиналом, напечатанным на карточке.";
   if (message.includes("voucher_cannot_void")) return "Этот сертификат уже нельзя аннулировать (он погашен или истёк).";
   if (message.includes("forbidden")) return "Нет прав (нужна роль менеджера).";
   if (message.includes("count_1_500")) return "Количество от 1 до 500.";
@@ -133,14 +134,30 @@ export default function VouchersPage() {
     [vouchers],
   );
 
+  const actCard = useMemo(() => {
+    const q = actCode.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (q.length < 8) return null;
+    return vouchers.find((x) => x.code.replace(/-/g, "") === q) ?? null;
+  }, [actCode, vouchers]);
+
+  // Номинал, напечатанный на карточке и записанный в базу: его менять нельзя.
+  const actPreset = actCard && actCard.status === "inactive" ? actCard.amount : null;
+
   const actFound = useMemo(() => {
     const q = actCode.toUpperCase().replace(/[^A-Z0-9]/g, "");
     if (q.length < 8) return null;
-    const v = vouchers.find((x) => x.code.replace(/-/g, "") === q);
-    if (!v) return { kind: "warn" as const, text: "Такого кода нет в списке." };
-    if (v.status === "inactive") return { kind: "ok" as const, text: "Код найден, сертификат ещё не включён." };
-    return { kind: "warn" as const, text: `Код найден, но статус: ${STATUS_LABEL[v.status]}.` };
-  }, [actCode, vouchers]);
+    if (!actCard) return { kind: "warn" as const, text: "Такого кода нет в списке." };
+    if (actCard.status === "inactive") {
+      return {
+        kind: "ok" as const,
+        text:
+          actCard.amount != null
+            ? `Код найден, сертификат ещё не включён. Номинал на карточке: ${money(actCard.amount)}.`
+            : "Код найден, сертификат ещё не включён.",
+      };
+    }
+    return { kind: "warn" as const, text: `Код найден, но статус: ${STATUS_LABEL[actCard.status]}.` };
+  }, [actCode, actCard]);
 
   const shown = useMemo(() => {
     const q = search.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -158,7 +175,7 @@ export default function VouchersPage() {
   async function activate(e: React.FormEvent) {
     e.preventDefault();
     setActMsg(null);
-    const amount = actAmount ? Number(actAmount) : null;
+    const amount = actPreset != null ? null : actAmount ? Number(actAmount) : null;
     if (!actCode.trim()) {
       setActMsg({ ok: false, text: "Введите код сертификата." });
       return;
@@ -307,31 +324,37 @@ export default function VouchersPage() {
               {actFound.text}
             </p>
           )}
-          <div>
-            <div className="flex flex-wrap gap-1.5">
-              {AMOUNT_PRESETS.map((a) => (
-                <button
-                  type="button"
-                  key={a}
-                  onClick={() => setActAmount(String(a))}
-                  className={`rounded-full border px-3 py-1 text-xs ${
-                    actAmount === String(a)
-                      ? "border-accent bg-accent text-white"
-                      : "border-zinc-300 dark:border-zinc-600"
-                  }`}
-                >
-                  {a} Kč
-                </button>
-              ))}
+          {actPreset != null ? (
+            <p className="rounded-lg bg-zinc-50 dark:bg-zinc-800 px-3 py-2 text-sm">
+              Сумма по карточке: <b>{money(actPreset)}</b> (её менять нельзя)
+            </p>
+          ) : (
+            <div>
+              <div className="flex flex-wrap gap-1.5">
+                {AMOUNT_PRESETS.map((a) => (
+                  <button
+                    type="button"
+                    key={a}
+                    onClick={() => setActAmount(String(a))}
+                    className={`rounded-full border px-3 py-1 text-xs ${
+                      actAmount === String(a)
+                        ? "border-accent bg-accent text-white"
+                        : "border-zinc-300 dark:border-zinc-600"
+                    }`}
+                  >
+                    {a} Kč
+                  </button>
+                ))}
+              </div>
+              <input
+                value={actAmount}
+                onChange={(e) => setActAmount(e.target.value.replace(/[^\d]/g, ""))}
+                placeholder="Сумма, Kč"
+                inputMode="numeric"
+                className={`${inputCls} mt-2`}
+              />
             </div>
-            <input
-              value={actAmount}
-              onChange={(e) => setActAmount(e.target.value.replace(/[^\d]/g, ""))}
-              placeholder="Сумма, Kč"
-              inputMode="numeric"
-              className={`${inputCls} mt-2`}
-            />
-          </div>
+          )}
           <select value={actMethod} onChange={(e) => setActMethod(e.target.value)} className={inputCls}>
             {METHODS.map((m) => (
               <option key={m.value} value={m.value}>
