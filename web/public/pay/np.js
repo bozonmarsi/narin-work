@@ -179,7 +179,6 @@
     var today = sod(new Date());
     if (d < today) return '';
     if (+d === +today) return 'Doručení ještě dnes nestihneme. Nejbližší den je zítra.';
-    if (new Date().getHours() >= 20 && +d === +addDays(today, 1)) return 'Objednávky po 20:00 doručujeme nejdříve pozítří.';
     if (d > addDays(today, 120)) return '';
     if (AV.dates[iso(d)]) return 'V tento den máme zavřeno.';
     if (AV.weekdays[d.getDay()]) return 'V tento den nedoručujeme.';
