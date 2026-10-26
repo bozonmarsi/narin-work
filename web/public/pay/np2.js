@@ -950,10 +950,7 @@
     var num = S.pts.ma ? '●● ●● ●● ' + String(S.pts.ma).slice(-4) : '●● ●● ●● ••••';
     var h = '<div class="np-loy">' + loyCard(tr, '', '', '') + '<div class="sd">';
     h += '<div class="gn"><i class="ti ti-sparkles"></i><span>Z této objednávky získáte <b>+' + gain + ' b.</b> <small>(' + String(tr.cb).replace('.', ',') + ' % zpět)</small></span></div>';
-    if (nx) {
-      var need = Math.max(0, nx.from - earned), pct = Math.max(4, Math.min(100, Math.round((earned - tr.from) / (nx.from - tr.from) * 100)));
-      h += '<div class="pg"><div class="tx">Do úrovně <b>' + nx.label + '</b> chybí ' + need + ' b.</div><div class="bar"><i style="width:' + pct + '%;background:' + nx.color + '"></i></div></div>';
-    } else h += '<div class="pg"><div class="tx"><b>Nejvyšší úroveň</b>, máte 2 % zpět.</div></div>';
+    h += '<div class="pg"><div class="tx">Vaše úroveň <b>' + tr.label + '</b>' + (bal != null ? ' · na účtu máte <b>' + bal + ' b.</b>' : '') + '</div></div>';
     var cap = ptsCap();
     if (noRedeem) { /* points or code already applied */ }
     else if (bal != null && cap >= 1) {

@@ -218,6 +218,7 @@ textarea.np-in { height: auto; min-height: 104px; padding: 15px 18px; resize: ve
 .np-wallet.off .np-switch .tr { background: #cdd3dd; }
 .np-wallet.off .lb { opacity: .7; }
 .np-wallet.err .why { color: #ffe1dd; }
+.np-wallet.off.err .why { color: #b3261e; opacity: 1; font-weight: 500; }
 
 /* promo accordion */
 .np-acc { border: 1.5px solid var(--line); border-radius: 22px; margin-bottom: 14px; overflow: hidden; background: #fff; }
