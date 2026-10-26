@@ -1,7 +1,8 @@
-// checkout-order — oplata objednavky depozitem (cely nebo cast + zbytek kartou).
+// checkout-order — oplata objednavky depozitem (cely nebo cast + zbytek kartou)
+// a uplatneni libovolneho poctu bodu (1 az 30 % zbozi).
 //
-// Pouziva stranka /payment, kdyz si zakaznik zvoli "Zaplatit z depozitu".
-// Objednavky bez depozitu jdou dal pres formular Tilda jako dosud.
+// Pouziva stranka /payment, kdyz si zakaznik zvoli "Zaplatit z depozitu" nebo uplatni body.
+// Ostatni objednavky jdou dal pres formular Tilda jako dosud.
 //
 // Co funkce dela (nic z toho nebere ze stranky na slovo):
 //   * cenu zbozi pocita z verejneho katalogu Tilda (cena + velikost baleni),
@@ -12,6 +13,9 @@
 //   { action: "quote",  token, products:[{uid, quantity}], delivery:"courier"|"pickup",
 //     form:{ recipient_lat, recipient_lng, psc }, use_deposit:true }
 //     -> { goods, delivery, total, balance, deposit, card }
+//   { action: "points", token, products, use_points }      -> { goods, balance, cap }  (jen kontrola)
+//   Body: use_points:N + use_deposit:false (body a depozit se nekombinuji); nejvic min(zustatek, 30 % zbozi).
+//   Hotove: pay:"cash" jen pri osobnim odberu (u body).
 //   { action: "create", token, checkout_key, products, delivery, form:{...pole objednavky},
 //     use_deposit:true }
 //     -> { order_id, paid:true, url }          (cely depozitem)
@@ -32,6 +36,8 @@ const CANCEL_URL = `${SITE}/payment-failed`;
 const CATALOG_URL =
   "https://store.tildaapi.one/api/getproductslist/?storepartuid=388736252314&recid=1&c=1&getparts=true&getoptions=true&slice=1&size=500";
 const PICKUP_FEE = 80;
+const CASH_URL = `${SITE}/objednavka-hotovost`;
+const POINTS_SHARE = 0.3; // body lze uplatnit az na 30 % hodnoty zbozi
 
 const encoder = new TextEncoder();
 
@@ -209,6 +215,16 @@ async function deliveryFee(supabase: any, mode: string, form: Record<string, any
   throw new Fail("address_not_selected");
 }
 
+// Body: cele cislo od 1 do min(zustatek bodu, 30 % zbozi). Nekombinuji se s depozitem.
+async function checkPoints(supabase: any, email: string, want: number, goods: number) {
+  const { data } = await supabase.from("Tilda points").select("balance").ilike("email", email).maybeSingle();
+  const balance = Math.max(0, Math.floor(Number(data?.balance || 0)));
+  const cap = Math.max(0, Math.min(balance, Math.floor(goods * POINTS_SHARE)));
+  if (want > balance) throw new Fail("not_enough_points");
+  if (want > cap) throw new Fail("points_over_limit");
+  return { balance, cap };
+}
+
 export async function quote(supabase: any, email: string, body: any) {
   // katalog, cena dopravy a zustatek depozitu jsou nezavisle: bezi zaroven
   const [catalog, delivery, depRes] = await Promise.all([
@@ -220,12 +236,29 @@ export async function quote(supabase: any, email: string, body: any) {
   const { fee, km } = delivery;
   const total = Math.round((goods + fee) * 100) / 100;
 
+  const wantPoints = Math.floor(Number(body.use_points) || 0);
+  let points = 0;
+  if (wantPoints > 0) {
+    if (body.use_deposit !== false) throw new Fail("points_with_deposit");
+    await checkPoints(supabase, email, wantPoints, goods);
+    points = wantPoints;
+  }
+
   const dep = depRes?.data;
   const balance = Math.max(0, Number(dep?.balance || 0));
   // cele koruny, aby Stripe castka byla cele cislo
-  const deposit = body.use_deposit === false ? 0 : Math.floor(Math.min(balance, total));
-  const card = Math.round((total - deposit) * 100) / 100;
-  return { lines, goods, delivery: fee, km, total, balance, deposit, card };
+  const deposit = body.use_deposit === false || points > 0 ? 0 : Math.floor(Math.min(balance, total));
+  const card = Math.round((total - points - deposit) * 100) / 100;
+  return { lines, goods, delivery: fee, km, total, balance, deposit, points, card };
+}
+
+// jen kontrola bodu (bez dopravy), aby je stranka mohla overit hned pri "Uplatnit"
+async function pointsInfo(supabase: any, email: string, body: any) {
+  const catalog = await loadCatalog(supabase);
+  const { goods } = priceCart(catalog, body.products);
+  const want = Math.floor(Number(body.use_points) || 0);
+  const { balance, cap } = await checkPoints(supabase, email, Math.max(0, want), goods);
+  return { goods, balance, cap };
 }
 
 // --- Stripe ----------------------------------------------------------------
@@ -312,14 +345,18 @@ export async function create(supabase: any, email: string, body: any) {
   if (!String(form.email).includes("@")) throw new Fail("bad_email");
 
   const q = await quote(supabase, email, body);
-  if (body.use_deposit !== false && q.deposit <= 0) throw new Fail("no_deposit");
+  const usesPoints = q.points > 0;
+  if (!usesPoints && body.use_deposit !== false && q.deposit <= 0) throw new Fail("no_deposit");
+  // hotove jen pri osobnim odberu a jen s body (obycejne hotovostni objednavky jdou pres Tildu)
+  const cash = body.pay === "cash";
+  if (cash && (body.delivery !== "pickup" || !usesPoints)) throw new Fail("cash_not_allowed");
 
   const orderId = newOrderId();
   const courier = body.delivery === "courier";
   const deliveryLabel = courier
     ? `Doručení kurýrem + servisní poplatek = ${q.delivery}`
     : `Servisní poplatek = ${PICKUP_FEE}`;
-  const paySys = q.card > 0 ? "stripe" : "deposit";
+  const paySys = cash ? "cash" : q.card > 0 ? "stripe" : "deposit";
 
   // stejny tvar dat, jaky posila Tilda -> tilda-webhook ulozi objednavku,
   // spocita cashback, posle Telegram a vsechny databazove triggery bezi jako dosud
@@ -333,7 +370,7 @@ export async function create(supabase: any, email: string, body: any) {
     checkout_key: key,
     payment: {
       orderid: orderId,
-      amount: String(q.total),
+      amount: String(Math.round((q.total - q.points) * 100) / 100),
       subtotal: String(q.goods),
       delivery: courier ? "Doručení kurýrem + servisní poplatek" : "Servisní poplatek",
       delivery_price: q.delivery,
@@ -346,10 +383,13 @@ export async function create(supabase: any, email: string, body: any) {
   if (q.km != null) data.delivery_km = String(q.km);
   delete data.promocode;
   delete data["promo-code"];
+  // tilda-webhook pozna body podle kodu "Uplatněno<N>bodů": odepise je ze zustatku, ulozi used_points
+  // a zapise pohyb v historii. Stejny format jako pri kodu z Tildy, ale s libovolnym N.
+  if (usesPoints) data.promocode = `Uplatněno${q.points}bodů`;
 
   // Stripe session vznika zaroven s ulozenim objednavky (potrebuje jen cislo a castku).
   // Kdyby se objednavka neulozila, session jen vyprsi (31 min) a nikdo za ni nezaplati.
-  const sessionPromise = q.card > 0 ? createStripeSession(orderId, q.card, String(form.email), q.deposit) : null;
+  const sessionPromise = q.card > 0 && !cash ? createStripeSession(orderId, q.card, String(form.email), q.deposit) : null;
   if (sessionPromise) sessionPromise.catch(() => {});
 
   const hook = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/tilda-webhook`, {
@@ -373,6 +413,8 @@ export async function create(supabase: any, email: string, body: any) {
   const row = rows && rows[0];
   if (!row) throw new Fail("order_not_saved", 502);
 
+  if (cash) return { order_id: orderId, paid: false, url: CASH_URL };
+
   if (q.card <= 0) {
     const { data: r, error } = await supabase.rpc("settle_order_payment", { p_order_id: orderId });
     if (error) {
@@ -385,7 +427,7 @@ export async function create(supabase: any, email: string, body: any) {
 
   const session = await sessionPromise!;
   await supabase.from("tilda_orders").update({ stripe_session_id: session.id }).eq("id", row.id);
-  return { order_id: orderId, paid: false, url: session.url, deposit: q.deposit, card: q.card };
+  return { order_id: orderId, paid: false, url: session.url, deposit: q.deposit, points: q.points, card: q.card };
 }
 
 // --- vstup -----------------------------------------------------------------
@@ -407,7 +449,10 @@ if (Deno.env.get("CHECKOUT_TEST") !== "1") {
       }
       if (body.action === "quote") {
         const q = await quote(supabase, email, body);
-        return json({ ok: true, goods: q.goods, delivery: q.delivery, total: q.total, balance: q.balance, deposit: q.deposit, card: q.card });
+        return json({ ok: true, goods: q.goods, delivery: q.delivery, total: q.total, balance: q.balance, deposit: q.deposit, points: q.points, card: q.card });
+      }
+      if (body.action === "points") {
+        return json({ ok: true, ...(await pointsInfo(supabase, email, body)) });
       }
       if (body.action === "create") {
         return json({ ok: true, ...(await create(supabase, email, body)) });

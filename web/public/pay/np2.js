@@ -134,7 +134,7 @@
     pcSender: 'name', pcTo: '', pcText: '',
     pay: 'stripe', consent: false,
     promo: { code: '', applied: false, busy: false },
-    pts: { balance: null, sel: 100, applied: 0, busy: false },
+    pts: { balance: null, sel: 0, applied: 0, busy: false },
     dep: { balance: 0, use: true, quote: null, err: '', loading: false },
     gift: null, noNum: false, showCal: false, accOpen: false, submitting: false, token: null, loggedIn: false
   };
@@ -186,10 +186,18 @@
   }
   function totals() {
     var f = feeCalc(), g = goodsNet(), raw = goodsRaw();
-    var total = Math.max(0, g) + f.fee;
+    var pts = S.pts.applied > 0 ? S.pts.applied : 0;
+    var total = Math.max(0, g) + f.fee - pts;
     var dep = 0;
     if (canDeposit() && S.dep.use) dep = depositAmount(total);
-    return { raw: raw, goods: g, disc: Math.max(0, raw - g), f: f, total: total, dep: dep, card: total - dep };
+    return { raw: raw, goods: g, disc: Math.max(0, raw - g), pts: pts, f: f, total: total, dep: dep, card: total - dep };
+  }
+  /* points: any whole number from 1 up to the smaller of the balance and 30 % of the goods */
+  function ptsCap() { var bal = S.pts.balance == null ? 0 : Math.floor(S.pts.balance); return Math.max(0, Math.min(bal, Math.floor(Math.max(0, goodsNet()) * 0.3))); }
+  function ptsFix() { /* the cart changed after the points were applied: keep them within the new limit */
+    if (!(S.pts.applied > 0)) return;
+    var cap = ptsCap();
+    if (S.pts.applied > cap) { S.pts.applied = cap; S.pts.sel = cap; if (cap <= 0) S.dep.use = true; }
   }
   function canDeposit() { return S.loggedIn && S.dep.balance >= 1 && S.pay === 'stripe' && !promoActive() && !(S.pts.applied > 0) && !hasVoucher(); }
   function hasVoucher() { return products().some(function (p) { return /poukaz/i.test(p.name); }); }
@@ -946,29 +954,30 @@
       var need = Math.max(0, nx.from - earned), pct = Math.max(4, Math.min(100, Math.round((earned - tr.from) / (nx.from - tr.from) * 100)));
       h += '<div class="pg"><div class="tx">Do úrovně <b>' + nx.label + '</b> chybí ' + need + ' b.</div><div class="bar"><i style="width:' + pct + '%;background:' + nx.color + '"></i></div></div>';
     } else h += '<div class="pg"><div class="tx"><b>Nejvyšší úroveň</b>, máte 2 % zpět.</div></div>';
-    var capGoods = Math.floor(goodsNet() * 0.3 / 100) * 100;
-    var maxAllowed = Math.min(1000, capGoods, bal == null ? 0 : Math.floor(bal / 100) * 100);
+    var cap = ptsCap();
     if (noRedeem) { /* points or code already applied */ }
-    else if (bal != null && maxAllowed >= 100) {
-      if (S.pts.sel > maxAllowed) S.pts.sel = maxAllowed; if (S.pts.sel < 100) S.pts.sel = 100;
-      var one = maxAllowed <= 100;
+    else if (bal != null && cap >= 1) {
+      if (S.pts.sel > cap) S.pts.sel = cap;
+      var g30 = Math.max(0, goodsNet()), chips = [], seen = {};
+      [10, 20].forEach(function (pc) { var v = Math.min(cap, Math.floor(g30 * pc / 100)); if (v >= 1 && !seen[v] && v < cap) { seen[v] = 1; chips.push('<button type="button" class="chip" data-pts="' + v + '">' + pc + ' %<small>' + v + ' b.</small></button>'); } });
+      chips.push('<button type="button" class="chip" data-pts="' + cap + '">Nejvíc<small>' + cap + ' b.</small></button>');
       h += '<div class="rd"><div class="rl">Uplatnit body <small>máte ' + bal + ' b., 1 b. = 1 Kč</small></div>';
-      if (one) h += '<div class="stepper"><span class="lim">Z této objednávky lze uplatnit <b>100 b.</b> (až 30 % zboží)</span><button type="button" class="np-btn2 go" id="npPtsGo"' + (S.pts.busy ? ' disabled' : '') + '>' + (S.pts.busy ? '…' : 'Uplatnit 100 b.') + '</button></div>';
-      else h += '<div class="stepper"><button type="button" class="s" id="npPm" aria-label="Méně"' + (S.pts.sel <= 100 ? ' disabled' : '') + '>−</button><span class="v" id="npPv">' + S.pts.sel + ' b.</span><button type="button" class="s" id="npPp" aria-label="Více"' + (S.pts.sel >= maxAllowed ? ' disabled' : '') + '>+</button><button type="button" class="np-btn2 go" id="npPtsGo"' + (S.pts.busy ? ' disabled' : '') + '>' + (S.pts.busy ? '…' : 'Uplatnit') + '</button></div><div class="lim2">Nejvíc ' + maxAllowed + ' b. (až 30 % zboží)</div>';
+      h += '<div class="ptsin"><div class="fld"><input id="npPtsIn" type="text" inputmode="numeric" autocomplete="off" placeholder="Kolik bodů?" value="' + (S.pts.sel > 0 ? S.pts.sel : '') + '" aria-label="Počet bodů"><span class="u">b.</span></div><button type="button" class="np-btn2 go" id="npPtsGo"' + (S.pts.busy ? ' disabled' : '') + '>' + (S.pts.busy ? '…' : 'Uplatnit') + '</button></div>';
+      h += '<div class="chips">' + chips.join('') + '</div><div class="lim2">Napište libovolný počet od 1 do ' + cap + ' b. (až 30 % zboží)</div>';
       h += '<div class="np-err-box" id="npPtsErr"></div>' + (depOn ? '<div class="note">Po uplatnění bodů se depozit nepoužije.</div>' : '') + '</div>';
     } else if (bal != null) {
-      h += '<div class="rd"><div class="note">' + (bal < 100 ? 'Body lze uplatnit od 100 b. Každá objednávka vám je přidá.' : 'Body lze uplatnit u zboží od ' + kc(334) + '. Přidejte do košíku další květiny.') + '</div></div>';
+      h += '<div class="rd"><div class="note">' + (bal < 1 ? 'Zatím nemáte žádné body. Každá objednávka vám je přidá.' : 'Body lze uplatnit až na 30 % hodnoty zboží. Přidejte do košíku další květiny.') + '</div></div>';
     }
     return h + '</div></div>';
   }
   function renderPromo() {
     var el = $('#npPromo'); if (!el) return;
-    var depOn = canDeposit() && S.dep.use, applied = promoActive();
+    var depOn = canDeposit() && S.dep.use, ownPts = S.pts.applied > 0, applied = promoActive() || ownPts;
     if (applied) S.accOpen = true;
     var h = '';
     if (applied) {
-      var pc = tc().promocode || {}, isPts = S.pts.applied > 0 || /^uplatn/i.test(String(pc.promocode || ''));
-      h = (S.loggedIn ? loyBlock(false, true) : '') + '<div class="np-done"><span class="ic"><i class="ti ti-' + (isPts ? 'coins' : 'ticket') + '"></i></span><span class="tx"><b>' + (isPts ? 'Body uplatněny' : 'Sleva uplatněna') + '</b><small>' + (isPts ? '' : (pc.promocode ? esc(String(pc.promocode)) + ' · ' : '')) + 'ušetříte ' + kc(discountSum()) + '</small></span><button type="button" id="npPromoX">Odebrat</button></div>';
+      var pc = tc().promocode || {}, isPts = ownPts || /^uplatn/i.test(String(pc.promocode || ''));
+      h = (S.loggedIn ? loyBlock(false, true) : '') + '<div class="np-done"><span class="ic"><i class="ti ti-' + (isPts ? 'coins' : 'ticket') + '"></i></span><span class="tx"><b>' + (isPts ? 'Body uplatněny' : 'Sleva uplatněna') + '</b><small>' + (isPts ? '' : (pc.promocode ? esc(String(pc.promocode)) + ' · ' : '')) + 'ušetříte ' + kc(ownPts ? S.pts.applied : discountSum()) + '</small></span><button type="button" id="npPromoX">Odebrat</button></div>';
     } else {
       h += loyBlock(depOn);
       h += '<div class="np-acc' + (S.accOpen ? ' open' : '') + '"><button type="button" id="npAccBtn"><span class="ic"><i class="ti ti-ticket"></i></span><span class="tx">Máte slevový kód?<small>Zadejte kód a uplatníme slevu</small></span><i class="ti ti-chevron-down chev"></i></button><div class="bd">';
@@ -982,9 +991,19 @@
     var go = $('#npPromoGo'); if (go) go.addEventListener('click', applyPromo);
     var inp = $('#np_promo'); if (inp) { inp.addEventListener('input', function () { S.promo.code = inp.value; }); inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); applyPromo(); } }); }
     var x = $('#npPromoX'); if (x) x.addEventListener('click', removePromo);
-    var pm = $('#npPm'), pp = $('#npPp'), pg = $('#npPtsGo');
-    if (pm) pm.addEventListener('click', function () { S.pts.touched = true; S.pts.sel = Math.max(100, S.pts.sel - 100); renderPromo(); });
-    if (pp) pp.addEventListener('click', function () { var mx = Math.min(1000, Math.floor(goodsNet() * 0.3 / 100) * 100, Math.floor(S.pts.balance / 100) * 100); S.pts.touched = true; S.pts.sel = Math.min(mx, S.pts.sel + 100); renderPromo(); });
+    var pi = $('#npPtsIn'), pg = $('#npPtsGo');
+    if (pi) {
+      pi.addEventListener('input', function () {
+        var v = pi.value.replace(/\D/g, '').slice(0, 5); if (pi.value !== v) pi.value = v;
+        var n = v ? parseInt(v, 10) : 0, cap = ptsCap(), er = $('#npPtsErr');
+        if (n > cap) { n = cap; pi.value = String(cap); if (er) { er.textContent = 'Nejvíc ' + cap + ' b.'; er.classList.add('on'); } }
+        else if (er) er.classList.remove('on');
+        S.pts.sel = n; S.pts.touched = n > 0;
+        $$('.chips .chip', ROOT).forEach(function (c) { c.classList.toggle('on', Number(c.getAttribute('data-pts')) === n); });
+      });
+      pi.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); applyPoints(); } });
+    }
+    $$('.chips .chip', ROOT).forEach(function (c) { c.addEventListener('click', function () { var n = Number(c.getAttribute('data-pts')) || 0; S.pts.sel = n; S.pts.touched = n > 0; if (pi) pi.value = String(n); var er = $('#npPtsErr'); if (er) er.classList.remove('on'); $$('.chips .chip', ROOT).forEach(function (x) { x.classList.toggle('on', x === c); }); }); });
     if (pg) pg.addEventListener('click', applyPoints);
   }
   function promoErr(m, pts) { var e = $(pts ? '#npPtsErr' : '#npPromoErr'); if (!e) return toast(m, true); e.textContent = m; e.classList.add('on'); }
@@ -1018,19 +1037,32 @@
   }
   function applyPoints() {
     var token = authToken(); if (!token) return promoErr('Přihlaste se prosím.', true);
+    var n = Math.floor(Number(S.pts.sel) || 0), cap = ptsCap();
+    if (n < 1) return promoErr('Napište, kolik bodů chcete uplatnit.', true);
+    if (n > cap) return promoErr('Nejvíc ' + cap + ' b.', true);
     var goBtn = $('#npPtsGo'), fromRect = goBtn ? goBtn.getBoundingClientRect() : null;
     if (S.pts.busy) return; S.pts.busy = true; renderPromo();
-    var cartTotal = Math.round(goodsNet() + feeCalc().fee);
-    fn('tilda-webhook', { action: 'get_promo', token: token, amount: S.pts.sel, total_sum: cartTotal, check_only: true }).then(function (r) {
-      if (!r || r.status !== 'success') { S.pts.busy = false; renderPromo(); return promoErr((r && r.message) || 'Chyba.', true); }
-      return tildaPromo('Uplatněno' + S.pts.sel + 'bodů').then(function (x) {
-        S.pts.busy = false;
-        if (x.ok) { S.pts.applied = S.pts.sel; S.dep.use = false; if (S.pts.balance != null) S.pts.balance -= S.pts.sel; S.tweenDelay = 420; syncCartDelivery(); renderDep(); renderPromo(); renderPays(); refresh(); S.tweenDelay = 0; celebrate(fromRect, '−' + kc(S.pts.applied)); toast('Body byly uplatněny.'); }
-        else { renderPromo(); promoErr('Body se nepodařilo uplatnit, zkuste to prosím znovu.', true); }
-      });
+    var prods = products().map(function (p) { return { uid: String(p.uid || p.lid || ''), quantity: pieces(p) }; });
+    if (!prods.length || prods.some(function (p) { return !p.uid; })) { S.pts.busy = false; renderPromo(); return promoErr('Tento košík zatím nelze zaplatit body.', true); }
+    /* the server checks the same rule again when the order is created; this call only catches a problem early */
+    fn('checkout-order', { action: 'points', token: token, use_points: n, products: prods }).then(function (r) {
+      S.pts.busy = false;
+      if (!r || !r.ok) { renderPromo(); return promoErr(pointsErrText(r && r.error), true); }
+      S.pts.applied = n; S.dep.use = false; S.tweenDelay = 420; renderDep(); renderPromo(); renderPays(); refresh(); S.tweenDelay = 0;
+      celebrate(fromRect, '−' + kc(S.pts.applied)); toast('Body byly uplatněny.');
     }).catch(function () { S.pts.busy = false; renderPromo(); promoErr('Chyba spojení.', true); });
   }
+  function pointsErrText(code) {
+    code = String(code || '');
+    return code === 'not_enough_points' ? 'Tolik bodů nemáte.' : code === 'points_over_limit' ? 'Body lze uplatnit nejvýš na 30 % hodnoty zboží.' :
+      code === 'invalid_token' ? 'Přihlášení vypršelo. Přihlaste se prosím znovu.' : code.indexOf('product_unavailable') === 0 || code === 'voucher_not_supported' ? 'U této objednávky body uplatnit nejde.' : 'Body se nepodařilo uplatnit, zkuste to prosím znovu.';
+  }
   function removePromo() {
+    if (S.pts.applied > 0) {
+      S.pts.applied = 0; S.pts.sel = 0; S.pts.touched = false; S.dep.use = true; S.tweenDelay = 420;
+      renderDep(); renderPromo(); renderPays(); refresh(); quoteSoon(); S.tweenDelay = 0;
+      return;
+    }
     try {
       var raw = JSON.parse(localStorage.getItem('tcart') || '{}');
       delete raw.promocode; delete raw.prodamount_withdiscount; delete raw.prodamount_discountsum;
@@ -1073,10 +1105,12 @@
       var img = p.img ? String(p.img).replace(/"/g, '') : '';
       return '<div class="np-item"><div class="im"' + (img ? ' style="background-image:url(\'' + esc(img) + '\')"' : '') + '></div><div class="nm">' + esc(decode(p.name)) + '<small>' + esc(pieces(p)) + ' ks</small></div><div class="pr">' + kc(p.amount) + '</div></div>';
     }).join('');
+    ptsFix();
     var t = totals(), f = t.f, h = '';
     h += '<div><span>Zboží</span><b>' + kc(t.raw) + '</b></div>';
     if (t.disc > 0) h += '<div class="disc' + (t.disc > (S.prevDisc || 0) && !reduceMotion() ? ' new' : '') + '"><span>Sleva</span><b>−' + kc(t.disc) + '</b></div>';
     S.prevDisc = t.disc;
+    if (t.pts > 0) h += '<div class="disc"><span>Body</span><b>−' + kc(t.pts) + '</b></div>';
     if (S.mode === 'courier') h += '<div><span>Doručení kurýrem' + (f.extra ? ' (vč. příplatku za vzdálenost)' : '') + '</span><b>' + (f.need || f.empty ? 'od ' + kc(f.delivery) : kc(f.delivery)) + '</b></div>';
     else h += '<div class="free"><span>Osobní odběr</span><b>Zdarma</b></div>';
     h += '<div class="info" id="npSvc"><span>Servisní poplatek<i class="ti ti-info-circle"></i></span><b>' + kc(f.service) + '</b></div>';
@@ -1241,7 +1275,8 @@
       toast('Vybrali jste body, ale ještě jste je neuplatnili. Klepněte na „Uplatnit“, nebo pokračujte bez nich dalším klepnutím.', true, 6500);
       return;
     }
-    if (canDeposit() && S.dep.use && t.dep > 0) return submitDeposit(t);
+    if (S.pts.applied > 0) return submitOwn(t);
+    if (canDeposit() && S.dep.use && t.dep > 0) return submitOwn(t);
     return submitTilda();
   }
   function tildaErrText() {
@@ -1303,7 +1338,7 @@
       }
     }, 12000);
   }
-  function submitDeposit(t) {
+  function submitOwn(t) {
     var token = authToken(); if (!token) return toast('Přihlaste se prosím znovu.', true);
     setBusy(true);
     var prods = products().map(function (p) { return { uid: String(p.uid || p.lid || ''), quantity: pieces(p) }; });
@@ -1324,13 +1359,15 @@
     if (hasPostcard()) { form.senders_name_postcard = S.pcSender === 'anon' ? 'Poslat anonymně' : 'Podepsat mým jménem'; form.recipients_name_postcard = S.pcTo.trim(); form.postcard_comment = S.pcText.trim(); }
     var key = 'np' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
     try { var old = sessionStorage.getItem('npay_key'); if (old && /^np[a-z0-9]{16,}/.test(old) && sessionStorage.getItem('npay_key_sig') === JSON.stringify([form.date, prods])) key = old; sessionStorage.setItem('npay_key', key); sessionStorage.setItem('npay_key_sig', JSON.stringify([form.date, prods])); } catch (e) {}
-    fn('checkout-order', { action: 'create', token: token, checkout_key: key, use_deposit: true, delivery: S.mode, form: form, products: prods }).then(function (r) {
+    var withPts = S.pts.applied > 0, req = { action: 'create', token: token, checkout_key: key, use_deposit: !withPts, delivery: S.mode, form: form, products: prods };
+    if (withPts) { req.use_points = S.pts.applied; if (S.pay === 'cash') req.pay = 'cash'; }
+    fn('checkout-order', req).then(function (r) {
       if (r && r.ok && r.url) { try { sessionStorage.removeItem('npay_key'); sessionStorage.removeItem(DRAFT_KEY); } catch (e) {} location.href = r.url; return; }
       setBusy(false);
       var code = String(r && r.error || '');
       var msg = code === 'too_far' ? 'Na tuto adresu nedoručujeme.' : code === 'address_not_selected' ? 'Vyberte prosím adresu ze seznamu.' :
         code.indexOf('product_unavailable') === 0 ? 'Některou položku v košíku nelze zaplatit depozitem. Zaplaťte prosím kartou.' :
-        code === 'no_deposit' ? 'Na depozitu není dost prostředků.' : code === 'invalid_token' ? 'Přihlášení vypršelo. Přihlaste se prosím znovu.' : 'Objednávku se nepodařilo odeslat. Zkuste to prosím znovu nebo zaplaťte kartou.';
+        code === 'no_deposit' ? 'Na depozitu není dost prostředků.' : code === 'not_enough_points' || code === 'points_over_limit' ? pointsErrText(code) : code === 'cash_not_allowed' ? 'Hotově lze platit jen při osobním odběru.' : code === 'invalid_token' ? 'Přihlášení vypršelo. Přihlaste se prosím znovu.' : 'Objednávku se nepodařilo odeslat. Zkuste to prosím znovu nebo zaplaťte kartou.';
       toast(msg, true, 5200);
     }).catch(function () { setBusy(false); toast('Chyba spojení. Zkuste to prosím znovu.', true); });
   }
