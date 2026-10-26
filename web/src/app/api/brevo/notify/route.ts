@@ -6,6 +6,7 @@ type NotifyPayload = {
     | "order_confirmed_cod"
     | "payment_reminder"
     | "order_cancelled"
+    | "review_request"
     | "pickup_ready"
     | "courier_out"
     | "delivered"
@@ -27,6 +28,8 @@ type NotifyPayload = {
   order_total?: number | null;
   delivery_date?: string | null;
   delivery_time?: string | null;
+  // review_request (SQL send_review_requests)
+  unsub_token?: string | null;
   // order_cancelled (SQL tg_notify_customer_brevo)
   paid?: boolean;
   pay_method?: string | null;
@@ -194,6 +197,23 @@ function ratingRow(orderId: string) {
     .join("");
   return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:6px;"><tr>${cells}</tr></table>
     <p style="margin:0 0 18px;font-size:11.5px;color:${MUTED};">Klepněte na hodnocení — otevře se rovnou vyplněné.</p>`;
+}
+
+// Tři drobné tipy na péči o kytici (e-mail "review_request", 3 dny po doručení).
+function careTips() {
+  const tips: [string, string, string][] = [
+    ["💧", "Vyměňte vodu", "Čerstvá, vlažná voda jednou za dva dny. Vázu stačí vypláchnout."],
+    ["✂️", "Seřízněte stonky", "O 1–2 cm, šikmo, ostrým nožem nebo sekátorem. Květiny pak pijí líp."],
+    ["🌿", "Zbavte stonky spodních listů", "Listy pod hladinou hnijí a kytice by vadla dřív."],
+  ];
+  const rows = tips
+    .map(
+      ([icon, title, text]) =>
+        `<tr><td style="width:40px;padding:10px 0 10px 14px;font-size:20px;vertical-align:top;">${icon}</td><td style="padding:10px 14px 10px 0;font-size:12.5px;line-height:1.5;color:${INK};"><b style="font-weight:600;">${title}</b><br><span style="color:${MUTED};">${text}</span></td></tr>`,
+    )
+    .join("");
+  return `<p style="margin:0 0 8px;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:${COURIER};">Aby kytice vydržela déle</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:${COURIER_BG};border-radius:12px;margin-bottom:22px;">${rows}</table>`;
 }
 
 function deliveryWhenLine(date?: string | null, time?: string | null) {
@@ -469,6 +489,39 @@ export async function POST(request: Request) {
       }
       break;
 
+    // Jedno e-mailové "jak se vám líbí" 3 dny po doručení (SQL send_review_requests,
+    // cron denně): tipy na péči + prosba o hodnocení. Dárky, předplatné a firmy
+    // ho nedostávají; kdo se odhlásil z novinek, také ne.
+    case "review_request":
+      if (email) {
+        const unsub = payload.unsub_token
+          ? ` <a href="https://vezminarin.cz/odhlaseni?token=${encodeURIComponent(payload.unsub_token)}" style="color:${MUTED};text-decoration:underline;">Odhlásit se z těchto e-mailů</a>`
+          : "";
+        const askCard = `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#f7f8fa;border-radius:14px;margin-bottom:20px;"><tr><td style="padding:18px 18px 8px;">
+          <p style="margin:0 0 6px;font-size:15px;font-weight:600;color:${INK};">Nám není jedno, co si myslíte</p>
+          <p style="margin:0 0 14px;font-size:13px;line-height:1.65;color:${MUTED};">Vaše slova nám ukazují, co děláme dobře a co můžeme zlepšit. Zabere to jen pár minut a za podrobný komentář vám připíšeme <b style="color:${INK};">10 bodů</b>.</p>
+          ${ratingRow(order_id)}
+        </td></tr></table>`;
+        await sendBrevoEmail(
+          email,
+          `Jak se vám kytice líbí? Máme jednu prosbu 🌷`,
+          emailShell({
+            preheader: `Pár tipů, aby kytice vydržela, a pár minut vašeho názoru.`,
+            badgeEmoji: "🌷",
+            badgeBg: PREPARING_BG,
+            headline: "Jak se vám kytice líbí?",
+            bodyHtml: `Je to pár dní, co jsme vám kytici přivezli. Doufáme, že vám pořád dělá radost, a chceme, aby vydržela co nejdéle.`,
+            extraHtml: careTips() + askCard,
+            ctaLabel: "Ohodnotit kytici",
+            ctaUrl: `${REVIEW_URL}?order=${encodeURIComponent(order_id)}`,
+            secondaryCtaLabel: "Víc o péči",
+            secondaryCtaUrl: "https://vezminarin.cz/to-buyers",
+            footNote: `Děkujeme, že jste si vybrali právě nás. Jde o jednorázovou zprávu k vaší objednávce.${unsub}`,
+          }),
+        );
+      }
+      break;
+
     case "pickup_ready":
       if (email) {
         const PHONE_TEL = "+420776421993";
@@ -528,7 +581,6 @@ export async function POST(request: Request) {
           <td style="padding:12px 14px;font-size:22px;width:40px;">🌼</td>
           <td style="padding:12px 14px 12px 0;font-size:12.5px;line-height:1.5;color:${INK};">Touto objednávkou jste si vysbírali novou samolepku do sbírky. <a href="${COLLECTION_URL}" style="color:${ACCENT};font-weight:600;text-decoration:none;">Podívat se do galerie →</a></td>
         </tr></table>`;
-        const askReview = `<p style="margin:0 0 6px;font-size:13.5px;line-height:1.65;color:${MUTED};">Jak se vám kytice líbila? Jako poděkování za pár slov vám připíšeme <b style="color:${INK};">10 bodů</b> navíc.</p>`;
         await sendBrevoEmail(
           email,
           `Kytice je doručena — děkujeme! 💐`,
@@ -538,7 +590,7 @@ export async function POST(request: Request) {
             badgeBg: ACCENT_BG,
             headline: "Kytice je doručena",
             bodyHtml: `Moc děkujeme, že jste si vybrali právě nás — je pro nás ctí být součástí vaší chvíle.`,
-            extraHtml: stickerBox + askReview + ratingRow(order_id),
+            extraHtml: stickerBox,
             ctaLabel: "Zobrazit objednávku",
             ctaUrl: ORDERS_URL,
           }),

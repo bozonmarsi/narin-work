@@ -65,6 +65,38 @@
 .lk-confetti { position: fixed; inset: 0; pointer-events: none; z-index: 999999; overflow: hidden; }
 .lk-confetti span { position: absolute; top: -20px; font-size: 18px; animation: lkFall linear forwards; }
 @keyframes lkFall { to { transform: translateY(110vh) rotate(340deg); opacity: 0.2; } }
+
+/* ---- wizard (steps) ---- */
+.lk-wz-steps { display: flex; gap: 6px; margin: 0 0 18px; }
+.lk-wz-steps i { flex: 1; height: 4px; border-radius: 4px; background: #edeef1; overflow: hidden; position: relative; }
+.lk-wz-steps i::after { content: ''; position: absolute; inset: 0; background: #186ce0; transform: scaleX(0); transform-origin: left; transition: transform .45s cubic-bezier(.22,1,.36,1); }
+.lk-wz-steps i.on::after { transform: scaleX(1); }
+.lk-wz-in { animation: lkWzIn .45s cubic-bezier(.22,1,.36,1); }
+@keyframes lkWzIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+.lk-bloom-hero { background: radial-gradient(120% 120% at 50% 0%, #fff6f0 0%, #fdeef2 55%, #f3f0fb 100%); border-radius: 18px; padding: 14px 0 6px; margin: 0 0 14px; text-align: center; }
+.lk-bloom { width: 150px; height: 150px; margin: 0 auto; }
+.lk-bloom svg { width: 100%; height: 100%; overflow: visible; }
+.lk-bl-petal { transform-origin: 60px 60px; transform: rotate(var(--r)) scale(.28); opacity: .22; transition: transform .55s cubic-bezier(.34,1.56,.64,1), opacity .4s ease; }
+.lk-bl-petal.on { transform: rotate(var(--r)) scale(1); opacity: 1; }
+.lk-bl-center { transition: transform .5s cubic-bezier(.34,1.56,.64,1); transform-origin: 60px 60px; }
+.lk-bloom.s5 .lk-bl-center { transform: scale(1.18); }
+.lk-bloom.s1 .lk-bl-center, .lk-bloom.s2 .lk-bl-center { transform: scale(.85); }
+.lk-bl-caption { font-size: 14px; font-weight: 600; color: #16181d; min-height: 20px; padding: 2px 12px 12px; }
+
+.lk-wz-q { font-size: 20px; font-weight: 600; color: #16181d; margin: 0 0 6px; text-wrap: balance; }
+.lk-wz-note { font-size: 13px; color: #8a8f98; line-height: 1.55; margin: 0 0 16px; }
+.lk-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
+.lk-chip { border: 1px solid #e3e7ee; background: #fff; color: #16181d; border-radius: 999px; padding: 10px 14px; font-family: 'Rubik', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: border-color .15s ease, background .15s ease, transform .12s ease; }
+.lk-chip:hover { border-color: #186ce0; }
+.lk-chip:active { transform: scale(.96); }
+.lk-chip.on { background: #e5f0fd; border-color: #186ce0; color: #186ce0; }
+.lk-wz-row { display: flex; gap: 10px; align-items: center; }
+.lk-wz-back { border: none; background: none; color: #8a8f98; font-family: 'Rubik', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; padding: 10px 4px; }
+.lk-wz-next { flex: 1; }
+.lk-wz-skip { display: block; margin: 12px auto 0; border: none; background: none; color: #8a8f98; font-family: 'Rubik', sans-serif; font-size: 12.5px; cursor: pointer; }
+.lk-wz-order { font-size: 11.5px; color: #8a8f98; margin: 0 0 14px; line-height: 1.5; }
+.lk-wz-order b { color: #16181d; font-weight: 600; }
 </style>
 
 <div class="lk-review-topbar">
@@ -223,90 +255,160 @@
         );
     }
 
+    // tags saved to order_reviews.tags (whitelist is enforced in the database too)
+    const TAGS = [
+        ['freshness', '🌿', 'Čerstvost'], ['look', '🌸', 'Vzhled kytice'], ['packaging', '🎀', 'Balení'],
+        ['delivery', '🚚', 'Doručení'], ['communication', '💬', 'Komunikace'], ['price', '🏷️', 'Cena']
+    ];
+    const CAPTIONS = {
+        0: 'Klepněte na kytičku a ohodnoťte',
+        1: 'Je nám to moc líto. Řekněte nám, co se nepovedlo.',
+        2: 'Díky za upřímnost, příště to uděláme líp.',
+        3: 'Dobré, ale víme, že to jde i lépe.',
+        4: 'Moc rádi to slyšíme!',
+        5: 'Nádhera, děkujeme! 🌷'
+    };
+
+    function bloomSvg() {
+        let petals = '';
+        for (let k = 0; k < 5; k++) {
+            petals += '<g class="lk-bl-petal" data-k="' + k + '" style="--r:' + (k * 72) + 'deg"><ellipse cx="60" cy="34" rx="15" ry="26" fill="' + (k % 2 ? '#f6a5b6' : '#f28aa0') + '"/></g>';
+        }
+        return '<svg viewBox="0 0 120 150"><path d="M60 78 C 58 100, 62 118, 60 140" fill="none" stroke="#8fc9a0" stroke-width="4" stroke-linecap="round"/>' +
+            '<path d="M60 108 C 46 106, 38 114, 34 126" fill="none" stroke="#8fc9a0" stroke-width="4" stroke-linecap="round"/>' +
+            '<path d="M60 118 C 74 117, 82 126, 86 136" fill="none" stroke="#8fc9a0" stroke-width="4" stroke-linecap="round"/>' +
+            petals + '<circle class="lk-bl-center" cx="60" cy="60" r="12" fill="#f6c453"/></svg>';
+    }
+
     function renderForm(order, presetRating, canSwitch) {
-        const orderLine = esc(order.products_text
+        const productsLine = esc(order.products_text
             ? decode(order.products_text).split('\n').filter(Boolean).join(', ')
             : ('Objednávka č. ' + order.order_id));
+        const orderChip = '<div class="lk-wz-order"><b>Objednávka č. ' + esc(order.order_id) + '</b> · ' + productsLine +
+            (canSwitch ? ' · <a class="lk-rv-login-link" href="' + LIST_URL + '">jiná objednávka</a>' : '') + '</div>';
 
-        renderCard(
-            '<div class="lk-rv-eyebrow">Objednávka č. ' + esc(order.order_id) + '</div>' +
-            '<div class="lk-rv-title">Jak se vám kytice líbila?</div>' +
-            '<div class="lk-rv-sub">Vaše hodnocení nám hodně pomáhá — a chvilku vašeho času rádi opětujeme.</div>' +
-            '<div class="lk-rv-order"><span>' + orderLine + '</span>' + (order.order_total ? '<span class="num">' + esc(order.order_total) + ' Kč</span>' : '') + '</div>' +
-            (canSwitch ? '<a class="lk-rv-switch" href="' + LIST_URL + '">← Vybrat jinou objednávku</a>' : '') +
-            '<div class="lk-petals" id="lkPetals">' +
-                [1,2,3,4,5].map(function(n) { return '<span class="lk-petal" data-v="' + n + '"><img src="' + PETAL_ICON + '" alt=""></span>'; }).join('') +
-            '</div>' +
-            '<div class="lk-rv-hint" id="lkRvHint">Klepněte na kytičky a ohodnoťte</div>' +
-            '<textarea class="lk-rv-textarea" id="lkRvComment" placeholder="Co se vám nejvíc líbilo?"></textarea>' +
-            '<div class="lk-rv-textarea-hint">Pár slov stačí — jen ať víme, že jsou od vás 🙂</div>' +
-            '<div class="lk-rv-reward">🎁&nbsp; Za odeslání recenze vám připíšeme <b>&nbsp;10 bodů</b></div>' +
-            '<button class="lk-rv-submit" id="lkRvSubmit" disabled>Odeslat recenzi</button>' +
-            '<div class="lk-rv-error" id="lkRvError"></div>'
-        );
-
-        const HINTS = { 1: 'Je nám líto, dáme to příště lépe.', 2: 'Díky, budeme pracovat na zlepšení.', 3: 'Děkujeme za upřímnost.', 4: 'Moc rádi to slyšíme!', 5: 'Nádhera, děkujeme! 🌷' };
         let rating = 0;
+        let step = 1;
+        let comment = '';
+        const picked = [];
 
-        function paintRating(n) {
-            rating = n;
+        function progress() {
+            return '<div class="lk-wz-steps">' + [1, 2, 3].map(function(n) { return '<i class="' + (n <= step ? 'on' : '') + '"></i>'; }).join('') + '</div>';
+        }
+
+        function paintBloom() {
+            const bloom = document.getElementById('lkBloom');
+            if (!bloom) return;
+            bloom.className = 'lk-bloom' + (rating ? ' s' + rating : '');
+            bloom.querySelectorAll('.lk-bl-petal').forEach(function(g) {
+                g.classList.toggle('on', parseInt(g.getAttribute('data-k')) < rating);
+            });
+            const cap = document.getElementById('lkBlCaption');
+            if (cap) cap.textContent = CAPTIONS[rating] || CAPTIONS[0];
             document.querySelectorAll('#lkPetals .lk-petal').forEach(function(p) {
                 p.classList.toggle('on', parseInt(p.getAttribute('data-v')) <= rating);
             });
-            document.getElementById('lkRvHint').textContent = HINTS[rating] || 'Klepněte na kytičky a ohodnoťte';
-            updateSubmitState();
+            const next = document.getElementById('lkWzNext');
+            if (next) next.disabled = !rating;
         }
 
-        function updateSubmitState() {
-            const comment = document.getElementById('lkRvComment').value.trim();
-            document.getElementById('lkRvSubmit').disabled = !(rating > 0 && comment.length >= 2);
+        function step1() {
+            renderCard('<div class="lk-wz-in">' + progress() + orderChip +
+                '<div class="lk-wz-q">Jak se vám kytice líbila?</div>' +
+                '<div class="lk-bloom-hero"><div class="lk-bloom" id="lkBloom">' + bloomSvg() + '</div><div class="lk-bl-caption" id="lkBlCaption"></div></div>' +
+                '<div class="lk-petals" id="lkPetals">' +
+                    [1,2,3,4,5].map(function(n) { return '<span class="lk-petal" data-v="' + n + '"><img src="' + PETAL_ICON + '" alt=""></span>'; }).join('') +
+                '</div>' +
+                '<button class="lk-rv-submit" id="lkWzNext" disabled>Pokračovat</button></div>');
+            document.getElementById('lkPetals').addEventListener('click', function(e) {
+                const petal = e.target.closest('.lk-petal');
+                if (!petal) return;
+                rating = parseInt(petal.getAttribute('data-v'));
+                picked.length = 0;
+                paintBloom();
+            });
+            document.getElementById('lkWzNext').addEventListener('click', function() { step = 2; step2(); });
+            paintBloom();
         }
 
-        document.getElementById('lkPetals').addEventListener('click', function(e) {
-            const petal = e.target.closest('.lk-petal');
-            if (!petal) return;
-            paintRating(parseInt(petal.getAttribute('data-v')));
-        });
-
-        document.getElementById('lkRvComment').addEventListener('input', updateSubmitState);
-
-        if (presetRating >= 1 && presetRating <= 5) {
-            paintRating(presetRating);
-            document.getElementById('lkRvComment').focus();
+        function step2() {
+            const good = rating >= 4;
+            renderCard('<div class="lk-wz-in">' + progress() + orderChip +
+                '<div class="lk-wz-q">' + (good ? 'Co se vám nejvíc líbilo?' : 'Co bychom měli zlepšit?') + '</div>' +
+                '<div class="lk-wz-note">Vyberte, co chcete. Klidně víc věcí, nebo nic.</div>' +
+                '<div class="lk-chips" id="lkChips">' +
+                    TAGS.map(function(t) { return '<button class="lk-chip' + (picked.indexOf(t[0]) >= 0 ? ' on' : '') + '" data-t="' + t[0] + '">' + t[1] + ' ' + t[2] + '</button>'; }).join('') +
+                '</div>' +
+                '<div class="lk-wz-row"><button class="lk-wz-back" id="lkWzBack">← Zpět</button><button class="lk-rv-submit lk-wz-next" id="lkWzNext">Pokračovat</button></div></div>');
+            document.getElementById('lkChips').addEventListener('click', function(e) {
+                const chip = e.target.closest('.lk-chip');
+                if (!chip) return;
+                const t = chip.getAttribute('data-t');
+                const idx = picked.indexOf(t);
+                if (idx >= 0) picked.splice(idx, 1); else picked.push(t);
+                chip.classList.toggle('on', idx < 0);
+            });
+            document.getElementById('lkWzBack').addEventListener('click', function() { step = 1; step1(); });
+            document.getElementById('lkWzNext').addEventListener('click', function() { step = 3; step3(); });
         }
 
-        document.getElementById('lkRvSubmit').addEventListener('click', async function() {
-            const btn = this;
-            const errorEl = document.getElementById('lkRvError');
-            errorEl.textContent = '';
-            const email = getTildaEmail();
-            if (!email) {
-                errorEl.innerHTML = 'Pro odeslání recenze se prosím <a class="lk-rv-login-link" href="https://vezminarin.cz/members/login">přihlaste</a>.';
-                return;
-            }
-            btn.disabled = true;
-            btn.textContent = 'Odesíláme…';
-            const comment = document.getElementById('lkRvComment').value.trim();
-            try {
-                const result = await rpc('submit_order_review', { p_email: email, p_order_id: order.order_id, p_rating: rating, p_comment: comment });
-                const row = Array.isArray(result) ? result[0] : result;
-                if (row && row.ok) {
-                    confettiBurst();
-                    renderCard(stateBlock('🌷', 'Děkujeme za recenzi!',
-                        'Připsali jsme vám <b>+' + row.points_awarded + ' bodů</b> na účet. Moc si vážíme, že jste si na nás udělali chvilku.',
-                        '<a class="lk-cta" href="https://vezminarin.cz/members/points">Zobrazit body</a>'));
-                } else {
-                    errorEl.textContent = (row && ERROR_MESSAGES[row.reason]) || 'Recenzi se nepodařilo odeslat. Zkuste to prosím znovu.';
-                    btn.disabled = false;
-                    btn.textContent = 'Odeslat recenzi';
-                    updateSubmitState();
+        function step3() {
+            const good = rating >= 4;
+            renderCard('<div class="lk-wz-in">' + progress() + orderChip +
+                '<div class="lk-wz-q">' + (good ? 'Napište nám pár slov' : 'Řekněte nám víc') + '</div>' +
+                '<div class="lk-wz-note">' + (good
+                    ? 'Co vás potěšilo? Vaše slova čteme my všichni a dělají nám radost.'
+                    : 'Co přesně se nepovedlo? Čteme každou zprávu a opravdu s ní pracujeme.') + '</div>' +
+                '<textarea class="lk-rv-textarea" id="lkRvComment" placeholder="' + (good ? 'Třeba jak kytice voněla, jak dlouho vydržela…' : 'Napište, co bychom měli udělat jinak…') + '">' + esc(comment) + '</textarea>' +
+                '<div class="lk-rv-textarea-hint">Pár slov stačí, jen ať víme, že jsou od vás 🙂</div>' +
+                '<div class="lk-rv-reward"><span>🎁 Za odeslání recenze vám připíšeme <b>10 bodů</b></span></div>' +
+                '<div class="lk-wz-row"><button class="lk-wz-back" id="lkWzBack">← Zpět</button><button class="lk-rv-submit lk-wz-next" id="lkRvSubmit" disabled>Odeslat recenzi</button></div>' +
+                '<div class="lk-rv-error" id="lkRvError"></div></div>');
+            const ta = document.getElementById('lkRvComment');
+            const btn = document.getElementById('lkRvSubmit');
+            function upd() { comment = ta.value; btn.disabled = !(rating > 0 && comment.trim().length >= 2); }
+            ta.addEventListener('input', upd);
+            upd();
+            document.getElementById('lkWzBack').addEventListener('click', function() { comment = ta.value; step = 2; step2(); });
+            btn.addEventListener('click', async function() {
+                const errorEl = document.getElementById('lkRvError');
+                errorEl.textContent = '';
+                const email = getTildaEmail();
+                if (!email) {
+                    errorEl.innerHTML = 'Pro odeslání recenze se prosím <a class="lk-rv-login-link" href="https://vezminarin.cz/members/login">přihlaste</a>.';
+                    return;
                 }
-            } catch (err) {
-                errorEl.textContent = 'Chyba připojení, zkuste to prosím znovu.';
-                btn.disabled = false;
-                btn.textContent = 'Odeslat recenzi';
-            }
-        });
+                btn.disabled = true;
+                btn.textContent = 'Odesíláme…';
+                try {
+                    const result = await rpc('submit_order_review', { p_email: email, p_order_id: order.order_id, p_rating: rating, p_comment: comment.trim(), p_tags: picked });
+                    const row = Array.isArray(result) ? result[0] : result;
+                    if (row && row.ok) {
+                        confettiBurst();
+                        renderCard(stateBlock('🌷', 'Děkujeme za recenzi!',
+                            'Připsali jsme vám <b>+' + row.points_awarded + ' bodů</b> na účet. Moc si vážíme, že jste si na nás udělali chvilku.',
+                            '<a class="lk-cta" href="https://vezminarin.cz/members/points">Zobrazit body</a>'));
+                    } else {
+                        errorEl.textContent = (row && ERROR_MESSAGES[row.reason]) || 'Recenzi se nepodařilo odeslat. Zkuste to prosím znovu.';
+                        btn.textContent = 'Odeslat recenzi';
+                        upd();
+                    }
+                } catch (err) {
+                    errorEl.textContent = 'Chyba připojení, zkuste to prosím znovu.';
+                    btn.textContent = 'Odeslat recenzi';
+                    upd();
+                }
+            });
+        }
+
+        // rating from the e-mail link: petals are already chosen, go straight to step 2
+        if (presetRating >= 1 && presetRating <= 5) {
+            rating = presetRating;
+            step = 2;
+            step2();
+        } else {
+            step1();
+        }
     }
 
     async function openOrder(orderId, presetRating, canSwitch) {
