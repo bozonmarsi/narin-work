@@ -1358,7 +1358,7 @@
     if (g) { form['gift-no-address'] = 'yes'; form['gift-channel'] = g.channel; form['gift-handle'] = g.handle; form['gift-recipient-name'] = g.name; form['gift-sender-visible'] = g.visible ? 'yes' : 'no'; }
     if (hasPostcard()) { form.senders_name_postcard = S.pcSender === 'anon' ? 'Poslat anonymně' : 'Podepsat mým jménem'; form.recipients_name_postcard = S.pcTo.trim(); form.postcard_comment = S.pcText.trim(); }
     var key = 'np' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
-    try { var old = sessionStorage.getItem('npay_key'); if (old && /^np[a-z0-9]{16,}/.test(old) && sessionStorage.getItem('npay_key_sig') === JSON.stringify([form.date, prods])) key = old; sessionStorage.setItem('npay_key', key); sessionStorage.setItem('npay_key_sig', JSON.stringify([form.date, prods])); } catch (e) {}
+    try { var old = sessionStorage.getItem('npay_key'); if (old && /^np[a-z0-9]{16,}/.test(old) && sessionStorage.getItem('npay_key_sig') === JSON.stringify([form.date, prods, S.pts.applied])) key = old; sessionStorage.setItem('npay_key', key); sessionStorage.setItem('npay_key_sig', JSON.stringify([form.date, prods, S.pts.applied])); } catch (e) {}
     var withPts = S.pts.applied > 0, req = { action: 'create', token: token, checkout_key: key, use_deposit: !withPts, delivery: S.mode, form: form, products: prods };
     if (withPts) { req.use_points = S.pts.applied; if (S.pay === 'cash') req.pay = 'cash'; }
     fn('checkout-order', req).then(function (r) {
