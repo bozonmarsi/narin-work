@@ -149,3 +149,49 @@ $function$;
 
 -- 08:00 UTC = 9:00 по Праге зимой (10:00 летом). pg_cron работает в UTC.
 SELECT cron.schedule('review-requests-daily', '0 8 * * *', $$SELECT public.send_review_requests()$$);
+
+-- Страница отзыва показывает, ЧТО именно за заказ: дата доставки и состав с
+-- фото. Раньше get_order_for_review отдавала только текст состава и сумму.
+-- Фото берём из product_stickers по названию (названия там хранятся с
+-- HTML-сущностями, поэтому сравниваем нормализованные ключи: без сущностей,
+-- без не-латинских символов). Совпадает ~98% строк заказов; без совпадения
+-- image пустой, страница показывает строку без картинки.
+-- Старые поля остались на своих местах, новые добавлены в конец.
+DROP FUNCTION IF EXISTS public.get_order_for_review(text);
+
+CREATE OR REPLACE FUNCTION public.get_order_for_review(p_order_id text)
+RETURNS TABLE(order_id text, products_text text, order_total numeric, already_reviewed boolean, delivery_date date, items jsonb)
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT
+    o.order_id,
+    o.products_text,
+    o.order_total,
+    (r.id IS NOT NULL),
+    (o.delivery_date AT TIME ZONE 'Europe/Prague')::date,
+    COALESCE((
+      SELECT jsonb_agg(jsonb_build_object('name', it.name, 'qty', it.qty, 'image', st.image_url) ORDER BY it.ord)
+      FROM (
+        SELECT
+          btrim(regexp_replace(l.line, '\s*[xX×]\s*\d+\s*$', '')) AS name,
+          NULLIF(substring(l.line from '[xX×]\s*(\d+)\s*$'), '')::int AS qty,
+          regexp_replace(regexp_replace(lower(btrim(regexp_replace(l.line, '\s*[xX×]\s*\d+\s*$', ''))), '&#?[a-z0-9]+;', '', 'gi'), '[^a-z0-9]', '', 'g') AS k,
+          l.ord
+        FROM regexp_split_to_table(coalesce(o.products_text, ''), E'\n') WITH ORDINALITY AS l(line, ord)
+        WHERE btrim(l.line) <> ''
+      ) it
+      LEFT JOIN LATERAL (
+        SELECT s.image_url FROM product_stickers s
+        WHERE s.image_url IS NOT NULL
+          AND regexp_replace(regexp_replace(lower(s.product_name), '&#?[a-z0-9]+;', '', 'gi'), '[^a-z0-9]', '', 'g') = it.k
+        LIMIT 1
+      ) st ON true
+    ), '[]'::jsonb)
+  FROM tilda_orders o
+  LEFT JOIN order_reviews r ON r.order_id = o.order_id
+  WHERE o.order_id = btrim(p_order_id);
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_order_for_review(text) TO anon, authenticated;

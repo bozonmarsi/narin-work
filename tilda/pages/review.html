@@ -97,6 +97,24 @@
 .lk-wz-skip { display: block; margin: 12px auto 0; border: none; background: none; color: #8a8f98; font-family: 'Rubik', sans-serif; font-size: 12.5px; cursor: pointer; }
 .lk-wz-order { font-size: 11.5px; color: #8a8f98; margin: 0 0 14px; line-height: 1.5; }
 .lk-wz-order b { color: #16181d; font-weight: 600; }
+
+/* order card (step 1 = full, steps 2-3 = compact) */
+.lk-ord { background: #f7f8fa; border-radius: 16px; padding: 14px 14px 6px; margin: 0 0 16px; }
+.lk-ord-head { display: flex; flex-direction: column; gap: 2px; margin-bottom: 12px; font-size: 12px; color: #8a8f98; }
+.lk-ord-date { font-weight: 600; color: #16181d; font-size: 13px; }
+.lk-ord-list { display: grid; gap: 8px; margin: 0; padding: 0; }
+.lk-ord-item { display: flex; align-items: center; gap: 12px; padding: 0 0 8px; }
+.lk-ord-img { flex: 0 0 auto; width: 58px; height: 58px; border-radius: 14px; background: #fff; display: flex; align-items: center; justify-content: center; overflow: hidden; font-size: 24px; }
+.lk-ord-img img { width: 100%; height: 100%; object-fit: contain; }
+.lk-ord-name { flex: 1; min-width: 0; font-size: 14px; font-weight: 500; color: #16181d; line-height: 1.3; }
+.lk-ord-qty { flex: 0 0 auto; font-size: 12.5px; font-weight: 600; color: #186ce0; background: #e5f0fd; border-radius: 999px; padding: 4px 10px; }
+.lk-ord.compact { padding: 10px 12px 2px; }
+.lk-ord.compact .lk-ord-img { width: 34px; height: 34px; border-radius: 10px; font-size: 16px; }
+.lk-ord.compact .lk-ord-name { font-size: 12.5px; }
+.lk-ord.compact .lk-ord-qty { font-size: 11px; padding: 3px 8px; }
+.lk-ord.compact .lk-ord-item { gap: 9px; padding-bottom: 6px; }
+.lk-ord-more { font-size: 12px; color: #8a8f98; padding: 0 0 8px 2px; }
+.lk-ord-switch { display: inline-block; margin: -6px 0 14px; font-size: 12.5px; font-weight: 500; color: #186ce0; text-decoration: none; }
 </style>
 
 <div class="lk-review-topbar">
@@ -281,11 +299,35 @@
     }
 
     function renderForm(order, presetRating, canSwitch) {
-        const productsLine = esc(order.products_text
-            ? decode(order.products_text).split('\n').filter(Boolean).join(', ')
-            : ('Objednávka č. ' + order.order_id));
-        const orderChip = '<div class="lk-wz-order"><b>Objednávka č. ' + esc(order.order_id) + '</b> · ' + productsLine +
-            (canSwitch ? ' · <a class="lk-rv-login-link" href="' + LIST_URL + '">jiná objednávka</a>' : '') + '</div>';
+        const MONTHS = ['ledna', 'února', 'března', 'dubna', 'května', 'června', 'července', 'srpna', 'září', 'října', 'listopadu', 'prosince'];
+        function czDate(iso) {
+            const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));
+            return m ? (parseInt(m[3]) + '. ' + MONTHS[parseInt(m[2]) - 1] + ' ' + m[1]) : '';
+        }
+        function orderItems() {
+            if (Array.isArray(order.items) && order.items.length) return order.items;
+            // older database without items: parse the text lines
+            return decode(order.products_text || '').split('\n').filter(Boolean).map(function(line) {
+                const m = /^(.*?)\s*[xX×]\s*(\d+)\s*$/.exec(line.trim());
+                return { name: m ? m[1] : line.trim(), qty: m ? parseInt(m[2]) : null, image: '' };
+            });
+        }
+        function orderCard(compact) {
+            const date = czDate(order.delivery_date);
+            const all = orderItems();
+            const limit = compact ? 3 : 5;
+            const shown = all.slice(0, limit);
+            const rows = shown.map(function(it) {
+                return '<div class="lk-ord-item"><div class="lk-ord-img">' + (it.image ? '<img src="' + esc(it.image) + '" alt="" loading="lazy">' : '🌷') + '</div>' +
+                    '<div class="lk-ord-name">' + esc(decode(it.name)) + '</div>' +
+                    (it.qty ? '<div class="lk-ord-qty">' + esc(it.qty) + ' ks</div>' : '') + '</div>';
+            }).join('') + (all.length > limit ? '<div class="lk-ord-more">+ ' + (all.length - limit) + ' dalších položek</div>' : '');
+            return '<div class="lk-ord' + (compact ? ' compact' : '') + '">' +
+                '<div class="lk-ord-head"><span class="lk-ord-date">' + (date ? '📅 Doručeno ' + esc(date) : 'Vaše objednávka') + '</span><span>Objednávka č. ' + esc(order.order_id) + '</span></div>' +
+                '<div class="lk-ord-list">' + rows + '</div></div>' +
+                (canSwitch && !compact ? '<a class="lk-ord-switch" href="' + LIST_URL + '">← Vybrat jinou objednávku</a>' : '');
+        }
+        const orderChip = orderCard(true);
 
         let rating = 0;
         let step = 1;
@@ -313,7 +355,7 @@
         }
 
         function step1() {
-            renderCard('<div class="lk-wz-in">' + progress() + orderChip +
+            renderCard('<div class="lk-wz-in">' + progress() + orderCard(false) +
                 '<div class="lk-wz-q">Jak se vám kytice líbila?</div>' +
                 '<div class="lk-bloom-hero"><div class="lk-bloom" id="lkBloom">' + bloomSvg() + '</div><div class="lk-bl-caption" id="lkBlCaption"></div></div>' +
                 '<div class="lk-petals" id="lkPetals">' +
