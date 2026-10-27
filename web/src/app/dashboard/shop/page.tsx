@@ -10,6 +10,7 @@ import { Modal } from "../warehouse/Modal";
 
 type ClosedDate = { closed_date: string; reason: string | null };
 type ClosedSlot = { id: string; closed_date: string; slot_label: string; reason: string | null };
+type ClosedPickup = { id: string; closed_date: string | null; time_label: string | null; reason: string | null };
 type RecipeRow = {
   id: string;
   bouquet_sticker_id: string;
@@ -89,6 +90,15 @@ const WEEKDAY_LABELS = ["Воскресенье", "Понедельник", "В�
 // на странице оплаты (name="delivery-time") — checkout-slot-blocker.html
 // сверяет закрытые слоты именно по этим строкам.
 const SLOT_LABELS = ["9-12", "12-15", "15-18", "18-20"];
+// Времена самовывоза на странице оплаты: каждые 30 минут с 9:00 до 20:00.
+const PICKUP_TIMES: string[] = (() => {
+  const out: string[] = [];
+  for (let h = 9; h <= 20; h++) {
+    out.push(`${String(h).padStart(2, "0")}:00`);
+    if (h < 20) out.push(`${String(h).padStart(2, "0")}:30`);
+  }
+  return out;
+})();
 
 const CATEGORY_OPTIONS = [
   { value: "buket", label: "Букеты", color: "bg-pink-50 dark:bg-pink-500/10 text-pink-700 dark:text-pink-400 ring-pink-200 dark:ring-pink-500/30" },
@@ -1086,6 +1096,9 @@ export default function ShopPage() {
   const [closedSlots, setClosedSlots] = useState<ClosedSlot[]>([]);
   const [newClosedSlot, setNewClosedSlot] = useState({ date: "", slot: SLOT_LABELS[0], reason: "" });
   const [closedSlotError, setClosedSlotError] = useState<string | null>(null);
+  const [closedPickup, setClosedPickup] = useState<ClosedPickup[]>([]);
+  const [newPickup, setNewPickup] = useState({ date: "", from: "", to: "", reason: "" });
+  const [pickupError, setPickupError] = useState<string | null>(null);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [availableToday, setAvailableToday] = useState<Set<string>>(new Set());
@@ -1213,14 +1226,16 @@ export default function ShopPage() {
 
   const load = useCallback(async () => {
     const supabase = createClient();
-    const [weeklyRes, datesRes, slotsRes] = await Promise.all([
+    const [weeklyRes, datesRes, slotsRes, pickupRes] = await Promise.all([
       supabase.from("shop_weekly_closed_days").select("weekday"),
       supabase.from("shop_closed_dates").select("closed_date, reason").order("closed_date"),
       supabase.from("shop_closed_slots").select("id, closed_date, slot_label, reason").order("closed_date"),
+      supabase.from("shop_closed_pickup").select("id, closed_date, time_label, reason").order("closed_date"),
     ]);
     setWeeklyClosed(new Set((weeklyRes.data ?? []).map((r) => r.weekday)));
     setClosedDates(datesRes.data ?? []);
     setClosedSlots(slotsRes.data ?? []);
+    setClosedPickup((pickupRes.data as ClosedPickup[] | null) ?? []);
     setLoading(false);
   }, []);
 
@@ -1837,6 +1852,98 @@ export default function ShopPage() {
     load();
   }
 
+  // Самовывоз: закрыть полностью / день / время (диапазон от-до включительно).
+  const pickupAllOff = closedPickup.find((r) => !r.closed_date && !r.time_label) ?? null;
+
+  async function togglePickupAll() {
+    const supabase = createClient();
+    if (pickupAllOff) {
+      await supabase.from("shop_closed_pickup").delete().eq("id", pickupAllOff.id);
+    } else {
+      const { error } = await supabase.from("shop_closed_pickup").insert({ closed_date: null, time_label: null, reason: null });
+      if (error) {
+        setPickupError(/shop_closed_pickup/.test(error.message) ? "Таблица ещё не создана: выполните SQL из миграции 20261027010000." : error.message);
+        return;
+      }
+    }
+    setPickupError(null);
+    load();
+  }
+
+  async function addClosedPickup() {
+    if (!newPickup.date) {
+      setPickupError("Выберите дату.");
+      return;
+    }
+    let times: (string | null)[] = [null]; // пусто = весь день
+    if (newPickup.from || newPickup.to) {
+      const a = PICKUP_TIMES.indexOf(newPickup.from || newPickup.to);
+      const b = PICKUP_TIMES.indexOf(newPickup.to || newPickup.from);
+      if (a < 0 || b < 0 || b < a) {
+        setPickupError("Время «до» не может быть раньше «от».");
+        return;
+      }
+      times = PICKUP_TIMES.slice(a, b + 1);
+    }
+    const supabase = createClient();
+    const rows = times.map((t) => ({ closed_date: newPickup.date, time_label: t, reason: newPickup.reason.trim() || null }));
+    // уникальный индекс по выражению (дата + время, null как пусто): повторы (23505) просто пропускаем
+    let failed: string | null = null;
+    for (const r of rows) {
+      const { error } = await supabase.from("shop_closed_pickup").insert(r);
+      if (error && error.code !== "23505") {
+        failed = /shop_closed_pickup/.test(error.message) ? "Таблица ещё не создана: выполните SQL из миграции 20261027010000." : error.message;
+        break;
+      }
+    }
+    if (failed) {
+      setPickupError(failed);
+      return;
+    }
+    setPickupError(null);
+    setNewPickup({ date: "", from: "", to: "", reason: "" });
+    load();
+  }
+
+  async function removeClosedPickup(ids: string[]) {
+    const supabase = createClient();
+    await supabase.from("shop_closed_pickup").delete().in("id", ids);
+    load();
+  }
+
+  // Для списка: по дням, подряд идущие времена склеиваем в диапазон («11:00–13:00»).
+  const pickupGroups = (() => {
+    const byDate = new Map<string, ClosedPickup[]>();
+    for (const r of closedPickup) {
+      if (!r.closed_date) continue;
+      byDate.set(r.closed_date, [...(byDate.get(r.closed_date) ?? []), r]);
+    }
+    const groups: { key: string; date: string; label: string; ids: string[]; reason: string | null }[] = [];
+    for (const [date, rows] of [...byDate.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+      const whole = rows.find((r) => !r.time_label);
+      if (whole) {
+        groups.push({ key: `${date}-all`, date, label: "весь день", ids: rows.map((r) => r.id), reason: whole.reason });
+        continue;
+      }
+      const sorted = rows.filter((r) => r.time_label).sort((a, b) => (a.time_label as string).localeCompare(b.time_label as string));
+      let run: ClosedPickup[] = [];
+      const flush = () => {
+        if (!run.length) return;
+        const first = (run[0].time_label as string).slice(0, 5);
+        const last = (run[run.length - 1].time_label as string).slice(0, 5);
+        groups.push({ key: `${date}-${first}`, date, label: first === last ? first : `${first}–${last}`, ids: run.map((r) => r.id), reason: run[0].reason });
+        run = [];
+      };
+      for (const r of sorted) {
+        const prev = run[run.length - 1];
+        if (prev && PICKUP_TIMES.indexOf((r.time_label as string).slice(0, 5)) !== PICKUP_TIMES.indexOf((prev.time_label as string).slice(0, 5)) + 1) flush();
+        run.push(r);
+      }
+      flush();
+    }
+    return groups;
+  })();
+
   if (profile?.role !== "manager" && profile?.role !== "warehouse") return null;
   if (loading) return <p className="text-zinc-500 dark:text-zinc-400">Загрузка…</p>;
 
@@ -1975,6 +2082,75 @@ export default function ShopPage() {
                   {s.closed_date} · {s.slot_label}
                   {s.reason ? ` — ${s.reason}` : ""}
                   <button onClick={() => removeClosedSlot(s.id)} className="text-zinc-400 dark:text-zinc-500 hover:text-red-600 dark:hover:text-red-400">✕</button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
+          <p className="mb-1 font-medium">Самовывоз: закрыть</p>
+          <p className="mb-3 text-xs text-zinc-400 dark:text-zinc-500">
+            Закрытое время самовывоза на странице оплаты станет серым и недоступным для выбора. Уже оформленные заказы
+            не меняются: если на закрытое время уже заказали, свяжитесь с клиентом и согласуйте другое время.
+          </p>
+          <label className="mb-4 flex cursor-pointer items-center gap-2 text-sm">
+            <input type="checkbox" checked={!!pickupAllOff} onChange={togglePickupAll} />
+            <span className={pickupAllOff ? "font-medium text-red-600 dark:text-red-400" : ""}>
+              {pickupAllOff ? "Самовывоз полностью закрыт (клиенты видят только доставку)" : "Закрыть самовывоз полностью, для всех дат"}
+            </span>
+          </label>
+          <p className="mb-2 text-xs text-zinc-500 dark:text-zinc-400">Закрыть конкретный день или время:</p>
+          <div className="mb-3 flex flex-wrap gap-2">
+            <input
+              type="date"
+              value={newPickup.date}
+              onChange={(e) => setNewPickup((s) => ({ ...s, date: e.target.value }))}
+              className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
+            />
+            <select
+              value={newPickup.from}
+              onChange={(e) => setNewPickup((s) => ({ ...s, from: e.target.value }))}
+              className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
+              title="С какого времени"
+            >
+              <option value="">весь день</option>
+              {PICKUP_TIMES.map((t) => (
+                <option key={t} value={t}>с {t}</option>
+              ))}
+            </select>
+            <select
+              value={newPickup.to}
+              onChange={(e) => setNewPickup((s) => ({ ...s, to: e.target.value }))}
+              className="rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
+              title="До какого времени (включительно)"
+              disabled={!newPickup.from}
+            >
+              <option value="">только это время</option>
+              {PICKUP_TIMES.map((t) => (
+                <option key={t} value={t}>до {t}</option>
+              ))}
+            </select>
+            <input
+              value={newPickup.reason}
+              onChange={(e) => setNewPickup((s) => ({ ...s, reason: e.target.value }))}
+              placeholder="Причина (клиент увидит)"
+              className="flex-1 rounded-md border border-zinc-300 dark:border-zinc-600 px-2 py-1.5 text-sm"
+            />
+            <button onClick={addClosedPickup} className="rounded-md border border-zinc-300 dark:border-zinc-600 px-3 py-1.5 text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+              + Закрыть
+            </button>
+          </div>
+          {pickupError && <p className="mb-3 text-xs text-red-500">{pickupError}</p>}
+          {pickupGroups.length === 0 ? (
+            <p className="text-sm text-zinc-400 dark:text-zinc-500">Закрытого времени самовывоза пока нет.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {pickupGroups.map((g) => (
+                <span key={g.key} className="flex items-center gap-2 rounded-md bg-zinc-100 dark:bg-zinc-800 px-2 py-1 text-xs text-zinc-700 dark:text-zinc-200">
+                  {g.date} · {g.label}
+                  {g.reason ? ` — ${g.reason}` : ""}
+                  <button onClick={() => removeClosedPickup(g.ids)} className="text-zinc-400 dark:text-zinc-500 hover:text-red-600 dark:hover:text-red-400">✕</button>
                 </span>
               ))}
             </div>

@@ -138,7 +138,7 @@
     dep: { balance: 0, use: true, quote: null, err: '', loading: false },
     gift: null, noNum: false, showCal: false, accOpen: false, submitting: false, token: null, loggedIn: false
   };
-  var AV = { weekdays: {}, dates: {}, slots: {}, available: null, special: null, specialDate: null, loaded: false };
+  var AV = { weekdays: {}, dates: {}, slots: {}, pickup: { off: '', days: {}, times: {}, every: {} }, available: null, special: null, specialDate: null, loaded: false };
   var cal = { y: 0, m: 0 };
   var ROOT;
 
@@ -211,23 +211,49 @@
   function normName(s) { return decode(s).replace(/\s+/g, ' ').trim(); }
   function loadAvail() {
     try { applyClosed(JSON.parse(localStorage.getItem('narin_closed_dates_cache_v1') || '[]'), JSON.parse(localStorage.getItem('narin_closed_slots_cache_v1') || '[]')); } catch (e) {}
+    try { applyPickup(JSON.parse(localStorage.getItem('narin_closed_pickup_cache_v1') || '[]')); } catch (e) {}
     return Promise.all([
       sbRpc('get_available_products'), sbRpc('get_special_order_products'),
       sbGet('shop_weekly_closed_days?select=weekday'), sbGet('shop_closed_dates?select=closed_date'),
-      sbGet('shop_closed_slots?select=closed_date,slot_label,reason')
+      sbGet('shop_closed_slots?select=closed_date,slot_label,reason'),
+      sbGet('shop_closed_pickup?select=closed_date,time_label,reason')
     ]).then(function (r) {
       AV.available = {}; (r[0] || []).forEach(function (x) { AV.available[normName(x.product_name)] = 1; });
       AV.special = {}; (r[1] || []).forEach(function (x) { AV.special[normName(x.product_name)] = 1; });
       AV.weekdays = {}; (r[2] || []).forEach(function (x) { AV.weekdays[x.weekday] = 1; });
       try { localStorage.setItem('narin_closed_dates_cache_v1', JSON.stringify(r[3] || [])); localStorage.setItem('narin_closed_slots_cache_v1', JSON.stringify(r[4] || [])); } catch (e) {}
       applyClosed(r[3] || [], r[4] || []);
+      try { localStorage.setItem('narin_closed_pickup_cache_v1', JSON.stringify(r[5] || [])); } catch (e) {}
+      applyPickup(r[5] || []);
       AV.loaded = true;
       recomputeSpecial();
+      if (AV.pickup.off) { renderModes(); refresh(); }
     });
   }
   function applyClosed(dates, slots) {
     AV.dates = {}; (dates || []).forEach(function (x) { AV.dates[x.closed_date] = 1; });
     AV.slots = {}; (slots || []).forEach(function (x) { (AV.slots[x.closed_date] = AV.slots[x.closed_date] || {})[x.slot_label] = x.reason || 'Omlouváme se, tento čas je již obsazený.'; });
+  }
+  /* pickup can be closed completely, for a whole day, or for single times (rows of shop_closed_pickup) */
+  var PICKUP_WHY = 'Tento čas pro osobní odběr už není k dispozici.';
+  function applyPickup(rows) {
+    var p = { off: '', days: {}, times: {}, every: {} };
+    (rows || []).forEach(function (x) {
+      var why = x.reason || PICKUP_WHY, d = x.closed_date, t = x.time_label ? String(x.time_label).slice(0, 5) : '';
+      if (!d && !t) p.off = x.reason || 'Osobní odběr je dočasně nedostupný. Vyberte prosím doručení kurýrem.';
+      else if (!d) p.every[t] = why;
+      else if (!t) p.days[d] = x.reason || 'V tento den osobní odběr není možný.';
+      else (p.times[d] = p.times[d] || {})[t] = why;
+    });
+    AV.pickup = p;
+  }
+  function pickupWhy(dateIso, t) {
+    var p = AV.pickup;
+    if (p.off) return p.off;
+    if (dateIso && p.days[dateIso]) return p.days[dateIso];
+    if (t && p.every[t]) return p.every[t];
+    if (dateIso && t && p.times[dateIso] && p.times[dateIso][t]) return p.times[dateIso][t];
+    return '';
   }
   function isClosedDay(d) { return !!AV.weekdays[d.getDay()] || !!AV.dates[iso(d)]; }
   function recomputeSpecial() {
@@ -557,7 +583,13 @@
     }
   }
   function renderModes() {
-    $$('input[name="npmode"]', ROOT).forEach(function (r) { r.checked = r.value === S.mode; var t = r.closest('.np-tile'); if (t) t.classList.toggle('on', r.checked); });
+    if (AV.pickup.off && S.mode === 'pickup') { S.mode = 'courier'; if (S.pay === 'cash') S.pay = 'stripe'; }
+    $$('input[name="npmode"]', ROOT).forEach(function (r) {
+      r.checked = r.value === S.mode; var t = r.closest('.np-tile'); if (t) t.classList.toggle('on', r.checked);
+      if (r.value === 'pickup') {
+        r.disabled = !!AV.pickup.off; if (t) { t.classList.toggle('dis', !!AV.pickup.off); var sub = t.querySelector('.s'); if (sub) sub.textContent = AV.pickup.off ? 'Dočasně nedostupný' : 'Vyzvednutí v Praze 10'; }
+      }
+    });
     $('#npCourier').hidden = S.mode !== 'courier' || !!S.gift;
     $('#npPickup').hidden = S.mode !== 'pickup';
     modePrice();
@@ -614,7 +646,10 @@
   function renderSlots() {
     var sl = $('#npSlots'), tm = $('#npTimes'); if (!sl) return;
     sl.innerHTML = SLOTS.map(function (s) { var why = slotReason(s); return '<button type="button" class="np-slot' + (S.slot === s ? ' on' : '') + (why ? ' off' : '') + '" data-s="' + s + '" data-why="' + esc(why) + '"><b>' + s.replace('-', '–') + '</b><span>' + CAPTIONS[s] + '</span></button>'; }).join('');
-    tm.innerHTML = TIMES.map(function (t) { return '<button type="button" class="np-time' + (S.time === t ? ' on' : '') + '" data-t="' + t + '">' + t.replace(/^0/, '') + '</button>'; }).join('');
+    if (S.time && pickupWhy(S.date, S.time)) S.time = null;
+    var openT = 0;
+    tm.innerHTML = TIMES.map(function (t) { var why = pickupWhy(S.date, t); if (!why) openT++; return '<button type="button" class="np-time' + (S.time === t ? ' on' : '') + (why ? ' off' : '') + '" data-t="' + t + '" data-why="' + esc(why) + '">' + t.replace(/^0/, '') + '</button>'; }).join('') +
+      (S.date && !openT ? '<div class="np-note-off">V tento den osobní odběr není možný. Vyberte prosím jiný den nebo doručení kurýrem.</div>' : '');
   }
   function pickDate(k) {
     S.date = k; S.showCal = false;
@@ -643,6 +678,7 @@
     });
     $('#npTimes').addEventListener('click', function (e) {
       var b = e.target.closest('.np-time'); if (!b) return;
+      if (b.classList.contains('off')) { toast(b.getAttribute('data-why') || PICKUP_WHY); return; }
       S.time = b.getAttribute('data-t'); $('#g_time').classList.remove('bad'); $('#npTimeErr').textContent = ''; renderSlots(); saveDraft();
     });
     $$('input[name="npmode"]', ROOT).forEach(function (r) {
@@ -1153,7 +1189,7 @@
     if (!S.gift) {
       var dm = !S.date ? 'Vyberte datum.' : (dateReason(parseIso(S.date)) !== null ? 'Toto datum už není k dispozici.' : '');
       $('#npDateErr').textContent = dm; $('#g_date').classList.toggle('bad', !!dm); if (dm) { bad.push({ k: 'date', s: 'c2', el: '#g_date' }); sec.c2 = 1; }
-      var tm = S.mode === 'pickup' ? (S.time ? '' : 'Vyberte čas.') : (S.slot && !slotReason(S.slot) ? '' : 'Vyberte dobu doručení.');
+      var tm = S.mode === 'pickup' ? (S.time ? (pickupWhy(S.date, S.time) ? 'Tento čas už není k dispozici.' : '') : 'Vyberte čas.') : (S.slot && !slotReason(S.slot) ? '' : 'Vyberte dobu doručení.');
       $('#npTimeErr').textContent = tm; $('#g_time').classList.toggle('bad', !!tm); if (tm) { bad.push({ k: 'time', s: 'c2', el: '#g_time' }); sec.c2 = 1; }
     }
     if (!S.same || S.gift) {

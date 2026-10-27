@@ -179,6 +179,9 @@ textarea.np-in { height: auto; min-height: 104px; padding: 15px 18px; resize: ve
 .np-time { height: 44px; padding: 0 16px; border-radius: 999px; border: 1.5px solid var(--line); background: #fff; font: 500 15px 'Rubik', sans-serif; color: var(--ink); cursor: pointer; transition: all .15s; }
 .np-time:hover { border-color: var(--sky3); }
 .np-time.on { background: var(--blue); border-color: var(--blue); color: #fff; }
+.np-time.off { background: repeating-linear-gradient(135deg, #f6f7f9, #f6f7f9 6px, #eef0f3 6px, #eef0f3 12px); color: #9aa1ac; cursor: not-allowed; border-style: dashed; }
+.np-note-off { flex: 1 0 100%; margin-top: 4px; font-size: 13px; color: #b3261e; line-height: 1.4; }
+.np-tile.dis input { pointer-events: none; }
 
 /* recipient */
 .np-rchips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; margin: 0 -20px 16px 0; }
