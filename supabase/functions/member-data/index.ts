@@ -124,6 +124,31 @@ function json(body: unknown, status = 200) {
   })
 }
 
+const supabase = createClient(
+  Deno.env.get('SUPABASE_URL')!,
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+)
+
+// V ILIKE jsou % a _ zástupné znaky a "_" se v e-mailech vyskytuje běžně
+// (jan_novak@... by shodou našel i janXnovak@...). E-mail z tokenu proto
+// před dotazem escapujeme, aby se hledal doslova a jen bez ohledu na velikost písmen.
+function likeEscape(s: string): string {
+  return s.replace(/[\\%_]/g, '\\$&')
+}
+
+// Seznam samolepek se mění zřídka a je pro všechny zákazníky stejný. Index se drží
+// v paměti běžící instance funkce, takže při další návštěvě se z DB nečte vůbec.
+const STICKER_TTL_MS = 5 * 60 * 1000
+let stickerCache: { at: number; index: ReturnType<typeof buildStickerIndex> } | null = null
+
+async function getStickerIndex() {
+  if (stickerCache && Date.now() - stickerCache.at < STICKER_TTL_MS) return stickerCache.index
+  const { data } = await supabase.from('product_stickers').select('product_name, image_url')
+  const index = buildStickerIndex(data ?? [])
+  stickerCache = { at: Date.now(), index }
+  return index
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -141,36 +166,40 @@ Deno.serve(async (req) => {
       return json({ error: 'invalid_token' }, 401)
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    )
+    // Čtyři dotazy na sobě nezávisí, proto běží zároveň. Dřív se čekalo na každý
+    // zvlášť, takže odpověď trvala součet všech čtyř cest do databáze.
+    const like = likeEscape(normalizedEmail)
+    const loadPoints = () => supabase.from('Tilda points').select('id, balance, ma_id').ilike('email', like).maybeSingle()
+    const loadTransactions = () =>
+      supabase
+        .from('points_transactions')
+        .select('amount, type, order_id, description, created_at')
+        .ilike('user_email', like)
+        .order('created_at', { ascending: false })
+    const [{ data: firstPointsRow }, { data: firstTransactions }, { data: orders }, stickerIndex] = await Promise.all([
+      loadPoints(),
+      loadTransactions(),
+      supabase.from('tilda_orders').select('*').ilike('customer_email', like).order('created_at', { ascending: false }),
+      getStickerIndex(),
+    ])
+    let pointsRow = firstPointsRow
+    let allTransactions = firstTransactions
 
-    const { data: pointsRow } = await supabase
-      .from('Tilda points')
-      .select('id, balance, ma_id')
-      .ilike('email', normalizedEmail)
-      .maybeSingle()
-
-    const { data: allTransactions } = await supabase
-      .from('points_transactions')
-      .select('amount, type, order_id, description, created_at')
-      .ilike('user_email', normalizedEmail)
-      .order('created_at', { ascending: false })
+    // Novy clen (prave se zaregistroval): zaznam s body se jinak vytvori az o par vterin pozdeji
+    // jinym procesem, a karta by do te doby ukazovala 0. Vytvorime ho tady hned. Databazovy trigger
+    // pripise 150 uvitacich bodu a prideli cislo karty; kdyz zaznam mezitim vytvori jiny proces,
+    // unikatni e-mail konflikt jen ignorujeme a nacteme ho.
+    if (!pointsRow && normalizedEmail.includes('@')) {
+      const { error: insertError } = await supabase.from('Tilda points').insert({ email: normalizedEmail.trim().toLowerCase(), balance: 0 })
+      if (insertError && insertError.code !== '23505') console.error('member-data: points row insert failed', insertError.message)
+      const [{ data: row }, { data: tx }] = await Promise.all([loadPoints(), loadTransactions()])
+      pointsRow = row
+      allTransactions = tx
+    }
 
     const totalEarned = (allTransactions ?? [])
       .filter((r) => r.amount > 0)
       .reduce((sum, r) => sum + r.amount, 0)
-
-    const { data: orders } = await supabase
-      .from('tilda_orders')
-      .select('*')
-      .ilike('customer_email', normalizedEmail)
-      .order('created_at', { ascending: false })
-
-    const { data: stickers } = await supabase
-      .from('product_stickers')
-      .select('product_name, image_url')
 
     // Samolepky se párují podle názvu produktu, stejně jako v manažerském katalogu.
     // Tilda ale ukládá názvy s HTML entitami všeho druhu (&amp;, &#345; = ř, &scaron; = š...),
@@ -178,7 +207,7 @@ Deno.serve(async (req) => {
     // to děláme ručně: číselné entity + pojmenované (včetně českých), pak porovnání
     // bez ohledu na velikost písmen a mezery; když to nesedí, i bez diakritiky
     // a nakonec podle začátku názvu (produkt přejmenovaný nebo s dovětkem, např. "… 60 cm").
-    const stickerIndex = buildStickerIndex(stickers ?? [])
+    // Samotný index staví getStickerIndex() (s pamětí na pár minut).
 
     for (const order of orders ?? []) {
       const products = order.raw_payload?.payment?.products
