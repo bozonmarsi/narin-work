@@ -1,18 +1,72 @@
 --- ../checkout_before_recipients.html	2026-10-30 12:04:49
-+++ ../checkout_new.html	2026-10-30 12:05:45
-@@ -1523,7 +1523,7 @@
++++ ../checkout_new.html	2026-10-30 12:12:45
+@@ -1124,7 +1124,7 @@
+       '<button type="button" class="np-tile" data-w="me"><span class="ic"><i class="ti ti-user"></i></span><span><b>Pro mě</b><span class="s">Doručíme na vaše jméno a telefon</span></span></button>' +
+       '<button type="button" class="np-tile" data-w="other"><span class="ic"><i class="ti ti-gift"></i></span><span><b>Pro někoho jiného</b><span class="s">Zadáte jméno a telefon příjemce</span></span></button>' +
+       '</div>' +
+-      '<div id="npRChips"></div>' +
++      '<div id="npRChips"></div><div id="npSAddr"></div>' +
+       '<div id="npRFields"><div class="np-row two">' + field('rname', 'Jméno příjemce', 'text') + field('rlast', 'Příjmení příjemce', 'text') + '</div>' +
+       '<div class="np-row">' + phoneField('rphone', 'Telefon příjemce') + '</div></div>' +
+       '<div class="np-row"><div class="np-f"><label class="l" for="np_comment">Komentář k objednávce</label><textarea class="np-in" id="np_comment" rows="3" placeholder="Např. kdy zazvonit nebo kam květiny odložit"></textarea></div></div>' +
+@@ -1472,8 +1472,9 @@
+   function setWho(w) {
+     var was = S.same; S.same = (w === 'me');
+     if (S.same) syncSame();
+-    else if (was) { S.rid = null; if (RECS) renderRecs(); S.rname = S.rlast = S.rphone = ''; ['rname', 'rlast', 'rphone'].forEach(function (k) { $('#np_' + k).value = ''; }); }
++    else if (was) { if (SELF && REC_ADDR === SELF.id) clearAddr(); S.rid = null; if (RECS) renderRecs(); S.rname = S.rlast = S.rphone = ''; ['rname', 'rlast', 'rphone'].forEach(function (k) { $('#np_' + k).value = ''; }); }
+     renderWho(); saveDraft(); refresh();
++    if (S.same) useSelfAddr(); else updateSAddr();
+   }
+ 
+   /* ---------- address (Google Places) ---------- */
+@@ -1523,9 +1524,9 @@
    function renderRecipient() {
      renderWho();
      var note = $('#npRNote');
 -    note.hidden = !S.loggedIn;
 +    syncRNote();
      note.innerHTML = '<i class="ti ti-bell-ringing"></i><span>Příjemce i datum si zapamatujeme a příště vám je připomeneme. Upravit je můžete ve svém <a href="/members/occasions" target="_blank" rel="noopener">účtu</a>.</span>';
-     updateRAddr();
+-    updateRAddr();
++    updateRAddr(); updateSAddr();
      var pc = $('#npPostcard');
-@@ -1556,12 +1556,16 @@
+     if (hasPostcard()) {
+       pc.hidden = false;
+@@ -1544,7 +1545,7 @@
+     } else { pc.hidden = true; }
+   }
+   function paintSeg() { $$('#npPcSeg button', ROOT).forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-v') === S.pcSender); }); }
+-  var RECS = null, REC_ADDR = null;
++  var RECS = null, REC_ADDR = null, SELF = null;
+   var REL = { mama: 'Máma', partnerka: 'Partnerka', partner: 'Partner', babicka: 'Babička', tata: 'Táta', ucitelka: 'Učitel(ka)', kolegyne: 'Kolega/yně', kamarad: 'Kamarád(ka)' };
+   var OCC = {};
+   function shortDate(v) { var m = String(v || '').match(/(\d{4})-(\d{2})-(\d{2})/); return m ? (+m[3]) + '. ' + (+m[2]) + '.' : ''; }
+@@ -1555,13 +1556,38 @@
+     var m = rest.match(/(\d{3})\s?(\d{2})/), psc = m ? m[1] + ' ' + m[2] : '';
      var city = rest.replace(/\d{3}\s?\d{2}/, '').replace(/^[\s,]+|[\s,]+$/g, '').replace(/\s+\d.*$/, '').trim();
      return street ? { street: street, city: city, psc: psc } : null;
++  }
++  /* an order for yourself is remembered as one entry "Já" (relation 'ja'): it fills the address for "Pro mě", it is not a card */
++  function selfAddr() { return SELF && S.same && S.mode === 'courier' && !S.gift ? parseAddr(SELF.address) : null; }
++  function clearAddr() {
++    S.adres = S.city = S.psc = ''; S.lat = S.lng = null; S.noNum = false; REC_ADDR = null;
++    ['adres', 'city', 'psc'].forEach(function (k) { var e = $('#np_' + k); if (e) e.value = ''; });
++    onAddress(); saveDraft(); refresh();
++  }
++  function useSelfAddr() {
++    if (selfAddr() && (!S.adres || REC_ADDR)) applySavedAddr(SELF);
++    updateSAddr();
    }
++  function updateSAddr() {
++    var el = $('#npSAddr'); if (!el) return;
++    var a = selfAddr();
++    if (!a) { el.innerHTML = ''; return; }
++    var line = esc(a.street + (a.city ? ', ' + a.city : ''));
++    if (REC_ADDR === SELF.id && S.adres === a.street) el.innerHTML = '<div class="np-raddr ok"><i class="ti ti-map-pin-check"></i><span>Doplnili jsme vaši uloženou adresu: <b>' + line + '</b>. <a href="#c2" id="npSChg">Změnit</a></span></div>';
++    else el.innerHTML = '<div class="np-raddr"><i class="ti ti-map-pin"></i><span>Vaše uložená adresa: <b>' + line + '</b></span><button type="button" id="npSUse">Použít</button></div>';
++    var u = $('#npSUse'); if (u) u.addEventListener('click', function () { applySavedAddr(SELF); updateSAddr(); });
++    var c = $('#npSChg'); if (c) c.addEventListener('click', function (e) { e.preventDefault(); var t = $('#np_adres'); if (t) { t.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(function () { t.focus(); }, 400); } });
++  }
 +  function syncRNote() { var n = $('#npRNote'); if (n) n.hidden = !S.loggedIn || (S.rid != null && !/^s\d+$/.test(String(S.rid)));
 +    var em = document.querySelector('label[for=np_rlast] em'), li = $('#np_rlast'); if (em) em.style.display = recSingle() ? 'none' : ''; if (li) li.placeholder = recSingle() ? 'Není nutné' : ''; }
 +  function phoneKey(v) { var d = String(v || '').replace(/\D/g, ''); return d.length >= 9 ? d.slice(-9) : ''; }
@@ -28,7 +82,7 @@
      return '<button type="button" class="np-rc' + (S.rid === x.id ? ' on' : '') + '" data-i="' + i + '" aria-pressed="' + (S.rid === x.id) + '"><span class="av a' + (i % 4) + '">' + esc(initials(x.name)) + '</span><span class="nm">' + esc(x.name) + '</span><span class="sb">' + (sub ? esc(sub) : '&nbsp;') + '</span>' + badge + last + '<span class="ck"><i class="ti ti-check"></i></span></button>';
    }
    function renderRecs() {
-@@ -1573,7 +1577,7 @@
+@@ -1573,7 +1599,7 @@
      }
      if (RECS === null) { w.innerHTML = '<div class="np-rh">Vaši blízcí</div><div class="np-rcs"><div class="np-rc sk"></div><div class="np-rc sk"></div><div class="np-rc sk"></div></div>'; return; }
      if (!RECS.length) {
@@ -37,7 +91,7 @@
        return;
      }
      w.innerHTML = '<div class="np-rh">' + (RECS[0] && RECS[0].suggested ? 'Komu jste už posílali' : 'Vaši blízcí') + '<small>Vyberte, komu květiny posíláte</small></div><div class="np-rcs" id="npRC">' + RECS.map(recCard).join('') + '<button type="button" class="np-rc new' + (S.rid === null && !S.same ? '' : '') + '" data-new="1"><span class="av plus"><i class="ti ti-plus"></i></span><span class="nm">Někdo nový</span><span class="sb">Zadáte ručně</span></button></div><div id="npRAddr"></div><div class="np-msg-r" id="npRHint"></div>';
-@@ -1589,7 +1593,7 @@
+@@ -1589,7 +1615,7 @@
      if (!x) {
        S.rid = null; S.rname = S.rlast = S.rphone = '';
        ['rname', 'rlast', 'rphone'].forEach(function (k) { $('#np_' + k).value = ''; });
@@ -46,7 +100,7 @@
        var f = $('#np_rname'); if (f) { try { f.focus({ preventScroll: true }); } catch (e) { f.focus(); } }
        return;
      }
-@@ -1599,7 +1603,7 @@
+@@ -1599,7 +1625,7 @@
      ['rname', 'rlast', 'rphone'].forEach(function (k) { setErr(k, ''); });
      var autoAddr = S.mode === 'courier' && !S.gift && parseAddr(x.address) && (!S.adres || REC_ADDR);
      if (autoAddr) applySavedAddr(x);
@@ -55,11 +109,14 @@
    }
    function applySavedAddr(x) {
      var a = parseAddr(x.address); if (!a) return;
-@@ -1644,7 +1648,23 @@
+@@ -1644,7 +1670,26 @@
          if (days < 0 || days > 45) return;
          if (!OCC[it.recipient_id] || days < OCC[it.recipient_id].days) OCC[it.recipient_id] = { days: days, title: String(it.title || it.occasion_key || '').replace(/\s*\(.*\)\s*$/, '') };
        });
 -      if (list.length) { RECS = list; renderRecs(); return; }
++      SELF = list.filter(function (x) { return x.relation === 'ja'; })[0] || null;
++      list = list.filter(function (x) { return x.relation !== 'ja'; });
++      if (S.same) useSelfAddr(); else updateSAddr();
 +      list.forEach(function (x) { var lo = x.last_orders && x.last_orders[0]; x._t = lo ? Date.parse(lo.date) || 0 : 0; x._c = Date.parse(x.created_at) || 0; });
 +      list.sort(function (a, b) {
 +        var ha = OCC[a.id] && OCC[a.id].days <= 14 ? 1 : 0, hb = OCC[b.id] && OCC[b.id].days <= 14 ? 1 : 0;
@@ -80,7 +137,7 @@
        return fn('personal-dates', { token: t, action: 'suggestedRecipients' }).then(function (r) {
          RECS = ((r && r.suggestions) || []).slice(0, 6).map(function (x, i) { x.id = 's' + i; x.suggested = true; return x; });
          renderRecs();
-@@ -1965,7 +1985,7 @@
+@@ -1965,7 +2010,7 @@
      }
      if (!S.same || S.gift) {
        need('rname', S.rname.trim() ? '' : 'Vyplňte prosím jméno příjemce.', 'c3');
@@ -89,7 +146,7 @@
        need('rphone', (S.gift && !/^(phone|whatsapp)$/.test(S.gift.channel)) || phoneValid(S.rphone) ? '' : 'Zadejte prosím telefon příjemce.', 'c3');
      }
      if (hasPostcard()) {
-@@ -1980,7 +2000,7 @@
+@@ -1980,7 +2025,7 @@
      var ok = {
        c1: S.name.trim() && S.last.trim() && phoneValid(S.phone) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((S.email || '').trim()),
        c2: S.gift ? true : ((S.mode === 'pickup' || (S.adres.trim() && !feeCalc().need && !feeCalc().tooFar && !S.noNum && S.city.trim())) && S.date && (S.mode === 'pickup' ? S.time : S.slot)),
