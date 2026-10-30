@@ -8,9 +8,7 @@
 --    latest courier address win (people move, numbers change).
 --  * The address is stored only for courier deliveries (never a pickup, never a gift without address),
 --    and a gift keeps the recipient's address out of the sender's book.
---  * An order for yourself is remembered as one special entry "Já" (relation 'ja'): your name, phone and the
---    latest courier address, so "Pro mě" can fill the address next time. It never gets reminders.
---    The buyer is never saved as a recipient of his own: same name = self, same phone but another name = skipped.
+--  * The buyer is never saved as his own recipient: same name, or the same phone number.
 --  * "-" as a surname (the checkout sends it when a saved person has a single name) is not part of the name.
 --  * One yearly reminder per occasion: no second reminder within 3 days of an existing one.
 --  * Coordinates that arrive after the order (geocoding) are picked up too.
@@ -66,11 +64,12 @@ declare
   p jsonb := o.raw_payload;
   v_email text := lower(btrim(coalesce(o.customer_email, '')));
   v_first text; v_last text; v_name text;
-  v_buyer text; v_buyer_name text; v_self boolean; v_pkey text; v_buyer_pkey text; v_phone text;
+  v_buyer text; v_pkey text; v_buyer_pkey text; v_phone text;
   v_addr text; v_lat float8; v_lng float8;
   v_id uuid; v_day date; r public.recipients;
 begin
   if v_email = '' or p is null then return; end if;
+  if coalesce(p->>'recipient-customer', '') = 'yes' then return; end if;
   if coalesce(o.status::text, '') = 'cancelled' then return; end if;
 
   v_first := nullif(btrim(p->>'recipients-name'), '');
@@ -79,16 +78,14 @@ begin
   if v_first is null then return; end if;
   v_name := concat_ws(' ', v_first, v_last);
 
-  -- the buyer himself: the same full name = an order for himself ("Pro mě")
-  v_buyer_name := nullif(btrim(concat_ws(' ', nullif(btrim(coalesce(o.customer_name, p->>'name')), ''),
-                                              nullif(btrim(coalesce(o.customer_last_name, p->>'last-name', p->>'lastname')), ''))), '');
-  v_buyer := recipient_key(v_buyer_name);
-  v_self := recipient_key(v_name) = v_buyer;
+  -- the buyer himself: same name, or the same phone number
+  v_buyer := recipient_key(concat_ws(' ', nullif(btrim(coalesce(o.customer_name, p->>'name')), ''),
+                                          nullif(btrim(coalesce(o.customer_last_name, p->>'last-name', p->>'lastname')), '')));
+  if recipient_key(v_name) = v_buyer then return; end if;
   v_phone := nullif(btrim(p->>'recipients-phone-number'), '');
   v_pkey := phone_key(v_phone);
   v_buyer_pkey := phone_key(coalesce(o.customer_phone, p->>'phone'));
-  -- ambiguous (ticked "same as customer" with another name, or the buyer's own phone under another name): remember nothing
-  if not v_self and (coalesce(p->>'recipient-customer', '') = 'yes' or (v_pkey is not null and v_pkey = v_buyer_pkey)) then return; end if;
+  if v_pkey is not null and v_pkey = v_buyer_pkey then return; end if;
 
   -- the address: courier deliveries only, never a gift without address
   if coalesce(o.delivery_type, p->>'delivery', '') ilike '%kur%'
@@ -100,36 +97,13 @@ begin
 
   perform set_config('narin.auto_recipient', '1', true);
 
-  if v_self then
-    -- an order for yourself: only worth remembering when it has a courier address
-    if v_addr is null then perform set_config('narin.auto_recipient', '', true); return; end if;
-    v_phone := coalesce(v_phone, nullif(btrim(coalesce(o.customer_phone, p->>'phone')), ''));
-    select * into r from recipients where lower(owner_email) = v_email and relation = 'ja' order by owner_edited desc, created_at limit 1;
-    if not found then
-      insert into recipients (owner_email, name, relation, phone, address, address_lat, address_lng, auto_saved, owner_edited)
-      values (v_email, v_buyer_name, 'ja', v_phone, v_addr, v_lat, v_lng, true, false);
-    elsif r.owner_edited then
-      update recipients set phone = coalesce(phone, v_phone), address = coalesce(address, v_addr),
-        address_lat = case when address is null then v_lat else address_lat end,
-        address_lng = case when address is null then v_lng else address_lng end
-      where id = r.id;
-    else
-      update recipients set name = v_buyer_name, phone = coalesce(v_phone, phone), address = v_addr,
-        address_lat = case when v_lat is not null or v_addr is distinct from address then v_lat else address_lat end,
-        address_lng = case when v_lng is not null or v_addr is distinct from address then v_lng else address_lng end
-      where id = r.id;
-    end if;
-    perform set_config('narin.auto_recipient', '', true);
-    return;
-  end if;
-
   -- find the person: full name, else phone, else the same first name saved without a surname
-  select * into r from recipients where lower(owner_email) = v_email and coalesce(relation, '') <> 'ja' and recipient_key(name) = recipient_key(v_name) order by owner_edited desc, created_at limit 1;
+  select * into r from recipients where lower(owner_email) = v_email and recipient_key(name) = recipient_key(v_name) order by owner_edited desc, created_at limit 1;
   if not found and v_pkey is not null then
-    select * into r from recipients where lower(owner_email) = v_email and coalesce(relation, '') <> 'ja' and phone_key(phone) = v_pkey order by owner_edited desc, created_at limit 1;
+    select * into r from recipients where lower(owner_email) = v_email and phone_key(phone) = v_pkey order by owner_edited desc, created_at limit 1;
   end if;
   if not found and v_last is not null then
-    select * into r from recipients where lower(owner_email) = v_email and coalesce(relation, '') <> 'ja' and recipient_key(name) = recipient_key(v_first)
+    select * into r from recipients where lower(owner_email) = v_email and recipient_key(name) = recipient_key(v_first)
        and (phone is null or v_pkey is null or phone_key(phone) = v_pkey) order by owner_edited desc, created_at limit 1;
   end if;
 
