@@ -1,0 +1,524 @@
+<!-- NARIN product card v3. Footer page, T123 rec5302731703, placed BEFORE the old popup script rec2256512053.
+     Replaces the old Zero popup for everyone while FOR_ALL is true (flag per browser: ?novakarta=1 / ?novakarta=0).
+     Data: one cached bundle from Supabase get_product_card_bundle() with every card and precomputed recommendations,
+     so the card opens instantly. Cart: same product object as the old popup (price of the pack, quantity = packs). -->
+<style>
+.nk-ov{position:fixed;inset:0;z-index:2147483000;background:rgba(17,24,39,.48);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .22s}
+.nk-ov.nk-show{opacity:1}
+.nk{--blue:#186ce0;--green:#2a9a48;--red:#ff2a20;--ink:#14171c;--muted:#6b7280;--line:#eceef2;--soft:#f5f6f8;font-family:'Rubik',system-ui,sans-serif;color:var(--ink);background:#fff;width:min(1080px,94vw);height:min(92vh,980px);border-radius:22px;overflow:auto;position:relative;box-shadow:0 24px 70px rgba(15,23,42,.25);overscroll-behavior:contain}
+.nk *{box-sizing:border-box}.nk button{font-family:inherit;line-height:inherit;letter-spacing:inherit;cursor:pointer;border:0;background:none;color:inherit;padding:0}.nk img{display:block;max-width:100%}.nk a{color:inherit}
+.nk-x{position:sticky;top:12px;float:right;margin:12px 14px -50px 0;z-index:5;width:38px;height:38px;border-radius:50%;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.16);display:grid!important;place-items:center;font-size:17px}
+.nk-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:36px;padding:22px 28px 18px;align-items:start}
+.nk-photo{background:#fff center/contain no-repeat;border:1px solid var(--line);border-radius:22px;aspect-ratio:4/5;overflow:hidden;position:sticky;top:16px}
+.nk-photo img,.nk-swipe img{width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity .3s}
+.nk-photo img.ld,.nk-swipe img.ld{opacity:1}
+.nk-thumbs{display:flex;gap:8px;margin-top:10px}.nk-thumbs button{width:58px;height:72px;border-radius:12px;overflow:hidden;background:#fff;border:2px solid var(--line);opacity:.6}.nk-thumbs button.on{opacity:1;border-color:var(--ink)}.nk-thumbs img{width:100%;height:100%;object-fit:contain}
+.nk-swipe,.nk-gdots{display:none}
+.nk-top{padding-right:46px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;min-height:26px}
+.nk-lbl{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase}.nk-lbl i{width:8px;height:8px;border-radius:50%;background:currentColor}
+.nk-lbl.today{color:var(--green)}.nk-lbl.tomorrow{color:var(--blue)}.nk-lbl.special{color:var(--red)}
+.nk-cb{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--green);font-weight:600;text-decoration:none;background:#eaf6ed;border-radius:999px;padding:5px 7px 5px 11px}
+.nk-cb span{width:16px;height:16px;border-radius:50%;background:var(--green);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:700;font-family:Georgia,serif;font-style:italic}
+.nk h1{font-size:30px;line-height:1.1;margin:6px 0;letter-spacing:-.02em;font-weight:700}
+.nk-price{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}.nk-price b{font-size:26px;font-weight:500;color:var(--blue)}.nk-price span{color:var(--muted);font-size:13.5px}
+.nk-tags{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0 0}.nk-tag{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:999px;background:var(--soft);font-size:13px}.nk-dot{width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.12)}
+.nk-gl{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 0}
+.nk-g{background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px 14px;display:grid;grid-template-columns:1fr auto;column-gap:10px;row-gap:2px;align-items:center;min-height:100px}
+.nk-g small{grid-column:1;font-size:10.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.nk-g b{grid-column:1;font-size:26px;font-weight:700;line-height:1.1;letter-spacing:-.02em;margin-top:2px}.nk-g b u{text-decoration:none;font-size:14px;font-weight:600;color:var(--muted);margin-left:3px;letter-spacing:0}
+.nk-g .vis{grid-column:2;grid-row:1/span 3;display:grid;place-items:center}
+.nk-imp{margin:22px 0 0;border-radius:14px;background:#eef8f0;padding:10px 13px 11px;border:1px solid #cfe9d6}
+.nk-imp h3{margin:0 0 4px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--green)}
+.nk-imp div{padding:5px 0;font-size:14px;line-height:1.4;color:#2f3b33}.nk-imp div b{font-weight:600;color:var(--ink)}
+.nk-note{margin:10px 2px 0;font-size:13px;color:var(--muted);display:flex;gap:7px;align-items:flex-start}.nk-note i{font-style:normal;flex:none;width:16px;height:16px;border-radius:50%;border:1.3px solid currentColor;display:grid;place-items:center;font-size:10px;font-weight:700;margin-top:1px}
+.nk-comp{margin:14px 0 0;border:1px solid var(--line);border-radius:16px;padding:12px 15px}
+.nk-comp ul{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:8px}.nk-comp li{display:flex;gap:10px;align-items:center;font-size:14.5px}.nk-comp li:before{content:'';width:8px;height:8px;border-radius:50%;background:var(--green);flex:none}
+.nk-duo{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:16px;margin:14px 0 0}
+.nk-duo>div{padding:12px 15px 13px;min-width:0}.nk-duo>div+div{border-left:1px solid var(--line)}
+.nk-k{font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.nk-vr{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:5px 0 6px}.nk-v{font-size:17px;font-weight:600;line-height:1.2}
+.nk-sg{display:flex;gap:3px;flex:none}.nk-sg i{width:14px;height:6px;border-radius:2px;background:#e4e7ec}
+.nk-duo p{margin:0;font-size:12.5px;line-height:1.4;color:#5b6270}
+.nk-acc{border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-top:14px}
+.nk-acc>button{width:100%;display:flex!important;align-items:center;justify-content:space-between;padding:15px 2px;text-align:left;font-weight:600;font-size:15.5px}
+.nk-acc>button small{display:block;font-weight:400;color:var(--muted);font-size:13px;margin-top:2px}
+.nk-acc svg{transition:transform .25s;flex:none}.nk-acc.open>button svg{transform:rotate(180deg)}
+.nk-acc .nk-body{display:none;padding-bottom:16px}.nk-acc.open .nk-body{display:block}
+.nk-steps{margin:0;padding:0;list-style:none;display:grid;gap:10px;counter-reset:s;font-size:14.5px;line-height:1.55;color:#3b4250}.nk-steps li{display:grid;grid-template-columns:26px 1fr;gap:10px}.nk-steps li:before{counter-increment:s;content:counter(s);width:24px;height:24px;border-radius:50%;background:var(--soft);display:grid;place-items:center;font-size:12px;font-weight:600}
+.nk-lead{font-size:15px;line-height:1.6;color:#2b2f38;margin:12px 0 4px;white-space:pre-line}
+.nk-sec{margin:22px 28px 0}.nk-sh{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 0 10px}.nk-sh h3{font-size:17px;font-weight:700;margin:0;letter-spacing:-.01em}.nk-sh small{color:var(--muted);font-size:13px}
+.nk-rail{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 0 6px;scrollbar-width:none}.nk-rail::-webkit-scrollbar{display:none}
+.nk-cards{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding:4px 2px 10px}
+.nk-cards::-webkit-scrollbar{display:none}
+.nk-pc{flex:0 0 180px;scroll-snap-align:start;display:flex;flex-direction:column;background:#fff;border:1px solid var(--line);border-radius:20px;overflow:hidden;transition:box-shadow .25s,transform .25s,border-color .25s}
+.nk-pc:hover{box-shadow:0 10px 26px rgba(15,23,42,.09);transform:translateY(-2px)}
+.nk-pc.done{border-color:#bfe3c8;box-shadow:0 0 0 3px #eaf6ed}
+.nk-pc .ph{position:relative;background:#fff;aspect-ratio:4/5;cursor:pointer;overflow:hidden}
+.nk-pc .ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transition:transform .4s ease}.nk-pc:hover .ph img{transform:scale(1.04)}
+.nk-pc .ph.cover{aspect-ratio:1/1}.nk-pc .ph.cover img{object-fit:cover}
+.nk-pc .tx{padding:10px 12px 12px;display:flex;flex-direction:column;gap:8px;flex:1;border-top:1px solid var(--line)}
+.nk-pc .nm{font-size:14.5px;font-weight:500;line-height:1.3;color:var(--ink);cursor:pointer;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:38px}
+.nk-pc .ft{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.nk-pc .pr{color:var(--blue);line-height:1.15}.nk-pc .pr b{display:block;font-size:17px;font-weight:600}.nk-pc .pr small{font-size:12px;font-weight:500;color:var(--muted)}
+.nk .nk-add{flex:none;width:40px;height:40px;border-radius:50%;background:var(--blue)!important;color:#fff!important;display:grid!important;place-items:center;transition:background-color .25s,transform .2s;box-shadow:0 4px 12px rgba(24,108,224,.28)}.nk .nk-add:active{transform:scale(.9)}
+.nk-pc.done .nk-add{background:var(--green)!important;box-shadow:0 4px 12px rgba(42,154,72,.28)}
+.nk-pc .tg{position:absolute;left:8px;top:8px;z-index:1;display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.94);border-radius:999px;padding:4px 9px 4px 7px;font-size:11.5px;font-weight:600;color:var(--ink);box-shadow:0 1px 4px rgba(15,23,42,.08)}.nk-pc .tg i{width:7px;height:7px;border-radius:50%}
+.nk-tz{border-radius:22px;background:linear-gradient(135deg,#eef4fe,#f3f8f1)}
+.nk .nk-tz>button{width:100%;display:flex;align-items:center;gap:14px;padding:16px 18px;text-align:left}
+.nk-av{display:flex;flex:none}.nk-av span{width:44px;height:44px;border-radius:50%;background:#fff;border:2px solid #fff;margin-left:-12px;overflow:hidden;box-shadow:0 2px 6px rgba(15,23,42,.12)}.nk-av span:first-child{margin-left:0}.nk-av img{width:100%;height:100%;object-fit:cover;object-position:50% 18%;transform:scale(1.7);transform-origin:50% 22%}
+.nk-tz .tt{flex:1;min-width:0}.nk-tz .tt b{display:block;font-size:16.5px;font-weight:600}.nk-tz .tt small{color:var(--muted);font-size:13px}
+.nk-go{flex:none;background:var(--ink);color:#fff;border-radius:999px;padding:9px 15px;font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:6px}.nk-go svg{transition:transform .25s}
+.nk-tz .nk-tzb{display:none;padding:0 18px 18px}.nk-tz.open .nk-tzb{display:block}.nk-tz.open .nk-go svg{transform:rotate(180deg)}
+.nk-sum{display:none;margin-top:14px;padding:11px 14px;border-radius:14px;background:#f3f7ff;font-size:13.5px;align-items:center;justify-content:space-between;gap:10px}.nk-sum.on{display:flex}.nk-sum b{font-weight:700}
+.nk-buy{position:sticky;bottom:0;z-index:6;display:flex;gap:12px;align-items:center;padding:12px 28px;margin-top:22px;background:#fff;border-top:1px solid var(--line)}
+.nk-qty{display:inline-flex;align-items:center;border:1.5px solid var(--line);border-radius:999px}.nk-qty button{width:40px;height:46px;font-size:20px}.nk-qty span{min-width:28px;text-align:center;font-weight:600}
+.nk-cta{flex:1;display:flex!important;justify-content:space-between;align-items:center;background:var(--blue)!important;color:#fff!important;border-radius:999px;height:48px;padding:0 24px!important;font-weight:600;font-size:16px;transition:background-color .25s}
+.nk-cta.ok{background:var(--green)!important;animation:nkPop .4s ease}@keyframes nkPop{40%{transform:scale(1.03)}}
+.nk-skel{background:linear-gradient(90deg,#f1f3f6,#e8ebf0,#f1f3f6);background-size:200% 100%;animation:nkSk 1.2s infinite;border-radius:12px;height:100px;margin-top:12px}@keyframes nkSk{to{background-position:-200% 0}}
+.nk.nk-enter .nk-info>*{animation:nkUp .5s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0) * 40ms + 90ms)}
+@keyframes nkUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.nk-ghost{position:fixed;z-index:2147483001;object-fit:contain;pointer-events:none;border-radius:16px}
+@media (prefers-reduced-motion:reduce){.nk.nk-enter .nk-info>*{animation:none}}
+@media (max-width:760px){
+ .nk-ov{align-items:stretch}
+ .nk{width:100vw;height:100%;height:100dvh;border-radius:0}
+ .nk-ov{height:100%;height:100dvh}
+ .nk-grid{grid-template-columns:1fr;gap:10px;padding:0 16px 8px}
+ .nk-photo,.nk-thumbs{display:none}
+ .nk-swipe{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -16px;scrollbar-width:none;background:#fff}.nk-swipe::-webkit-scrollbar{display:none}
+ .nk-swipe>div{flex:0 0 100%;scroll-snap-align:center;height:min(86vw,52vh);overflow:hidden;background:#fff center/contain no-repeat}
+ .nk-gdots{display:flex;justify-content:center;gap:6px;margin:-24px 0 12px;position:relative;z-index:2}.nk-gdots i{width:6px;height:6px;border-radius:50%;background:rgba(0,0,0,.18)}.nk-gdots i.on{background:var(--ink);width:16px;border-radius:3px}
+ .nk-x{position:fixed;top:12px;right:12px;margin:0;float:none}
+ .nk-top{padding-right:0}.nk h1{font-size:24px}.nk-price b{font-size:24px}
+ .nk-g{padding:10px 11px;min-height:92px}.nk-g b{font-size:22px}.nk-g .vis svg{width:40px;height:60px}
+ .nk-duo>div{padding:11px 12px 12px}.nk-v{font-size:15.5px}.nk-sg i{width:10px}
+ .nk-sec{margin:20px 16px 0}.nk-pc{flex-basis:158px}
+ .nk .nk-tz>button{padding:14px;flex-wrap:wrap;row-gap:10px}.nk-tz .tt{order:3;flex-basis:100%}.nk-go{margin-left:auto}.nk-av span{width:38px;height:38px}.nk-tz .nk-tzb{padding:0 12px 14px} .nk-buy{padding:10px 14px calc(14px + env(safe-area-inset-bottom));gap:10px}.nk-qty button{width:34px}.nk-cta{height:50px;padding:0 20px!important}
+}
+</style>
+<script>
+(function () {
+  if (window.__narinCardV2) return; window.__narinCardV2 = 1;
+  var FOR_ALL = true;
+  try {
+    var flag = new URLSearchParams(location.search).get('novakarta');
+    if (flag === '1') localStorage.setItem('narin_newcard', '1');
+    if (flag === '0') localStorage.removeItem('narin_newcard');
+  } catch (e) {}
+  var on = FOR_ALL; try { on = on || localStorage.getItem('narin_newcard') === '1'; } catch (e) {}
+  if (!on) return;
+
+  var SB = 'https://wqburlamuipxmenqsjnx.supabase.co', KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxYnVybGFtdWlweG1lbnFzam54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTY2MTIsImV4cCI6MjA4ODgzMjYxMn0.NYnQoorm3z5gkjr954JdYhzDNmYfCjefzK1ddq3cflw';
+  var BKEY = 'narin_cards_v3', FRESH_MS = 30 * 60e3;
+  var CARD_SELECTOR = '.js-product, .t-store__card';
+  var IGNORE = '.t1002__addBtn, [href="#addtofavorites"], .favorite-btn, .t-store__prod__quantity, .t-store__card__btn, button, .narin-cat-promo-cta';
+  var COLORHEX = {'Bílá':'#fff','Růžová':'#f3a6c0','Červená':'#d6273a','Fialová':'#8d5cc6','Modrá':'#5b93e8','Žlutá':'#f2c230','Zelená':'#58a85f'};
+  var ORDER = {focal:['greenery','filler','accent','focal'], filler:['focal','greenery','accent','filler'], greenery:['focal','filler','accent'], accent:['focal','greenery','filler']};
+  var EXTRA_NAME = {'Jednočepelové nůžky':'Sekátor','Přečepelové nůžky':'Nůžky'};
+  var S = {};
+  var ov = null, box = null, cardData = null, cardEl = null, cat = null, bundle = null, bundleP = null, bundleFailed = false, savedY = 0, auto = null, isOpen = false;
+
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function czk(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' Kč'; }
+  function img(u, w) { if (!u) return ''; if (!/static\.tildacdn/.test(u)) return u; var i = u.lastIndexOf('/'); return u.slice(0, i) + '/-/resize/' + w + 'x/' + u.slice(i + 1); }
+  function norm(s) { return String(s || '').toLowerCase().replace(/&aacute;/g,'á').replace(/&iacute;/g,'í').replace(/&yacute;/g,'ý').replace(/&eacute;/g,'é').replace(/\s+/g, ' ').trim(); }
+  var narrow = function () { return window.innerWidth <= 760; };
+  try { var c0 = JSON.parse(localStorage.getItem(BKEY) || 'null'); if (c0 && c0.d && c0.d.p) bundle = c0.d; } catch (e) {}
+
+  // ---------- data from the card that was clicked (same as the old popup) ----------
+  function extract(card) {
+    var priceEl = card.querySelector('.js-product-price, .t-store__prod__price-value');
+    var priceText = priceEl ? priceEl.textContent.trim() : '';
+    if (!priceText) return null;
+    var portionEl = card.querySelector('.t-store__prod__price-portion');
+    var portion = portionEl ? portionEl.textContent.replace(/^\//, '').replace(/шт\.?|шт/g, 'ks').trim() : '';
+    var nameEl = card.querySelector('.js-product-name, .t-store__card__title, .t-name');
+    var holder = card.closest('.js-product') || card;
+    var bg = holder.querySelector('.js-product-img'), thumb = '';
+    if (bg) { var m = /url\(["']?([^"')]+)/.exec(bg.style.backgroundImage || getComputedStyle(bg).backgroundImage || ''); if (m) thumb = m[1]; }
+    return {
+      name: nameEl ? nameEl.textContent.trim() : '',
+      basePrice: Number(priceText.replace(/\D/g, '')) || 0,
+      portion: portion,
+      uid: holder.getAttribute('data-product-uid') || holder.getAttribute('data-product-gen-uid') || holder.getAttribute('data-product-lid') || '',
+      sku: holder.getAttribute('data-product-sku') || undefined,
+      img: holder.getAttribute('data-product-img') || ((holder.querySelector('img') || {}).src) || '',
+      thumb: thumb, imgEl: bg,
+      url: holder.getAttribute('data-product-url') || location.href
+    };
+  }
+  // a product that is not on this page (opened from a recommendation)
+  function fromBundle(uid) {
+    var p = bundle && bundle.p[uid]; if (!p) return null;
+    return {name: p.n, basePrice: Number(p.pr) || 0, portion: p.u > 1 ? p.u + ' ks' : '', uid: uid, img: p.img, thumb: img(p.img, 360), url: location.href};
+  }
+
+  // ---------- catalog availability and the special order date (same rule as the catalog) ----------
+  function addUtcDays(d, n) { return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + n)); }
+  function dateKey(d) { return d.toISOString().slice(0, 10); }
+  function pragueToday() { try { var p = new Intl.DateTimeFormat('en-CA', {timeZone:'Europe/Prague', year:'numeric', month:'2-digit', day:'2-digit'}).format(new Date()).split('-'); return new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])); } catch (e) { var n = new Date(); return new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate())); } }
+  function specialDate(cw, cd) {
+    function closed(d) { return cw.has(d.getUTCDay()) || cd.has(dateKey(d)); }
+    var d = pragueToday();
+    do { d = addUtcDays(d, 1); } while (d.getUTCDay() === 0 || d.getUTCDay() === 6 || closed(d));
+    do { d = addUtcDays(d, 1); } while (closed(d));
+    return d.getUTCDate() + '. ' + (d.getUTCMonth() + 1) + '.';
+  }
+  function loadCatalog() {
+    if (cat) return Promise.resolve(cat);
+    try { var c = JSON.parse(localStorage.getItem('narin_catalog_v2') || 'null'); if (c && c.data && Date.now() - c.t < 6 * 3600e3) return Promise.resolve(cat = prep(c.data)); } catch (e) {}
+    return fetch(SB + '/rest/v1/rpc/get_catalog_page_data?apikey=' + KEY).then(function (r) { return r.json(); }).then(function (d) { return cat = prep(d || {}); }).catch(function () { return cat = prep({}); });
+  }
+  function prep(d) {
+    return { av: new Set((d.available || []).map(norm)), sp: new Set((d.special || []).map(norm)), un: new Set((d.unsourceable || []).map(norm)),
+             date: specialDate(new Set(d.closed_weekdays || []), new Set(d.closed_dates || [])) };
+  }
+  function klass(name) { if (!cat) return 'tomorrow'; var n = norm(name); return cat.sp.has(n) ? 'special' : cat.av.has(n) ? 'today' : 'tomorrow'; }
+
+  // ---------- all cards in one cached bundle (stale copy answers at once, a fresh one re-renders) ----------
+  function loadBundle() {
+    if (bundleP) return bundleP;
+    var c = null; try { c = JSON.parse(localStorage.getItem(BKEY) || 'null'); } catch (e) {}
+    if (c && c.d && c.d.p) bundle = c.d;
+    var net = (c && Date.now() - c.t < FRESH_MS) ? null : fetch(SB + '/rest/v1/rpc/get_product_card_bundle?apikey=' + KEY)
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (d && d.p) {
+          var changed = !bundle || bundle.v !== d.v; bundle = d;
+          try { localStorage.setItem(BKEY, JSON.stringify({t: Date.now(), d: d})); } catch (e) {}
+          if (changed && isOpen && cardData) render(true);
+        }
+        else bundleFailed = true;
+        return bundle;
+      }).catch(function () { bundleFailed = true; return bundle; });
+    bundleP = bundle ? Promise.resolve(bundle) : net;
+    return bundleP;
+  }
+
+  // ---------- small drawings ----------
+  function vase(level) {
+    var L = Math.max(1, Math.min(3, level || 1)), top = 6, bot = 53, gap = 2.6, band = (bot - top - 2 * gap) / 3, r = '';
+    var P = 'M8 4H32L30.2 50.5Q30 55 26 55H14Q10 55 9.8 50.5Z';
+    for (var i = 0; i < 3; i++) { var y = bot - (i + 1) * band - i * gap; r += '<rect x="4" y="' + y.toFixed(1) + '" width="32" height="' + band.toFixed(1) + '" fill="' + (i < L ? '#8fbcff' : '#eef1f5') + '" clip-path="url(#nkvc)"/>'; }
+    return '<svg width="48" height="72" viewBox="0 0 40 60"><defs><clipPath id="nkvc"><path d="' + P + '"/></clipPath></defs>' + r + '<path d="' + P + '" fill="none" stroke="#14171c" stroke-width="1.3" stroke-linejoin="round"/></svg>';
+  }
+  function stem(kind) {
+    var body = kind === 'slight' ? 'M15 0V38L29 33V0' : 'M15 0V42L29 26V0';
+    var cut = kind === 'slight' ? '<path d="M8 40.5L36 30.5" stroke="#ff2a20" stroke-width="1.3" stroke-dasharray="3 2.5"/>' : '<path d="M8 49L36 21" stroke="#ff2a20" stroke-width="1.3" stroke-dasharray="3 2.5"/>';
+    var split = kind === 'split' ? '<path d="M22 42V29" stroke="#14171c" stroke-width="1.2"/>' : '';
+    return '<svg width="46" height="54" viewBox="0 0 46 54"><path d="' + body + '" fill="none" stroke="#14171c" stroke-width="1.3" stroke-linejoin="round"/>' + split + cut + '</svg>';
+  }
+  var chev = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>';
+  function segs(n, color) { var h = '<span class="nk-sg">'; for (var i = 1; i <= 3; i++) h += '<i style="' + (i <= n ? 'background:' + color : '') + '"></i>'; return h + '</span>'; }
+  function big(v, unit) { return '<b>' + v + '<u>' + unit + '</u></b>'; }
+  function cutKind(t) { if (!t) return 'angled'; if (/rozštěp/i.test(t)) return 'split'; if (/rovný/i.test(t)) return 'slight'; return 'angled'; }
+  function waterLevel(c) { var m = /(\d)\s*\/\s*(\d)/.exec(c.water_text || ''); if (m) return Math.max(1, Math.round(+m[1] / +m[2] * 3)); var p = /(\d+)\s*%/.exec(c.water_text || ''); if (p) return +p[1] >= 75 ? 3 : +p[1] >= 50 ? 2 : 1; return c.water_level || 1; }
+
+  // ---------- render pieces ----------
+  function glance(c) {
+    if (!c) return '';
+    var w = (c.water_text || '').replace('délky stonku', '').trim(), wm = /^(\d\s*\/\s*\d|\d+\s*%)/.exec(w);
+    var k = cutKind(c.cut_text), cutV = k === 'slight' ? big('Rovně', '/ šikmo') : k === 'split' ? big('45°', '+ rozštěpit') : big('45°', 'šikmo');
+    var cells = [];
+    if (c.vase_life_min && c.vase_life_max) cells.push('<div class="nk-g"><small>Vydrží ve váze</small>' + big(c.vase_life_min + '–' + c.vase_life_max, 'dní') + '</div>');
+    if (c.water_text) cells.push('<div class="nk-g"><small>Voda</small>' + (wm ? big(wm[1].replace(/\s+/g, ''), 'stonku') : '<b style="font-size:19px">' + esc(c.water_text) + '</b>') + '<div class="vis">' + vase(waterLevel(c)) + '</div></div>');
+    if (c.height_text) cells.push('<div class="nk-g"><small>Výška</small>' + big(esc(c.height_text.replace(/\s*cm\s*$/i, '')), 'cm') + '</div>');
+    if (c.cut_text) cells.push('<div class="nk-g"><small>Řez stonku</small>' + cutV + '<div class="vis">' + stem(k) + '</div></div>');
+    return cells.length ? '<div class="nk-gl">' + cells.join('') + '</div>' : '';
+  }
+  function duo(c) {
+    if (!c) return '';
+    var parts = [];
+    if (c.scent_level != null) {
+      var n = Math.max(0, Math.min(3, c.scent_level || 0));
+      var notes = (c.scent_text || '').replace(/\.$/, '').split(/,\s*|\s+a\s+/).filter(Boolean).map(function (s) { return s.toLowerCase(); }).join(' · ');
+      parts.push('<div><span class="nk-k">Vůně</span><div class="nk-vr"><span class="nk-v">' + ['Bez vůně','Jemná','Střední','Výrazná'][n] + '</span>' + segs(n, '#14171c') + '</div><p>' + esc(notes) + '</p></div>');
+    }
+    if (c.pet_text) {
+      var t = c.pet_text, k = /bezpe/i.test(t) ? 0 : /mírně/i.test(t) ? 1 : 2, col = ['#2a9a48', '#e8a317', '#ff2a20'][k];
+      var note = (c.pet_note || (k === 0 ? 'Pro kočky ani psy nepředstavuje riziko.' : 'Postavte mimo dosah koček a psů.')).replace(/^Může způsobit zažívací potíže\. /, '').replace(/^Raději /, '').replace(/^držte/, 'Držte');
+      parts.push('<div><span class="nk-k">Kočky a psi</span><div class="nk-vr"><span class="nk-v" style="color:' + (k ? col : 'var(--ink)') + '">' + ['Bezpečné','Mírně toxické','Toxické'][k] + '</span>' + segs(k + 1, col) + '</div><p>' + esc(note) + '</p></div>');
+    }
+    return parts.length ? '<div class="nk-duo">' + parts.join('') + '</div>' : '';
+  }
+  var CART_ICON = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6.2"/><circle cx="10" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/></svg>';
+  var ROLE_TAG = {focal:['Hlavní květ','#186ce0'], filler:['Doplněk','#d16b9a'], greenery:['Zeleň','#2a9a48'], accent:['Akcent','#e8a317']};
+  function num(t) { return Number(String(t).replace(/[^\d]/g, '')) || 0; }
+  function hasGrid() { return !!document.querySelector('.js-store-grid-cont .js-product'); }
+  // the real catalog card of a product (not one of our copies, preferably not a promo strip copy)
+  function realCard(uid) {
+    var all = document.querySelectorAll('.js-product[data-product-uid="' + uid + '"]'), alt = null;
+    for (var i = 0; i < all.length; i++) {
+      if (all[i].closest('.nk-ov')) continue;
+      if (!all[i].closest('.narin-cat-promo-section')) return all[i];
+      alt = alt || all[i];
+    }
+    return alt;
+  }
+  // recommendations as one list: roles take turns, best first; only flowers that can be bought now
+  function pairsFor(uid, baseRole, baseK) {
+    var recs = (bundle && bundle.r[uid]) || [], by = {}, grid = hasGrid();
+    recs.forEach(function (r) {
+      var p = bundle.p[r[0]]; if (!p) return;
+      if (cat && cat.un.has(norm(p.n))) return;
+      if (grid && !realCard(r[0])) return;
+      var k = klass(p.n), s2 = r[2] - (k === 'special' && baseK !== 'special' ? 1.6 : 0);
+      (by[r[1]] = by[r[1]] || []).push({uid: r[0], name: p.n, price: p.pr, image: p.img, u: p.u, role: r[1], s: s2});
+    });
+    var order = (ORDER[baseRole] || ['focal','filler','greenery','accent']).filter(function (g) { return by[g]; });
+    order.forEach(function (g) { by[g].sort(function (a, b) { return b.s - a.s; }); });
+    var out = [], i = 0, more = true;
+    while (more && out.length < 24) { more = false; order.forEach(function (g) { if (by[g][i] && out.length < 24) { out.push(by[g][i]); more = true; } }); i++; }
+    return {items: out, roles: order.map(function (g) { return {role: g, n: by[g].length}; })};
+  }
+  var CHECK = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  function pcard(it, kind) {
+    var d = document.createElement('div'), done = S.added[it.uid], open = kind === 'extra' ? '' : esc(it.uid);
+    d.className = 'nk-pc' + (done ? ' done' : '');
+    var tg = kind === 'pair' && ROLE_TAG[it.role] ? '<span class="tg"><i style="background:' + ROLE_TAG[it.role][1] + '"></i>' + ROLE_TAG[it.role][0] + '</span>' : '';
+    d.innerHTML = '<div class="ph' + (kind === 'extra' ? ' cover' : '') + '" data-open="' + open + '">' + tg + '<img src="' + img(it.image, 400) + '" alt="" loading="lazy"></div>'
+      + '<div class="tx"><div class="nm" data-open="' + open + '">' + esc(it.name) + '</div>'
+      + '<div class="ft"><div class="pr"><b>' + czk(it.price) + '</b>' + (it.u > 1 ? '<small>' + it.u + ' ks</small>' : '') + '</div>'
+      + '<button class="nk-add" data-add="' + esc(it.uid) + '" data-kind="' + kind + '" aria-label="Přidat do košíku">' + (done ? CHECK : CART_ICON) + '</button></div></div>';
+    return d;
+  }
+  function buildRail(host, items, kind) {
+    if (!host || !items.length) return;
+    var list = document.createElement('div'); list.className = 'nk-cards' + (kind === 'extra' ? ' nk-auto' : '');
+    items.forEach(function (it) {
+      var el = pcard(it, kind);
+      el.setAttribute('data-nk-uid', it.uid); el.setAttribute('data-nk-kind', kind); if (it.role) el.setAttribute('data-nk-role', it.role);
+      list.appendChild(el);
+    });
+    host.appendChild(list);
+  }
+
+  function extrasFor(c) {
+    var tool = c && c.tool, low = c && c.low;
+    return ((bundle && bundle.x) || []).filter(function (e) {
+      if (e.kind === 'postcard') return false;   // the plain postcard is offered free in the cart
+      if ((e.kind === 'secateur' || e.kind === 'scissors') && tool && e.kind !== tool) return false;
+      return true;
+    }).map(function (e) {
+      var fit = e.kind === tool || (low && (e.kind === 'vase_low' || e.kind === 'kenzan'));
+      return {uid: e.uid, name: EXTRA_NAME[e.n] || e.n, price: e.pr, image: e.img, fit: fit};
+    }).sort(function (a, b) { return (b.fit ? 1 : 0) - (a.fit ? 1 : 0); });
+  }
+
+  function fileOf(u) { return String(u || '').split('?')[0].split('/').pop(); }
+  function galleryFor(d, c) {
+    var saved = (c && c.im) || [];
+    if (!d.img) return saved.length ? saved : [];
+    if (saved.length && fileOf(saved[0]) === fileOf(d.img)) return saved;
+    return [d.img];
+  }
+  function render(fresh) {
+    var d = cardData, p = bundle && bundle.p[d.uid], c = bundle && bundle.k[d.uid], base = klass(d.name), isSet = p && p.k === 'set';
+    var loading = !bundle && !bundleFailed;
+    // The photo on the Tilda card is the truth; the saved gallery is used only while its first photo is still that one.
+    var imgs = galleryFor(d, c);
+    var pts = Math.round(d.basePrice * 0.01);
+    var hl = ((c && c.hl) || []).slice(0, 3);
+    var comp = c && (c.extra_sections || []).filter(function (s) { return s && s.title === 'Složení'; })[0];
+    var pairs = (!isSet && p && p.r) ? pairsFor(d.uid, p.r, base) : {items: [], roles: []};
+    var extras = extrasFor(c);
+    var portion = d.portion || (p && p.u > 1 ? p.u + ' ks' : '');
+    var stemPrice = '', pm = /(\d+)/.exec(portion); if (pm && +pm[1] > 1 && !isSet) stemPrice = Math.round(d.basePrice / +pm[1]) + ' Kč/stonek';
+    var label = base === 'today' ? 'Doručíme dnes' : base === 'special' ? 'Doručíme ' + cat.date : 'Doručíme zítra';
+    var care = c && c.care_steps && c.care_steps.length ? '<ol class="nk-steps">' + c.care_steps.map(function (s) { return '<li><span>' + esc(s) + '</span></li>'; }).join('') + '</ol>' : '';
+    var colors = (p && p.c) || [];
+    var keepScroll = box.scrollTop;
+
+    var info = [
+      '<div class="nk-top">' + (cat ? '<div class="nk-lbl ' + base + '"><i></i>' + label + '</div>' : '<span></span>') + (pts > 0 ? '<a class="nk-cb" href="https://vezminarin.cz/bonussystem" target="_blank" rel="noopener" title="Jak funguje věrnostní program">Získáte ' + pts + ' ' + (pts === 1 ? 'bod' : pts < 5 ? 'body' : 'bodů') + ' na účet <span>i</span></a>' : '') + '</div>',
+      '<h1>' + esc(d.name) + '</h1>',
+      '<div class="nk-price"><b>' + czk(d.basePrice) + '</b>' + (portion ? '<span>' + esc(portion) + (stemPrice ? ' · ' + stemPrice : '') + '</span>' : '') + '</div>',
+      (colors.length || (c && c.scent_level >= 2)) ? '<div class="nk-tags">' + colors.map(function (cn) { return '<span class="nk-tag"><span class="nk-dot" style="background:' + (COLORHEX[cn] || '#ddd') + '"></span>' + esc(cn) + '</span>'; }).join('') + (c && c.scent_level >= 2 ? '<span class="nk-tag">Voňavá</span>' : '') + '</div>' : '',
+      loading ? '<div class="nk-skel"></div>' : glance(c),
+      comp && comp.items && comp.items.length ? '<div class="nk-comp"><span class="nk-k">Složení</span><ul>' + comp.items.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ul></div>' : '',
+      hl.length ? '<div class="nk-imp"><h3>Důležité vědět</h3>' + hl.map(function (h) { return '<div><b>' + esc(h.title) + '</b>' + (h.text ? ' · ' + esc(h.text) : '') + '</div>'; }).join('') + '</div>' : '',
+      c && c.important_note ? '<div class="nk-note"><i>i</i><span>' + esc(c.important_note) + '</span></div>' : '',
+      duo(c),
+      care ? '<div class="nk-acc' + (S.openCare ? ' open' : '') + '"><button data-care><span>Jak o ni pečovat<small>Postup pro tuto květinu krok za krokem</small></span>' + chev + '</button><div class="nk-body">' + care + '</div></div>' : '',
+      c && c.description ? '<p class="nk-lead">' + esc(c.description) + '</p>' : ''
+    ].filter(Boolean);
+
+    box.innerHTML = '<button class="nk-x" data-close aria-label="Zavřít">✕</button>'
+      + '<div class="nk-grid"><div><div class="nk-photo" style="background-image:url(\'' + esc(d.thumb || img(imgs[0], 360)) + '\')"><img src="' + img(imgs[S.img] || imgs[0], 800) + '" alt="' + esc(d.name) + '"></div>'
+      + (imgs.length > 1 ? '<div class="nk-thumbs">' + imgs.map(function (u, i) { return '<button data-th="' + i + '" class="' + (i === S.img ? 'on' : '') + '"><img src="' + img(u, 160) + '" alt=""></button>'; }).join('') + '</div>' : '')
+      + '<div class="nk-swipe">' + imgs.map(function (u, i) { return '<div' + (i === 0 && d.thumb ? ' style="background-image:url(\'' + esc(d.thumb) + '\')"' : '') + '><img src="' + img(u, 700) + '" alt=""></div>'; }).join('') + '</div>'
+      + (imgs.length > 1 ? '<div class="nk-gdots">' + imgs.map(function (u, i) { return '<i class="' + (i === 0 ? 'on' : '') + '"></i>'; }).join('') + '</div>' : '') + '</div>'
+      + '<div class="nk-info">' + info.join('') + '</div></div>'
+      + (pairs.items.length ? '<div class="nk-sec"><div class="nk-tz' + (S.openTz ? ' open' : '') + '"><button data-tz><span class="nk-av">' + pairs.items.slice(0, 4).map(function (r) { return '<span><img src="' + img(r.image, 120) + '" alt=""></span>'; }).join('') + '</span><span class="tt"><b>Složte si vlastní kytici</b><small>' + pairs.items.length + ' květin, které k ní ladí barvou i tvarem</small></span><span class="nk-go">Ukázat' + chev + '</span></button>'
+        + '<div class="nk-tzb"><div data-host="pair"></div><div class="nk-sum"></div></div></div></div>' : '')
+      + (extras.length ? '<div class="nk-sec"><div class="nk-sh"><h3>Často kupují spolu</h3><small>péče, vázy a dárky</small></div><div data-host="extra"></div></div>' : '')
+      + '<div class="nk-buy"><div class="nk-qty"><button data-q="-1" aria-label="Méně">−</button><span>' + S.qty + '</span><button data-q="1" aria-label="Více">+</button></div><button class="nk-cta" data-cart><span>Do košíku</span><span>' + czk(d.basePrice * S.qty) + '</span></button></div>';
+
+    buildRail(box.querySelector('[data-host=pair]'), pairs.items, 'pair');
+    buildRail(box.querySelector('[data-host=extra]'), extras, 'extra');
+    [].forEach.call(box.querySelectorAll('.nk-info>*'), function (el, i) { el.style.setProperty('--i', i); });
+    [].forEach.call(box.querySelectorAll('.nk-photo img, .nk-swipe img'), function (im) { if (im.complete && im.naturalWidth) im.classList.add('ld'); else im.addEventListener('load', function () { im.classList.add('ld'); setTimeout(function () { if (im.parentNode) im.parentNode.style.backgroundImage = 'none'; }, 320); }); });
+    var sw = box.querySelector('.nk-swipe');
+    if (sw) sw.addEventListener('scroll', function () { var i = Math.round(sw.scrollLeft / sw.clientWidth); [].forEach.call(box.querySelectorAll('.nk-gdots i'), function (el, n) { el.classList.toggle('on', n === i); }); });
+    if (!fresh) box.scrollTop = keepScroll;
+    summary();
+    startAuto();
+  }
+
+  // auto slider for "Často kupují spolu": one card every 3 s, pauses while the visitor touches it
+  function startAuto() {
+    clearInterval(auto);
+    var rail = box.querySelector('.nk-auto'); if (!rail) return;
+    var pauseUntil = 0;
+    ['pointerdown', 'touchstart', 'mouseenter', 'wheel'].forEach(function (ev) { rail.addEventListener(ev, function () { pauseUntil = Date.now() + 6000; }, {passive: true}); });
+    auto = setInterval(function () {
+      if (!isOpen || Date.now() < pauseUntil || rail.scrollWidth <= rail.clientWidth + 4) return;
+      var card = rail.firstElementChild, step = card ? card.offsetWidth + 12 : 200;
+      if (rail.scrollLeft + rail.clientWidth >= rail.scrollWidth - 8) rail.scrollTo({left: 0, behavior: 'smooth'});
+      else rail.scrollBy({left: step, behavior: 'smooth'});
+    }, 3000);
+  }
+  function summary() {
+    var el = box.querySelector('.nk-sum'); if (!el) return;
+    var ids = Object.keys(S.added).filter(function (u) { return S.added[u] === 'pair'; });
+    if (!ids.length) { el.classList.remove('on'); return; }
+    var sum = cardData.basePrice * S.qty;
+    ids.forEach(function (u) { var p = bundle && bundle.p[u]; if (p) sum += Number(p.pr) || 0; });
+    el.innerHTML = '<span>Vaše kytice: <b>' + esc(cardData.name) + '</b> + ' + ids.length + (ids.length === 1 ? ' květina' : ids.length < 5 ? ' květiny' : ' květin') + '</span><b>' + czk(sum) + '</b>';
+    el.classList.add('on');
+  }
+
+  // ---------- cart ----------
+  function cartReady(cb) {
+    if (window.tcart__addProduct) return cb();
+    var t = setInterval(function () { if (window.tcart__addProduct) { clearInterval(t); cb(); } }, 300);
+    setTimeout(function () { clearInterval(t); }, 10000);
+  }
+  function addFromCard(data, qty) {
+    cartReady(function () {
+      try { window.tcart__addProduct({name: data.name, price: data.basePrice, amount: qty, quantity: qty, count: qty, sku: data.sku, uid: data.uid, img: data.img, url: data.url}); } catch (e) {}
+    });
+  }
+  function addSimple(o) {
+    cartReady(function () { try { window.tcart__addProduct({name: o.name, price: Number(o.price) || 0, amount: 1, quantity: 1, count: 1, uid: o.uid, img: o.image}); } catch (e) {} });
+  }
+
+  // ---------- open / close ----------
+  function flyIn(data) {
+    var src = data.imgEl, target = box.querySelector(narrow() ? '.nk-swipe>div' : '.nk-photo');
+    var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    box.classList.add('nk-enter'); setTimeout(function () { box && box.classList.remove('nk-enter'); }, 1100);
+    if (box.animate && !reduce) box.animate(narrow() ? [{transform: 'translateY(36px)', opacity: .6}, {transform: 'none', opacity: 1}] : [{transform: 'translateY(16px) scale(.985)', opacity: 0}, {transform: 'none', opacity: 1}], {duration: 320, easing: 'cubic-bezier(.2,.8,.2,1)'});
+    if (reduce || !src || !target || !data.thumb || !document.body.animate) return;
+    var a = src.getBoundingClientRect(), b = target.getBoundingClientRect();
+    if (!a.width || a.bottom < 0 || a.top > window.innerHeight) return;
+    var g = document.createElement('img'); g.className = 'nk-ghost'; g.src = data.thumb;
+    g.style.cssText = 'left:' + b.left + 'px;top:' + b.top + 'px;width:' + b.width + 'px;height:' + b.height + 'px';
+    document.body.appendChild(g); target.style.visibility = 'hidden';
+    var sx = a.width / b.width, sy = a.height / b.height, s = Math.min(sx, sy);
+    var an = g.animate([{transform: 'translate(' + (a.left + a.width / 2 - b.left - b.width / 2) + 'px,' + (a.top + a.height / 2 - b.top - b.height / 2) + 'px) scale(' + s + ')'}, {transform: 'none'}], {duration: 420, easing: 'cubic-bezier(.2,.8,.2,1)'});
+    var done = function () { target.style.visibility = ''; g.remove(); };
+    an.onfinish = an.oncancel = done; setTimeout(done, 650);   // a background tab may never finish the animation
+  }
+  function open(data) {
+    if (!data || !data.uid) return false;
+    cardData = data; S = {qty: 1, img: 0, added: {}, openCare: false, openTz: false};
+    if (!ov) {
+      ov = document.createElement('div'); ov.className = 'nk-ov';
+      box = document.createElement('div'); box.className = 'nk'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
+      ov.appendChild(box); document.body.appendChild(ov);
+      ov.addEventListener('click', onClick);
+    }
+    var wasOpen = isOpen; isOpen = true;
+    if (!wasOpen) {
+      savedY = window.scrollY; document.body.style.overflow = 'hidden';
+      ov.style.display = 'flex'; ov.offsetWidth; ov.classList.add('nk-show');
+      try { history.pushState({nk: 1}, ''); } catch (e) {}
+    }
+    var bp = loadBundle(), cp = loadCatalog();
+    render(true); box.scrollTop = 0;
+    flyIn(data);
+    var uid = data.uid, needCat = !cat, needBundle = !bundle;
+    Promise.all([cp, bp]).then(function () { if (isOpen && cardData && cardData.uid === uid && (needCat || needBundle || bundleFailed)) render(false); });
+    return true;
+  }
+  function close(fromPop) {
+    if (!isOpen) return;
+    isOpen = false; clearInterval(auto);
+    ov.classList.remove('nk-show'); ov.style.display = 'none';
+    document.body.style.overflow = ''; window.scrollTo(0, savedY);
+    if (!fromPop) { try { if (history.state && history.state.nk) history.back(); } catch (e) {} }
+  }
+  function onClick(e) {
+    var b;
+    if (e.target === ov || e.target.closest('[data-close]')) { close(); return; }
+    if ((b = e.target.closest('[data-th]'))) {
+      S.img = +b.getAttribute('data-th');
+      var ph = box.querySelector('.nk-photo img'), u = ((bundle && bundle.k[cardData.uid] && bundle.k[cardData.uid].im) || [])[S.img];
+      if (ph && u) ph.src = img(u, 800);
+      [].forEach.call(box.querySelectorAll('[data-th]'), function (t) { t.classList.toggle('on', t === b); });
+      return;
+    }
+    if ((b = e.target.closest('[data-q]'))) {
+      S.qty = Math.max(1, S.qty + (+b.getAttribute('data-q')));
+      box.querySelector('.nk-qty span').textContent = S.qty;
+      box.querySelector('.nk-cta span:last-child').textContent = czk(cardData.basePrice * S.qty);
+      summary(); return;
+    }
+    if ((b = e.target.closest('[data-care]'))) { S.openCare = !S.openCare; b.parentNode.classList.toggle('open', S.openCare); return; }
+    if ((b = e.target.closest('[data-tz]'))) { S.openTz = !S.openTz; b.parentNode.classList.toggle('open', S.openTz); return; }
+    if ((b = e.target.closest('[data-cart]'))) {
+      if (b.__sent) return; b.__sent = 1;
+      addFromCard(cardData, S.qty);
+      b.classList.add('ok'); b.innerHTML = '<span>Přidáno do košíku</span><span>✓</span>';
+      setTimeout(close, 700); return;
+    }
+    if ((b = e.target.closest('[data-add]'))) {
+      var uid = b.getAttribute('data-add'), kind = b.getAttribute('data-kind');
+      if (S.added[uid]) return;
+      if (kind === 'pair') {
+        var dom = realCard(uid), d2 = dom ? extract(dom) : fromBundle(uid);
+        if (d2) addFromCard(d2, 1);
+      } else {
+        var x = ((bundle && bundle.x) || []).filter(function (e2) { return e2.uid === uid; })[0];
+        if (x) addSimple({uid: uid, name: EXTRA_NAME[x.n] || x.n, price: x.pr, image: x.img});
+      }
+      S.added[uid] = kind;
+      var pc = b.closest('.nk-pc'); if (pc) pc.classList.add('done'); b.innerHTML = CHECK;
+      summary(); return;
+    }
+    if ((b = e.target.closest('[data-open]'))) {
+      var ou = b.getAttribute('data-open'); if (!ou) return;
+      var c2 = realCard(ou); open(c2 ? extract(c2) : fromBundle(ou)); return;
+    }
+  }
+  window.addEventListener('popstate', function () { close(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+
+  // ---------- warm up: data after the page settles, the big photo while the finger is still down ----------
+  function warm() { loadBundle(); loadCatalog(); }
+  if (document.readyState === 'complete') setTimeout(warm, 800); else window.addEventListener('load', function () { setTimeout(warm, 800); });
+  var warmed = {};
+  function prefetch(card) {
+    var d = extract(card); if (!d || warmed[d.uid]) return; warmed[d.uid] = 1;
+    var c = bundle && bundle.k[d.uid], u = (c && c.im && c.im[0]) || d.img;
+    if (u) (new Image()).src = img(u, narrow() ? 700 : 800);
+  }
+  document.addEventListener('pointerover', function (e) { var c = e.target.closest && e.target.closest(CARD_SELECTOR); if (c) prefetch(c); }, {passive: true});
+  document.addEventListener('touchstart', function (e) { var c = e.target.closest && e.target.closest(CARD_SELECTOR); if (c) prefetch(c); }, {passive: true});
+
+  // ---------- intercept clicks on catalog cards (before the old popup script) ----------
+  document.addEventListener('mousedown', function (e) {
+    if (e.button !== 0) return;
+    var card = e.target.closest(CARD_SELECTOR);
+    if (!card || e.target.closest(IGNORE) || e.target.closest('.nk-ov')) return;
+    if (!card.querySelector('.js-product-price, .t-store__prod__price-value')) return;
+    if (open(extract(card))) { e.preventDefault(); e.stopImmediatePropagation(); }
+  }, true);
+  document.addEventListener('click', function (e) {
+    var card = e.target.closest(CARD_SELECTOR);
+    if (!card || e.target.closest(IGNORE) || e.target.closest('.nk-ov')) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+  }, true);
+})();
+</script>

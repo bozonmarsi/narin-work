@@ -1,0 +1,137 @@
+<!-- NARIN toasts for cart and favorites. Footer page, T123. Replaces the Tilda bubbles t706__bubble (cart)
+     and t1002__bubble (favorites) with an animated card. CSS hides the Tilda bubbles at once, even before this script runs.
+     Cart: blue card with the NARIN daisy turns green, the pressed button and the header cart turn green too.
+     Favorites: blue card with a heart turns soft red, the header heart turns red too.
+     The header cart also turns green whenever its total grows, even without a Tilda bubble. -->
+<style>
+.t706__bubble-container,.t706__bubble,.t1002__bubble-container,.t1002__bubble{display:none!important}
+.nt-wrap{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:2147483600;display:flex;flex-direction:column-reverse;gap:8px;width:min(400px,calc(100vw - 24px));pointer-events:none}
+.nt{--done:#2a9a48;--glow:rgba(42,154,72,.35);position:relative;pointer-events:auto;cursor:pointer;display:flex;align-items:center;gap:12px;padding:11px 16px 11px 11px;background:#186ce0;border-radius:20px;box-shadow:0 12px 32px rgba(24,108,224,.35),0 2px 6px rgba(15,23,42,.12);font-family:'Rubik',system-ui,sans-serif;color:#fff;-webkit-font-smoothing:antialiased;animation:ntIn .45s cubic-bezier(.2,.9,.3,1.2) both,ntDone .5s 1.05s ease forwards}
+.nt.fav{--done:#e5484d;--glow:rgba(229,72,77,.35)}
+.nt.out{animation:ntOut .32s ease-in both}
+.nt:after{content:'';position:absolute;inset:-2px;border-radius:22px;border:2px solid var(--done);opacity:0;pointer-events:none;animation:ntRing .9s 1.05s ease-out forwards}
+.nt-ic{position:relative;flex:none;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.18);display:grid;place-items:center;color:#fff}
+.nt-ic svg{width:28px;height:28px;animation:ntBloom .75s .2s cubic-bezier(.3,1.5,.5,1) both}
+.nt.fav .nt-ic svg{width:24px;height:24px;animation:ntBloom .6s .2s cubic-bezier(.3,1.5,.5,1) both,ntBeat .9s 1.05s ease-in-out 2}
+.nt-tx{flex:1;min-width:0;animation:ntText .4s .3s ease-out both}
+.nt-tx b{display:block;font-size:15px;font-weight:600;line-height:1.25}
+.nt-tx span{display:block;font-size:13px;color:rgba(255,255,255,.85);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nt-go{flex:none;font-size:13px;font-weight:600;color:#fff;background:rgba(255,255,255,.2);border-radius:999px;padding:6px 11px;animation:ntText .4s .42s ease-out both}
+@keyframes ntIn{from{opacity:0;transform:translateY(24px) scale(.94)}to{opacity:1;transform:none}}
+@keyframes ntOut{to{opacity:0;transform:translateY(20px) scale(.96)}}
+@keyframes ntDone{to{background:var(--done);box-shadow:0 12px 32px var(--glow),0 2px 6px rgba(15,23,42,.12)}}
+@keyframes ntRing{0%{opacity:.9;transform:scale(1)}100%{opacity:0;transform:scale(1.06,1.3)}}
+@keyframes ntBloom{0%{opacity:0;transform:rotate(-140deg) scale(.2)}100%{opacity:1;transform:none}}
+@keyframes ntBeat{0%,100%{transform:scale(1)}25%{transform:scale(1.25)}45%{transform:scale(.95)}65%{transform:scale(1.15)}}
+@keyframes ntText{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+@keyframes ntPulse{40%{transform:scale(1.1)}}
+@media (min-width:761px){.nt-wrap{left:auto;right:24px;bottom:24px;transform:none}}
+.nt-hot{animation:ntPulse .5s ease}
+a[href="#showfavorites"].nt-hot svg *{fill:#e5484d!important;stroke:#e5484d!important;transition:fill .3s,stroke .3s}
+@media (prefers-reduced-motion:reduce){.nt,.nt *,.nt:after,.nt-hot{animation-duration:.01s!important;animation-delay:0s!important}}
+</style>
+<script>
+(function () {
+  if (window.__narinToast) return; window.__narinToast = 1;
+  var GREEN = '#2a9a48', RED = '#e5484d';
+  var DAISY = (function () {
+    var p = '';
+    for (var i = 0; i < 7; i++) p += '<path transform="rotate(' + (i * 360 / 7).toFixed(2) + ' 50 50)" d="M47.2 33.5 C44.5 27 36.5 18 35.2 11.5 C34.2 5.5 38.8 2.2 43.8 2.8 C46.8 3.2 48.6 4.4 50 4.4 C51.4 4.4 53.2 3.2 56.2 2.8 C61.2 2.2 65.8 5.5 64.8 11.5 C63.5 18 55.5 27 52.8 33.5 Z"/>';
+    return '<svg viewBox="0 0 100 100" fill="currentColor" aria-hidden="true">' + p + '<circle cx="50" cy="50" r="13.5"/></svg>';
+  })();
+  var HEART = '<svg viewBox="0 0 21 18" fill="currentColor" aria-hidden="true"><path d="M20 6.33C20 11.5 10.5 17 10.5 17S1 11.5 1 6.33C1-.69 10.5-.6 10.5 5.58 10.5-.6 20-.51 20 6.33Z"/></svg>';
+  var CART_RX = /^\s*(.+?)\s+(добавлено в корзину|добавлен в корзину|added to cart|přidáno do košíku)\s*$/i;
+  var FAV_RX = /^\s*(.+?)\s+(добавлено в избранное|добавлен в избранное|added to (favorites|wishlist)|přidáno do oblíbených)\s*$/i;
+  var wrap = null, lastBtn = null, timers = {};
+  var BTN = '.t-store__card__btn, .js-store-prod-btn, .js-store-prod-btn2, .t-store__prod-popup__btn, .nk-cta';
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest) return;
+    var b = e.target.closest(BTN); if (b) lastBtn = {el: b, t: Date.now()};
+    var h = e.target.closest('.t1002__addBtn'); if (h) { h.classList.remove('nt-hot'); h.offsetWidth; h.classList.add('nt-hot'); setTimeout(function () { h.classList.remove('nt-hot'); }, 600); }
+  }, true);
+
+  // inline !important so no Tilda style (hover, zero block, cart script) can keep the old colour
+  function paint(el, color) {
+    el.style.setProperty('transition', 'background-color .35s ease, border-color .35s ease', 'important');
+    if (color) { el.style.setProperty('background-color', color, 'important'); el.style.setProperty('border-color', color, 'important'); }
+    else { el.style.removeProperty('background-color'); el.style.removeProperty('border-color'); }
+  }
+  // header element turns on together with the toast colour change (1.05 s) and back when the toast goes
+  function header(sel, color, delay) {
+    clearTimeout(timers[sel + 'a']); clearTimeout(timers[sel + 'b']);
+    timers[sel + 'a'] = setTimeout(function () {
+      [].forEach.call(document.querySelectorAll(sel), function (a) { a.classList.remove('nt-hot'); a.offsetWidth; a.classList.add('nt-hot'); if (color) paint(a, color); });
+    }, delay);
+    timers[sel + 'b'] = setTimeout(function () {
+      [].forEach.call(document.querySelectorAll(sel), function (a) { a.classList.remove('nt-hot'); if (color) paint(a, null); });
+    }, delay + 2250);
+  }
+  function cartFlash() {
+    if (lastBtn && Date.now() - lastBtn.t < 2500) {
+      var el = lastBtn.el; lastBtn = null; el.classList.add('nt-hot'); paint(el, GREEN);
+      setTimeout(function () { el.classList.remove('nt-hot'); paint(el, null); }, 1800);
+    }
+    header('a[href="#opencart"]', GREEN, 1050);
+  }
+  // second trigger: the header total grows (works even if Tilda shows no bubble)
+  function num(t) { return Number(String(t).replace(/[^\d]/g, '')) || 0; }
+  var lastCartFlash = 0;
+  function watchHeader() {
+    [].forEach.call(document.querySelectorAll('a[href="#opencart"]'), function (a) {
+      if (a.__ntw) return; a.__ntw = 1;
+      var last = a.textContent.trim();
+      new MutationObserver(function () {
+        var t = a.textContent.trim(); if (t === last) return;
+        var up = num(t) > num(last); last = t;
+        if (up && Date.now() - lastCartFlash > 1500) { lastCartFlash = Date.now(); header('a[href="#opencart"]', GREEN, 1050); }
+      }).observe(a, {childList: true, subtree: true, characterData: true});
+    });
+  }
+
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function hide(t) { if (t.__gone) return; t.__gone = 1; t.classList.add('out'); setTimeout(function () { t.remove(); }, 330); }
+  function show(kind, name, title) {
+    if (!wrap) { wrap = document.createElement('div'); wrap.className = 'nt-wrap'; wrap.setAttribute('aria-live', 'polite'); document.body.appendChild(wrap); }
+    while (wrap.children.length >= 3) wrap.removeChild(wrap.lastChild);
+    var fav = kind === 'fav', t = document.createElement('div');
+    t.className = 'nt' + (fav ? ' fav' : ''); t.setAttribute('role', 'status');
+    t.innerHTML = '<div class="nt-ic">' + (fav ? HEART : DAISY) + '</div>'
+      + '<div class="nt-tx"><b>' + esc(title || (fav ? 'Přidáno do oblíbených' : 'Přidáno do košíku')) + '</b>' + (name ? '<span>' + esc(name) + '</span>' : '') + '</div>'
+      + '<div class="nt-go">' + (fav ? 'Oblíbené' : 'Košík') + '</div>';
+    wrap.insertBefore(t, wrap.firstChild);
+    t.addEventListener('click', function () {
+      hide(t);
+      try {
+        if (fav) { var h = document.querySelector('a[href="#showfavorites"]'); if (h) h.click(); }
+        else if (window.tcart__openCart) window.tcart__openCart();
+      } catch (e) {}
+    });
+    var y0 = null;
+    t.addEventListener('touchstart', function (e) { y0 = e.touches[0].clientY; }, {passive: true});
+    t.addEventListener('touchmove', function (e) { if (y0 !== null && e.touches[0].clientY - y0 > 18) { y0 = null; hide(t); } }, {passive: true});
+    setTimeout(function () { hide(t); }, 3200);
+  }
+  function check(n) {
+    if (n.nodeType !== 1) return;
+    var sel = '.t706__bubble, .t1002__bubble';
+    var bubbles = n.matches && n.matches(sel) ? [n] : (n.querySelectorAll ? n.querySelectorAll(sel) : []);
+    [].forEach.call(bubbles, function (b) {
+      if (b.__nt) return;
+      var isFav = b.classList.contains('t1002__bubble');
+      var txt = b.querySelector('.t706__bubble-text, .t1002__bubble-text') || b;
+      var raw = txt.textContent.replace(/×/g, '').trim();
+      if (!raw) { if (!b.__retry) { b.__retry = 1; setTimeout(function () { check(b); }, 80); } return; }
+      b.__nt = 1; b.style.display = 'none';
+      var m;
+      if (!isFav && (m = CART_RX.exec(raw))) { show('cart', m[1]); lastCartFlash = Date.now(); cartFlash(); }
+      else if (isFav && (m = FAV_RX.exec(raw))) { show('fav', m[1]); header('a[href="#showfavorites"]', null, 1050); }
+      else show(isFav ? 'fav' : 'cart', '', raw);
+    });
+  }
+  function start() {
+    new MutationObserver(function (ms) { ms.forEach(function (m) { [].forEach.call(m.addedNodes, check); }); }).observe(document.body, {childList: true, subtree: true});
+    watchHeader(); setTimeout(watchHeader, 1500); setTimeout(watchHeader, 4000);
+  }
+  if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+})();
+</script>

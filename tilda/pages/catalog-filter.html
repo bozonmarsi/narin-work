@@ -1,94 +1,246 @@
 <style>
-/* Tilda сама ставит row-gap: 60px на сетку карточек (инлайн-стиль,
-   #rec1915290073 — id сетки товаров на этой странице), из-за чего между
-   рядами получался большой пустой промежуток. Перебиваем тем же
-   селектором с !important — обычный класс без id-привязки Tilda всё
-   равно переигрывает по порядку подключения стилей. */
+/* Narin catalog engine - Zero Block on the catalog page (#rec1915290073).
+   One data request (get_catalog_page_data), one render pass, one observer on the grid.
+   Hiding is ONLY via data-narin-hidden + CSS rule, never inline style.
+   Comments must stay plain ASCII without quote characters: the Tilda HTML
+   validator misreads them and reports an unclosed tag. */
 #rec1915290073 .t-store__card-list { row-gap: 20px !important; }
-/* Название и цена были слишком далеко друг от друга (родной отступ
-   12px) и цена терялась среди мелкого текста — приближаем и укрупняем. */
 #rec1915290073 .t-store__card__price-wrapper { margin-top: 4px !important; }
 #rec1915290073 .t-store__card__price-value, #rec1915290073 .t-store__card__price { font-size: 20px !important; font-weight: 500 !important; }
+#rec1915290073 .t1002__addBtn { top: auto !important; bottom: 10px !important; right: 10px !important; }
+#rec1915290073 .t-store__load-more-btn-wrap { display: none !important; }
+
+/* First paint: a card stays hidden until the render pass has handled it, so the
+   raw Tilda list never flashes on screen. The script adds the narin-cat-on class
+   itself and removes it from a safety timer, so if anything breaks the catalog
+   simply shows as before instead of disappearing. */
+html.narin-cat-on .js-store-grid-cont .t-store__card:not([data-narin-seen]) { display: none !important; }
+.narin-cat-tab-count:empty { display: none; }
+
+/* Loading skeleton, shown only until the first render pass. */
+.narin-skel { margin: 16px 0; }
+.narin-skel-tabs { display: flex; gap: 8px; padding: 4px 4px 10px 8px; margin: 0 -4px 6px; overflow: hidden; }
+.narin-skel-tab { flex: 0 0 auto; width: 88px; height: 40px; border-radius: 24px; }
+.narin-skel-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px 10px; }
+@media screen and (min-width: 961px) { .narin-skel-grid { grid-template-columns: repeat(4, 1fr); gap: 20px; } }
+.narin-skel-card { aspect-ratio: 3 / 4; border-radius: 12px; }
+.narin-skel-tab, .narin-skel-card { background: linear-gradient(90deg, #eef0f3 25%, #f6f7f9 37%, #eef0f3 63%); background-size: 400% 100%; animation: narinShimmer 1.3s ease infinite; }
+.narin-grid-in { animation: narinGridIn .35s ease both; }
+@keyframes narinShimmer { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+@keyframes narinGridIn { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+    .narin-skel-tab, .narin-skel-card, .narin-grid-in { animation: none; }
+}
+
 .narin-cat-nav { margin: 16px 0; font-family: 'Rubik', sans-serif; }
-.narin-cat-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 0 4px 6px 8px; margin: 0 -4px 10px; -webkit-overflow-scrolling: touch; }
+.narin-cat-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 4px 4px 10px 8px; margin: 0 -4px 6px; -webkit-overflow-scrolling: touch; }
 .narin-cat-tabs::-webkit-scrollbar { display: none; }
-.narin-cat-tab { flex: 0 0 auto; padding: 10px 20px; border-radius: 24px; border: 1px solid #e0e2e6; background: #fff; font-size: 14px; font-weight: 600; white-space: nowrap; cursor: pointer; color: #16181d; }
-.narin-cat-tab.active { background: #186ce0; border-color: #186ce0; color: #fff; }
-.narin-cat-count { font-size: 12px; color: #8a8f98; margin: -4px 0 10px; }
+.narin-cat-tab { flex: 0 0 auto; display: inline-flex; align-items: baseline; padding: 10px 18px; border-radius: 24px; border: 1px solid #e0e2e6; background: #fff; font-family: 'Rubik', sans-serif; font-size: 14px; font-weight: 600; white-space: nowrap; cursor: pointer; color: #16181d; transition: background .2s, border-color .2s, color .2s, box-shadow .2s, transform .15s; }
+.narin-cat-tab:active { transform: scale(0.96); }
+.narin-cat-tab.active { background: #186ce0; border-color: #186ce0; color: #fff; box-shadow: 0 6px 16px rgba(24,108,224,0.28); }
+.narin-cat-tab-count { margin-left: 6px; font-size: 11px; font-weight: 500; opacity: 0.5; font-variant-numeric: tabular-nums; }
+.narin-cat-tab.active .narin-cat-tab-count { opacity: 0.8; }
 .narin-cat-subbar { display: flex; gap: 6px; overflow-x: auto; padding: 0 4px 4px 8px; margin: 0 -4px 12px; -webkit-overflow-scrolling: touch; }
 .narin-cat-subbar::-webkit-scrollbar { display: none; }
-.narin-cat-pill { flex: 0 0 auto; padding: 6px 14px; border-radius: 20px; border: 1px solid #e0e2e6; background: #fff; font-size: 12px; cursor: pointer; color: #16181d; white-space: nowrap; }
+.narin-cat-pill { flex: 0 0 auto; padding: 6px 14px; border-radius: 20px; border: 1px solid #e0e2e6; background: #fff; font-family: 'Rubik', sans-serif; font-size: 12px; cursor: pointer; color: #16181d; white-space: nowrap; transition: background .2s, border-color .2s, color .2s; }
 .narin-cat-pill.active { background: #02e590; border-color: #02e590; color: #fff; }
-.narin-cat-empty { font-family: 'Rubik', sans-serif; font-size: 13px; color: #8a8f98; padding: 20px 0; }
-/* width:100% тут считается от content-box флекс-контейнера .t-store__card-list,
-   а тот сам вложен в .t-store__grid-cont с боковым паддингом Tilda (родной
-   гаттер сетки) — без компенсации синий блок выглядит "коробкой" с белой
-   рамкой по бокам вместо полноценной синей плашки на весь экран.
-   Отрицательный margin той же величины съедает этот паддинг и растягивает
-   плашку впритык к краям экрана. Паддинг сетки у Tilda разный на мобильном
-   (5px, ≤960px) и на десктопе (25px, >960px) — проверено вживую на 375/768/
-   960/1400px, поэтому margin тоже задан отдельно на каждый случай. */
-.narin-cat-promo-section { flex: 1 0 100%; width: 100%; box-sizing: border-box; background: #186ce0; border-radius: 0; padding: 20px 16px; margin: 10px -5px; }
-@media screen and (min-width: 961px) {
-    .narin-cat-promo-section { margin: 10px -25px; }
+
+/* Empty state: shown when a tab or filter combination has no products. */
+.narin-cat-empty { position: relative; overflow: hidden; margin: 4px 0 28px; padding: 56px 24px 44px; border-radius: 24px; background: linear-gradient(160deg, #f1f7ff 0%, #ecfdf5 100%); text-align: center; font-family: 'Rubik', sans-serif; animation: narinEmptyIn .6s cubic-bezier(.2,.8,.2,1) both; }
+.narin-cat-empty > * { position: relative; z-index: 1; }
+.narin-cat-empty > .narin-empty-petals { position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 0; pointer-events: none; }
+.narin-pf { position: absolute; top: -30px; opacity: 0; animation: narinDrop linear infinite; }
+.narin-pf i { display: block; animation: narinFlutter ease-in-out infinite alternate; }
+/* Copies of the brand petal, recoloured with a mask in brand colours. */
+.narin-pf b { display: block; -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; opacity: 0.8; animation: narinSpin linear infinite; }
+.narin-pf.p1 { left: 3%; animation-duration: 10s; animation-delay: 0s; }
+.narin-pf.p1 i { animation-duration: 2.2s; }
+.narin-pf.p1 b { background: #186ce0; width: 22px; height: 16px; animation-duration: 5s; }
+.narin-pf.p2 { left: 11%; animation-duration: 12.5s; animation-delay: 3.6s; }
+.narin-pf.p2 i { animation-duration: 2.8s; }
+.narin-pf.p2 b { background: #02e590; width: 16px; height: 12px; animation-duration: 7s; animation-direction: reverse; }
+.narin-pf.p3 { left: 19%; animation-duration: 11s; animation-delay: 7.1s; }
+.narin-pf.p3 i { animation-duration: 2.5s; }
+.narin-pf.p3 b { background: #ff7c76; width: 24px; height: 17px; animation-duration: 6s; }
+.narin-pf.p4 { left: 27%; animation-duration: 13s; animation-delay: 1.8s; }
+.narin-pf.p4 i { animation-duration: 2.1s; }
+.narin-pf.p4 b { background: #6aa4f0; width: 14px; height: 10px; animation-duration: 8s; animation-direction: reverse; }
+.narin-pf.p5 { left: 36%; animation-duration: 10.5s; animation-delay: 5.3s; }
+.narin-pf.p5 i { animation-duration: 2.7s; }
+.narin-pf.p5 b { background: #7ef2c4; width: 20px; height: 14px; animation-duration: 5.5s; }
+.narin-pf.p6 { left: 45%; animation-duration: 12s; animation-delay: 9.2s; }
+.narin-pf.p6 i { animation-duration: 2.4s; }
+.narin-pf.p6 b { background: #186ce0; width: 26px; height: 19px; animation-duration: 6.5s; animation-direction: reverse; }
+.narin-pf.p7 { left: 54%; animation-duration: 11.5s; animation-delay: 0.9s; }
+.narin-pf.p7 i { animation-duration: 2.9s; }
+.narin-pf.p7 b { background: #ff9e7a; width: 18px; height: 13px; animation-duration: 7.5s; }
+.narin-pf.p8 { left: 62%; animation-duration: 13.5s; animation-delay: 4.4s; }
+.narin-pf.p8 i { animation-duration: 2.3s; }
+.narin-pf.p8 b { background: #02e590; width: 22px; height: 16px; animation-duration: 5s; animation-direction: reverse; }
+.narin-pf.p9 { left: 70%; animation-duration: 10s; animation-delay: 8.1s; }
+.narin-pf.p9 i { animation-duration: 2.6s; }
+.narin-pf.p9 b { background: #ff7c76; width: 16px; height: 12px; animation-duration: 6s; }
+.narin-pf.p10 { left: 78%; animation-duration: 12.5s; animation-delay: 2.7s; }
+.narin-pf.p10 i { animation-duration: 2.2s; }
+.narin-pf.p10 b { background: #6aa4f0; width: 24px; height: 17px; animation-duration: 7s; animation-direction: reverse; }
+.narin-pf.p11 { left: 86%; animation-duration: 11s; animation-delay: 6.2s; }
+.narin-pf.p11 i { animation-duration: 2.8s; }
+.narin-pf.p11 b { background: #7ef2c4; width: 18px; height: 13px; animation-duration: 5.5s; }
+.narin-pf.p12 { left: 94%; animation-duration: 13s; animation-delay: 10.4s; }
+.narin-pf.p12 i { animation-duration: 2.4s; }
+.narin-pf.p12 b { background: #186ce0; width: 20px; height: 14px; animation-duration: 6.5s; animation-direction: reverse; }
+.narin-empty-title { margin: 0 0 8px; font-size: 22px; font-weight: 700; line-height: 1.25; color: #16181d; }
+.narin-empty-text { max-width: 380px; margin: 0 auto 22px; font-size: 14px; line-height: 1.55; color: #5b616b; }
+.narin-empty-btn { display: inline-flex; align-items: center; gap: 6px; padding: 12px 24px; border: 0; border-radius: 24px; background: #186ce0; color: #fff; font-family: 'Rubik', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: 0 6px 16px rgba(24,108,224,0.28); transition: transform .15s, box-shadow .2s; }
+.narin-empty-btn:hover { box-shadow: 0 8px 20px rgba(24,108,224,0.36); }
+.narin-empty-btn:active { transform: scale(0.96); }
+@keyframes narinEmptyIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes narinDrop { 0% { transform: translateY(0); opacity: 0; } 6% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateY(560px); opacity: 0; } }
+@keyframes narinFlutter { 0% { transform: translateX(-20px); } 100% { transform: translateX(20px); } }
+@keyframes narinSpin { 0% { transform: rotate(0deg) scaleX(1); } 50% { transform: rotate(180deg) scaleX(0.5); } 100% { transform: rotate(360deg) scaleX(1); } }
+@media (prefers-reduced-motion: reduce) {
+    .narin-cat-empty { animation: none !important; }
+    .narin-empty-petals { display: none; }
 }
+
+.narin-cat-promo-section { flex: 1 0 100%; width: 100%; box-sizing: border-box; background: #186ce0; border-radius: 0; padding: 20px 16px; margin: 10px -5px; }
+.narin-cat-promo-section.theme-atelier { background: #219c44; }
+.narin-cat-promo-section.theme-gift { background: #e0607e; }
+/* The Atelier cards look as on the Atelier page: green names, prices, buttons and hearts (the delivery line stays as everywhere). */
+.narin-cat-promo-section.theme-atelier .js-product-name, .narin-cat-promo-section.theme-atelier .js-product-price, .narin-cat-promo-section.theme-atelier .t-store__card__price-value, .narin-cat-promo-section.theme-atelier .t-store__card__price { color: #219c44 !important; }
+.narin-cat-promo-section.theme-atelier [class*="t-btnflex"]:not(.t1002__addBtn),
+.narin-cat-promo-section.theme-atelier [class*="t-btnflex"]:not(.t1002__addBtn):hover { background-color: #219c44 !important; background-image: none !important; color: #fff !important; }
+.narin-cat-promo-section.theme-atelier [class*="t-btnflex"]:not(.t1002__addBtn):hover { background-color: #1a7d36 !important; }
+.narin-cat-promo-section.theme-atelier .t1002__addBtn, .narin-cat-promo-section.theme-atelier .t1002__addBtn_active { border-color: #219c44 !important; }
+.narin-cat-promo-section.theme-atelier .t1002__addBtn svg path { stroke: #219c44 !important; }
+.narin-cat-promo-section.theme-atelier .t1002__addBtn_active svg path, .narin-cat-promo-section.theme-atelier .t1002__addBtn:hover svg path { fill: #219c44 !important; }
+
 .narin-cat-promo-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
 .narin-cat-promo-name { color: #fff; font-family: 'Rubik', sans-serif; font-size: 20px; font-weight: 700; }
 .narin-cat-promo-cta { color: #fff; font-family: 'Rubik', sans-serif; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer; }
 .narin-cat-promo-caption { color: #fff; opacity: 0.9; font-family: 'Rubik', sans-serif; font-size: 13px; font-style: italic; margin: 0 0 14px; max-width: 520px; }
 .narin-cat-promo-strip { display: flex; gap: 10px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .narin-cat-promo-strip::-webkit-scrollbar { display: none; }
-/* Кнопка "в корзину" у карточек в этой узкой ленте рендерится вплотную к
-   нижнему краю (0px запаса) при overflow:hidden — карточки в ряду
-   растягиваются на высоту самой высокой (flex align-items: stretch по
-   умолчанию), и у части карточек кнопку от этого срезает. +3px снизу дают
-   запас на такие расхождения. */
-.narin-cat-promo-strip .t-store__card { flex: 0 0 auto !important; width: 190px !important; background: #fff; border-radius: 10px; overflow: hidden; padding-bottom: 3px !important; }
-.js-store-grid-cont [data-narin-cat-hidden="1"] { display: none !important; }
-.js-store-grid-cont .t-clear { display: none !important; }
-</style>
 
+.narin-cat-promo-strip .t-store__card { flex: 0 0 auto !important; width: 190px !important; background: #fff; border-radius: 10px; overflow: hidden; padding-bottom: 3px !important; }
+
+/* The only place where card visibility is decided. */
+.js-store-grid-cont [data-narin-hidden="1"] { display: none !important; }
+.js-store-grid-cont .t-clear { display: none !important; }
+
+.narin-avail-badge { display: inline-flex; align-items: center; gap: 5px; margin-bottom: 3px; font-family: 'Rubik', sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 0.2px; white-space: nowrap; }
+.narin-avail-badge .narin-avail-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.narin-avail-badge.today { color: #0a8a3a; }
+.narin-avail-badge.today .narin-avail-dot { background: #00cc00; }
+.narin-avail-badge.tomorrow { color: #196fe3; }
+.narin-avail-badge.tomorrow .narin-avail-dot { background: #196fe3; }
+.narin-avail-badge.special { color: #ff2a20; }
+.narin-avail-badge.special .narin-avail-dot { background: #ff2a20; }
+
+.narin-custom-badge {
+    position: absolute;
+    top: 11px;
+    left: 8px;
+    z-index: 6;
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-family: 'Rubik', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(20,30,50,0.18);
+    pointer-events: none;
+    white-space: nowrap;
+    max-width: calc(100% - 16px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+</style>
 <script>
 (function () {
-    var SUPABASE_URL = 'https://wqburlamuipxmenqsjnx.supabase.co';
-    var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxYnVybGFtdWlweG1lbnFzam54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTY2MTIsImV4cCI6MjA4ODgzMjYxMn0.NYnQoorm3z5gkjr954JdYhzDNmYfCjefzK1ddq3cflw';
+    // Hide raw cards from the very first line, and arm the safety net right away
+    // (before anything below can fail): after FAILSAFE_MS the catalog is shown as
+    // Tilda drew it, so a broken request or script can never leave an empty page.
+    document.documentElement.classList.add('narin-cat-on');
+    var FAILSAFE_MS = 8000;
+    var failsafeTimer = setTimeout(failOpen, FAILSAFE_MS);
 
-    // Строки с чешскими диакритическими знаками записаны как числовые
-    // HTML-сущности (чистый ASCII в исходнике) и раскодированы через
-    // decodeEntities() ниже — буквы вроде š/í/ě/ř уже дважды ломались
-    // при копипасте этого файла в редактор Tilda (превращались в мусор
-    // вроде "v≈°e"), а голые цифры испортить копипастом невозможно.
+    var SUPABASE_URL = 'https://wqburlamuipxmenqsjnx.supabase.co';
+    // Key is cleaned of any stray invisible characters that the Tilda editor
+    // or a copy-paste can add - one such character makes fetch throw.
+    var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxYnVybGFtdWlweG1lbnFzam54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTY2MTIsImV4cCI6MjA4ODgzMjYxMn0.NYnQoorm3z5gkjr954JdYhzDNmYfCjefzK1ddq3cflw'.replace(/[^A-Za-z0-9._-]/g, '');
+
+    // Czech text is written as numeric HTML entities and decoded at runtime,
+    // because diacritics get broken when pasted into the Tilda editor.
     function cz(s) { return decodeEntities(s); }
 
     var TABS = [
         { key: 'all', label: cz('V&#353;e'), category: 'ohapka', caption: null },
         { key: 'set', label: 'Sety', category: 'set', caption: cz('Sestavte si vlastn&#237; kompozici nebo rozm&#237;st&#283;te kv&#283;tiny do r&#367;zn&#253;ch v&#225;z.') },
-        { key: 'kolekce', label: 'Kolekce', category: 'kolekce', caption: cz('Promy&#353;len&#233; kolekce pro v&#253;jime&#269;n&#233; chv&#237;le.') },
-        { key: 'banky', label: cz('B&#225;nky'), category: 'banky', caption: cz('Kv&#283;tiny naaran&#382;ovan&#233; p&#345;&#237;mo ve v&#225;ze, p&#345;ipraven&#233; k p&#345;ed&#225;n&#237;.') },
+        { key: 'banky', label: 'Kovky', category: 'banky', caption: cz('Kv&#283;tiny naaran&#382;ovan&#233; p&#345;&#237;mo ve v&#225;ze, p&#345;ipraven&#233; k p&#345;ed&#225;n&#237;.') },
+        { key: 'buket', label: 'Kytice', category: 'buket', caption: cz('Hotov&#233; kytice p&#345;ipraven&#233; k p&#345;ed&#225;n&#237;.') },
         { key: 'ohapka', label: cz('N&#225;ru&#269;e'), category: 'ohapka', caption: null },
     ];
+
+    // Two more strips without a tab of their own: the Atelier (green) and the gifts
+    // (pink). Their products are linked to the Flowers part of the Tilda store, so
+    // the grid has real Tilda cards for them (cart button and pop-up work as for the
+    // sets). Which products belong to a strip comes from the Tilda store list of its
+    // own parts (small requests, cached for 30 minutes). They sit after the strips of
+    // the tabs, so sets and jars always come first; when there are no sets and no jars
+    // the Atelier comes first, then the gifts. The link of a strip opens its own page.
+    // enabled false hides a strip (the gifts are off for now).
+    var EXTRA_STRIPS = [
+        { key: 'atelier', enabled: true, label: cz('Ateli&#233;r'), theme: 'atelier', href: '/atelier', parts: ['485654870754', '506105163064'], caption: cz('Pom&#367;cky pro p&#233;&#269;i o kv&#283;tiny a aran&#382;ov&#225;n&#237;.') },
+        { key: 'darky', enabled: false, label: cz('D&#225;rky'), theme: 'gift', href: '/darky', parts: ['643675268714'], caption: cz('Pohlednice a drobn&#233; d&#225;rky k va&#353;&#237; kytici.') },
+    ];
+    var EXTRA_CACHE_KEY = 'narin_extra_strips_v1';
+    var EXTRA_MAX_AGE_MS = 30 * 60 * 1000;
+    var extraItems = {};
 
     var FLOWER_TYPES = [cz('Tulip&#225;n'), cz('Karafi&#225;t'), cz('Pivo&#328;ka'), "Ranunkulus", "Kala", "Hortenzie", "Hyacint", "Fialka", "Exotika", cz('Vytrval&#233;')];
     var COLORS = [cz('B&#237;l&#225;'), cz('R&#367;&#382;ov&#225;'), cz('&#268;erven&#225;'), cz('&#381;lut&#225;'), cz('Fialov&#225;'), cz('Modr&#225;')];
     var HEIGHTS = [cz('N&#237;zk&#233;'), cz('Vysok&#233;')];
+    var LOW_STOCK_THRESHOLD = 3;
+
+    // The data response is cached in localStorage: on a repeat visit the catalog
+    // is drawn at once from the cache, fresh data is fetched in the background and
+    // redraws only if it really changed. A cache older than 12 hours is ignored.
+    var CACHE_KEY = 'narin_catalog_v2';
+    var CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 
     var state = {
         activeTab: 'all',
         filters: { flower_type: new Set(), color: new Set(), height: new Set(), fragrant: false },
     };
+
+    // Everything below comes from one get_catalog_page_data() call.
     var tagMap = {};
-    // Своя копия того же списка, что использует catalog-availability-badges.html
-    // для скрытия карточек (нет своего остатка и нет подтверждения от Van
-    // Vliet). Без неё эта карусель считает промо-плашку "после каждой 4-й
-    // видимой карточки" по своим критериям (категория/фильтры), не зная,
-    // что часть из этих 4 на самом деле спрятана другим скриптом через
-    // display:none!important — в итоге плашка съезжает, а на месте скрытой
-    // карточки остаётся дырка. Оба скрипта независимые Zero Block'и без
-    // общего состояния, поэтому проще независимо запросить тот же RPC, чем
-    // городить обмен данными между ними.
     var unsourceableNames = new Set();
+    var availableNames = new Set();
+    var specialNames = new Set();
+    var badgeMap = {};
+    var specialDateLabel = '';
+
     var grid = null;
     var observer = null;
+    var lastCardCount = null;
+    var categoryCounts = {};
+    var countsReady = false;
+    // Names of the products that are really on the page and can be ordered: the small
+    // filter pills under the tabs only offer flowers from this list.
+    var onSiteNames = null;
+    var onSiteSig = '';
+    var dataApplied = false;
+    var dataVersion = 0;
+    var uiBuilt = false;
+    var lastSig = '';
+    var firstPassDone = false;
+    var pricesSynced = false;
+    var skelEl = null;
+    var pending = null;
 
     var TAP_MOVE_THRESHOLD = 10;
     function bindTap(el, handler) {
@@ -126,12 +278,35 @@
         return el.value;
     }
     function normalize(text) {
-        return decodeEntities(text || '').replace(/\s+/g, ' ').trim();
+        text = text || '';
+        // A name without an ampersand has nothing to decode, which is almost every
+        // name. Building a textarea for each call was the main cost on long lists.
+        if (text.indexOf('&') !== -1) text = decodeEntities(text);
+        return text.replace(/\s+/g, ' ').trim();
+    }
+
+    function el(tag, className, text) {
+        var node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text) node.textContent = text;
+        return node;
     }
 
     function activeTabDef() {
         for (var i = 0; i < TABS.length; i++) if (TABS[i].key === state.activeTab) return TABS[i];
         return TABS[0];
+    }
+
+    function anyFilterActive() {
+        var f = state.filters;
+        return !!(f.flower_type.size || f.color.size || f.height.size || f.fragrant);
+    }
+
+    function clearFilters() {
+        state.filters.flower_type.clear();
+        state.filters.color.clear();
+        state.filters.height.clear();
+        state.filters.fragrant = false;
     }
 
     function matchesTab(tags) {
@@ -141,8 +316,7 @@
 
     function matchesFilters(tags) {
         var f = state.filters;
-        var any = f.flower_type.size || f.color.size || f.height.size || f.fragrant;
-        if (!any) return true;
+        if (!anyFilterActive()) return true;
         if (!tags) return false;
         if (f.flower_type.size && !(tags.flower_type || []).some(function (t) { return f.flower_type.has(t); })) return false;
         if (f.color.size && !(tags.color || []).some(function (c) { return f.color.has(c); })) return false;
@@ -160,6 +334,36 @@
         return 99;
     }
 
+    function addAvailBadge(card, type) {
+        if (card.querySelector('.narin-avail-badge')) return;
+        var textWrapper = card.querySelector('.t-store__card__textwrapper');
+        if (!textWrapper) return;
+        var badge = el('div', 'narin-avail-badge ' + type);
+        var DORUCIME = 'Doru' + String.fromCharCode(269) + String.fromCharCode(237) + 'me';
+        var label = el('span', null, type === 'today' ? DORUCIME + ' dnes' : type === 'special' ? DORUCIME + ' ' + specialDateLabel : DORUCIME + ' z' + String.fromCharCode(237) + 'tra');
+        badge.appendChild(el('span', 'narin-avail-dot'));
+        badge.appendChild(label);
+        textWrapper.insertBefore(badge, textWrapper.firstChild);
+    }
+
+    function addCustomBadge(card, text, color) {
+        if (card.querySelector('.narin-custom-badge')) return;
+        if (window.getComputedStyle(card).position === 'static') {
+            card.style.position = 'relative';
+        }
+        var badge = el('div', 'narin-custom-badge', text);
+        badge.style.background = color || '#186ce0';
+        card.appendChild(badge);
+    }
+
+    function resolveCustomBadge(row) {
+        if (row.badge_text) return { text: row.badge_text, color: row.badge_color || '#186ce0' };
+        // quantity 0 gets no badge - the Dorucime zitra line already says it.
+        if (row.quantity === null || row.quantity === undefined || row.quantity === 0) return null;
+        if (row.quantity < LOW_STOCK_THRESHOLD) return { text: cz('Zb&#253;v&#225;') + ' ' + row.quantity + ' ks', color: '#ff7c76' };
+        return null;
+    }
+
     function findRealCandidates(tab, allCards, usedNames, limit) {
         var found = [];
         for (var i = 0; i < allCards.length && found.length < limit; i++) {
@@ -169,7 +373,7 @@
             var name = normalize(nameEl.textContent);
             if (usedNames.has(name)) continue;
             var tags = tagMap[name];
-            if (tags && tags.category === tab.category) {
+            if (tags && tags.category === tab.category && !unsourceableNames.has(name)) {
                 usedNames.add(name);
                 found.push(card);
             }
@@ -177,56 +381,94 @@
         return found;
     }
 
-    function buildPromoSection(tab, sourceCards) {
-        var section = document.createElement('div');
-        section.className = 'narin-cat-promo-section';
+    function loadExtraPart(uid) {
+        return fetch('https://store.tildaapi.one/api/getproductslist/?storepartuid=' + uid + '&recid=1&c=1&getparts=false&getoptions=false&slice=1&size=50')
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (j) {
+                return ((j && j.products) || []).map(function (p) {
+                    var img = null;
+                    try { var g = JSON.parse(p.gallery || '[]'); img = g && g[0] && g[0].img ? g[0].img : null; } catch (e) {}
+                    return { uid: String(p.uid), title: String(p.title || ''), price: Number(p.price) || 0, img: img, url: p.url || '', sort: Number(p.sort) || 0 };
+                });
+            })
+            .catch(function () { return []; });
+    }
 
-        var head = document.createElement('div');
-        head.className = 'narin-cat-promo-head';
-        var name = document.createElement('div');
-        name.className = 'narin-cat-promo-name';
-        name.textContent = tab.label;
-        var cta = document.createElement('div');
-        cta.className = 'narin-cat-promo-cta';
-        cta.textContent = cz('Zobrazit v&#353;e &#8594;');
-        bindTap(cta, function () {
-            switchTab(tab.key);
-            section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    function applyExtra(data) {
+        extraItems = data || {};
+        dataVersion++;
+        if (dataApplied) renderPass();
+    }
+
+    function loadExtras() {
+        var cacheOk = false;
+        try {
+            var o = JSON.parse(localStorage.getItem(EXTRA_CACHE_KEY));
+            if (o && o.data && o.t) { applyExtra(o.data); cacheOk = Date.now() - o.t < EXTRA_MAX_AGE_MS; }
+        } catch (e) {}
+        if (cacheOk) return;
+        var activeExtras = EXTRA_STRIPS.filter(function (s) { return s.enabled; });
+        if (!activeExtras.length) return;
+        Promise.all(activeExtras.map(function (s) {
+            return Promise.all(s.parts.map(loadExtraPart)).then(function (lists) {
+                var seen = {}, all = [];
+                lists.forEach(function (l) { l.forEach(function (it) { if (!seen[it.uid]) { seen[it.uid] = 1; all.push(it); } }); });
+                all.sort(function (a, b) { return a.sort - b.sort; });
+                return all;
+            });
+        })).then(function (res) {
+            var data = {};
+            activeExtras.forEach(function (s, i) { data[s.key] = res[i]; });
+            if (!res.some(function (r) { return r.length; })) return;
+            try { localStorage.setItem(EXTRA_CACHE_KEY, JSON.stringify({ t: Date.now(), data: data })); } catch (e) {}
+            applyExtra(data);
         });
-        head.appendChild(name);
+    }
+
+    function buildPromoSection(tab, sourceCards) {
+        var section = el('div', 'narin-cat-promo-section' + (tab.theme ? ' theme-' + tab.theme : ''));
+
+        var head = el('div', 'narin-cat-promo-head');
+        var cta = el('div', 'narin-cat-promo-cta', cz('Zobrazit v&#353;e &#8594;'));
+        bindTap(cta, function () {
+            if (tab.href) { window.location.href = tab.href; return; }
+            switchTab(tab.key);
+            var nav = document.querySelector('.narin-cat-nav');
+            if (nav) nav.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+        head.appendChild(el('div', 'narin-cat-promo-name', tab.label));
         head.appendChild(cta);
         section.appendChild(head);
 
-        if (tab.caption) {
-            var caption = document.createElement('div');
-            caption.className = 'narin-cat-promo-caption';
-            caption.textContent = tab.caption;
-            section.appendChild(caption);
-        }
+        if (tab.caption) section.appendChild(el('div', 'narin-cat-promo-caption', tab.caption));
 
-        var strip = document.createElement('div');
-        strip.className = 'narin-cat-promo-strip';
+        var strip = el('div', 'narin-cat-promo-strip');
         sourceCards.forEach(function (source) {
             var clone = source.cloneNode(true);
-            clone.removeAttribute('data-narin-cat-hidden');
+            clone.removeAttribute('data-narin-hidden');
 
-            // If the source card hadn't scrolled into view yet, Tilda's own
-            // lazy-load observer never fired on it — its bgimg divs are still
-            // stuck on the tiny blurred placeholder (data-original holds the
-            // real URL). The clone inherits that placeholder permanently,
-            // since it was never registered with that observer either.
+            // The source card may never have been in the viewport, so Tilda
+            // lazy-load left a placeholder; the real image is in data-original.
             clone.querySelectorAll('.t-bgimg:not(.loaded)').forEach(function (bg) {
                 var full = bg.getAttribute('data-original');
                 if (full) {
-                    bg.style.backgroundImage = 'url(\'' + full + '\')';
+                    bg.style.backgroundImage = 'url(' + full + ')';
                     bg.classList.add('loaded');
                 }
             });
 
-            // Duplicate ids from the clone would collide with the original
-            // card's ids and confuse Tilda's own click/hover handlers.
             if (clone.id) clone.removeAttribute('id');
-            clone.querySelectorAll('[id]').forEach(function (el) { el.removeAttribute('id'); });
+            clone.querySelectorAll('[id]').forEach(function (node) { node.removeAttribute('id'); });
+
+            // On the All tab only flowers are visible cards, so the real card of a
+            // set or jar never got its delivery badge (it is added to visible cards
+            // only). Give the clone the same badge the real card shows on its own
+            // tab, so the strip says when it can be delivered.
+            var cloneNameEl = clone.querySelector('.js-product-name');
+            if (cloneNameEl) {
+                var cloneName = normalize(cloneNameEl.textContent);
+                addAvailBadge(clone, specialNames.has(cloneName) ? 'special' : availableNames.has(cloneName) ? 'today' : 'tomorrow');
+            }
 
             strip.appendChild(clone);
         });
@@ -239,66 +481,269 @@
         if (state.activeTab !== 'all') return;
         var otherTabs = TABS.filter(function (t) { return t.category !== 'ohapka'; });
         if (!otherTabs.length) return;
-        var usedNames = new Set();
-        var tabCursor = 0;
-        for (var i = 3; i < visibleCards.length; i += 4) {
-            var cards = [], tab = null, attempts = 0;
-            while (attempts < otherTabs.length) {
-                tab = otherTabs[tabCursor % otherTabs.length];
-                tabCursor++;
-                attempts++;
-                cards = findRealCandidates(tab, allCards, usedNames, 3);
-                if (cards.length) break;
-            }
-            if (!cards.length) continue;
-            visibleCards[i].insertAdjacentElement('afterend', buildPromoSection(tab, cards));
+        // Every category with available products gets exactly one strip, in tab
+        // order, after every fourth card. The candidates of each category are
+        // collected once per pass (before, they were searched again for every
+        // strip slot, which made a long list grow quadratically slower).
+        var queue = [];
+        otherTabs.forEach(function (tab) {
+            var found = findRealCandidates(tab, allCards, new Set(), Infinity);
+            if (found.length) queue.push({ tab: tab, cards: found });
+        });
+        EXTRA_STRIPS.forEach(function (tab) {
+            if (!tab.enabled) return;
+            var names = new Set((extraItems[tab.key] || []).map(function (it) { return normalize(it.title); }));
+            if (!names.size) return;
+            var seenNames = new Set(), cards = [];
+            allCards.forEach(function (card) {
+                var nameEl = card.querySelector('.js-product-name');
+                if (!nameEl) return;
+                var name = normalize(nameEl.textContent);
+                if (names.has(name) && !seenNames.has(name) && !unsourceableNames.has(name)) { seenNames.add(name); cards.push(card); }
+            });
+            if (cards.length) queue.push({ tab: tab, cards: cards });
+        });
+        for (var i = 3; i < visibleCards.length && queue.length; i += 4) {
+            var item = queue.shift();
+            visibleCards[i].insertAdjacentElement('afterend', buildPromoSection(item.tab, item.cards));
         }
     }
 
-    function applyFilters() {
+    // Removes duplicate cards by product name (Tilda load-more re-adds some SETs).
+    // Must run AFTER promo sections are removed and must skip promo clones,
+    // otherwise a clone wins as first and the real card gets deleted.
+    function dedupeCards() {
+        var seen = new Set();
+        grid.querySelectorAll('.t-store__card').forEach(function (card) {
+            if (card.closest('.narin-cat-promo-section')) return;
+            var nameEl = card.querySelector('.js-product-name');
+            if (!nameEl) return;
+            var name = normalize(nameEl.textContent);
+            // Empty name means Tilda has not filled the card yet - not a duplicate.
+            if (!name) return;
+            if (seen.has(name)) {
+                card.remove();
+            } else {
+                seen.add(name);
+            }
+        });
+    }
+
+    var EMPTY_ART_URL = 'https://static.tildacdn.net/tild6661-3363-4132-b139-616631346264/nar_Klient.svg';
+
+    // Copies of the brand petal in brand colours, falling and spinning behind
+    // the text. The colour comes from CSS, the shape from a mask of the SVG.
+    function buildPetals() {
+        var layer = el('div', 'narin-empty-petals');
+        var mask = 'url(' + EMPTY_ART_URL + ')';
+        for (var i = 1; i < 13; i++) {
+            var drop = el('span', 'narin-pf p' + i);
+            var sway = el('i');
+            var shape = el('b');
+            shape.style.webkitMaskImage = mask;
+            shape.style.maskImage = mask;
+            sway.appendChild(shape);
+            drop.appendChild(sway);
+            layer.appendChild(drop);
+        }
+        return layer;
+    }
+
+    function buildEmptyState(key) {
+        var tab = activeTabDef();
+        var box = el('div', 'narin-cat-empty');
+        box.setAttribute('data-key', key);
+        box.appendChild(buildPetals());
+
+        var title, text, btnLabel = null, onBtn = null;
+        if (anyFilterActive()) {
+            title = 'Tahle kombinace dnes nekvete';
+            text = cz('Zkuste ubrat n&#283;kter&#253; filtr &#8212; ur&#269;it&#283; pro v&#225;s najdeme n&#283;co kr&#225;sn&#233;ho.');
+            btnLabel = cz('Zru&#353;it filtry');
+            onBtn = function () { clearFilters(); renderSubBar(); renderPass(); };
+        } else if (tab.category !== 'ohapka') {
+            title = cz('Ups, ') + tab.label + cz(' jsme dnes &#250;pln&#283; vyprodali');
+            text = cz('Nov&#233; kousky u&#382; pro v&#225;s chyst&#225;me. Mezit&#237;m se pod&#237;vejte na &#269;erstv&#233; kv&#283;tiny, kter&#233; m&#225;me pr&#225;v&#283; te&#271; skladem.');
+            btnLabel = cz('&#268;erstv&#233; kv&#283;tiny &#8594;');
+            onBtn = function () { switchTab('all'); };
+        } else {
+            title = cz('Ups, dnes je vyprod&#225;no');
+            text = cz('V&#353;echny kv&#283;tiny jsme dnes rozdali. Z&#237;tra r&#225;no pro v&#225;s budeme m&#237;t nov&#233;.');
+        }
+
+        box.appendChild(el('p', 'narin-empty-title', title));
+        box.appendChild(el('p', 'narin-empty-text', text));
+        if (btnLabel) {
+            var btn = el('button', 'narin-empty-btn', btnLabel);
+            btn.type = 'button';
+            bindTap(btn, onBtn);
+            box.appendChild(btn);
+        }
+        return box;
+    }
+
+    function updateTabCounts() {
+        // Counts come from the real cards, so they stay empty until the first pass.
+        if (!countsReady) return;
+        document.querySelectorAll('.narin-cat-tab-count').forEach(function (span) {
+            span.textContent = categoryCounts[span.getAttribute('data-cat')] || 0;
+        });
+    }
+
+    // Real Tilda cards only, without the clones inside our blue promo strips.
+    function realCards() {
+        return Array.prototype.filter.call(grid.querySelectorAll('.t-store__card'), function (c) {
+            return !c.closest('.narin-cat-promo-section');
+        });
+    }
+
+    function namedCount(cards) {
+        var n = 0;
+        cards.forEach(function (c) {
+            var nameEl = c.querySelector('.js-product-name');
+            if (nameEl && normalize(nameEl.textContent)) n++;
+        });
+        return n;
+    }
+
+    // Fingerprint of everything a pass depends on. When it is unchanged since the
+    // last pass there is nothing to redraw, so the DOM is left alone (before this,
+    // every observer tick tore down and rebuilt all promo strips with cloned cards).
+    function makeSig(cards, named) {
+        var f = state.filters;
+        return [
+            state.activeTab,
+            Array.from(f.flower_type).sort().join(','),
+            Array.from(f.color).sort().join(','),
+            Array.from(f.height).sort().join(','),
+            f.fragrant ? 1 : 0,
+            cards.length,
+            named,
+            grid.querySelectorAll('.narin-avail-badge').length,
+            grid.querySelectorAll('.narin-custom-badge').length,
+            dataVersion
+        ].join('|');
+    }
+
+    function reobserve() {
+        if (grid && observer) observer.observe(grid, { childList: true, subtree: true });
+    }
+
+    function removeSkeleton() {
+        if (skelEl) { skelEl.remove(); skelEl = null; }
+    }
+
+    function markReady() {
+        removeSkeleton();
+        if (failsafeTimer) { clearTimeout(failsafeTimer); failsafeTimer = null; }
+        if (!firstPassDone) {
+            firstPassDone = true;
+            grid.classList.add('narin-grid-in');
+            // Cards just became visible: nudge the Tilda lazy image loader.
+            try { window.dispatchEvent(new Event('scroll')); } catch (e) {}
+        }
+    }
+
+    // Safety net: show the catalog as Tilda drew it rather than nothing.
+    function failOpen() {
+        document.documentElement.classList.remove('narin-cat-on');
+        removeSkeleton();
+    }
+
+    function renderPass() {
+        if (!grid || !dataApplied) return;
         if (observer) observer.disconnect();
+
+        dedupeCards();
+        var cards = realCards();
+        var named = namedCount(cards);
+        // Tilda has not inserted or filled the cards yet: draw nothing, and above
+        // all do not show the empty state for a half-loaded list.
+        if (!cards.length || !named) { reobserve(); return; }
+
+        // Nothing changed since the last pass: leave the DOM alone.
+        if (makeSig(cards, named) === lastSig) { reobserve(); safetyLoadMoreIfPresent(); return; }
 
         var existingPromos = grid.querySelectorAll('.narin-cat-promo-section');
         for (var p = 0; p < existingPromos.length; p++) existingPromos[p].remove();
 
-        var cards = grid.querySelectorAll('.t-store__card');
         var visibleCards = [];
+        var counts = {};
+        var siteNames = [];
         cards.forEach(function (card) {
+            card.setAttribute('data-narin-seen', '1');
             var nameEl = card.querySelector('.js-product-name');
-            if (!nameEl) { card.removeAttribute('data-narin-cat-hidden'); return; }
+            if (!nameEl) { card.removeAttribute('data-narin-hidden'); return; }
             var name = normalize(nameEl.textContent);
             var tags = tagMap[name];
-            var visible = matchesTab(tags) && matchesFilters(tags) && !unsourceableNames.has(name);
+            var sourceable = !unsourceableNames.has(name);
+            if (tags && sourceable) { counts[tags.category] = (counts[tags.category] || 0) + 1; siteNames.push(name); }
+            var visible = matchesTab(tags) && matchesFilters(tags) && sourceable;
+
             if (visible) {
-                card.removeAttribute('data-narin-cat-hidden');
+                card.removeAttribute('data-narin-hidden');
                 visibleCards.push(card);
+                var type = specialNames.has(name) ? 'special' : availableNames.has(name) ? 'today' : 'tomorrow';
+                addAvailBadge(card, type);
             } else {
-                card.setAttribute('data-narin-cat-hidden', '1');
+                card.setAttribute('data-narin-hidden', '1');
+            }
+
+            var badgeRow = badgeMap[name];
+            if (badgeRow) {
+                var resolved = resolveCustomBadge(badgeRow);
+                if (resolved) addCustomBadge(card, resolved.text, resolved.color);
             }
         });
+        categoryCounts = counts;
+        countsReady = true;
+        updateTabCounts();
+        var siteSig = siteNames.slice().sort().join('|');
+        if (siteSig !== onSiteSig) { onSiteSig = siteSig; onSiteNames = new Set(siteNames); renderSubBar(); }
 
-        visibleCards.sort(function (a, b) { return availTier(a) - availTier(b); });
-        visibleCards.forEach(function (card) { card.parentElement.appendChild(card); });
+        // Sorting moves real DOM nodes (CSS order breaks the Tilda mobile grid).
+        // A pass only runs after the grid has been quiet for a moment (see
+        // scheduleRender), so Tilda is not inserting cards right now; sort only
+        // once every card has its name filled, otherwise the badges are not there.
+        lastCardCount = cards.length;
+        if (named === cards.length) {
+            var sorted = visibleCards
+                .map(function (c, i) { return { c: c, t: availTier(c), i: i }; })
+                .sort(function (a, b) { return a.t - b.t || a.i - b.i; })
+                .map(function (x) { return x.c; });
+            var orderChanged = sorted.some(function (card, idx) { return card !== visibleCards[idx]; });
+            if (orderChanged) {
+                sorted.forEach(function (card) { card.parentElement.appendChild(card); });
+            }
+            visibleCards = sorted;
+        }
 
         insertPromoSections(visibleCards, cards);
 
+        // Rebuild the empty state only when its context changes, so the
+        // entrance animation does not restart on every observer pass.
+        var emptyKey = visibleCards.length ? '' : state.activeTab + (anyFilterActive() ? ':filtered' : '');
         var emptyMsg = document.querySelector('.narin-cat-empty');
-        if (visibleCards.length === 0) {
-            if (!emptyMsg) {
-                emptyMsg = document.createElement('p');
-                emptyMsg.className = 'narin-cat-empty';
-                emptyMsg.textContent = cz('Podle vybran&#253;ch filtr&#367; jsme nic nena&#353;li &#8212; zkuste jinou kombinaci.');
-                var bar = document.querySelector('.narin-cat-nav');
-                if (bar) bar.insertAdjacentElement('afterend', emptyMsg);
-            }
-        } else if (emptyMsg) {
+        if (emptyMsg && emptyMsg.getAttribute('data-key') !== emptyKey) {
             emptyMsg.remove();
+            emptyMsg = null;
+        }
+        if (emptyKey && !emptyMsg) {
+            var nav = document.querySelector('.narin-cat-nav');
+            if (nav) nav.insertAdjacentElement('afterend', buildEmptyState(emptyKey));
         }
 
-        var countEl = document.querySelector('.narin-cat-count');
-        if (countEl) countEl.textContent = visibleCards.length + (visibleCards.length === 1 ? ' produkt' : cz(' produkt&#367;'));
+        lastSig = makeSig(cards, named);
+        markReady();
+        reobserve();
+        safetyLoadMoreIfPresent();
+    }
 
-        if (grid && observer) observer.observe(grid, { childList: true, subtree: true });
+    // Wait until the grid has been quiet for a moment, so a pass never runs in
+    // the middle of Tilda inserting cards.
+    function scheduleRender() {
+        if (pending) clearTimeout(pending);
+        pending = setTimeout(renderPass, 80);
     }
 
     function switchTab(key) {
@@ -306,7 +751,7 @@
         state.filters = { flower_type: new Set(), color: new Set(), height: new Set(), fragrant: false };
         renderTabBar();
         renderSubBar();
-        applyFilters();
+        renderPass();
     }
 
     function renderTabBar() {
@@ -314,21 +759,21 @@
         if (!bar) return;
         bar.innerHTML = '';
         TABS.forEach(function (tab) {
-            var btn = document.createElement('button');
+            var btn = el('button', 'narin-cat-tab' + (tab.key === state.activeTab ? ' active' : ''), tab.label);
             btn.type = 'button';
-            btn.className = 'narin-cat-tab' + (tab.key === state.activeTab ? ' active' : '');
-            btn.textContent = tab.label;
+            var count = el('span', 'narin-cat-tab-count');
+            count.setAttribute('data-cat', tab.category);
+            btn.appendChild(count);
             bindTap(btn, function () { switchTab(tab.key); });
             bar.appendChild(btn);
         });
+        updateTabCounts();
     }
 
     function makePill(bar, label, group, value) {
         var isActive = group === 'fragrant' ? state.filters.fragrant : state.filters[group].has(value);
-        var btn = document.createElement('button');
+        var btn = el('button', 'narin-cat-pill' + (isActive ? ' active' : ''), label);
         btn.type = 'button';
-        btn.className = 'narin-cat-pill' + (isActive ? ' active' : '');
-        btn.textContent = label;
         bindTap(btn, function () {
             if (group === 'fragrant') {
                 state.filters.fragrant = !state.filters.fragrant;
@@ -337,7 +782,7 @@
                 if (set.has(value)) set.delete(value); else set.add(value);
             }
             renderSubBar();
-            applyFilters();
+            renderPass();
         });
         bar.appendChild(btn);
     }
@@ -352,28 +797,28 @@
         Object.keys(tagMap).forEach(function (name) {
             var tags = tagMap[name];
             if (tab.category && tags.category !== tab.category) return;
+            if (onSiteNames && !onSiteNames.has(name)) return;
             (tags.flower_type || []).forEach(function (t) { presentTypes.add(t); });
             (tags.color || []).forEach(function (c) { presentColors.add(c); });
             if (tags.height) presentHeights.add(tags.height);
             if (tags.fragrant) anyFragrant = true;
         });
 
+        // A pill that is switched on stays, so the visitor can switch it off again.
+        state.filters.flower_type.forEach(function (t) { presentTypes.add(t); });
+        state.filters.color.forEach(function (c) { presentColors.add(c); });
+        state.filters.height.forEach(function (h) { presentHeights.add(h); });
+        if (state.filters.fragrant) anyFragrant = true;
+
         var hasAnyPills = presentTypes.size || presentColors.size || presentHeights.size || anyFragrant;
         if (!hasAnyPills) return;
 
-        var anyActive = state.filters.flower_type.size || state.filters.color.size || state.filters.height.size || state.filters.fragrant;
-
-        var allBtn = document.createElement('button');
+        var allBtn = el('button', 'narin-cat-pill' + (!anyFilterActive() ? ' active' : ''), cz('V&#353;echny kv&#283;tiny'));
         allBtn.type = 'button';
-        allBtn.className = 'narin-cat-pill' + (!anyActive ? ' active' : '');
-        allBtn.textContent = cz('V&#353;echny kv&#283;tiny');
         bindTap(allBtn, function () {
-            state.filters.flower_type.clear();
-            state.filters.color.clear();
-            state.filters.height.clear();
-            state.filters.fragrant = false;
+            clearFilters();
             renderSubBar();
-            applyFilters();
+            renderPass();
         });
         bar.appendChild(allBtn);
 
@@ -384,60 +829,231 @@
     }
 
     function buildNav() {
-        var nav = document.createElement('div');
-        nav.className = 'narin-cat-nav';
-        var tabBar = document.createElement('div');
-        tabBar.className = 'narin-cat-tabs';
-        var count = document.createElement('div');
-        count.className = 'narin-cat-count';
-        var subBar = document.createElement('div');
-        subBar.className = 'narin-cat-subbar';
-        nav.appendChild(tabBar);
-        nav.appendChild(count);
-        nav.appendChild(subBar);
+        var nav = el('div', 'narin-cat-nav');
+        nav.appendChild(el('div', 'narin-cat-tabs'));
+        nav.appendChild(el('div', 'narin-cat-subbar'));
         return nav;
     }
 
-    function rpc(name) {
-        return fetch(SUPABASE_URL + '/rest/v1/rpc/' + name, {
-            method: 'POST',
-            headers: {
-                'apikey': SUPABASE_ANON_KEY,
-                'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-                'Content-Type': 'application/json',
-            },
-            body: '{}',
-        }).then(function (r) { return r.ok ? r.json() : []; });
+    function addUtcDays(date, days) {
+        return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + days));
+    }
+    function dateKey(date) {
+        return date.toISOString().slice(0, 10);
+    }
+    // Special order items come from abroad. The supplier ships on the first working day
+    // (Monday to Friday) after the order, the goods are in the shop the next day, and we
+    // deliver that day if the shop is open, otherwise on the next open day. So an order
+    // on Thursday is ready on Saturday (shipped Friday), and an order on Friday is ready on
+    // Tuesday (shipped Monday), not on Monday. The same rule is used by the checkout date
+    // blocker and by gift_min_date in the database: change all three together.
+
+    // Today by the shop calendar (Prague), not by UTC: between midnight and two in the
+    // night those are two different days.
+    function pragueToday() {
+        try {
+            var parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Prague', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()).split('-');
+            return new Date(Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)));
+        } catch (e) {
+            var n = new Date();
+            return new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate()));
+        }
+    }
+
+    function computeSpecialOrderDate(closedWeekdays, closedDates) {
+        function shopClosed(day) {
+            return closedWeekdays.has(day.getUTCDay()) || closedDates.has(dateKey(day));
+        }
+        var d = pragueToday();
+        // shipping day: the first working day after today (no weekend, not a closed day)
+        do {
+            d = addUtcDays(d, 1);
+        } while (d.getUTCDay() === 0 || d.getUTCDay() === 6);
+        // delivery: the next day, or the next open day after it
+        do {
+            d = addUtcDays(d, 1);
+        } while (shopClosed(d));
+        return d.getUTCDate() + '. ' + (d.getUTCMonth() + 1) + '.';
+    }
+
+    // The Tilda block setting products per page must stay above the number of
+    // products; when the catalog outgrows it (it was 55 and the shop reached 58) Tilda
+    // draws only the first part and keeps the rest behind the Load more button, which we
+    // hide. The newest products (the ones just added) are exactly the missing ones.
+    // This safety net presses that button until everything is on the page. It is called
+    // from every render pass and from timers, NOT only once: on a phone the data arrives
+    // before Tilda has drawn the button, and a single early look found nothing, so the
+    // last products never loaded there while the computer (faster) was fine.
+    var loadMoreClicks = 0;
+    var loadMoreBusy = false;
+    function safetyLoadMoreIfPresent() {
+        if (loadMoreBusy || loadMoreClicks >= 12) return;
+        var btn = document.querySelector('.js-store-load-more-btn');
+        if (!btn) return;
+        loadMoreBusy = true;
+        loadMoreClicks++;
+        btn.click();
+        // Tilda inserts the next part a moment later; look again, more may remain.
+        setTimeout(function () { loadMoreBusy = false; safetyLoadMoreIfPresent(); }, 700);
+    }
+
+    // The data request starts immediately, before DOMContentLoaded. If the page
+    // HEAD already started it (window.__narinCat, optional snippet) that request
+    // is reused. GET with the key in the URL and no custom headers means the
+    // browser needs no separate CORS preflight round trip first (the function is
+    // STABLE, so GET works).
+    var dataPromise = window.__narinCat || fetch(SUPABASE_URL + '/rest/v1/rpc/get_catalog_page_data?apikey=' + SUPABASE_ANON_KEY, { priority: 'high' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .catch(function () { return null; });
+
+    function applyData(data) {
+        tagMap = {};
+        badgeMap = {};
+        (data.tags || []).forEach(function (row) {
+            tagMap[normalize(row.product_name)] = row;
+        });
+        unsourceableNames = new Set((data.unsourceable || []).map(normalize));
+        availableNames = new Set((data.available || []).map(normalize));
+        specialNames = new Set((data.special || []).map(normalize));
+        (data.badges || []).forEach(function (row) {
+            badgeMap[normalize(row.product_name)] = row;
+        });
+        specialDateLabel = computeSpecialOrderDate(new Set(data.closed_weekdays || []), new Set(data.closed_dates || []));
+        dataApplied = true;
+    }
+
+    function readCache() {
+        try {
+            var o = JSON.parse(localStorage.getItem(CACHE_KEY));
+            if (o && o.data && o.t && Date.now() - o.t < CACHE_MAX_AGE_MS) return o;
+        } catch (e) {}
+        return null;
+    }
+
+    function writeCache(data) {
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), data: data })); } catch (e) {}
+    }
+
+    function showSkeleton() {
+        if (!grid || !grid.parentElement || skelEl) return;
+        skelEl = el('div', 'narin-skel');
+        var tabs = el('div', 'narin-skel-tabs');
+        for (var i = 0; i < 5; i++) tabs.appendChild(el('div', 'narin-skel-tab'));
+        var cardsGrid = el('div', 'narin-skel-grid');
+        for (var j = 0; j < 6; j++) cardsGrid.appendChild(el('div', 'narin-skel-card'));
+        skelEl.appendChild(tabs);
+        skelEl.appendChild(cardsGrid);
+        grid.parentElement.insertBefore(skelEl, grid);
+    }
+
+    function buildUi() {
+        if (grid && grid.parentElement && !document.querySelector('.narin-cat-nav')) {
+            grid.parentElement.insertBefore(buildNav(), skelEl || grid);
+        }
+        if (skelEl) {
+            var fakeTabs = skelEl.querySelector('.narin-skel-tabs');
+            if (fakeTabs) fakeTabs.remove();
+        }
+        renderTabBar();
+        renderSubBar();
+        uiBuilt = true;
+    }
+
+    function startObserver() {
+        if (!grid || observer) return;
+        observer = new MutationObserver(scheduleRender);
+        observer.observe(grid, { childList: true, subtree: true });
+    }
+
+    // A separate page script used to send one database WRITE per card, three
+    // times per visit (about a hundred requests per visitor), all queued next to
+    // the main catalog request. This replaces it: the price on the card is compared
+    // with the price already received from the database and a request goes out
+    // only for products whose price really changed (normally none).
+    function syncChangedPrices() {
+        if (pricesSynced || !grid) return;
+        pricesSynced = true;
+        realCards().forEach(function (card) {
+            var nameEl = card.querySelector('.js-product-name');
+            var priceEl = card.querySelector('.js-product-price');
+            if (!nameEl || !priceEl) return;
+            var name = normalize(nameEl.textContent);
+            var row = tagMap[name];
+            if (!row) return;
+            var price = parseFloat(priceEl.textContent.replace(/\s/g, '').replace(',', '.'));
+            if (!price || price <= 0) return;
+            if (Number(row.price) === price) return;
+
+            var portionEl = card.querySelector('[class*="price-portion"]:not([class*="slash"])');
+            var unitSize = 0;
+            if (portionEl) {
+                var m = portionEl.textContent.match(/(\d+)/);
+                if (m) unitSize = parseInt(m[1], 10);
+            }
+            fetch(SUPABASE_URL + '/rest/v1/rpc/sync_product_price', {
+                method: 'POST',
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ p_product_name: name, p_price: price, p_order_unit_size: unitSize }),
+            }).catch(function () {});
+        });
     }
 
     function init() {
-        Promise.all([rpc('get_product_tags'), rpc('get_unsourceable_products')])
-            .then(function (results) {
-                (results[0] || []).forEach(function (row) {
-                    tagMap[normalize(row.product_name)] = row;
-                });
-                unsourceableNames = new Set((results[1] || []).map(function (row) { return normalize(row.product_name); }));
+        grid = document.querySelector('.js-store-grid-cont');
+        if (!grid) { failOpen(); return; }
+        showSkeleton();
+        loadExtras();
 
-                grid = document.querySelector('.js-store-grid-cont');
-                if (grid && grid.parentElement && !document.querySelector('.narin-cat-nav')) {
-                    grid.parentElement.insertBefore(buildNav(), grid);
+        // 1) At once, from the cache of the previous visit (if any): the catalog
+        // does not wait for the network, it is drawn as soon as Tilda inserts cards.
+        var cachedJson = null;
+        var cached = readCache();
+        if (cached) {
+            try {
+                applyData(cached.data);
+                cachedJson = JSON.stringify(cached.data);
+                buildUi();
+                startObserver();
+                renderPass();
+            } catch (e) {
+                dataApplied = false;
+                cachedJson = null;
+            }
+        }
+
+        // 2) In parallel: fresh data. Redraw only when it differs from what is shown.
+        dataPromise
+            .then(function (data) {
+                if (!data) throw new Error('empty response');
+
+                var json = JSON.stringify(data);
+                writeCache(data);
+
+                if (json !== cachedJson) {
+                    applyData(data);
+                    dataVersion++;
+                    if (uiBuilt) { renderTabBar(); renderSubBar(); } else { buildUi(); }
+                    startObserver();
+                    renderPass();
                 }
 
-                renderTabBar();
-                renderSubBar();
-                applyFilters();
-                setTimeout(applyFilters, 1200);
+                safetyLoadMoreIfPresent();
 
-                if (grid) {
-                    var pending = null;
-                    observer = new MutationObserver(function () {
-                        if (pending) clearTimeout(pending);
-                        pending = setTimeout(applyFilters, 150);
-                    });
-                    observer.observe(grid, { childList: true, subtree: true });
-                }
+                // Tilda fills card content in a later pass of its own. These extra
+                // passes do nothing when the fingerprint is unchanged.
+                setTimeout(renderPass, 1000);
+                setTimeout(renderPass, 2500);
+                setTimeout(renderPass, 4500);
+                setTimeout(syncChangedPrices, 3000);
             })
-            .catch(function (err) { console.error('narin filter', err); });
+            .catch(function (err) {
+                console.error('narin catalog engine', err);
+                if (!dataApplied) failOpen();
+            });
     }
 
     if (document.readyState === 'loading') {
