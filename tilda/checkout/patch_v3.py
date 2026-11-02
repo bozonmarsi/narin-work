@@ -493,7 +493,6 @@ css = """
 .np-sec::before { display: none !important; }
 @media (min-width: 980px) { .np-sec { padding: 20px 24px 22px; } .np-sh { margin-left: 0; } }
 #c2.z-gift { --z: #e0457b; --zd: #c23365; --zs: #fff6f9; --zl: #f8d3e0; --zt: #fde6ee; --zi: #8a1f48; }
-#c3 { --z: #0a9a55; --zd: #087a44; --zs: #f4fbf7; --zl: #cdeedb; --zt: #e2f6ea; --zi: #0b5a30; }
 #c4 { --zs: #fbfbfc; --zl: #e8eaed; }
 .np-sec .np-num { background: #fff; color: var(--z); box-shadow: inset 0 0 0 1.5px var(--zl); }
 .np-sec.done .np-num { background: var(--z); color: #fff; box-shadow: none; }
