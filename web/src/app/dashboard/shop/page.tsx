@@ -231,7 +231,7 @@ const TILDA_COLOR_TAG: Record<string, string> = {
 const TILDA_SECTION_TAG: Record<string, string> = {
   ohapka: "Náruče květin",
   set: "Sety",
-  stabilizovane: "Květiny",
+  stabilizovane: "Květiny;Stabilizované",
 };
 
 const TILDA_CSV_HEADER = [

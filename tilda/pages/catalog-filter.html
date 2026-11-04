@@ -114,6 +114,16 @@ html.narin-cat-on .js-store-grid-cont .t-store__card:not([data-narin-seen]) { di
 .narin-cat-promo-section.theme-atelier .t1002__addBtn, .narin-cat-promo-section.theme-atelier .t1002__addBtn_active { border-color: #219c44 !important; }
 .narin-cat-promo-section.theme-atelier .t1002__addBtn svg path { stroke: #219c44 !important; }
 .narin-cat-promo-section.theme-atelier .t1002__addBtn_active svg path, .narin-cat-promo-section.theme-atelier .t1002__addBtn:hover svg path { fill: #219c44 !important; }
+/* Stabilized flowers: beige strip, so its head is dark text instead of white; brown names, prices and buttons. */
+.narin-cat-promo-section.theme-stab { background: #e8dcc8; }
+.narin-cat-promo-section.theme-stab .narin-cat-promo-name, .narin-cat-promo-section.theme-stab .narin-cat-promo-cta, .narin-cat-promo-section.theme-stab .narin-cat-promo-caption { color: #4a3826; }
+.narin-cat-promo-section.theme-stab .js-product-name, .narin-cat-promo-section.theme-stab .js-product-price, .narin-cat-promo-section.theme-stab .t-store__card__price-value, .narin-cat-promo-section.theme-stab .t-store__card__price { color: #7a5c3a !important; }
+.narin-cat-promo-section.theme-stab [class*="t-btnflex"]:not(.t1002__addBtn),
+.narin-cat-promo-section.theme-stab [class*="t-btnflex"]:not(.t1002__addBtn):hover { background-color: #7a5c3a !important; background-image: none !important; color: #fff !important; }
+.narin-cat-promo-section.theme-stab [class*="t-btnflex"]:not(.t1002__addBtn):hover { background-color: #5f4629 !important; }
+.narin-cat-promo-section.theme-stab .t1002__addBtn, .narin-cat-promo-section.theme-stab .t1002__addBtn_active { border-color: #7a5c3a !important; }
+.narin-cat-promo-section.theme-stab .t1002__addBtn svg path { stroke: #7a5c3a !important; }
+.narin-cat-promo-section.theme-stab .t1002__addBtn_active svg path, .narin-cat-promo-section.theme-stab .t1002__addBtn:hover svg path { fill: #7a5c3a !important; }
 
 .narin-cat-promo-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
 .narin-cat-promo-name { color: #fff; font-family: 'Rubik', sans-serif; font-size: 20px; font-weight: 700; }
@@ -183,7 +193,8 @@ html.narin-cat-on .js-store-grid-cont .t-store__card:not([data-narin-seen]) { di
         { key: 'buket', label: 'Kytice', category: 'buket', caption: cz('Hotov&#233; kytice p&#345;ipraven&#233; k p&#345;ed&#225;n&#237;.') },
         { key: 'ohapka', label: cz('N&#225;ru&#269;e'), category: 'ohapka', caption: null },
         // optional: the tab stays hidden until at least one such product is on sale.
-        { key: 'stabilizovane', label: cz('Stabilizovan&#233;'), category: 'stabilizovane', optional: true, caption: cz('Prav&#233; kv&#283;tiny, kter&#233; si d&#237;ky stabilizaci uchovaj&#237; kr&#225;su i bez vody.') },
+        // stripLast: its strip goes after the Atelier and the gifts, not with the other tabs.
+        { key: 'stabilizovane', label: cz('Stabilizovan&#233;'), category: 'stabilizovane', optional: true, stripLast: true, theme: 'stab', caption: cz('Prav&#233; kv&#283;tiny, kter&#233; si d&#237;ky stabilizaci uchovaj&#237; kr&#225;su i bez vody.') },
     ];
 
     // Two more strips without a tab of their own: the Atelier (green) and the gifts
@@ -488,10 +499,11 @@ html.narin-cat-on .js-store-grid-cont .t-store__card:not([data-narin-seen]) { di
         // collected once per pass (before, they were searched again for every
         // strip slot, which made a long list grow quadratically slower).
         var queue = [];
-        otherTabs.forEach(function (tab) {
+        function queueTab(tab) {
             var found = findRealCandidates(tab, allCards, new Set(), Infinity);
             if (found.length) queue.push({ tab: tab, cards: found });
-        });
+        }
+        otherTabs.filter(function (t) { return !t.stripLast; }).forEach(queueTab);
         EXTRA_STRIPS.forEach(function (tab) {
             if (!tab.enabled) return;
             var names = new Set((extraItems[tab.key] || []).map(function (it) { return normalize(it.title); }));
@@ -505,6 +517,7 @@ html.narin-cat-on .js-store-grid-cont .t-store__card:not([data-narin-seen]) { di
             });
             if (cards.length) queue.push({ tab: tab, cards: cards });
         });
+        otherTabs.filter(function (t) { return t.stripLast; }).forEach(queueTab);
         for (var i = 3; i < visibleCards.length && queue.length; i += 4) {
             var item = queue.shift();
             visibleCards[i].insertAdjacentElement('afterend', buildPromoSection(item.tab, item.cards));
