@@ -37,7 +37,7 @@ export function RecipesTab({ onOpenCatalog }: { onOpenCatalog: () => void }) {
 
   const rawMaterials = stickers.filter((s) => s.category === "ohapka");
   const bouquets = stickers
-    .filter((s) => s.category !== "ohapka" && s.category !== "atelier" && s.category !== "otkrytka" && s.product_name !== "__default__")
+    .filter((s) => s.category !== "ohapka" && s.category !== "atelier" && s.category !== "stabilizovane" && s.category !== "otkrytka" && s.product_name !== "__default__")
     .filter((s) => decodeHtmlEntities(s.product_name).toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => a.product_name.localeCompare(b.product_name));
 

@@ -33,11 +33,12 @@ const CATEGORY_OPTIONS = [
   { value: "atelier", label: "Atelier" },
   { value: "darky", label: "Dárky" },
   { value: "banky", label: "Kovky" },
+  { value: "stabilizovane", label: "Stabilizované" },
 ];
 
 // Составом набираются только собранные букеты/сеты — охапки сами сырьё,
 // Atelier без фиксированного рецепта, Dárky вообще не цветы.
-const NO_RECIPE_CATEGORIES = new Set(["ohapka", "atelier", "darky"]);
+const NO_RECIPE_CATEGORIES = new Set(["ohapka", "atelier", "darky", "stabilizovane"]);
 
 function quantityBadgeClass(qty: number): string {
   if (qty <= 0) return "bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400";

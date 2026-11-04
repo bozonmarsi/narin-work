@@ -107,13 +107,14 @@ const CATEGORY_OPTIONS = [
   { value: "atelier", label: "Atelier", color: "bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 ring-blue-200 dark:ring-blue-500/30" },
   { value: "darky", label: "Dárky", color: "bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-400 ring-teal-200 dark:ring-teal-500/30" },
   { value: "banky", label: "Kovky", color: "bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400 ring-sky-200 dark:ring-sky-500/30" },
+  { value: "stabilizovane", label: "Stabilizované", color: "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-emerald-200 dark:ring-emerald-500/30" },
 ];
 
 // Составом (рецептом) из сырья набираются только собранные букеты/сеты.
 // Охапки — сами сырьё, Atelier — авторская работа без фиксированного
 // рецепта, Dárky (открытки, сладости и т.п.) — не цветы вообще, там
 // рецепту взяться неоткуда.
-const NO_RECIPE_CATEGORIES = new Set(["ohapka", "atelier", "darky"]);
+const NO_RECIPE_CATEGORIES = new Set(["ohapka", "atelier", "darky", "stabilizovane"]);
 
 // Podkategorie dárků — taby na /darky a "Co posílat" v Důležitých dnech
 // (stejné klíče jako CHECK v product_stickers.gift_subcategory a occasion_gift_types).
@@ -125,6 +126,11 @@ const GIFT_SUBCATEGORY_OPTIONS = [
   { value: "textil", label: "Текстиль" },
   { value: "doplnky", label: "Аксессуары" },
 ];
+
+// Наличие этих товаров считается само по остатку минус резерв заказов, ручной
+// переключатель им не нужен. Стабилизированные цветы менеджер считает степпером
+// "+/−" (приёмка им не нужна), списание при отправке — deduct_order_stock.
+const AUTO_STOCK_CATEGORIES = new Set(["ohapka", "stabilizovane"]);
 
 function categoryLabel(value: string | null) {
   return CATEGORY_OPTIONS.find((c) => c.value === value)?.label ?? null;
@@ -224,6 +230,7 @@ const TILDA_COLOR_TAG: Record<string, string> = {
 const TILDA_SECTION_TAG: Record<string, string> = {
   ohapka: "Náruče květin",
   set: "Sety",
+  stabilizovane: "Květiny",
 };
 
 const TILDA_CSV_HEADER = [
@@ -386,7 +393,7 @@ function guessHeight(name: string): string | null {
 // выглядела бы здесь как "завтра", а на сайте была бы уже скрыта.
 function isHiddenFromSite(p: Product, reserved = 0): boolean {
   if (p.manually_hidden) return true;
-  return p.category === "ohapka" && !p.special_order && (p.quantity ?? 0) - reserved <= 0 && p.vanvliet_in_stock !== true;
+  return AUTO_STOCK_CATEGORIES.has(p.category ?? "") && !p.special_order && (p.quantity ?? 0) - reserved <= 0 && p.vanvliet_in_stock !== true;
 }
 
 // Порядок карточек в Каталоге у менеджера: зелёные (в наличии) → синие
@@ -818,7 +825,7 @@ function ProductCard({
               </button>
             </div>
           </div>
-          {p.category === "ohapka" && reserved > 0 && (
+          {AUTO_STOCK_CATEGORIES.has(p.category ?? "") && reserved > 0 && (
             <p
               title="Обещано подтверждённым, но ещё не собранным заказам. Со склада спишется при сборке; на сайте и в «наличии» учитывается только свободный остаток."
               className="mt-1 text-[10px] font-medium text-violet-600 dark:text-violet-400"
@@ -1006,7 +1013,7 @@ function ProductCard({
             🚚 {p.auto_special_order ? "Под заказ — не хватает цветка" : "Всегда под заказ"} (+2 дня)
             {p.force_tomorrow && " — перебито плашкой «завтра»"}
           </p>
-        ) : p.category === "ohapka" ? (
+        ) : AUTO_STOCK_CATEGORIES.has(p.category ?? "") ? (
           <>
             {/* Наличие охапок считается само по остатку со склада (см.
                 tg_sync_ohapka_availability) — ручной тоггл тут только
@@ -1109,7 +1116,7 @@ export default function ShopPage() {
   const [reserved, setReserved] = useState<Record<string, number>>({});
   const isInStockToday = useCallback(
     (p: Product) => {
-      if (p.category === "ohapka") return (p.quantity ?? 0) - (reserved[p.id] ?? 0) > 0;
+      if (AUTO_STOCK_CATEGORIES.has(p.category ?? "")) return (p.quantity ?? 0) - (reserved[p.id] ?? 0) > 0;
       // Кованки и кытицы: если количество задано — "в наличии" по нему (как
       // на сайте), иначе по ручному переключателю product_availability.
       if ((p.category === "banky" || p.category === "buket") && p.quantity != null) return p.quantity > 0;

@@ -182,6 +182,8 @@ html.narin-cat-on .js-store-grid-cont .t-store__card:not([data-narin-seen]) { di
         { key: 'banky', label: 'Kovky', category: 'banky', caption: cz('Kv&#283;tiny naaran&#382;ovan&#233; p&#345;&#237;mo ve v&#225;ze, p&#345;ipraven&#233; k p&#345;ed&#225;n&#237;.') },
         { key: 'buket', label: 'Kytice', category: 'buket', caption: cz('Hotov&#233; kytice p&#345;ipraven&#233; k p&#345;ed&#225;n&#237;.') },
         { key: 'ohapka', label: cz('N&#225;ru&#269;e'), category: 'ohapka', caption: null },
+        // optional: the tab stays hidden until at least one such product is on sale.
+        { key: 'stabilizovane', label: cz('Stabilizovan&#233;'), category: 'stabilizovane', optional: true, caption: cz('Prav&#233; kv&#283;tiny, kter&#233; si d&#237;ky stabilizaci uchovaj&#237; kr&#225;su i bez vody.') },
     ];
 
     // Two more strips without a tab of their own: the Atelier (green) and the gifts
@@ -586,7 +588,9 @@ html.narin-cat-on .js-store-grid-cont .t-store__card:not([data-narin-seen]) { di
         // Counts come from the real cards, so they stay empty until the first pass.
         if (!countsReady) return;
         document.querySelectorAll('.narin-cat-tab-count').forEach(function (span) {
-            span.textContent = categoryCounts[span.getAttribute('data-cat')] || 0;
+            var n = categoryCounts[span.getAttribute('data-cat')] || 0;
+            span.textContent = n;
+            if (span.hasAttribute('data-optional')) span.parentNode.style.display = n ? '' : 'none';
         });
     }
 
@@ -763,6 +767,10 @@ html.narin-cat-on .js-store-grid-cont .t-store__card:not([data-narin-seen]) { di
             btn.type = 'button';
             var count = el('span', 'narin-cat-tab-count');
             count.setAttribute('data-cat', tab.category);
+            if (tab.optional) {
+                count.setAttribute('data-optional', '1');
+                if (!categoryCounts[tab.category]) btn.style.display = 'none';
+            }
             btn.appendChild(count);
             bindTap(btn, function () { switchTab(tab.key); });
             bar.appendChild(btn);
