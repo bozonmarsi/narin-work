@@ -7,6 +7,7 @@ import { decodeHtmlEntities } from "@/lib/format";
 import { useRealtimeRefresh } from "@/lib/useRealtimeRefresh";
 import { VanVlietPanel } from "./VanVlietPanel";
 import { Modal } from "../warehouse/Modal";
+import { ProductCardEditor } from "./ProductCardEditor";
 
 type ClosedDate = { closed_date: string; reason: string | null };
 type ClosedSlot = { id: string; closed_date: string; slot_label: string; reason: string | null };
@@ -427,6 +428,7 @@ function ProductCard({
   onToggleManualHide,
   onSetAddedToTilda,
   onOpenCsvDraft,
+  onOpenCardEditor,
   csvSelected,
   onToggleCsvSelected,
   onToggleArchived,
@@ -464,6 +466,7 @@ function ProductCard({
   onToggleManualHide: (id: string, current: boolean) => void;
   onSetAddedToTilda: (id: string, value: boolean) => void;
   onOpenCsvDraft: (product: Product) => void;
+  onOpenCardEditor: (product: Product) => void;
   csvSelected: boolean;
   onToggleCsvSelected: (id: string) => void;
   onToggleArchived: (id: string, current: boolean) => void;
@@ -991,6 +994,13 @@ function ProductCard({
             </button>
           </div>
         )}
+        <button
+          onClick={() => onOpenCardEditor(p)}
+          title="Описание, советы, уход и фото в карточке товара на сайте"
+          className="rounded-md px-2 py-1 text-left text-[11px] font-medium text-zinc-600 dark:text-zinc-300 ring-1 ring-inset ring-zinc-200 dark:ring-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+        >
+          📝 Карточка на сайте
+        </button>
         {hiddenFromSite && (
           <p
             title={
@@ -1151,6 +1161,7 @@ export default function ShopPage() {
   // этого можно скачать CSV.
   const [csvDraftProduct, setCsvDraftProduct] = useState<Product | null>(null);
   const [csvDraft, setCsvDraft] = useState<TildaCopyDraft>(EMPTY_TILDA_COPY);
+  const [cardEditorProduct, setCardEditorProduct] = useState<Product | null>(null);
   const [csvDraftLoading, setCsvDraftLoading] = useState(false);
   const [csvDraftError, setCsvDraftError] = useState<string | null>(null);
 
@@ -2245,6 +2256,7 @@ export default function ShopPage() {
                   onToggleManualHide={toggleManualHide}
                   onSetAddedToTilda={setAddedToTilda}
                   onOpenCsvDraft={openCsvDraft}
+                  onOpenCardEditor={setCardEditorProduct}
                   csvSelected={false}
                   onToggleCsvSelected={() => {}}
                   onToggleArchived={toggleArchived}
@@ -2586,6 +2598,7 @@ export default function ShopPage() {
                 onToggleManualHide={toggleManualHide}
                 onSetAddedToTilda={setAddedToTilda}
                 onOpenCsvDraft={openCsvDraft}
+                onOpenCardEditor={setCardEditorProduct}
                 csvSelected={selectedForCsv.has(p.id)}
                 onToggleCsvSelected={toggleSelectedForCsv}
                 onToggleArchived={toggleArchived}
@@ -2600,6 +2613,10 @@ export default function ShopPage() {
           )}
         </div>
       </section>
+      )}
+
+      {cardEditorProduct && (
+        <ProductCardEditor product={cardEditorProduct} onClose={() => setCardEditorProduct(null)} />
       )}
 
       {csvDraftProduct && (
