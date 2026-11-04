@@ -424,6 +424,7 @@ export function VanVlietPanel() {
   const [manualProductId, setManualProductId] = useState("");
   const [manualAliasText, setManualAliasText] = useState("");
   const manualAliasInputRef = useRef<HTMLInputElement>(null);
+  const scanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [removingAliasId, setRemovingAliasId] = useState<string | null>(null);
 
   // "Мини-mind-map": список наших цветов, у каждого может быть
@@ -452,6 +453,7 @@ export function VanVlietPanel() {
       const supabase = createClient();
       await supabase.from("product_name_aliases").delete().eq("id", id);
       setAliases((prev) => prev.filter((a) => a.id !== id));
+      scanSoon();
     } finally {
       setRemovingAliasId(null);
     }
@@ -562,10 +564,23 @@ export function VanVlietPanel() {
       });
       if (!insertErr) {
         setAliases((prev) => [...prev, { id: key, alias, product_sticker_id: materialId }]);
+        scanSoon();
       }
     } finally {
       setSavingAlias(null);
     }
+  }
+
+  // Сканер сам ходит только 4 раза в день (07/09/11/19 по Праге), поэтому добавленное или
+  // удалённое соответствие до следующего прогона ничего не меняло: товар оставался
+  // «непроверенным» или со старым остатком. Теперь после изменения соответствий сканер
+  // запускается сам через пару секунд (несколько добавлений подряд = один запуск).
+  function scanSoon() {
+    if (scanTimerRef.current) clearTimeout(scanTimerRef.current);
+    scanTimerRef.current = setTimeout(() => {
+      scanTimerRef.current = null;
+      void scanStock();
+    }, 2500);
   }
 
   // Ручной запуск сканера остатков (та же функция, что дважды в день
