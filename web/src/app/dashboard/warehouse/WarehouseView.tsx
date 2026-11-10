@@ -8,10 +8,12 @@ import { RecipesTab } from "./RecipesTab";
 import { CatalogTab } from "./CatalogTab";
 import { SidePanel } from "./Modal";
 import { FloristRequestsPanel } from "../shop/FloristRequestsPanel";
+import { CollectionTab } from "./CollectionTab";
 
-type PanelKey = "receive" | "recipes" | "suppliers" | "flowers";
+type PanelKey = "collection" | "receive" | "recipes" | "suppliers" | "flowers";
 
 const NAV_ITEMS: { key: PanelKey; label: string; icon: string }[] = [
+  { key: "collection", label: "Коллекция", icon: "💐" },
   { key: "receive", label: "Приёмка", icon: "📦" },
   { key: "recipes", label: "Рецепты", icon: "📋" },
   { key: "suppliers", label: "Поставщики", icon: "🚚" },
@@ -19,6 +21,7 @@ const NAV_ITEMS: { key: PanelKey; label: string; icon: string }[] = [
 ];
 
 const PANEL_TITLES: Record<PanelKey, string> = {
+  collection: "Коллекция букетов",
   receive: "Приёмка партии",
   recipes: "Рецепты букетов",
   suppliers: "Поставщики",
@@ -26,6 +29,7 @@ const PANEL_TITLES: Record<PanelKey, string> = {
 };
 
 function PanelContent({ panel, onOpenCatalog }: { panel: PanelKey; onOpenCatalog: () => void }) {
+  if (panel === "collection") return <CollectionTab />;
   if (panel === "receive") return <ReceiveTab onOpenCatalog={onOpenCatalog} />;
   if (panel === "recipes") return <RecipesTab onOpenCatalog={onOpenCatalog} />;
   if (panel === "flowers") return <FloristRequestsPanel />;
