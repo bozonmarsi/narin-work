@@ -79,7 +79,7 @@ export default function ArchivePage() {
       const [couriersRes, productsRes, statusRows] = await Promise.all([
         supabase.from("users").select("id, full_name").eq("role", "courier"),
         supabase.from("product_stickers").select("id, product_name, image_url").order("product_name"),
-        supabase.from("tilda_orders").select("payment_status"),
+        supabase.from("tilda_orders").select("payment_status").order("created_at", { ascending: false }).limit(300),
       ]);
       if (!couriersRes.error) setCouriers(couriersRes.data ?? []);
       if (!productsRes.error) {

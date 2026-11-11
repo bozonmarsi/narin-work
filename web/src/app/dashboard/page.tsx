@@ -24,7 +24,6 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<OrderRow | null>(null);
-  const [refreshSignal, setRefreshSignal] = useState(0);
 
   useEffect(() => {
     if (profile?.role !== "manager") return;
@@ -52,7 +51,11 @@ export default function DashboardPage() {
 
       const { data: statusRows, error: statusError } = await supabase
         .from("tilda_orders")
-        .select("payment_status");
+        .select("payment_status")
+        // Only recent orders: the list of statuses is the same, and reading
+        // every order ever made would grow without limit.
+        .order("created_at", { ascending: false })
+        .limit(300);
       if (!statusError) {
         const unique = Array.from(
           new Set((statusRows ?? []).map((r) => r.payment_status).filter(Boolean)),
@@ -65,7 +68,8 @@ export default function DashboardPage() {
   const loadKanban = useCallback(async () => {
     // No setLoading(true) — this also fires on background Realtime updates;
     // see the same note in CourierView.tsx.
-    setRefreshSignal((n) => n + 1);
+    // The calendar is NOT poked from here any more: it has its own realtime
+    // subscription, so poking it too made every order change load it twice.
     const supabase = createClient();
 
     const [ordersRes, couriersRes] = await Promise.all([
@@ -87,7 +91,10 @@ export default function DashboardPage() {
       const rows = (ordersRes.data as unknown as OrderRow[]) ?? [];
       // Статус подарка без адреса берём отдельным запросом, а не колонкой в
       // ORDER_COLUMNS: если SQL ещё не запущен, канбан всё равно загрузится.
-      const { data: gifts } = await supabase.from("gift_links").select("order_id, status");
+      const orderIds = rows.map((o) => o.order_id).filter(Boolean) as string[];
+      const { data: gifts } = orderIds.length
+        ? await supabase.from("gift_links").select("order_id, status").in("order_id", orderIds)
+        : { data: [] };
       const giftByOrder = new Map((gifts ?? []).map((g: { order_id: string; status: string }) => [g.order_id, g.status]));
       setOrders(rows.map((o) => ({ ...o, gift_status: giftByOrder.get(o.order_id ?? "") ?? null })));
     }
@@ -185,7 +192,7 @@ export default function DashboardPage() {
 
       <GiftLinksPanel />
 
-      <CalendarView onSelect={setSelectedOrder} refreshSignal={refreshSignal} />
+      <CalendarView onSelect={setSelectedOrder} />
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Активные заказы</h2>
