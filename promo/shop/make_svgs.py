@@ -120,6 +120,8 @@ VARIANTS = {
     "E-scatter": "equal daisies scattered evenly over the glass, like on the label",
     "F-pattern": "equal daisies on a staggered grid over the glass",
     "G-scatter-small": "smaller equal daisies, scattered more densely, daisies as separators",
+    "H-big-under": "bigger daisies, fewer, over the whole glass and under the text",
+    "I-bigger-under": "even bigger daisies, fewest, over the whole glass and under the text",
 }
 
 
@@ -167,7 +169,7 @@ def ellipse_points(n, inset, t0, t1):
 
 
 def arch_art(ink, variant="A-garland"):
-    SCAT = ("E-scatter", "F-pattern", "G-scatter-small")
+    SCAT = ("E-scatter", "F-pattern", "G-scatter-small", "H-big-under", "I-bigger-under")
     logo_w, top = (700, 165) if variant == "A-garland" else (660, 150) if variant in SCAT else (760, 140)
     lg, lh = logo(AW / 2, top, logo_w, ink)
     sub_y = top + lh + 84
@@ -213,10 +215,24 @@ def arch_art(ink, variant="A-garland"):
                     continue
                 k = round((y - 60) / dy) * 2 + col
                 flowers.append(daisy(x, y, d, DAISY_COLS[k % 6], 0))
+    elif variant in ("H-big-under", "I-bigger-under"):
+        # only the tulip is kept clear; the white text lies on top of the daisies
+        u = logo_w / LOGO_VB[2]
+        tulip = (AW / 2 - logo_w / 2 + (465 - LOGO_VB[0]) * u - 10, top - 10, AW / 2 - logo_w / 2 + (725 - LOGO_VB[0]) * u + 10, top + lh)
+        box = {"x0": 0, "x1": AW, "y0": 0, "y1": AH, "test": lambda x, y, r: arch_inner(x, y, r, 30)}
+        r, gap, seed = (44, 70, 7) if variant == "H-big-under" else (56, 90, 4)
+        flowers = scatter(box, [tulip], 80000, r, r, gap, seed=seed)
     else:
         sep = "daisy"
     line = bottom_line(ink, 612 if variant != "C-ribbon" else 628, 1040 if variant == "A-garland" else 1120 if variant in SCAT else 1180, 88, sep)
-    return [layer("daisies", flowers), layer("logo", [lg]), layer("text", [sub] + line)]
+    out = [layer("daisies", flowers)]
+    if variant in ("H-big-under", "I-bigger-under"):
+        # a cobalt outline under the white lettering keeps it readable on top of the daisies
+        def outline(el):
+            el = re.sub(r'fill="#[0-9A-Fa-f]{6}"', f'fill="{COBALT}"', el)
+            return el.replace("<path ", f'<path stroke="{COBALT}" stroke-width="14" stroke-linejoin="round" ')
+        out.append(layer("outline", [outline(e) for e in [lg, sub] + line]))
+    return out + [layer("logo", [lg]), layer("text", [sub] + line)]
 
 
 def arch_decal(ink, variant):
