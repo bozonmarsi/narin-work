@@ -58,6 +58,7 @@ const METHODS: { value: string; label: string }[] = [
 const AMOUNT_PRESETS = [500, 1000, 1500, 2000, 3000];
 
 const CLAIM_URL = "https://vezminarin.cz/poukaz?c=";
+const CATS_PER_CARD = 50; // Kč кошкам в приютах с каждой проданной карты
 
 function money(n: number | null) {
   return n == null ? "—" : `${Math.round(n).toLocaleString("cs-CZ")} Kč`;
@@ -132,6 +133,27 @@ export default function VouchersPage() {
     () => vouchers.filter((v) => v.status === "active").reduce((s, v) => s + (v.amount ?? 0), 0),
     [vouchers],
   );
+
+  // 50 Kč кошкам в приютах с каждой проданной карты (активированной: пластик при выдаче, онлайн после оплаты).
+  // Считаем по месяцу активации, по Праге; аннулированные не считаем.
+  const catsByMonth = useMemo(() => {
+    const fmt = new Intl.DateTimeFormat("cs-CZ", { timeZone: "Europe/Prague", year: "numeric", month: "2-digit" });
+    const key = (d: Date) => {
+      const p = fmt.formatToParts(d);
+      return `${p.find((x) => x.type === "year")?.value}-${p.find((x) => x.type === "month")?.value}`;
+    };
+    const now = new Date();
+    const cur = key(now);
+    const prev = key(new Date(now.getFullYear(), now.getMonth() - 1, 15));
+    const c = { cur: 0, prev: 0, curLabel: cur, prevLabel: prev };
+    vouchers.forEach((v) => {
+      if (!v.activated_at || v.status === "void") return;
+      const k = key(new Date(v.activated_at));
+      if (k === cur) c.cur += 1;
+      else if (k === prev) c.prev += 1;
+    });
+    return c;
+  }, [vouchers]);
 
   const actFound = useMemo(() => {
     const q = actCode.toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -284,6 +306,11 @@ export default function VouchersPage() {
       <p className="text-xs text-zinc-500 dark:text-zinc-400">
         Продано, но ещё не получено клиентами: {money(activeSum)}. Это ваше обязательство перед клиентами.
       </p>
+      <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
+        🐾 Кошкам в приютах (50 Kč с каждой проданной карты): за прошлый месяц ({catsByMonth.prevLabel}) отправить{" "}
+        <b>{money(catsByMonth.prev * CATS_PER_CARD)}</b> ({catsByMonth.prev} карт), в этом месяце пока{" "}
+        {money(catsByMonth.cur * CATS_PER_CARD)} ({catsByMonth.cur} карт).
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <form

@@ -1,0 +1,38 @@
+<!--
+  NARIN: plaška "pomáháme kočkám" na pokladně (/payment). Blok T123 kamkoli na stránce košíku.
+  Zobrazí se nad tlačítkem odeslání objednávky, jen když je v košíku dárková karta (název obsahuje "poukaz").
+  Nic nevybírá a nic nepřičítá k ceně: jen informuje a odkazuje na /darkove-karty#kocky.
+-->
+<style>
+.ncb { display:flex; gap:12px; align-items:center; margin:14px 0; padding:13px 15px; border-radius:16px;
+  background:#fbf6ee; border:1px solid #f1e5cf; font-family:'Rubik',sans-serif; font-size:14px; line-height:1.45; color:#4a505b; }
+.ncb .p { flex:0 0 auto; width:34px; height:34px; border-radius:50%; background:#fff; display:flex; align-items:center; justify-content:center; font-size:17px; }
+.ncb b { color:#16181d; font-weight:600; }
+.ncb a { color:#186ce0; font-weight:600; text-decoration:none; white-space:nowrap; }
+</style>
+<script>
+(function () {
+  var HTML = '<div class="p">🐾</div><div><b>Z každé dárkové karty posíláme 50 Kč kočkám v útulcích.</b> ' +
+             'Platíme to my, cena se nemění. <a href="/darkove-karty#kocky" target="_blank">Jak pomáháme</a></div>';
+
+  function hasCard() {
+    try {
+      var prods = (window.tcart && window.tcart.products) || [];
+      return prods.some(function (p) { return /poukaz/i.test(p && p.name || ''); });
+    } catch (e) { return false; }
+  }
+
+  function place() {
+    var el = document.getElementById('ncbBanner');
+    var btn = document.querySelector('.t706 .t-submit, .t-form .t-submit');
+    if (!hasCard() || !btn) { if (el) el.remove(); return; }
+    if (el && el.nextElementSibling === btn) return;
+    if (!el) { el = document.createElement('div'); el.id = 'ncbBanner'; el.className = 'ncb'; el.innerHTML = HTML; }
+    btn.parentNode.insertBefore(el, btn);
+  }
+
+  // košík Tilda se překresluje, proto kontrolujeme průběžně
+  document.addEventListener('DOMContentLoaded', place);
+  setInterval(place, 1000);
+})();
+</script>

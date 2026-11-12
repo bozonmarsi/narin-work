@@ -215,9 +215,21 @@ function pragueDate(iso: string) {
   const g = (t: string) => parts.find((x) => x.type === t)?.value ?? "";
   return `${g("day")}. ${g("month")}. ${g("year")}`;
 }
+// Obraz karty podle nominálu (stejný jako na plastové kartě); jiné částky obraz nemají.
+const VOUCHER_ART: Record<number, string> = {
+  500: "https://narin-work.vercel.app/darkove-karty/kocka-500.jpg",
+  1000: "https://narin-work.vercel.app/darkove-karty/kocka-1000.jpg",
+  1500: "https://narin-work.vercel.app/darkove-karty/kocka-1500.jpg",
+  2000: "https://narin-work.vercel.app/darkove-karty/kocka-2000.jpg",
+};
+
 // Karta s poukazem v e-mailu: tabulka + inline styly (barva jako záloha, když klient ignoruje gradient).
 function voucherCard(amount: number, code: string, validUntil: string | null) {
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;border-radius:18px;overflow:hidden;background:${ACCENT};background-image:linear-gradient(135deg,#2a7bf0 0%,#186ce0 50%,#0f4fb0 100%);">
+  const art = VOUCHER_ART[Math.round(amount)];
+  const artHtml = art
+    ? `<img src="${art}" width="536" alt="Dárková karta NARIN" style="display:block;width:100%;max-width:536px;height:auto;border-radius:18px;margin:0 0 12px;">`
+    : "";
+  return `${artHtml}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;border-radius:18px;overflow:hidden;background:${ACCENT};background-image:linear-gradient(135deg,#2a7bf0 0%,#186ce0 50%,#0f4fb0 100%);">
   <tr><td style="padding:22px 22px 20px;font-family:'Rubik',Arial,sans-serif;color:#ffffff;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
       <td style="font-size:13px;font-weight:700;letter-spacing:0.22em;color:#ffffff;">NARIN</td>
@@ -674,7 +686,7 @@ export async function POST(request: Request) {
             ctaUrl: `https://vezminarin.cz/poukaz?c=${encodeURIComponent(payload.code)}`,
             secondaryCtaLabel: "Jak to funguje",
             secondaryCtaUrl: "https://vezminarin.cz/to-buyers#poukazy",
-            footNote: `Poukaz lze uplatnit jen jednou a platí do ${until ?? "12 měsíců od aktivace"}. Kód ${esc(payload.code)} chraňte jako hotovost.`,
+            footNote: `Poukaz lze uplatnit jen jednou a platí do ${until ?? "12 měsíců od aktivace"}. Kód ${esc(payload.code)} chraňte jako hotovost.<br>🐾 Z každé dárkové karty posíláme 50 Kč kočkám v útulcích.`,
           }),
         );
       }
