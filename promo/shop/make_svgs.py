@@ -2,9 +2,7 @@
 
     python3 make_svgs.py <Ubuntu-Medium.ttf> [out_dir]
 
-Sizes come from the entrance plan (plan_pomeshchenie_i_dver.pdf, 12.11.2026):
-arch glass 144 x 70 cm, door 155 = 73 + 7 + 75, a 28 x 100 cm window in each leaf (bottom ~90 cm above the floor),
-a 50 cm band over the door, total height ~365 cm.
+The arch glass over the entrance is 144 x 70 cm (entrance plan, 12.11.2026). Four layouts of the daisies, see VARIANTS.
 """
 import math
 import pathlib
@@ -114,24 +112,88 @@ def arch_inner(x, y, r, margin=28):
     return y < AH - margin - r and ((x - AW / 2) / rx) ** 2 + ((y - AH) / ry) ** 2 < 1
 
 
-def arch_art(ink):
-    logo_w = 800
-    lg, lh = logo(AW / 2, 175, logo_w, ink)
-    sub, _ = text_path("květinový ateliér", 74, AW / 2, 175 + lh + 92, ink, width=logo_w)
-    line, lw = text_path("Květiny · Dárky · Pokojovky", 60, AW / 2, 625, ink, tracking=0.08)
-    blocked = [(AW / 2 - logo_w / 2 - 20, 110, AW / 2 + logo_w / 2 + 20, 175 + lh + 120),
-               (AW / 2 - lw / 2 - 25, 560, AW / 2 + lw / 2 + 25, 650)]
-    box = {"x0": 0, "x1": AW, "y0": 0, "y1": AH, "test": arch_inner}
-    flowers = scatter(box, blocked, 60000, 22, 44, 20, seed=11)
-    return [layer("daisies", flowers), layer("logo", [lg]), layer("text", [sub, line])]
+VARIANTS = {
+    "A-garland": "a garland of equal daisies along the arch",
+    "B-bouquets": "two small bouquets at the sides",
+    "C-ribbon": "a row of small daisies between the lines",
+    "D-minimal": "only two daisies, as separators in the bottom line",
+}
 
 
-def arch_decal(ink, name):
+def bottom_line(ink, y, max_w, size, sep):
+    """"Květiny · Dárky · Pokojovky" with dots or daisies between the words, centred, fitted to max_w."""
+    words = ["Květiny", "Dárky", "Pokojovky"]
+    track = 0.04
+    widths = [text_path(w, size, 0, 0, ink, "start", track)[1] for w in words]
+    gap = size * (1.5 if sep == "daisy" else 0.8)
+    total = sum(widths) + 2 * gap
+    if total > max_w:
+        size *= max_w / total
+        widths = [w * max_w / total for w in widths]
+        gap *= max_w / total
+        total = max_w
+    x, items = AW / 2 - total / 2, []
+    for i, (w, wd) in enumerate(zip(words, widths)):
+        items.append(text_path(w, size, x, y, ink, "start", track)[0])
+        x += wd
+        if i < 2:
+            cx, cy = x + gap / 2, y - size * 0.34
+            if sep == "daisy":
+                items.append(daisy(cx, cy, size * 0.72, [RED, YELLOW][i], 0))
+            else:
+                items.append(f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{size * 0.075:.1f}" fill="{ink}"/>')
+            x += gap
+    return items
+
+
+def ellipse_points(n, inset, t0, t1):
+    """n points evenly spaced by arc length on the arch, inset mm from the edge, angles t0..t1 (deg, 0 = left)."""
+    rx, ry = AW / 2 - inset, AH - inset
+    ts = [math.radians(t0 + (t1 - t0) * i / 2000) for i in range(2001)]
+    pts = [(AW / 2 - rx * math.cos(t), AH - ry * math.sin(t)) for t in ts]
+    acc = [0.0]
+    for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+        acc.append(acc[-1] + math.hypot(x1 - x0, y1 - y0))
+    out, j = [], 0
+    for i in range(n):
+        target = acc[-1] * i / (n - 1)
+        while acc[j] < target and j < len(acc) - 1:
+            j += 1
+        out.append(pts[j])
+    return out
+
+
+def arch_art(ink, variant="A-garland"):
+    logo_w, top = (700, 165) if variant == "A-garland" else (760, 140)
+    lg, lh = logo(AW / 2, top, logo_w, ink)
+    sub_y = top + lh + 84
+    sub, _ = text_path("květinový ateliér", 66, AW / 2, sub_y, ink, width=logo_w)
+    flowers = []
+    sep = "dot"
+    if variant == "A-garland":
+        for i, (x, y) in enumerate(ellipse_points(19, 50, 15, 165)):
+            flowers.append(daisy(x, y, 58, DAISY_COLS[i % 6], 0))
+    elif variant == "B-bouquets":
+        for side in (-1, 1):
+            cx = AW / 2 + side * 540
+            for dx, dy, c in ((-34, -40, BLUE), (34, -22, RED), (-14, 34, YELLOW), (46, 44, LILAC)):
+                flowers.append(daisy(cx + side * dx, 395 + dy, 66, c, 0))
+    elif variant == "C-ribbon":
+        n = 13
+        for i in range(n):
+            flowers.append(daisy(AW / 2 - logo_w / 2 + 20 + (logo_w - 40) * i / (n - 1), sub_y + 62, 38, DAISY_COLS[i % 6], 0))
+    else:
+        sep = "daisy"
+    line = bottom_line(ink, 612 if variant != "C-ribbon" else 628, 1040 if variant == "A-garland" else 1180, 88, sep)
+    return [layer("daisies", flowers), layer("logo", [lg]), layer("text", [sub] + line)]
+
+
+def arch_decal(ink, variant):
     guide = layer("cut-guide (do not print)", [f'<path d="{ARCH}" fill="none" stroke="#FF00FF" stroke-width="0.5"/>'])
-    return svg(AW, AH, "\n".join([guide] + arch_art(ink)), f"NARIN: arch glass decal 144 x 70 cm ({name})")
+    return svg(AW, AH, "\n".join([guide] + arch_art(ink, variant)), f"NARIN: arch glass decal 144 x 70 cm, {variant}: {VARIANTS[variant]}")
 
 
-def arch_mock(ink):
+def arch_mock(ink, variant):
     pad, frame = 120, 55
     W, H = AW + 2 * pad, AH + pad + 40
     outer = f"M{pad - frame} {pad + AH} A{AW / 2 + frame} {AH + frame} 0 0 1 {pad + AW + frame} {pad + AH} Z"
@@ -139,73 +201,9 @@ def arch_mock(ink):
              f'<path d="{outer}" fill="#7A4B2E"/>',
              f'<path transform="translate({pad} {pad})" d="{ARCH}" fill="#DCE6EE"/>',
              f'<path d="M{pad - frame * 0.55} {pad + AH} A{AW / 2 + frame * 0.55} {AH + frame * 0.55} 0 0 1 {pad + AW + frame * 0.55} {pad + AH}" fill="none" stroke="#B98A63" stroke-width="4"/>',
-             f'<g transform="translate({pad} {pad})">' + "\n".join(arch_art(ink)) + "</g>",
+             f'<g transform="translate({pad} {pad})">' + "\n".join(arch_art(ink, variant)) + "</g>",
              f'<rect y="{pad + AH}" width="{W}" height="40" fill="#5E3A24"/>']
     return svg(W, H, "\n".join(parts), "NARIN: arch mock-up")
-
-
-# ---------- door windows (280 x 1000 each) ----------
-WW, WH = 280, 1000
-
-
-def window_art(side, ink):
-    items, blocked = [], []
-    eye = 330   # ~1.55 m above the floor: window bottom is ~0.9 m
-    if side == "right":
-        lg, lh = logo(WW / 2, eye - 40, 236, ink)
-        items.append(lg)
-        y = eye - 40 + lh + 70
-        for w in ["Květiny", "Dárky", "Pokojovky"]:
-            p, _ = text_path(w, 40, WW / 2, y, ink, tracking=0.06)
-            items.append(p)
-            y += 58
-        blocked.append((0, eye - 80, WW, y - 10))
-    else:
-        y = eye + 30
-        for w in ["květinový", "ateliér"]:
-            p, _ = text_path(w, 46, WW / 2, y, ink, tracking=0.06)
-            items.append(p)
-            y += 64
-        blocked.append((0, eye - 40, WW, y - 10))
-    box = {"x0": 0, "x1": WW, "y0": 0, "y1": WH,
-           "test": lambda x, y, r: 18 + r < x < WW - 18 - r and 18 + r < y < WH - 18 - r}
-    flowers = scatter(box, blocked, 30000, 16, 30, 16, seed=5 if side == "left" else 9)
-    return [layer("daisies", flowers), layer("logo-text", items)]
-
-
-def window_decal(side, ink):
-    guide = layer("cut-guide (do not print)", [f'<rect width="{WW}" height="{WH}" fill="none" stroke="#FF00FF" stroke-width="0.5"/>'])
-    return svg(WW, WH, "\n".join([guide] + window_art(side, ink)),
-               f"NARIN: door window decal 28 x 100 cm, {'left leaf 73' if side == 'left' else 'right leaf 75'}")
-
-
-# ---------- whole entrance mock-up (from the street) ----------
-def entrance_mock(ink):
-    W, H = 2150, 3900
-    x0, floor = (W - 1550) / 2, 3750
-    door_top, band_top = floor - 2400, floor - 2400 - 500
-    p = [f'<rect width="{W}" height="{H}" fill="#F4EFE6"/>',
-         f'<rect x="{x0 - 140}" y="{band_top - 820}" width="{1550 + 280}" height="{floor - band_top + 820}" fill="#2F6FD8"/>',
-         f'<rect y="{floor}" width="{W}" height="{H - floor}" fill="#CFC6B8"/>']
-    # arch: frame + glass + decal
-    ax = x0 + (1550 - AW) / 2
-    p.append(f'<path d="M{ax - 55} {band_top} A{AW / 2 + 55} {AH + 55} 0 0 1 {ax + AW + 55} {band_top} Z" fill="#7A4B2E"/>')
-    p.append(f'<g transform="translate({ax} {band_top - AH})"><path d="{ARCH}" fill="#DCE6EE"/>' + "\n".join(arch_art(ink)) + "</g>")
-    # band over the door: carved strips + smooth middle
-    p.append(f'<rect x="{x0}" y="{band_top}" width="1550" height="500" fill="#7A4B2E"/>')
-    for yy in (band_top, band_top + 375):
-        p.append(f'<rect x="{x0}" y="{yy}" width="1550" height="125" fill="#8C5A39"/>')
-        for i in range(int(1550 / 70)):
-            p.append(f'<rect x="{x0 + 18 + i * 70:.0f}" y="{yy + 35}" width="40" height="55" rx="6" fill="#5E3A24"/>')
-    # leaves 730 + post 70 + 750
-    for lx, lw, side in ((x0, 730, "left"), (x0 + 800, 750, "right")):
-        p.append(f'<rect x="{lx}" y="{door_top}" width="{lw}" height="2400" fill="#2A63C4" stroke="#1D4FA3" stroke-width="10"/>')
-        wx, wy = lx + (lw - WW) / 2, floor - 900 - WH
-        p.append(f'<rect x="{wx}" y="{wy}" width="{WW}" height="{WH}" fill="#DCE6EE"/>')
-        p.append(f'<g transform="translate({wx} {wy})">' + "\n".join(window_art(side, ink)) + "</g>")
-    p.append(f'<rect x="{x0 + 730}" y="{door_top}" width="70" height="2400" fill="#1D4FA3"/>')
-    p.append(f'<rect x="{x0 + 760}" y="{floor - 1150}" width="14" height="180" rx="7" fill="#C9CED6"/>')
-    return svg(W, H, "\n".join(p), "NARIN: entrance mock-up from the street")
 
 
 # ---------- logos ----------
@@ -219,15 +217,10 @@ def logo_files():
     return files
 
 
-files = {
-    "arch-decal-white.svg": arch_decal(WHITE, "white text"),
-    "arch-decal-blue.svg": arch_decal(COBALT, "blue text"),
-    "arch-mockup.svg": arch_mock(WHITE),
-    "door-window-left.svg": window_decal("left", WHITE),
-    "door-window-right.svg": window_decal("right", WHITE),
-    "entrance-mockup.svg": entrance_mock(WHITE),
-    **logo_files(),
-}
+files = logo_files()
+for v in VARIANTS:
+    files[f"arch-decal-{v}.svg"] = arch_decal(WHITE, v)
+    files[f"arch-mockup-{v}.svg"] = arch_mock(WHITE, v)
 for name, content in files.items():
     (OUT / name).write_text(content, encoding="utf-8")
-    print(f"{name:28s} {len(content) // 1024:5d} KB")
+    print(f"{name:32s} {len(content) // 1024:5d} KB")

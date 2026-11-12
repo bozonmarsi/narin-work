@@ -1,17 +1,18 @@
-# NARIN shop front: glass decals (SVG)
+# NARIN shop front: arch glass decal (SVG)
 
-Print-ready SVG, 1 unit = 1 mm, all text outlined (no fonts needed). Sizes from the entrance plan of 12.11.2026.
+Print-ready SVG for the arch glass over the entrance, 1440 × 700 mm (1 unit = 1 mm), text outlined (no fonts needed).
+Four layouts of the label daisies, all daisies of one size within a layout:
 
-| file | size | what |
-|---|---|---|
-| `out/arch-decal-white.svg` | 1440 × 700 mm | arch glass: logo, "květinový ateliér", "Květiny · Dárky · Pokojovky", daisies (white text) |
-| `out/arch-decal-blue.svg` | 1440 × 700 mm | the same with cobalt text, for a light background behind the glass |
-| `out/door-window-left.svg` | 280 × 1000 mm | left leaf (73): daisies + "květinový ateliér" at eye level |
-| `out/door-window-right.svg` | 280 × 1000 mm | right leaf (75, main): daisies + logo + "Květiny / Dárky / Pokojovky" |
-| `out/arch-mockup.svg`, `out/entrance-mockup.svg` | — | previews only, not for print |
-| `out/narin-logo-*.svg`, `out/narin-lockup-*.svg` | — | logo / logo with "květinový ateliér", white and blue |
+| variant | daisies |
+|---|---|
+| `A-garland` | a garland of 19 daisies along the arch |
+| `B-bouquets` | two small bouquets of four at the sides |
+| `C-ribbon` | a row of 13 small daisies between "květinový ateliér" and the bottom line |
+| `D-minimal` | two daisies in place of the dots in "Květiny · Dárky · Pokojovky" |
 
-Each decal has a magenta `cut-guide (do not print)` layer with the glass outline, then `daisies`, `logo`, `text` layers.
-Measure the glass before printing: the plan marks several sizes as approximate.
+- `out/arch-decal-<variant>.svg`: print file; the magenta `cut-guide (do not print)` layer is the glass outline.
+- `out/arch-mockup-<variant>.svg`: the same in the frame, for viewing only. `out/preview/arch-variants.jpg` compares all four.
+- `out/narin-logo-*.svg`, `out/narin-lockup-*.svg`: logo / logo with "květinový ateliér", white and blue.
 
+Measure the glass before printing: the plan gives 144 × 70 cm as approximate.
 Regenerate: `python3 make_svgs.py Ubuntu-Medium.ttf out` (needs fontTools; `daisy_path.txt` is the logo daisy traced by `trace_daisy.py`).
