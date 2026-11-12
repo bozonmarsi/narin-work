@@ -231,7 +231,10 @@
   ['resize', 'scroll'].forEach(function (ev) { window.addEventListener(ev, setTopSoon, {passive: true}); });
   // The last list is saved: the page shows it at once and refreshes it in the background.
   var CACHE = 'narin_darky_v1', shownSig = '';
-  function show(parts, hiddenList) { var sig = JSON.stringify([parts.map(function (l) { return l.map(function (p) { return [p.uid, p.title, p.price, p.gallery]; }); }), hiddenList]); if (sig === shownSig) return; shownSig = sig; draw(parts, new Set(hiddenList)); }
+  function show(parts, hiddenList) { var sig = JSON.stringify([parts.map(function (l) { return l.map(function (p) { return [p.uid, p.title, p.price, p.gallery]; }); }), hiddenList]); if (sig === shownSig) return; shownSig = sig; draw(parts, new Set(hiddenList)); goHash(); }
+  // A link like /darky#ndp-karty (banner on the home page): the lines are drawn later, so scroll to it once they exist.
+  var hashDone = false;
+  function goHash() { if (hashDone || !/^#ndp-/.test(location.hash)) return; var t = document.getElementById(location.hash.slice(1)); if (!t) return; hashDone = true; setTimeout(function () { setTop(); t.scrollIntoView({block: 'start'}); }, 60); }
   try { var c0 = JSON.parse(localStorage.getItem(CACHE) || 'null'); if (c0 && c0.parts && c0.parts.length === CONFIG.lines.length && Date.now() - c0.t < 7 * 864e5) show(c0.parts, c0.hidden || []); } catch (e) {}
   Promise.all([Promise.all(CONFIG.lines.map(function (l) { return loadPart(l.part); })), loadHidden()])
     .then(function (r) {
