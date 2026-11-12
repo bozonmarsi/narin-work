@@ -2,8 +2,13 @@
 
 ## Где живёт
 
-- **Страница /darkove-karty**: Tilda page 382960503 (копия /darky, с общей корзиной), блок T123 = `tilda/pages/darkove-karty.html`.
-  «Do košíku» кладёт в корзину товар без uid: `Dárkový poukaz NARIN – elektronický 500 Kč` или `… – plastová karta …`.
+- **Товары**: 8 товаров Tilda в разделе «Dárkové karty» (part 940179625724, внутри NARIN darky): `Dárkový poukaz 500 Kč elektronický`,
+  `… plastová karta` и так для 1 000 / 1 500 / 2 000. uid в `tilda/checkout/gift-card-uids.json`. Остаток пластика = поле «Количество» у товара в Tilda.
+- **Полоса на /darky** (`tilda/blocks/darky-page.html`, строка `karty` в CONFIG): 4 карты (по одной на номинал), кнопка «Proč to děláme» → /darkove-karty.
+- **Карточка товара** (Footer rec 5302731703, `tilda/blocks/product-popup.html`): для этих uid свой вид — номинал, тип Elektronická/Plastová,
+  3 шага, строка про кошек, ссылка на /darkove-karty. Новый номинал = новые товары + строка в `GIFT` в попапе и `UIDS` на странице.
+
+- **Страница /darkove-karty** (рассказ «почему мы это делаем»): Tilda page 382960503, блок T123 = `tilda/pages/darkove-karty.html`. «Do košíku» кладёт те же товары Tilda (по uid).
 - **Картинки карт**: `web/public/darkove-karty/kocka-*.jpg` на narin-work.vercel.app (страница, корзина, письмо получателю).
 - **Корзина (Footer, rec 5554679303, `tilda/blocks/cart-drawer.html`)**: для электронных карт пишет
   «Kartu pošleme e-mailem, bez poplatku», за карты баллы не обещает, строка про кошек.

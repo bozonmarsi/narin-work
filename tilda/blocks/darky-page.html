@@ -1,0 +1,231 @@
+<!--
+  NARIN Darky page. One T123 block, everything is scoped under .ndp.
+  Each line is a Tilda store subpart of NARIN darky. A line without products on sale is hidden,
+  together with its button. Photos and texts live in CONFIG below.
+  Cards carry the js-product classes, so the shared product popup and cart work on them.
+-->
+<link href="https://fonts.googleapis.com/css2?family=Gelasio:ital,wght@0,700;1,700&family=Rubik:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+.ndp { --ink:#2b2130; --soft:#6f6272; --pink:#d9559f; --pink-logo:#f0ace4; --pink-pale:#fff6fc; --coral:#f0503f; --line:#f6dcef; font-family:'Rubik',sans-serif; color:var(--ink); background:#fff; -webkit-font-smoothing:antialiased; overflow:clip; }
+.ndp *, .ndp *::before, .ndp *::after { box-sizing:border-box; }
+.ndp h1, .ndp h2, .ndp p { margin:0; }
+.ndp-wrap { max-width:1240px; margin:0 auto; padding:0 20px; }
+.ndp-hero { position:relative; overflow:hidden; background:var(--pink-pale); padding:calc(var(--ndp-top,0px) + 18px) 0 clamp(40px,6vw,76px); }
+.ndp-hero .ndp-wrap { position:relative; z-index:2; pointer-events:none; }
+.ndp-top { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.ndp-logo { display:block; width:clamp(150px,20vw,230px); height:auto; }
+.ndp-tag { font-size:clamp(11px,1.2vw,13px); font-weight:500; letter-spacing:.14em; text-transform:uppercase; text-align:right; color:var(--soft); line-height:1.6; }
+.ndp-hero h1 { margin-top:clamp(22px,4vw,44px); max-width:13em; font-family:'Gelasio',Georgia,serif; font-size:clamp(42px,6.6vw,84px); line-height:1.06; font-weight:700; color:var(--pink); }
+.ndp-hero h1 em { color:var(--coral); font-style:italic; }
+.ndp-hero p { margin-top:14px; max-width:34em; font-size:clamp(17px,1.8vw,20px); line-height:1.5; color:var(--soft); }
+.ndp-sky { position:absolute; inset:0; z-index:1; }
+.ndp-fly { position:absolute; bottom:-180px; left:0; display:flex; flex-direction:column; align-items:center; cursor:pointer; -webkit-tap-highlight-color:transparent; animation:ndpRise var(--t) linear forwards; animation-delay:var(--d); }
+.ndp-ball { width:var(--w); height:calc(var(--w) * 1.18); border-radius:50% 50% 48% 48% / 55% 55% 45% 45%; background:var(--c); opacity:.45; }
+.ndp-str { width:1.5px; height:calc(var(--w) * .8); background:rgba(43,33,48,.2); }
+.ndp-fly.pop { animation-play-state:paused; pointer-events:none; }
+.ndp-fly.pop > * { animation:ndpPop .25s ease-out forwards; }
+@keyframes ndpRise { from { transform:translate(var(--x),0); } to { transform:translate(var(--x),calc(-100vh - 320px)); } }
+@keyframes ndpPop { to { transform:scale(1.6); opacity:0; } }
+.ndp-nav { position:sticky; top:var(--ndp-top,0); z-index:20; background:#fff; border-bottom:1px solid var(--line); }
+.ndp-chips { display:flex; gap:8px; overflow-x:auto; padding:12px 0; scrollbar-width:none; }
+.ndp-chips::-webkit-scrollbar { display:none; }
+.ndp-chip { flex:0 0 auto; height:42px; padding:0 20px; border-radius:16px; border:1px solid #e9c6e0; background:#fff; color:var(--ink); font:500 15px 'Rubik',sans-serif; cursor:pointer; transition:background .2s,color .2s; }
+.ndp-chip.on { background:var(--pink); border-color:var(--pink); color:#fff; }
+.ndp-line { padding:clamp(36px,5vw,64px) 0 4px; scroll-margin-top:calc(var(--ndp-top,0px) + 70px); }
+.ndp-head { margin-bottom:16px; }
+.ndp-head h2 { font-family:'Gelasio',Georgia,serif; font-size:clamp(32px,4vw,48px); line-height:1.1; font-weight:700; color:var(--pink); }
+.ndp-head p { margin-top:6px; font-size:16px; line-height:1.45; color:var(--soft); }
+.ndp-photo { min-height:clamp(220px,32vw,440px); border-radius:18px; background:var(--pink-pale) center/cover no-repeat; margin-bottom:14px; }
+.ndp-rail { display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x proximity; padding-bottom:12px; scrollbar-width:none; }
+.ndp-rail::-webkit-scrollbar { display:none; }
+.ndp-card { flex:0 0 clamp(158px,21vw,236px); scroll-snap-align:start; display:block; background:#fff; border:1px solid var(--line); border-radius:16px; overflow:hidden; cursor:pointer; transition:border-color .2s; }
+.ndp-card:hover { border-color:var(--pink-logo); }
+.ndp-img { aspect-ratio:1/1; background:var(--pink-logo) center/contain no-repeat; }
+.ndp-txt { padding:10px 12px 12px; }
+.ndp-name { font-size:15px; line-height:1.3; }
+.ndp-full { display:none; }
+.ndp-dots { display:flex; flex-wrap:wrap; gap:5px; margin-top:7px; }
+.ndp-dots i { width:14px; height:14px; border-radius:50%; border:1px solid rgba(0,0,0,.14); }
+.ndp-price { margin-top:6px; font-size:16px; font-weight:600; color:var(--pink); }
+.ndp-empty { padding:64px 0 88px; text-align:center; }
+.ndp-empty p { font-size:18px; line-height:1.5; color:var(--soft); }
+.ndp-btn { display:inline-flex; align-items:center; height:50px; margin-top:18px; padding:0 26px; border-radius:16px; background:var(--pink); color:#fff; font-weight:500; text-decoration:none; }
+.ndp-end { height:48px; }
+.ndp-gwrap { position:relative; border-radius:26px; padding:clamp(22px,3.4vw,40px) clamp(18px,3vw,36px) clamp(14px,2vw,22px); background:radial-gradient(110% 90% at 92% 0%,#e3edff 0%,rgba(227,237,255,0) 58%),radial-gradient(90% 80% at 0% 100%,#fde3f3 0%,rgba(253,227,243,0) 60%),#fbf9fd; overflow:hidden; }
+.ndp-ghead { display:flex; align-items:flex-end; justify-content:space-between; gap:18px; flex-wrap:wrap; margin-bottom:18px; }
+.ndp-ghead h2 { font-family:'Gelasio',Georgia,serif; font-size:clamp(32px,4vw,48px); line-height:1.1; font-weight:700; color:var(--pink); }
+.ndp-ghead p { margin-top:8px; max-width:34em; font-size:16px; line-height:1.5; color:var(--soft); }
+.ndp-gmore { flex:0 0 auto; display:inline-flex; align-items:center; gap:8px; height:44px; padding:0 18px; border-radius:14px; background:#fff; border:1px solid #e9c6e0; color:var(--ink); font-size:15px; font-weight:500; text-decoration:none; transition:border-color .2s; }
+.ndp-gmore:hover { border-color:var(--pink); }
+.ndp-grail { display:flex; gap:clamp(14px,2vw,22px); overflow-x:auto; scroll-snap-type:x proximity; padding:10px 4px 16px; margin:0 -4px; scrollbar-width:none; }
+.ndp-grail::-webkit-scrollbar { display:none; }
+.ndp-gc { flex:0 0 clamp(220px,26vw,290px); scroll-snap-align:start; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.ndp-gc .ndp-gimg { aspect-ratio:85.6/54; border-radius:4.2%/6.6%; background:#e8edf6 center/cover no-repeat; box-shadow:0 18px 30px -16px rgba(27,53,102,.5),0 4px 10px rgba(27,53,102,.1); transform:rotate(var(--r,-2deg)); transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s; }
+.ndp-gc:nth-child(even) .ndp-gimg { --r:2deg; }
+.ndp-gc:hover .ndp-gimg { transform:translateY(-6px) rotate(0deg); box-shadow:0 26px 38px -16px rgba(27,53,102,.55),0 6px 14px rgba(27,53,102,.12); }
+.ndp-gc .ndp-gtx { display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-top:14px; padding:0 2px; }
+.ndp-gc .ndp-gval { font-size:19px; font-weight:600; color:var(--ink); white-space:nowrap; }
+.ndp-gc .ndp-gscene { font-size:13px; color:var(--soft); text-align:right; }
+.ndp-gcats { display:flex; gap:10px; align-items:center; margin-top:6px; font-size:14px; line-height:1.45; color:var(--soft); }
+.ndp-gcats b { color:var(--ink); font-weight:500; }
+@media (prefers-reduced-motion:reduce) { .ndp-sky { display:none; } }
+</style>
+<div class="ndp" id="ndp">
+  <section class="ndp-hero"><div class="ndp-sky" id="ndpSky" aria-hidden="true"></div><div class="ndp-wrap"><div class="ndp-top"><img class="ndp-logo" id="ndpLogo" alt=""><div class="ndp-tag" id="ndpTag"></div></div><h1 id="ndpTitle"></h1><p id="ndpLead"></p></div></section>
+  <div class="ndp-nav" id="ndpNav" hidden><div class="ndp-wrap"><div class="ndp-chips" id="ndpChips"></div></div></div>
+  <div class="ndp-wrap" id="ndpLines"></div>
+  <div class="ndp-end"></div>
+</div>
+<script>
+(function () {
+  var CONFIG = {
+    hero: {title: 'Dárky, které potěší <em>i bez důvodu</em>', lead: 'Malé radosti ke kytici, na stůl i domů.', tag: 'Vánoce · Stůl · Byt', balloons: ['#f0ace4', '#f0ace4', '#ff5a4c', '#10e08c', '#f6c9ec'], logo: 'https://static.tildacdn.com/tila3530-3639-4465-a563-306439396566/narin_darky_logo.png'},
+    empty: {text: 'Dárky právě připravujeme. Zatím si vyberte květiny.', button: 'Vybrat květiny', href: '/'},
+    lines: [
+      {key: 'vanoce', title: 'Vánoce', part: '993821239224', lead: 'Pro stromeček, stůl i maličkost navíc.', photo: '', until: '2026-12-27'},
+      {key: 'karty', title: 'Dárkové karty', part: '940179625724', kind: 'cards', lead: 'Když nevíte, co vybrat: ať si vybere sám. Elektronická přijde e-mailem, plastová v dárkové obálce.', more: '/darkove-karty'},
+      {key: 'sladke', title: 'Sladké', part: '180608331724', lead: 'Sladká tečka ke kytici.', photo: ''},
+      {key: 'stul', title: 'Na stůl', part: '781578738204', lead: 'Pro stůl, u kterého se rádi zdržíte.', photo: ''},
+      {key: 'byt', title: 'Do bytu', part: '213343836974', lead: 'Věci, které si rozumí s květinami.', photo: ''},
+      {key: 'prani', title: 'Přání', part: '959356544794', lead: 'Pár slov, která zůstanou.', photo: ''}
+    ]
+  };
+  var SB = 'https://wqburlamuipxmenqsjnx.supabase.co';
+  var KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxYnVybGFtdWlweG1lbnFzam54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTY2MTIsImV4cCI6MjA4ODgzMjYxMn0.NYnQoorm3z5gkjr954JdYhzDNmYfCjefzK1ddq3cflw';
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]; }); }
+  function norm(s) { var d = document.createElement('textarea'); d.innerHTML = String(s || ''); return d.value.trim().toLowerCase(); }
+  function czk(n) { return Math.round(Number(n) || 0).toLocaleString('cs-CZ').replace(/\s/g, ' '); }
+  var COLOR_WORDS = [
+    ['růžovo-světle modrý', 'linear-gradient(135deg,#f2a7b8 50%,#b6e5f3 50%)'], ['růžovo-modrý', 'linear-gradient(135deg,#f2a7b8 50%,#172b55 50%)'], ['růžovo-zelený', 'linear-gradient(135deg,#f2a7b8 50%,#24483a 50%)'],
+    ['světle modrý', '#b6e5f3'], ['světle modrá', '#b6e5f3'], ['červený', '#a6252b'], ['červená', '#a6252b'], ['zelený', '#24483a'], ['zelená', '#24483a'],
+    ['modrý', '#172b55'], ['modrá', '#172b55'], ['růžový', '#f2a7b8'], ['růžová', '#f2a7b8'], ['terakota', '#a84624'], ['tyrkysová', '#1e6a5f'], ['slonová kost', '#e6d2b5'], ['bílý', '#ffffff'], ['bílá', '#ffffff']
+  ];
+  // A gift colour is its own Tilda product; the colour is the last word of the name, the rest is the product.
+  function splitColor(name) {
+    var n = String(name || '').trim(), low = n.toLowerCase();
+    for (var i = 0; i < COLOR_WORDS.length; i++) {
+      var w = COLOR_WORDS[i][0];
+      if (low.length > w.length && low.slice(-w.length - 1) === ' ' + w) return {base: n.slice(0, -w.length - 1), word: w, css: COLOR_WORDS[i][1]};
+    }
+    return {base: n, word: '', css: ''};
+  }
+  function firstImage(p) { try { var g = JSON.parse(p.gallery || '[]'); return (g[0] && g[0].img) || ''; } catch (e) { return ''; } }
+  function drawHero() {
+    var h = CONFIG.hero;
+    $('ndpLogo').src = h.logo; $('ndpLogo').alt = 'NARIN dárky';
+    $('ndpTitle').innerHTML = h.title; $('ndpLead').textContent = h.lead; $('ndpTag').textContent = h.tag;
+  }
+  function balloon(delay) {
+    var sky = $('ndpSky'), el = document.createElement('div'), w = 26 + Math.random() * 34;
+    el.className = 'ndp-fly';
+    el.style.cssText = '--w:' + w + 'px;--c:' + CONFIG.hero.balloons[Math.floor(Math.random() * CONFIG.hero.balloons.length)] + ';--x:' + Math.round(Math.random() * sky.clientWidth) + 'px;--t:' + (11 + Math.random() * 9) + 's;--d:' + delay + 's';
+    el.innerHTML = '<div class="ndp-ball"></div><div class="ndp-str"></div>';
+    el.addEventListener('pointerdown', function () { el.classList.add('pop'); setTimeout(function () { el.remove(); }, 300); });
+    el.addEventListener('animationend', function (e) { if (e.target === el) el.remove(); });
+    sky.appendChild(el);
+  }
+  function startBalloons() {
+    for (var i = 0; i < 6; i++) balloon(-Math.random() * 11);
+    setInterval(function () { if (!document.hidden && $('ndpSky').children.length < 8) balloon(0); }, 2600);
+  }
+  function loadPart(uid) {
+    return fetch('https://store.tildaapi.one/api/getproductslist/?storepartuid=' + uid + '&recid=1&c=1&getparts=false&getoptions=false&slice=1&size=50')
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) { return (j && j.products) || []; })
+      .catch(function () { return []; });
+  }
+  function loadHidden() {
+    return fetch(SB + '/rest/v1/rpc/get_catalog_page_data?apikey=' + KEY)
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) { return new Set(((d && d.unsourceable) || []).map(norm)); })
+      .catch(function () { return new Set(); });
+  }
+  function groupItems(items) {
+    var map = {}, out = [];
+    items.forEach(function (p) {
+      var c = splitColor(p.title);
+      if (!map[c.base]) { map[c.base] = {p: p, base: c.base, dots: []}; out.push(map[c.base]); }
+      if (c.css) map[c.base].dots.push(c.css);
+    });
+    return out;
+  }
+  function cardHtml(g) {
+    var p = g.p, im = firstImage(p);
+    return '<div class="js-product ndp-card" data-product-uid="' + esc(p.uid) + '" data-product-img="' + esc(im) + '" data-product-url="' + esc(p.url || '') + '">'
+      + '<div class="js-product-img ndp-img" style="background-image:url(' + esc(im) + ')"></div>'
+      + '<div class="ndp-txt"><div class="js-product-name ndp-full">' + esc(p.title) + '</div><div class="ndp-name">' + esc(g.base) + '</div>'
+      + (g.dots.length > 1 ? '<div class="ndp-dots">' + g.dots.map(function (c) { return '<i style="background:' + c + '"></i>'; }).join('') + '</div>' : '')
+      + '<div class="ndp-price"><span class="js-product-price">' + czk(p.price) + '</span> Kč</div></div></div>';
+  }
+  var SCENES = {500: 'Černá kočka v lučním kvítí', 1000: 'Bílá kočka ve fialových květech', 1500: 'Siamská kočka při západu slunce', 2000: 'Zrzavé kotě na zahradní cestě'};
+  // Gift cards: one tile per value (the electronic card); the type is chosen in the product popup.
+  function cardsHtml(l, items) {
+    var list = items.filter(function (p) { return /elektronick/i.test(p.title); }).sort(function (a, b) { return a.price - b.price; });
+    if (!list.length) list = items;
+    return '<section class="ndp-line" id="ndp-' + l.key + '"><div class="ndp-gwrap"><div class="ndp-ghead"><div><h2>' + esc(l.title) + '</h2><p>' + esc(l.lead) + '</p></div>'
+      + (l.more ? '<a class="ndp-gmore" href="' + esc(l.more) + '">🐾 Proč to děláme</a>' : '') + '</div>'
+      + '<div class="ndp-grail">' + list.map(function (p) {
+        var im = firstImage(p), v = Math.round(Number(p.price) || 0);
+        return '<div class="js-product ndp-gc" data-product-uid="' + esc(p.uid) + '" data-product-img="' + esc(im) + '" data-product-url="' + esc(p.url || '') + '">'
+          + '<div class="js-product-img ndp-gimg" style="background-image:url(' + esc(im) + ')"></div>'
+          + '<div class="js-product-name ndp-full">' + esc(p.title) + '</div>'
+          + '<div class="ndp-gtx"><span class="ndp-gval"><span class="js-product-price">' + czk(p.price) + '</span> Kč</span><span class="ndp-gscene">' + esc(SCENES[v] || '') + '</span></div></div>';
+      }).join('') + '</div>'
+      + '<div class="ndp-gcats"><span>🐾</span><span>Z každé karty posíláme <b>50 Kč kočkám v útulcích</b>. Platíme to my.</span></div></div></section>';
+  }
+  function lineHtml(l, items) {
+    if (l.kind === 'cards') return cardsHtml(l, items);
+    return '<section class="ndp-line" id="ndp-' + l.key + '"><div class="ndp-head"><h2>' + esc(l.title) + '</h2><p>' + esc(l.lead) + '</p></div>'
+      + (l.photo ? '<div class="ndp-photo" style="background-image:url(' + esc(l.photo) + ')"></div>' : '')
+      + '<div class="ndp-rail">' + groupItems(items).map(cardHtml).join('') + '</div></section>';
+  }
+  function setTop() {
+    var h = 0;
+    [].forEach.call(document.querySelectorAll('.t396__artboard, [class*=positionfixed]'), function (el) {
+      if (getComputedStyle(el).position === 'fixed' && el.getBoundingClientRect().top <= 1 && el.offsetHeight < 140) h = Math.max(h, el.offsetHeight);
+    });
+    $('ndp').style.setProperty('--ndp-top', h + 'px');
+  }
+  function drawChips(lines) {
+    var nav = $('ndpNav'), box = $('ndpChips');
+    if (lines.length < 2) return;
+    box.innerHTML = lines.map(function (l, i) { return '<button type="button" class="ndp-chip' + (i ? '' : ' on') + '" data-go="' + l.key + '">' + esc(l.title) + '</button>'; }).join('');
+    nav.hidden = false;
+    box.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-go]'); if (!b) return;
+      var t = $('ndp-' + b.getAttribute('data-go')); if (t) t.scrollIntoView({behavior: 'smooth', block: 'start'});
+    });
+    if (!('IntersectionObserver' in window)) return;
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        var key = en.target.id.replace('ndp-', '');
+        [].forEach.call(box.children, function (c) {
+          var on = c.getAttribute('data-go') === key; c.classList.toggle('on', on);
+          if (on) box.scrollTo({left: c.offsetLeft - 20, behavior: 'smooth'});
+        });
+      });
+    }, {rootMargin: '-35% 0px -60% 0px'});
+    lines.forEach(function (l) { var el = $('ndp-' + l.key); if (el) io.observe(el); });
+  }
+  function draw(results, hidden) {
+    var today = new Date().toISOString().slice(0, 10), shown = [], html = '';
+    CONFIG.lines.forEach(function (l, i) {
+      if (l.until && today > l.until) return;
+      var items = results[i].filter(function (p) { return !hidden.has(norm(p.title)); });
+      if (!items.length) return;
+      shown.push(l); html += lineHtml(l, items);
+    });
+    if (!shown.length) {
+      html = '<div class="ndp-empty"><p>' + esc(CONFIG.empty.text) + '</p><a class="ndp-btn" href="' + esc(CONFIG.empty.href) + '">' + esc(CONFIG.empty.button) + '</a></div>';
+    }
+    $('ndpLines').innerHTML = html;
+    drawChips(shown);
+  }
+  drawHero(); startBalloons(); setTop();
+  ['resize', 'scroll'].forEach(function (ev) { window.addEventListener(ev, setTop, {passive: true}); });
+  Promise.all([Promise.all(CONFIG.lines.map(function (l) { return loadPart(l.part); })), loadHidden()])
+    .then(function (r) { draw(r[0], r[1]); });
+})();
+</script>
