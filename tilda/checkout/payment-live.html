@@ -334,6 +334,12 @@ textarea.np-in { height: auto; min-height: 104px; padding: 15px 18px; resize: ve
 .np-skel { height: 240px; border-radius: 30px; background: linear-gradient(90deg, #eff3f9 25%, #f7f9fc 37%, #eff3f9 63%); background-size: 400% 100%; animation: npskel 1.4s ease infinite; margin-bottom: 20px; }
 @keyframes npskel { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
 .np [hidden] { display: none !important; }
+.np.vo #npWho, .np.vo #npWhoErr, .np.vo #npOther, .np.vo #npMe, .np.vo #npRNote, .np.vo #npPostcard { display: none !important; }
+.np-vch .np-tile .s { font-size: 13px; }
+.np-vch input[type=date].np-in { line-height: 56px; }
+.np-vhint { font-size: 13px; color: var(--mut); line-height: 1.45; margin: -4px 4px 14px; }
+.np-cats { display: flex; gap: 10px; align-items: flex-start; margin-top: 14px; padding: 12px 14px; border-radius: 16px; background: #fbf6ee; font-size: 13.5px; line-height: 1.45; color: #4a505b; }
+.np-cats a { color: var(--blue); font-weight: 600; text-decoration: none; white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) {
   .np *, .np *::before, .np *::after { animation: none !important; transition: none !important; }
   .np.js .np-sec, .np.js .np-sum { opacity: 1; transform: none; }
@@ -992,7 +998,8 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
     pts: { balance: null, sel: 0, applied: 0, busy: false },
     dep: { balance: 0, use: true, quote: null, err: '', loading: false },
     gift: null, noNum: false, showCal: false, accOpen: false, submitting: false, token: null, loggedIn: false,
-    who: null, gm: null, gl: { channel: 'phone', handle: '', visible: true }, glBlocked: false, act: 'c1', col: {}
+    who: null, gm: null, gl: { channel: 'phone', handle: '', visible: true }, glBlocked: false, act: 'c1', col: {},
+    vc: { to: 'me', email: '', name: '', msg: '', when: 'now', date: '' }
   };
   var AV = { weekdays: {}, dates: {}, slots: {}, pickup: { off: '', days: {}, times: {}, every: {} }, available: null, special: null, specialDate: null, loaded: false };
   var cal = { y: 0, m: 0 };
@@ -1000,7 +1007,7 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
 
   function saveDraft() {
     try {
-      var d = {}; ['mode', 'adres', 'city', 'psc', 'floor', 'apt', 'intercom', 'lat', 'lng', 'date', 'slot', 'time', 'name', 'last', 'phone', 'email', 'isCompany', 'company', 'co', 'same', 'rname', 'rlast', 'rphone', 'comment', 'pcSender', 'pcTo', 'pcText', 'who', 'gm', 'gl'].forEach(function (k) { d[k] = S[k]; });
+      var d = {}; ['mode', 'adres', 'city', 'psc', 'floor', 'apt', 'intercom', 'lat', 'lng', 'date', 'slot', 'time', 'name', 'last', 'phone', 'email', 'isCompany', 'company', 'co', 'same', 'rname', 'rlast', 'rphone', 'comment', 'pcSender', 'pcTo', 'pcText', 'who', 'gm', 'gl', 'vc'].forEach(function (k) { d[k] = S[k]; });
       sessionStorage.setItem(DRAFT_KEY, JSON.stringify(d));
     } catch (e) {}
   }
@@ -1008,6 +1015,7 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
     try { var d = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || 'null'); if (d) Object.keys(d).forEach(function (k) { if (k in S) S[k] = d[k]; }); } catch (e) {}
     if (!S.who && S.same) S.who = 'me';
     if (!S.gl || typeof S.gl !== 'object') S.gl = { channel: 'phone', handle: '', visible: true };
+    if (!S.vc || typeof S.vc !== 'object') S.vc = { to: 'me', email: '', name: '', msg: '', when: 'now', date: '' };
     S.same = S.who === 'me';
   }
 
@@ -1032,6 +1040,7 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
   function toRad(x) { return x * Math.PI / 180; }
   function distKm(a, b, c, d) { var R = 6371, dl = toRad(c - a), dn = toRad(d - b); var x = Math.sin(dl / 2) * Math.sin(dl / 2) + Math.cos(toRad(a)) * Math.cos(toRad(c)) * Math.sin(dn / 2) * Math.sin(dn / 2); return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x)); }
   function feeCalc() {
+    if (VO) return { fee: 0, delivery: 0, service: 0, km: null, extra: 0, need: false, tooFar: false };
     if (S.mode === 'pickup') return { fee: CFG.service, delivery: 0, service: CFG.service, km: null, extra: 0, need: false, tooFar: false };
     if (S.gift) return { fee: CFG.base + CFG.service, delivery: CFG.base, service: CFG.service, km: null, extra: 0, need: false, tooFar: false };
     if (S.lat != null && S.lng != null) {
@@ -1060,6 +1069,14 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
   }
   function canDeposit() { return S.loggedIn && S.dep.balance >= 1 && S.pay === 'stripe' && !promoActive() && !(S.pts.applied > 0) && !hasVoucher(); }
   function hasVoucher() { return products().some(function (p) { return /poukaz/i.test(p.name); }); }
+  /* electronic gift card = name has poukaz but not plastov (same rule as the DB trigger voucher_split) */
+  function isEV(p) { return /poukaz/i.test(decode(p.name)) && !/plastov|card-/i.test(decode(p.name)); }
+  function hasEV() { return products().some(isEV); }
+  function vOnly() { var ps = products(); return ps.length > 0 && ps.every(isEV); }
+  var VO = false;
+  function isEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || '').trim()); }
+  function vcDateOk() { var d = S.vc.date; if (!/^\d{4}-\d{2}-\d{2}$/.test(d || '')) return false; var x = parseIso(d), t = sod(new Date()); return x > t && x <= addDays(t, 60); }
+  function vcOk() { if (!hasEV() || S.vc.to !== 'other') return true; return isEmail(S.vc.email) && (S.vc.when !== 'date' || vcDateOk()); }
   function depositAmount(total) {
     var q = S.dep.quote;
     if (q && q.ok && Math.abs(q.total - total) < 1) return q.deposit;
@@ -1231,7 +1248,8 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
       '</div>' +
       '<div id="npPostcard" hidden></div>' +
       '<div class="np-note" id="npRNote" hidden></div>' +
-      nextBtn('c2', 'Pokračovat k doručení');
+      '<div id="npVch" class="np-vch"></div>' +
+      nextBtn('c2', VO ? 'Pokračovat k platbě' : 'Pokračovat k doručení');
 
     var s4 = '<div id="npDep"></div><div id="npPromo"></div>' +
       '<div class="np-sub" style="margin-top:6px"><span>Způsob platby</span></div>' +
@@ -1240,21 +1258,22 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
       '<div class="np-hint" style="margin-top:14px">Vaše osobní údaje použijeme k vyřízení objednávky, k podpoře používání těchto stránek a k dalším účelům popsaným v našich zásadách ochrany osobních údajů.</div>';
 
     return '' +
-      '<div class="np-prog" id="npProg"><i></i><i></i><i></i><i></i></div>' +
+      '<div class="np-prog" id="npProg"><i></i><i></i><i></i>' + (VO ? '' : '<i></i>') + '</div>' +
       '<div class="np-top"><a class="back" href="/" id="npBack"><span class="arr"><i class="ti ti-arrow-left"></i></span><img src="https://narin-work.vercel.app/brand/narin-logo.png" alt="NARIN"></a><span class="np-secure"><i class="ti ti-lock"></i>Zabezpečená platba</span></div>' +
-      '<div class="np-hero"><div class="np-eyebrow">Dokončení objednávky</div><h1>Skoro hotovo. <em>Ještě pár detailů.</em></h1><p>Květiny připravíme čerstvé a doručíme v den, který si vyberete.</p></div>' +
+      '<div class="np-hero"><div class="np-eyebrow">Dokončení objednávky</div><h1>Skoro hotovo. <em>Ještě pár detailů.</em></h1><p>' + (VO ? 'Dárkovou kartu pošleme e-mailem, hned po zaplacení nebo v den, který vyberete.' : 'Květiny připravíme čerstvé a doručíme v den, který si vyberete.') + '</p></div>' +
       '<div class="np-alert" id="npAlert" hidden></div>' +
       '<div class="np-gone" id="npGone" hidden></div>' +
       '<div class="np-grid"><div class="np-main">' +
       section('c1', 1, 'Vaše údaje', 'Na tento e-mail pošleme potvrzení', s1) +
-      section('c2', 2, 'Pro koho jsou květiny?', 'Pro vás, nebo jako dárek', s3) +
+      section('c2', 2, VO ? 'Komu kartu pošleme?' : 'Pro koho jsou květiny?', VO ? 'E-mailem, hned nebo v den, který vyberete' : 'Pro vás, nebo jako dárek', s3) +
       section('c3', 3, 'Doručení', 'Kam a kdy kytice přivezeme', s2) +
-      section('c4', 4, 'Platba', 'Vše je připraveno k odeslání', s4) +
+      section('c4', VO ? 3 : 4, 'Platba', 'Vše je připraveno k odeslání', s4) +
       '</div>' +
       '<aside class="np-side"><div class="np-sum" id="npSum"><h2>Vaše objednávka</h2><div class="np-items" id="npItems"></div><div class="np-lines" id="npLines"></div>' +
       '<div class="np-tot"><span>Celkem</span><b id="npTotal">0&nbsp;Kč</b></div><div class="np-split" id="npSplit"></div>' +
       '<button type="button" class="np-cta" id="npCta">Pokračovat k platbě</button>' +
-      '<div class="np-trust"><i class="ti ti-shield-check"></i><span>Platbu zpracovává Stripe. Údaje o kartě nikdy nevidíme.</span></div></div></aside>' +
+      '<div class="np-trust"><i class="ti ti-shield-check"></i><span>Platbu zpracovává Stripe. Údaje o kartě nikdy nevidíme.</span></div>' +
+      '<div class="np-cats" id="npCats" hidden><span>🐾</span><span>Z každé dárkové karty posíláme 50 Kč kočkám v útulcích. Platíme to my, cena se nemění. <a href="/darkove-karty#kocky" target="_blank" rel="noopener">Více</a></span></div></div></aside>' +
       '</div>' +
       '<div class="np-bar" id="npBar"><div class="t"><small id="npBarLbl">Celkem</small><b id="npBarTot">0&nbsp;Kč</b></div><button type="button" id="npBarBtn">Pokračovat k platbě</button></div>' +
       '<div class="np-toast" id="npToast" role="status" aria-live="polite"></div>' +
@@ -1440,7 +1459,8 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
       .then(function (d) {
         if (!d || !Array.isArray(d.unsourceable)) return;
         var bad = {}; d.unsourceable.forEach(function (n) { bad[normName(n)] = 1; });
-        GONE = products().filter(function (p) { return bad[normName(p.name)]; }).map(function (p) { return decode(p.name); });
+        var AL = { 'sekátor': 'jednočepelové nůžky', 'nůžky': 'přečepelové nůžky' };
+        GONE = products().filter(function (p) { var k = normName(p.name); return bad[k] || bad[AL[k]]; }).map(function (p) { return decode(p.name); });
         renderGone(); refresh();
       }).catch(function () {});
   }
@@ -1574,6 +1594,42 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
   function bindWho() {
     $('#npWho').addEventListener('click', function (e) { var b = e.target.closest('[data-w]'); if (b) setWho(b.getAttribute('data-w')); });
     $('#npGm').addEventListener('click', function (e) { var b = e.target.closest('[data-gm]'); if (b) setGm(b.getAttribute('data-gm')); });
+  }
+  function renderVch() {
+    var el = $('#npVch'); if (!el) return;
+    if (!hasEV()) { el.innerHTML = ''; return; }
+    var v = S.vc, other = v.to === 'other', t = sod(new Date());
+    var h = (VO ? '' : '<div class="np-sub"><span>Elektronická dárková karta</span></div>') +
+      '<div class="np-tiles" id="npVTo">' +
+      '<button type="button" class="np-tile' + (other ? '' : ' on') + '" data-vt="me"><span class="ic"><i class="ti ti-mail"></i></span><span><b>Na můj e-mail</b><span class="s">Kód pošleme vám, předáte ho sami</span></span></button>' +
+      '<button type="button" class="np-tile' + (other ? ' on' : '') + '" data-vt="other"><span class="ic"><i class="ti ti-gift"></i></span><span><b>Obdarovanému</b><span class="s">Pošleme mu ji e-mailem i s věnováním</span></span></button>' +
+      '</div>';
+    if (other) {
+      h += '<div class="np-row">' + field('vemail', 'E-mail obdarovaného', 'email', { mode: 'email', ac: 'off' }) + '</div><div class="np-row">' + field('vname', 'Jméno obdarovaného', 'text', { req: false }) + '</div>' +
+        '<div class="np-row"><div class="np-f" data-k="vmsg"><label class="l" for="np_vmsg">Věnování</label><textarea class="np-in" id="np_vmsg" rows="3" maxlength="500" placeholder="Např. Všechno nejlepší k narozeninám!"></textarea><div class="np-msg"></div></div></div>' +
+        '<div class="np-sub"><span>Kdy kartu poslat</span></div>' +
+        '<div class="np-tiles" id="npVWhen">' +
+        '<button type="button" class="np-tile' + (v.when === 'date' ? '' : ' on') + '" data-vw="now"><span class="ic"><i class="ti ti-bolt"></i></span><span><b>Hned</b><span class="s">Po zaplacení</span></span></button>' +
+        '<button type="button" class="np-tile' + (v.when === 'date' ? ' on' : '') + '" data-vw="date"><span class="ic"><i class="ti ti-calendar-event"></i></span><span><b>V určitý den</b><span class="s">Ráno v 9:00</span></span></button>' +
+        '</div>';
+      if (v.when === 'date') h += '<div class="np-row">' + field('vdate', 'Den odeslání', 'date') + '</div><div class="np-vhint">Nejdřív zítra, nejpozději za 60 dní.</div>';
+    }
+    el.innerHTML = h;
+    var e1 = $('#np_vemail'); if (e1) e1.value = v.email || '';
+    var e2 = $('#np_vname'); if (e2) e2.value = v.name || '';
+    var e3 = $('#np_vmsg'); if (e3) e3.value = v.msg || '';
+    var e4 = $('#np_vdate'); if (e4) { e4.min = iso(addDays(t, 1)); e4.max = iso(addDays(t, 60)); e4.value = v.date || ''; }
+  }
+  function bindVch() {
+    var el = $('#npVch'); if (!el) return;
+    el.addEventListener('click', function (e) {
+      var a = e.target.closest('[data-vt]'), b = e.target.closest('[data-vw]');
+      if (a) { S.vc.to = a.getAttribute('data-vt'); renderVch(); saveDraft(); refresh(); if (S.vc.to === 'other' && !S.vc.email) { var f = $('#np_vemail'); if (f) setTimeout(function () { try { f.focus({ preventScroll: true }); } catch (x) {} }, 60); } }
+      if (b) { S.vc.when = b.getAttribute('data-vw'); if (S.vc.when === 'date' && !S.vc.date) S.vc.date = iso(addDays(new Date(), 1)); renderVch(); saveDraft(); refresh(); }
+    });
+    var map = { np_vemail: 'email', np_vname: 'name', np_vmsg: 'msg', np_vdate: 'date' };
+    function on(e) { var k = map[e.target && e.target.id]; if (!k) return; S.vc[k] = String(e.target.value || '').slice(0, k === 'msg' ? 500 : 120); setErr(e.target.id.slice(3), ''); saveDraft(); refresh(); }
+    el.addEventListener('input', on); el.addEventListener('change', on);
   }
   function renderWho() {
     $$('#npWho .np-tile', ROOT).forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-w') === S.who); });
@@ -1887,6 +1943,7 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
   function stepSummary(id) {
     if (id === 'c1') return [(S.name + ' ' + S.last).trim(), S.phone, S.email].filter(Boolean).join(' · ');
     if (id === 'c2') {
+      if (VO) return S.vc.to === 'other' ? 'Pro ' + String(S.vc.email || '').trim() + ' · ' + (S.vc.when === 'date' && S.vc.date ? shortDate(S.vc.date) + ' v 9:00' : 'hned po zaplacení') : 'Kód pošleme na váš e-mail';
       if (S.who === 'me') return 'Pro mě';
       var nm = (S.rname + ' ' + S.rlast).trim();
       if (S.gift) return 'Dárek · ' + nm + ' · adresu doplní přes ' + (CH_LABEL[S.gift.channel] || 'SMS');
@@ -1947,12 +2004,12 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
   /* ---------- payment section ---------- */
   function renderPays() {
     var el = $('#npPays'); if (!el) return;
-    var cashOk = S.mode === 'pickup';
+    var cashOk = S.mode === 'pickup' && !VO;
     if (S.pay === 'cash' && !cashOk) S.pay = 'stripe';
     var tt = totals(), useDep = canDeposit() && S.dep.use && tt.dep >= tt.total;
     el.innerHTML =
       '<label class="np-tile row' + (S.pay === 'stripe' ? ' on' : '') + '"><input type="radio" name="nppay" value="stripe"' + (S.pay === 'stripe' ? ' checked' : '') + '><span class="ic"><i class="ti ti-credit-card"></i></span><span class="tx"><b>Kartou online</b><span class="s">Visa, Mastercard, Apple Pay a Google Pay přes Stripe' + (useDep ? ' (nebude potřeba, platíte depozitem)' : '') + '</span></span><span class="rd"></span></label>' +
-      '<label class="np-tile row' + (S.pay === 'cash' ? ' on' : '') + (cashOk ? '' : ' dis') + '"><input type="radio" name="nppay" value="cash"' + (S.pay === 'cash' ? ' checked' : '') + (cashOk ? '' : ' disabled') + '><span class="ic"><i class="ti ti-cash"></i></span><span class="tx"><b>Hotově při převzetí</b><span class="s">' + (cashOk ? 'Zaplatíte při vyzvednutí' : 'Jen při osobním odběru') + '</span></span><span class="rd"></span></label>';
+      (VO ? '' : '<label class="np-tile row' + (S.pay === 'cash' ? ' on' : '') + (cashOk ? '' : ' dis') + '"><input type="radio" name="nppay" value="cash"' + (S.pay === 'cash' ? ' checked' : '') + (cashOk ? '' : ' disabled') + '><span class="ic"><i class="ti ti-cash"></i></span><span class="tx"><b>Hotově při převzetí</b><span class="s">' + (cashOk ? 'Zaplatíte při vyzvednutí' : 'Jen při osobním odběru') + '</span></span><span class="rd"></span></label>');
     $$('input[name="nppay"]', el).forEach(function (r) { r.addEventListener('change', function () { S.pay = r.value; renderPays(); renderDep(); renderPromo(); refresh(); }); });
   }
   function renderDep() {
@@ -2154,10 +2211,12 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
     if (t.disc > 0) h += '<div class="disc' + (t.disc > (S.prevDisc || 0) && !reduceMotion() ? ' new' : '') + '"><span>Sleva</span><b>−' + kc(t.disc) + '</b></div>';
     S.prevDisc = t.disc;
     if (t.pts > 0) h += '<div class="disc"><span>Body</span><b>−' + kc(t.pts) + '</b></div>';
-    if (S.mode === 'courier') h += '<div><span>Doručení kurýrem' + (f.extra ? ' (vč. příplatku za vzdálenost)' : '') + '</span><b>' + (f.need || f.empty ? 'od ' + kc(f.delivery) : kc(f.delivery)) + '</b></div>';
+    if (VO) h += '<div class="free"><span>Doručení e-mailem</span><b>Zdarma</b></div>';
+    else if (S.mode === 'courier') h += '<div><span>Doručení kurýrem' + (f.extra ? ' (vč. příplatku za vzdálenost)' : '') + '</span><b>' + (f.need || f.empty ? 'od ' + kc(f.delivery) : kc(f.delivery)) + '</b></div>';
     else h += '<div class="free"><span>Osobní odběr</span><b>Zdarma</b></div>';
-    h += '<div class="info" id="npSvc"><span>Servisní poplatek<i class="ti ti-info-circle"></i></span><b>' + kc(f.service) + '</b></div>';
+    if (!VO) h += '<div class="info" id="npSvc"><span>Servisní poplatek<i class="ti ti-info-circle"></i></span><b>' + kc(f.service) + '</b></div>';
     lines.innerHTML = h;
+    var cats = $('#npCats'); if (cats) cats.hidden = !hasVoucher();
     setMoney($('#npTotal'), t.total);
     var sp = $('#npSplit'), useDep = canDeposit() && S.dep.use && t.dep > 0;
     if (useDep) {
@@ -2198,12 +2257,12 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
     need('email', emailOk ? '' : 'Zadejte prosím platný e-mail.', 'c1');
     if (S.isCompany) need('ico', S.co.ok ? '' : (S.co.manual ? 'Napište prosím název firmy.' : (S.co.err || 'Zadejte prosím IČO firmy (8 číslic).')), 'c1');
     var f = feeCalc();
-    if (S.mode === 'courier' && !S.gift) {
+    if (S.mode === 'courier' && !S.gift && !VO) {
       need('adres', S.adres.trim() ? (f.tooFar ? 'Na tuto adresu kurýrem nedoručujeme.' : (f.need ? 'Vyberte prosím adresu ze seznamu.' : (S.noNum ? 'Doplňte prosím číslo popisné: vyberte ze seznamu adresu s číslem.' : ''))) : 'Vyplňte prosím adresu.', 'c3');
       need('city', S.city.trim() ? '' : 'Vyplňte prosím město.', 'c3');
       need('psc', /^\d{3}\s?\d{2}$/.test(S.psc.trim()) ? '' : 'Zadejte prosím PSČ (5 číslic).', 'c3');
     }
-    if (!S.gift && (!only || only === 'c3')) {
+    if (!S.gift && !VO && (!only || only === 'c3')) {
       var dm = !S.date ? 'Vyberte datum.' : (dateReason(parseIso(S.date)) !== null ? 'Toto datum už není k dispozici.' : '');
       $('#npDateErr').textContent = dm; $('#g_date').classList.toggle('bad', !!dm); if (dm) { bad.push({ k: 'date', s: 'c3', el: '#g_date' }); sec.c3 = 1; }
       var tm = S.mode === 'pickup' ? (S.time ? (pickupWhy(S.date, S.time) ? 'Tento čas už není k dispozici.' : '') : 'Vyberte čas.') : (S.slot && !slotReason(S.slot) ? '' : 'Vyberte dobu doručení.');
@@ -2211,7 +2270,7 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
     }
     if (!only || only === 'c2') {
       var we = $('#npWhoErr'), ge = $('#npGmErr');
-      if (!S.who) { we.textContent = 'Vyberte prosím, pro koho květiny jsou.'; $('#npWho').classList.add('bad'); bad.push({ k: 'who', s: 'c2', el: '#npWho' }); sec.c2 = 1; }
+      if (!S.who && !VO) { we.textContent = 'Vyberte prosím, pro koho květiny jsou.'; $('#npWho').classList.add('bad'); bad.push({ k: 'who', s: 'c2', el: '#npWho' }); sec.c2 = 1; }
       if (S.who === 'other' && !S.gm) { ge.textContent = 'Vyberte prosím jednu z možností.'; $('#npGm').classList.add('bad'); bad.push({ k: 'gm', s: 'c2', el: '#npGm' }); sec.c2 = 1; }
     }
     if (S.who === 'other') {
@@ -2223,12 +2282,16 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
         need('ghandle', !gh ? 'Napište prosím kontakt, kam mu napíšeme.' : (!validHandle(gc, gh) ? (gc === 'instagram' || (gc === 'telegram' && /[a-z]/i.test(gh)) ? 'Zkontrolujte prosím uživatelské jméno.' : 'Zkontrolujte prosím telefonní číslo (aspoň 9 číslic).') : (S.glBlocked ? 'Tomuto kontaktu bohužel nemůžeme dárek bez adresy poslat. Zvolte prosím, že adresu znáte.' : '')), 'c2');
       }
     }
+    if (hasEV() && S.vc.to === 'other') {
+      need('vemail', isEmail(S.vc.email) ? '' : 'Zadejte prosím e-mail obdarovaného.', 'c2');
+      if (S.vc.when === 'date') need('vdate', vcDateOk() ? '' : 'Vyberte prosím den: nejdřív zítra, nejpozději za 60 dní.', 'c2');
+    }
     if (hasPostcard()) {
       need('pcTo', S.pcTo.trim() ? '' : 'Napište prosím, pro koho pohlednice je.', 'c2');
       need('pcText', S.pcText.trim() ? '' : 'Napište prosím text pohlednice.', 'c2');
     }
     if (!S.consent && !only) { setErr('consent', 'x'); $('#npConsentL').classList.add('bad'); bad.push({ k: 'consent', s: 'c4', el: '#npConsentL' }); sec.c4 = 1; }
-    ['c1', 'c2', 'c3', 'c4'].forEach(function (id) { if (!only || id === only) $('#' + id).classList.toggle('err', !!sec[id]); });
+    ORDER.forEach(function (id) { if (!only || id === only) $('#' + id).classList.toggle('err', !!sec[id]); });
     bad.sort(function (x, y) { return ORDER.indexOf(x.s) - ORDER.indexOf(y.s); });
     return bad;
   }
@@ -2246,19 +2309,19 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
     var c2 = S.who === 'me' ? true : (S.who === 'other' && S.rname.trim() && (S.gm === 'link' ? validHandle(S.gl.channel, String(S.gl.handle || '').trim()) && !S.glBlocked : (S.gm === 'addr' && (S.rlast.trim() || recSingle()) && phoneValid(S.rphone))));
     return {
       c1: !!c1,
-      c2: !!(c2 && pc),
-      c3: !!(S.gift ? true : ((S.mode === 'pickup' || (S.adres.trim() && !feeCalc().need && !feeCalc().tooFar && !S.noNum && S.city.trim())) && S.date && (S.mode === 'pickup' ? S.time : S.slot))),
+      c2: !!((VO || (c2 && pc)) && vcOk()),
+      c3: !!(VO || S.gift ? true : ((S.mode === 'pickup' || (S.adres.trim() && !feeCalc().need && !feeCalc().tooFar && !S.noNum && S.city.trim())) && S.date && (S.mode === 'pickup' ? S.time : S.slot))),
       c4: !!S.consent
     };
   }
   function updateSteps() {
     var ok = stepOk();
     var prog = $$('#npProg i', ROOT);
-    ['c1', 'c2', 'c3', 'c4'].forEach(function (id, i) {
+    ORDER.forEach(function (id, i) {
       var done = !!ok[id], sec = $('#' + id); if (!sec) return;
       sec.classList.toggle('done', done);
       var num = $('.np-num', sec), want = done ? '1' : '0';
-      if (num && num.getAttribute('data-d') !== want) { num.setAttribute('data-d', want); num.innerHTML = done ? '<i class="ti ti-check"></i>' : id.charAt(1); }
+      if (num && num.getAttribute('data-d') !== want) { num.setAttribute('data-d', want); num.innerHTML = done ? '<i class="ti ti-check"></i>' : String(i + 1); }
       if (prog[i]) prog[i].classList.toggle('on', done);
     });
     paintCol();
@@ -2285,6 +2348,8 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
   function syncCartDelivery() {
     var f = cartForm(); if (!f) return;
     var fee = feeCalc();
+    /* e-cards only: pickup option without the service fee (nothing to prepare or deliver) */
+    $$('input[name="delivery"]', f).forEach(function (r) { if (/kur/i.test(r.value)) return; if (r.__npP === undefined) r.__npP = r.getAttribute('data-delivery-price'); if (VO) r.setAttribute('data-delivery-price', '0'); else if (r.__npP != null) r.setAttribute('data-delivery-price', r.__npP); });
     $$('input[name="delivery"]', f).forEach(function (r) { if (/kur/i.test(r.value)) r.setAttribute('data-delivery-price', String(fee.fee)); });
     var want = S.mode === 'courier' ? function (v) { return /kur/i.test(v); } : function (v) { return !/kur/i.test(v); };
     setCartClick('delivery', want);
@@ -2292,6 +2357,7 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
   }
   function commitToCart() {
     var f = cartForm(); if (!f) return false;
+    if (VO) { S.mode = 'pickup'; S.gift = null; if (!S.date) S.date = iso(addDays(new Date(), 1)); if (!S.time) S.time = '12:00'; }
     var g = S.gift;
     setCart('name', S.name.trim()); setCart('last-name', S.last.trim()); setCart('phone', phoneCart(S.phone)); setCart('email', S.email.trim());
     var cf = companyForm(); Object.keys(cf).forEach(function (k) { setCart(k, cf[k]); });
@@ -2305,7 +2371,7 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
     var adres = g ? 'Adresu zadá příjemce' : (S.mode === 'courier' ? S.adres.trim() : ''), city = g ? 'Praha' : (S.mode === 'courier' ? S.city.trim() : ''), psc = g ? '110 00' : (S.mode === 'courier' ? S.psc.trim() : '');
     setCart('adres', adres); setCart('city', city); setCart('psc', psc);
     setCart('floor', S.mode === 'courier' && !g ? S.floor : ''); setCart('apartment-number', S.mode === 'courier' && !g ? S.apt : ''); setCart('intercom', S.mode === 'courier' && !g ? S.intercom : '');
-    var rn = S.same ? S.name : S.rname, rl = S.same ? S.last : S.rlast, rp = S.same ? S.phone : S.rphone;
+    var me = S.same || VO, rn = me ? S.name : S.rname, rl = me ? S.last : S.rlast, rp = me ? S.phone : S.rphone;
     if (g && !phoneValid(rp)) rp = S.phone;
     setCart('recipients-name', rn.trim()); setCart('recipients-lastname', (rl || '').trim() || '-'); setCart('recipients-phone-number', phoneCart(rp));
     setCartCheck('recipient-customer', !!S.same && !g);
@@ -2315,6 +2381,11 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
     setCart('delivery_km', fee.km != null ? (Math.round(fee.km * 10) / 10).toString() : '');
     setCart('delivery_fee_calc', S.mode === 'courier' ? (fee.tooFar ? 'too_far' : CFG.base + '+' + fee.extra + '+' + CFG.service + '=' + fee.fee) : '');
     ['gift-no-address', 'gift-channel', 'gift-handle', 'gift-recipient-name', 'gift-sender-visible'].forEach(function (n) { var e = f.querySelector('[name="' + n + '"]'); if (e) e.remove(); });
+    ['voucher-recipient-email', 'voucher-recipient-name', 'voucher-send-on', 'voucher-message'].forEach(function (n) { var e = f.querySelector('[name="' + n + '"]'); if (e) e.remove(); });
+    if (hasEV() && S.vc.to === 'other') {
+      setCart('voucher-recipient-email', String(S.vc.email || '').trim().toLowerCase()); setCart('voucher-recipient-name', String(S.vc.name || '').trim());
+      setCart('voucher-message', String(S.vc.msg || '').trim()); setCart('voucher-send-on', S.vc.when === 'date' && vcDateOk() ? S.vc.date : '');
+    }
     if (g) { setCart('gift-no-address', 'yes'); setCart('gift-channel', g.channel); setCart('gift-handle', g.handle); setCart('gift-recipient-name', g.name); setCart('gift-sender-visible', g.visible ? 'yes' : 'no'); }
     if (hasPostcard()) {
       setCartClick('senders_name_postcard', function (v) { return S.pcSender === 'anon' ? /anonym/i.test(v) : /jmén|jmen|zákazn/i.test(v); });
@@ -2503,9 +2574,13 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
       if (!ok) { ROOT.innerHTML = '<div class="np-empty"><h2>Stránku se nepodařilo načíst</h2><p>Obnovte ji prosím, případně nám napište na support@vezminarin.cz.</p></div>'; return; }
       if (!products().length) return showEmpty();
       loadDraft(); prefill();
+      VO = vOnly(); ORDER = VO ? ['c1', 'c2', 'c4'] : ['c1', 'c2', 'c3', 'c4'];
+      if (VO) { S.mode = 'pickup'; S.who = null; S.gm = null; S.same = false; S.gift = null; if (S.pay === 'cash') S.pay = 'stripe'; }
       var now = new Date(); cal.y = now.getFullYear(); cal.m = now.getMonth();
       ROOT.innerHTML = template();
-      bindFields(); bindWhen(); bindWho(); bindSteps();
+      bindFields(); bindWhen(); bindWho(); bindSteps(); bindVch();
+      ROOT.classList.toggle('vo', VO); if (VO) $('#c3').hidden = true;
+      renderVch();
       $('#npCta').addEventListener('click', submit); $('#npBarBtn').addEventListener('click', submit);
       ROOT.addEventListener('click', function (e) { if (e.target.closest('#npSvc')) toast('Servisní poplatek zahrnuje přípravu a zabalení kytice, zpracování objednávky a daně.', false, 6000); });
       if (S.date && dateReason(parseIso(S.date)) !== null && AV.loaded) S.date = null;
@@ -2521,7 +2596,7 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
       loadRecipients(); loadPoints(); loadMyCompanies(); syncCartDelivery(); checkSourceable();
       /* keep summary and cart totals in step with Tilda */
       var last = '';
-      setInterval(function () { var sig = JSON.stringify([tc().prodamount, tc().prodamount_withdiscount, tc().promocode && tc().promocode.promocode, products().length]); if (sig !== last) { last = sig; renderRecipient(); recomputeSpecial(); renderDep(); renderPromo(); renderPays(); refresh(); quoteSoon(); } }, 800);
+      setInterval(function () { var sig = JSON.stringify([tc().prodamount, tc().prodamount_withdiscount, tc().promocode && tc().promocode.promocode, products().length]); if (sig !== last) { if (last && vOnly() !== VO) { saveDraft(); location.reload(); return; } var hadEV = !!$('#npVch .np-tiles'); last = sig; if (hadEV !== hasEV()) renderVch(); renderRecipient(); recomputeSpecial(); renderDep(); renderPromo(); renderPays(); refresh(); quoteSoon(); } }, 800);
       var hb = $('#npBack'); if (hb) hb.addEventListener('click', function (e) { if (history.length > 1 && document.referrer && document.referrer.indexOf(location.host) > -1) { e.preventDefault(); history.back(); } });
       if (window.members && typeof members.hideuserbar === 'function') { try { members.hideuserbar(); } catch (e) {} }
     });
