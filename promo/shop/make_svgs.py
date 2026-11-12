@@ -117,6 +117,9 @@ VARIANTS = {
     "B-bouquets": "two small bouquets at the sides",
     "C-ribbon": "a row of small daisies between the lines",
     "D-minimal": "only two daisies, as separators in the bottom line",
+    "E-scatter": "equal daisies scattered evenly over the glass, like on the label",
+    "F-pattern": "equal daisies on a staggered grid over the glass",
+    "G-scatter-small": "smaller equal daisies, scattered more densely, daisies as separators",
 }
 
 
@@ -164,7 +167,8 @@ def ellipse_points(n, inset, t0, t1):
 
 
 def arch_art(ink, variant="A-garland"):
-    logo_w, top = (700, 165) if variant == "A-garland" else (760, 140)
+    SCAT = ("E-scatter", "F-pattern", "G-scatter-small")
+    logo_w, top = (700, 165) if variant == "A-garland" else (660, 150) if variant in SCAT else (760, 140)
     lg, lh = logo(AW / 2, top, logo_w, ink)
     sub_y = top + lh + 84
     sub, _ = text_path("květinový ateliér", 66, AW / 2, sub_y, ink, width=logo_w)
@@ -182,9 +186,36 @@ def arch_art(ink, variant="A-garland"):
         n = 13
         for i in range(n):
             flowers.append(daisy(AW / 2 - logo_w / 2 + 20 + (logo_w - 40) * i / (n - 1), sub_y + 62, 38, DAISY_COLS[i % 6], 0))
+    elif variant in ("E-scatter", "G-scatter-small"):
+        pad = 16   # tight boxes around each line, so daisies can sit between the lines too
+        blocked = [(AW / 2 - logo_w / 2 - pad, top - pad, AW / 2 + logo_w / 2 + pad, top + lh + pad),
+                   (AW / 2 - logo_w / 2 - pad, sub_y - 52 - pad, AW / 2 + logo_w / 2 + pad, sub_y + 16 + pad),
+                   (AW / 2 - 560 - pad, 612 - 66 - pad, AW / 2 + 560 + pad, 612 + 20 + pad)]
+        box = {"x0": 0, "x1": AW, "y0": 0, "y1": AH, "test": lambda x, y, r: arch_inner(x, y, r, 36)}
+        r, gap = (23, 46) if variant == "E-scatter" else (16, 30)
+        flowers = scatter(box, blocked, 80000, r, r, gap, seed=3 if variant == "E-scatter" else 21)
+        sep = "dot" if variant == "E-scatter" else "daisy"
+    elif variant == "F-pattern":
+        pad = 16   # tight boxes around each line, so daisies can sit between the lines too
+        blocked = [(AW / 2 - logo_w / 2 - pad, top - pad, AW / 2 + logo_w / 2 + pad, top + lh + pad),
+                   (AW / 2 - logo_w / 2 - pad, sub_y - 52 - pad, AW / 2 + logo_w / 2 + pad, sub_y + 16 + pad),
+                   (AW / 2 - 560 - pad, 612 - 66 - pad, AW / 2 + 560 + pad, 612 + 20 + pad)]
+        d, dx, dy = 36, 96, 84
+        row = 0
+        for y in [60 + row * dy for row in range(8)]:
+            off = dx / 2 if round((y - 60) / dy) % 2 else 0
+            for col in range(-3, 18):
+                x = AW / 2 - 5 * dx + off + col * dx
+                rr = d / 2
+                if not arch_inner(x, y, rr, 34):
+                    continue
+                if any(bx0 - rr < x < bx1 + rr and by0 - rr < y < by1 + rr for bx0, by0, bx1, by1 in blocked):
+                    continue
+                k = round((y - 60) / dy) * 2 + col
+                flowers.append(daisy(x, y, d, DAISY_COLS[k % 6], 0))
     else:
         sep = "daisy"
-    line = bottom_line(ink, 612 if variant != "C-ribbon" else 628, 1040 if variant == "A-garland" else 1180, 88, sep)
+    line = bottom_line(ink, 612 if variant != "C-ribbon" else 628, 1040 if variant == "A-garland" else 1120 if variant in SCAT else 1180, 88, sep)
     return [layer("daisies", flowers), layer("logo", [lg]), layer("text", [sub] + line)]
 
 
