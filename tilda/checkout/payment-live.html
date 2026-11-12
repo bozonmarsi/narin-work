@@ -1260,12 +1260,12 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
     return '' +
       '<div class="np-prog" id="npProg"><i></i><i></i><i></i>' + (VO ? '' : '<i></i>') + '</div>' +
       '<div class="np-top"><a class="back" href="/" id="npBack"><span class="arr"><i class="ti ti-arrow-left"></i></span><img src="https://narin-work.vercel.app/brand/narin-logo.png" alt="NARIN"></a><span class="np-secure"><i class="ti ti-lock"></i>Zabezpečená platba</span></div>' +
-      '<div class="np-hero"><div class="np-eyebrow">Dokončení objednávky</div><h1>Skoro hotovo. <em>Ještě pár detailů.</em></h1><p>' + (VO ? 'Dárkovou kartu pošleme e-mailem, hned po zaplacení nebo v den, který vyberete.' : 'Květiny připravíme čerstvé a doručíme v den, který si vyberete.') + '</p></div>' +
+      '<div class="np-hero"><div class="np-eyebrow">Dokončení objednávky</div><h1>Skoro hotovo. <em>Ještě pár detailů.</em></h1><p>' + (VO ? 'Dárkovou kartu pošleme e-mailem hned po zaplacení, vám nebo rovnou obdarovanému.' : 'Květiny připravíme čerstvé a doručíme v den, který si vyberete.') + '</p></div>' +
       '<div class="np-alert" id="npAlert" hidden></div>' +
       '<div class="np-gone" id="npGone" hidden></div>' +
       '<div class="np-grid"><div class="np-main">' +
       section('c1', 1, 'Vaše údaje', 'Na tento e-mail pošleme potvrzení', s1) +
-      section('c2', 2, VO ? 'Komu kartu pošleme?' : 'Pro koho jsou květiny?', VO ? 'E-mailem, hned nebo v den, který vyberete' : 'Pro vás, nebo jako dárek', s3) +
+      section('c2', 2, VO ? 'Komu kartu pošleme?' : 'Pro koho jsou květiny?', VO ? 'E-mailem hned po zaplacení' : 'Pro vás, nebo jako dárek', s3) +
       section('c3', 3, 'Doručení', 'Kam a kdy kytice přivezeme', s2) +
       section('c4', VO ? 3 : 4, 'Platba', 'Vše je připraveno k odeslání', s4) +
       '</div>' +
@@ -1598,6 +1598,7 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
   function renderVch() {
     var el = $('#npVch'); if (!el) return;
     if (!hasEV()) { el.innerHTML = ''; return; }
+    S.vc.when = 'now'; /* e-cards always go out right after payment */
     var v = S.vc, other = v.to === 'other', t = sod(new Date());
     var h = (VO ? '' : '<div class="np-sub"><span>Elektronická dárková karta</span></div>') +
       '<div class="np-tiles" id="npVTo">' +
@@ -1607,12 +1608,9 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
     if (other) {
       h += '<div class="np-row">' + field('vemail', 'E-mail obdarovaného', 'email', { mode: 'email', ac: 'off' }) + '</div><div class="np-row">' + field('vname', 'Jméno obdarovaného', 'text', { req: false }) + '</div>' +
         '<div class="np-row"><div class="np-f" data-k="vmsg"><label class="l" for="np_vmsg">Věnování</label><textarea class="np-in" id="np_vmsg" rows="3" maxlength="500" placeholder="Např. Všechno nejlepší k narozeninám!"></textarea><div class="np-msg"></div></div></div>' +
-        '<div class="np-sub"><span>Kdy kartu poslat</span></div>' +
-        '<div class="np-tiles" id="npVWhen">' +
-        '<button type="button" class="np-tile' + (v.when === 'date' ? '' : ' on') + '" data-vw="now"><span class="ic"><i class="ti ti-bolt"></i></span><span><b>Hned</b><span class="s">Po zaplacení</span></span></button>' +
-        '<button type="button" class="np-tile' + (v.when === 'date' ? ' on' : '') + '" data-vw="date"><span class="ic"><i class="ti ti-calendar-event"></i></span><span><b>V určitý den</b><span class="s">Ráno v 9:00</span></span></button>' +
-        '</div>';
-      if (v.when === 'date') h += '<div class="np-row">' + field('vdate', 'Den odeslání', 'date') + '</div><div class="np-vhint">Nejdřív zítra, nejpozději za 60 dní.</div>';
+        '<div class="np-vhint">Kartu pošleme na tento e-mail hned po zaplacení. Vám přijde potvrzení.</div>';
+    } else {
+      h += '<div class="np-vhint">Kartu s kódem pošleme na váš e-mail hned po zaplacení. Přepošlete ji, vytiskněte nebo pošlete přes WhatsApp.</div>';
     }
     el.innerHTML = h;
     var e1 = $('#np_vemail'); if (e1) e1.value = v.email || '';
@@ -1943,7 +1941,7 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
   function stepSummary(id) {
     if (id === 'c1') return [(S.name + ' ' + S.last).trim(), S.phone, S.email].filter(Boolean).join(' · ');
     if (id === 'c2') {
-      if (VO) return S.vc.to === 'other' ? 'Pro ' + String(S.vc.email || '').trim() + ' · ' + (S.vc.when === 'date' && S.vc.date ? shortDate(S.vc.date) + ' v 9:00' : 'hned po zaplacení') : 'Kód pošleme na váš e-mail';
+      if (VO) return S.vc.to === 'other' ? 'Pro ' + String(S.vc.email || '').trim() + ' · ' + 'hned po zaplacení' : 'Kód pošleme na váš e-mail';
       if (S.who === 'me') return 'Pro mě';
       var nm = (S.rname + ' ' + S.rlast).trim();
       if (S.gift) return 'Dárek · ' + nm + ' · adresu doplní přes ' + (CH_LABEL[S.gift.channel] || 'SMS');

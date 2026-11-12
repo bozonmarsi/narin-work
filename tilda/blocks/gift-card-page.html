@@ -1,0 +1,280 @@
+<div class="npk-wrap"><div class="npk" id="npk">
+  <div class="npk-gift" id="npkGift"></div>
+  <div class="npk-card" id="npkCard"></div>
+  <div class="npk-how">
+    <div class="npk-how-t">Jak to funguje</div>
+    <div class="npk-step"><i>1</i><div><b>Naskenujte QR k&#243;d</b><span>nebo zadejte k&#243;d z karty</span></div></div>
+    <div class="npk-step"><i>2</i><div><b>P&#345;ihlaste se</b><span>registrace je zdarma a trv&#225; minutu</span></div></div>
+    <div class="npk-step"><i>3</i><div><b>&#268;&#225;stka je na va&#353;em &#250;&#269;tu</b><span>plat&#237;te z n&#237; objedn&#225;vky, cel&#233; nebo jen &#269;&#225;st</span></div></div>
+  </div>
+  <div class="npk-note">Poukaz plat&#237; 12 m&#283;s&#237;c&#367; od aktivace. P&#345;ipsan&#225; &#269;&#225;stka plat&#237; do stejn&#233;ho data a lze ji uplatnit jen jednou.</div>
+  <a class="npk-more" href="/to-buyers#poukazy">P&#345;e&#269;&#237;st podrobn&#283;, jak poukazy funguj&#237; <span>&rarr;</span></a>
+</div></div>
+<style>
+.npk-wrap { box-sizing: border-box; padding: 104px 16px 64px; background: #fff; min-height: 100vh; font-family: 'Rubik', Arial, sans-serif; }
+.npk-wrap *, .npk-wrap *::before, .npk-wrap *::after { box-sizing: border-box; }
+.npk { max-width: 480px; margin: 0 auto; color: #16181d; }
+
+/* gift card visual: the real card front (picture) with a small white plate on it */
+.npk-gift { position: relative; overflow: hidden; border-radius: 22px; aspect-ratio: 1540 / 997; background: #dfe8f6; box-shadow: 0 22px 44px -18px rgba(24, 60, 140, 0.55); }
+.npk-gift::before { content: ''; position: absolute; inset: 0; background: var(--npk-img, url(https://static.tildacdn.com/tild6564-3063-4161-a138-353866626234/narin-gift-1500.webp)) center / cover no-repeat; transition: filter .4s ease; }
+.npk-gift .g-tag { position: absolute; z-index: 1; top: 12px; left: 12px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; padding: 6px 11px; border-radius: 999px; background: rgba(255,255,255,0.94); color: #186ce0; }
+.npk-gift .g-plate { position: absolute; z-index: 1; left: 12px; bottom: 36px; max-width: 56%; background: rgba(255,255,255,0.95); border-radius: 14px; padding: 9px 13px 10px; text-align: left; }
+.npk-gift .g-small { font-size: 12px; color: #7d818c; line-height: 1.3; }
+.npk-gift .g-big { margin-top: 2px; font-size: 26px; font-weight: 700; line-height: 1.1; color: #186ce0; letter-spacing: -0.01em; }
+.npk-gift .g-big.sm { font-size: 16px; }
+.npk-gift .g-pill { position: absolute; z-index: 1; left: 12px; bottom: 34px; padding: 6px 11px; border-radius: 999px; background: rgba(255,255,255,0.94); font: 600 11px/1 'Rubik', monospace; letter-spacing: 0.12em; color: #5b616b; }
+.npk-gift .g-code { margin-top: 5px; font: 600 11px/1 'Rubik', monospace; letter-spacing: 0.12em; color: #7d818c; }
+.npk-gift.is-ok .g-big { color: #0f8a5c; }
+.npk-gift.is-bad::before { filter: grayscale(1) brightness(0.92); }
+.npk-gift.is-bad .g-big { color: #6b7483; }
+.npk-gift.is-bad .g-tag { color: #6b7483; }
+@media (prefers-reduced-motion: no-preference) {
+  .npk-gift.pop { animation: npkPop .5s ease-out; }
+}
+@keyframes npkPop { 0% { transform: scale(.97); } 60% { transform: scale(1.015); } 100% { transform: scale(1); } }
+
+/* action card */
+.npk-card { position: relative; z-index: 2; margin: -22px 14px 0; background: #fff; border-radius: 22px; padding: 24px 22px 22px; box-shadow: 0 14px 36px rgba(24, 108, 224, 0.13); text-align: center; }
+.npk h1 { margin: 0 0 8px; font-size: 21px; font-weight: 700; line-height: 1.25; }
+.npk p { margin: 0 0 14px; font-size: 14.5px; line-height: 1.55; color: #5b616b; }
+.npk .npk-info { margin: 12px 0 16px; padding: 12px 14px; border-radius: 12px; background: #f4f8ff; font-size: 13.5px; line-height: 1.55; color: #3b4452; text-align: left; }
+.npk .npk-btn { display: block; width: 100%; padding: 14px 18px; border: 0; border-radius: 999px; background: #186ce0; color: #fff !important; font: 600 15px 'Rubik', Arial, sans-serif; text-align: center; text-decoration: none !important; cursor: pointer; margin-top: 10px; transition: transform .12s ease, box-shadow .12s ease; box-shadow: 0 10px 22px -10px rgba(24,108,224,.8); }
+.npk .npk-btn:hover { transform: translateY(-1px); }
+.npk .npk-btn.sec { background: #fff; color: #186ce0 !important; border: 1.5px solid #c9dbf5; box-shadow: none; }
+.npk .npk-in { width: 100%; height: 52px; border: 1.5px solid #e3e5e9; border-radius: 14px; padding: 0 14px; font: 600 17px 'Rubik', monospace; letter-spacing: 0.08em; text-align: center; text-transform: uppercase; color: #16181d; outline: none; background: #fafbfd; }
+.npk .npk-in:focus { border-color: #186ce0; background: #fff; }
+.npk .npk-err { margin: 8px 0 0; color: #c0341f; font-size: 13.5px; }
+.npk .npk-spin { width: 34px; height: 34px; border: 3px solid #e5f0fd; border-top-color: #186ce0; border-radius: 50%; margin: 4px auto 14px; animation: npkSpin .8s linear infinite; }
+@keyframes npkSpin { to { transform: rotate(360deg); } }
+
+/* how it works */
+.npk-how { margin: 26px 4px 0; padding: 18px 18px 6px; border-radius: 20px; background: #fff; border: 1px solid #e3ebf8; }
+.npk-how-t { font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #186ce0; margin-bottom: 12px; }
+.npk-step { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 14px; }
+.npk-step i { flex: 0 0 auto; width: 28px; height: 28px; border-radius: 50%; background: #e5f0fd; color: #186ce0; font: 700 14px/28px 'Rubik', Arial, sans-serif; text-align: center; font-style: normal; }
+.npk-step b { display: block; font-size: 14.5px; font-weight: 600; }
+.npk-step span { display: block; font-size: 13px; color: #7d818c; margin-top: 1px; }
+.npk-note { margin: 14px 8px 0; font-size: 12.5px; line-height: 1.55; color: #7d818c; text-align: center; }
+.npk-more { display: block; margin: 14px auto 0; width: fit-content; padding: 10px 18px; border-radius: 999px; background: #eef4fe; color: #186ce0 !important; font: 600 13.5px 'Rubik', Arial, sans-serif; text-decoration: none !important; }
+.npk-more span { display: inline-block; transition: transform .15s ease; }
+.npk-more:hover span { transform: translateX(3px); }
+</style>
+<script>
+/* Narin: gift card page. The customer opens the link or scans the QR, signs in with the
+   usual site login (one shared lk_auth_token) and the amount is credited to the deposit.
+   Comments are plain ASCII on purpose (Tilda editor breaks on some characters). */
+(function () {
+  'use strict';
+
+  var SUPABASE_URL = 'https://wqburlamuipxmenqsjnx.supabase.co';
+  var SUPABASE_KEY = 'sb_publishable_ORMmBYvVjH6i2GanWa2JyA_mWm3fTCZ';
+  var TOKEN_KEY = 'lk_auth_token';
+
+  var card = document.getElementById('npkCard');
+  var gift = document.getElementById('npkGift');
+  var code = '';
+  var claimStarted = false;
+
+  var MSG = {
+    not_found: ['Tento kód jsme nenašli', 'Zkontrolujte prosím, že je přepsaný správně, a zkuste to znovu.'],
+    already_claimed: ['Tento poukaz už byl uplatněn', 'Poukaz lze uplatnit jen jednou. Pokud jste jej uplatnili vy, najdete částku na svém účtu.'],
+    not_active: ['Poukaz ještě není aktivní', 'Poukaz se aktivuje při nákupu. Pokud jste jej koupili, napište nám na support@vezminarin.cz a pomůžeme.'],
+    expired: ['Platnost poukazu vypršela', 'Bohužel, tento poukaz už nelze uplatnit.'],
+    void: ['Poukaz byl zrušen', 'Pro více informací nám napište na support@vezminarin.cz.'],
+    too_many_attempts: ['Příliš mnoho pokusů', 'Zkuste to prosím znovu za 15 minut.'],
+    network: ['Nepodařilo se spojit se serverem', 'Zkontrolujte připojení a zkuste to znovu za chvíli.'],
+    error: ['Něco se pokazilo', 'Zkuste to prosím znovu, nebo nám napište na support@vezminarin.cz.']
+  };
+
+  // Card picture by tier. Each printed card (code) belongs to one tier, the tier decides the picture.
+  var ART = { '500': 'https://static.tildacdn.com/tild6564-3063-4161-a138-353866626234/narin-gift-1500.webp', '1000': 'https://static.tildacdn.com/tild3233-3565-4638-a539-393831646662/narin-gift-1000.webp', '1500': 'https://static.tildacdn.com/tild3366-3334-4263-a462-336339646565/narin-gift-500.webp', '2000': 'https://static.tildacdn.com/tild6565-3932-4237-b834-333439343939/narin-gift-2000.webp' };
+  var ART_OF = { 'NRGU7JYJF5': '500', 'NRFX5W6KXB': '500', 'NRVVXFMDZ3': '500', 'NRPMC2U9HT': '500', 'NRU6C39TBR': '500', 'NRUJNUVABS': '500', 'NRGEPJXPS4': '1000', 'NRD2KXCTJA': '1000', 'NR6TJJUR5S': '1000', 'NRQA24QCCT': '1000', 'NRT7N26RCK': '1000', 'NRKSQ2FKCK': '1000', 'NRXSGRRBAU': '1500', 'NR9HBK5H6Y': '1500', 'NRFFJEJF4N': '1500', 'NRKPRG638J': '1500', 'NRFG6XGWFQ': '2000', 'NRNKDAGZN7': '2000', 'NRCK2MHKZQ': '2000', 'NRRYDPP94G': '2000' };
+  // Online cards: the e-mail link carries the value (?h=1000), the picture is the cat of that value.
+  var ONLINE_ART = { '500': 'https://static.tildacdn.com/tila6561-3962-4436-a666-363835303132/-/resize/1000x/kocka-500.jpg', '1000': 'https://static.tildacdn.com/tila6137-6432-4666-b561-336230643435/-/resize/1000x/kocka-1000.jpg', '1500': 'https://static.tildacdn.com/tila3136-3035-4632-a231-306434646363/-/resize/1000x/kocka-1500.jpg', '2000': 'https://static.tildacdn.com/tila3531-3835-4439-a536-653662333832/-/resize/1000x/kocka-2000.jpg' };
+  var HV = (function () { var m = location.search.match(/[?&]h=(\d{3,5})/); return m && ONLINE_ART[m[1]] ? Number(m[1]) : 0; })();
+  function artUrl() {
+    var tier = ART_OF[String(code || '').replace(/-/g, '')];
+    if (tier) return ART[tier];
+    return HV ? ONLINE_ART[String(HV)] : null;
+  }
+
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function czk(n) { return String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' Kč'; }
+  function czDate(iso) {
+    var d = new Date(iso);
+    if (isNaN(d)) return '';
+    return d.getDate() + '. ' + (d.getMonth() + 1) + '. ' + d.getFullYear();
+  }
+  function setCard(html) { card.innerHTML = html; }
+
+  // The gift card on top is the real card front. mode: '' (normal), 'ok' (credited) or 'bad' (cannot be used).
+  function setGift(mode, tag, small, big, bigSmall, codeText) {
+    gift.className = 'npk-gift' + (mode ? ' is-' + mode : '');
+    var art = artUrl();
+    if (art) gift.style.setProperty('--npk-img', 'url(' + art + ')'); else gift.style.removeProperty('--npk-img');
+    gift.innerHTML =
+      '<span class="g-tag">' + esc(tag) + '</span>' +
+      (mode
+        ? '<div class="g-plate"><div class="g-small">' + esc(small) + '</div>' +
+          '<div class="g-big' + (bigSmall ? ' sm' : '') + '">' + esc(big) + '</div>' +
+          (codeText ? '<div class="g-code">' + esc(codeText) + '</div>' : '') + '</div>'
+        : (codeText ? '<span class="g-pill">' + esc(codeText) + '</span>' : ''));
+    if (mode === 'ok') { gift.classList.add('pop'); }
+  }
+
+  function getTildaEmail() {
+    for (var key in localStorage) {
+      if (key.indexOf('tilda_members_profile') === 0 && key.indexOf('_timestamp') === -1) {
+        try {
+          var profile = JSON.parse(localStorage.getItem(key));
+          var email = profile.login || profile.email;
+          if (email) return String(email).trim().toLowerCase();
+        } catch (e) {}
+      }
+    }
+    return null;
+  }
+  function decodeTokenEmail(token) {
+    try {
+      var payload = JSON.parse(atob(String(token).split('.')[0]));
+      return payload.email ? String(payload.email).trim().toLowerCase() : null;
+    } catch (e) { return null; }
+  }
+  // Same rule as the site-wide gate: the token only counts if it belongs to the signed-in member.
+  function getStoredToken() {
+    try {
+      var raw = localStorage.getItem(TOKEN_KEY);
+      if (!raw) return null;
+      var data = JSON.parse(raw);
+      if (!data.token || !data.exp || data.exp < Date.now()) return null;
+      var te = getTildaEmail(), ke = decodeTokenEmail(data.token);
+      if (te && ke && te !== ke) return null;
+      return data.token;
+    } catch (e) { return null; }
+  }
+
+  function cleanCode(s) { return String(s || '').toUpperCase().replace(/[^A-Z0-9-]/g, ''); }
+  function codeFromUrl() {
+    var m = location.search.match(/[?&]c=([^&]+)/);
+    return m ? cleanCode(decodeURIComponent(m[1])) : '';
+  }
+
+  function renderAskCode(note) {
+    setGift('', 'Dárkový poukaz', 'Dárek od NARIN', 'Uplatněte poukaz', true, 'NR-XXXX-XXXX');
+    setCard(
+      '<h1>Máte dárkový poukaz?</h1>' +
+      '<p>Zadejte kód z karty, nebo naskenujte QR kód na kartě.</p>' +
+      '<input class="npk-in" id="npkIn" maxlength="20" placeholder="NR-XXXX-XXXX" autocomplete="off">' +
+      (note ? '<p class="npk-err">' + esc(note) + '</p>' : '') +
+      '<button class="npk-btn" id="npkGo">Pokračovat</button>'
+    );
+    var inp = document.getElementById('npkIn');
+    inp.addEventListener('input', function () { inp.value = cleanCode(inp.value); });
+    inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
+    document.getElementById('npkGo').addEventListener('click', go);
+    function go() {
+      var v = cleanCode(inp.value).replace(/-/g, '');
+      if (v.length < 8) { renderAskCode('Kód je příliš krátký.'); return; }
+      code = cleanCode(inp.value);
+      history.replaceState(null, '', '/poukaz?c=' + encodeURIComponent(code));
+      start();
+    }
+  }
+
+  function renderLogin() {
+    var back = encodeURIComponent('poukaz?c=' + code + (HV ? '&h=' + HV : ''));
+    if (HV) {
+      setGift('gift', 'Dárková karta', 'Dárek pro vás', czk(HV), false, '');
+      setCard(
+        '<h1>Máte dárek: karta NARIN na ' + esc(czk(HV)) + '</h1>' +
+        '<p>Někdo vám poslal dárkovou kartu na květiny. Přihlaste se, nebo se za minutku zaregistrujte, a celá částka se vám připíše na účet. Pak si vyberete, co vám udělá radost.</p>' +
+        '<a class="npk-btn" href="/members/signup?redirecturl=' + back + '">Získat dárek</a>' +
+        '<a class="npk-btn sec" href="/members/login?redirecturl=' + back + '">Už mám účet, přihlásit se</a>'
+      );
+      return;
+    }
+    setGift('', 'Dárkový poukaz', 'Dárek od NARIN', 'Čeká na vás dárek', true, code);
+    setCard(
+      '<h1>Přihlaste se a poukaz je váš</h1>' +
+      '<p>Aby se částka připsala na váš účet, přihlaste se, nebo se za minutku zaregistrujte. Pak se poukaz uplatní sám.</p>' +
+      '<a class="npk-btn" href="/members/login?redirecturl=' + back + '">Přihlásit se</a>' +
+      '<a class="npk-btn sec" href="/members/signup?redirecturl=' + back + '">Zaregistrovat se</a>'
+    );
+  }
+
+  function renderWorking(text) {
+    setGift('', 'Dárkový poukaz', 'Dárek od NARIN', 'Chvilku…', true, code);
+    setCard('<div class="npk-spin"></div><h1>' + esc(text) + '</h1>');
+  }
+
+  function renderError(reason) {
+    var m = MSG[reason] || MSG.error;
+    var retry = reason === 'not_found'
+      ? '<button class="npk-btn" id="npkAgain">Zadat kód znovu</button>'
+      : '<a class="npk-btn sec" href="/">Zpět do obchodu</a>';
+    setGift('bad', 'Dárkový poukaz', 'Poukaz nelze uplatnit', m[0], true, code);
+    setCard('<h1>' + esc(m[0]) + '</h1><p>' + esc(m[1]) + '</p>' + retry);
+    var again = document.getElementById('npkAgain');
+    if (again) again.addEventListener('click', function () { code = ''; claimStarted = false; history.replaceState(null, '', '/poukaz'); renderAskCode(''); });
+  }
+
+  function renderSuccess(r) {
+    setGift('ok', 'Uplatněno', 'Připsáno na váš účet', '+ ' + czk(r.amount), false, code);
+    setCard(
+      '<h1>Poukaz byl uplatněn</h1>' +
+      '<div class="npk-info">Zůstatek na účtu: <b>' + czk(r.balance) + '</b><br>' +
+      (r.valid_until ? 'Částka z poukazu platí do <b>' + esc(czDate(r.valid_until)) + '</b>, pak propadá.' : '') + '</div>' +
+      '<a class="npk-btn" href="/">Vybrat květiny</a>' +
+      '<a class="npk-btn sec" href="/members/">Můj účet</a>'
+    );
+    try {
+      if (window.confetti) {
+        window.confetti({ particleCount: 140, spread: 80, origin: { y: 0.6 } });
+        setTimeout(function () { window.confetti({ particleCount: 80, spread: 100, origin: { y: 0.5 } }); }, 400);
+      }
+    } catch (e) {}
+  }
+
+  function call(action, token) {
+    return fetch(SUPABASE_URL + '/functions/v1/voucher-claim', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY },
+      body: JSON.stringify({ action: action, token: token, code: code })
+    }).then(function (r) {
+      return r.json().then(function (j) { j.__status = r.status; return j; });
+    });
+  }
+
+  function claim(token) {
+    if (claimStarted) return;
+    claimStarted = true;
+    renderWorking('Připsáváme poukaz…');
+    call('claim', token).then(function (r) {
+      if (r && r.ok) { renderSuccess(r); return; }
+      if (r && r.__status === 401) { claimStarted = false; try { localStorage.removeItem(TOKEN_KEY); } catch (e) {} start(); return; }
+      if (r && r.__status === 429) { renderError('too_many_attempts'); return; }
+      renderError((r && r.reason) || 'error');
+    }).catch(function () { renderError('network'); });
+  }
+
+  function start() {
+    if (!code) { renderAskCode(''); return; }
+    var email = getTildaEmail();
+    if (!email) { renderLogin(); return; }
+    var token = getStoredToken();
+    if (token) { claim(token); return; }
+    // The site-wide sign-in window (email code) opens by itself; wait until it stores the token.
+    renderWorking('Potvrďte svůj e-mail v okně');
+    var tries = 0;
+    var t = setInterval(function () {
+      var tk = getStoredToken();
+      if (tk) { clearInterval(t); claim(tk); }
+      else if (++tries > 600) { clearInterval(t); renderError('error'); }
+    }, 700);
+  }
+
+  code = codeFromUrl();
+  start();
+})();
+</script>

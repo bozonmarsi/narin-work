@@ -738,7 +738,8 @@ export async function POST(request: Request) {
               : `Dobrý den, v NARIN na vás čeká dárkový poukaz. Stačí kliknout na tlačítko níže, přihlásit se (registrace trvá minutu) a částka se vám hned připíše na účet. Platíte z ní kytice, doručení i další objednávky.`,
             extraHtml: msg + voucherCard(payload.amount, payload.code, until),
             ctaLabel: "Uplatnit poukaz",
-            ctaUrl: `https://vezminarin.cz/poukaz?c=${encodeURIComponent(payload.code)}`,
+            // h = value: /poukaz shows the cat card of that value before sign-in
+            ctaUrl: `https://vezminarin.cz/poukaz?c=${encodeURIComponent(payload.code)}&h=${Math.round(Number(payload.amount) || 0)}`,
             secondaryCtaLabel: "Jak to funguje",
             secondaryCtaUrl: "https://vezminarin.cz/to-buyers#poukazy",
             footNote: `Poukaz lze uplatnit jen jednou a platí do ${until ?? "12 měsíců od aktivace"}. Kód ${esc(payload.code)} chraňte jako hotovost.<br>🐾 Z každé dárkové karty posíláme 50 Kč kočkám v útulcích.`,

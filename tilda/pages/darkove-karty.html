@@ -7,7 +7,7 @@
 .ndk-wrap { max-width:1080px; margin:0 auto; padding:0 18px; }
 
 /* hero + výběr karty */
-.ndk-hero { padding:40px 0 48px; background:radial-gradient(110% 80% at 90% 0%,#e6efff 0%,rgba(230,239,255,0) 60%),radial-gradient(90% 70% at 0% 100%,#f1ecfb 0%,rgba(241,236,251,0) 60%); }
+.ndk-hero { padding:40px 0 48px; background:#fff; }
 .ndk-grid { display:grid; grid-template-columns:1.05fr .95fr; gap:40px; align-items:center; }
 .ndk-tag { display:inline-flex; align-items:center; gap:6px; height:30px; padding:0 12px; border-radius:999px; background:#fff; border:1px solid #d6e3f8; color:var(--blue); font-size:13px; font-weight:600; }
 .ndk h1 { font-size:44px; line-height:1.08; font-weight:700; letter-spacing:-.02em; margin:14px 0 12px; }
@@ -19,9 +19,7 @@
   transition:transform .32s cubic-bezier(.45,.05,.55,.95); will-change:transform; }
 .ndk-card img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:4.2% / 6.6%;
   box-shadow:0 26px 50px rgba(27,53,102,.25), 0 6px 14px rgba(27,53,102,.12); backface-visibility:hidden; display:block; }
-.ndk-card::after { content:""; position:absolute; inset:0; border-radius:4.2% / 6.6%; pointer-events:none;
-  background:linear-gradient(115deg,rgba(255,255,255,0) 30%,rgba(255,255,255,.28) 46%,rgba(255,255,255,0) 60%);
-  background-size:250% 100%; background-position:var(--shine,100%) 0; mix-blend-mode:soft-light; }
+.ndk-card::after { content:none; }
 .ndk-card.plast img { box-shadow:0 26px 50px rgba(27,53,102,.28), 0 2px 0 #dfe6f2, 0 4px 0 #cdd7e8, 0 6px 14px rgba(27,53,102,.14); }
 .ndk-badge { margin-top:22px; display:inline-flex; align-items:center; gap:8px; height:32px; padding:0 14px; border-radius:999px; background:#fff; border:1px solid var(--line); font-size:13px; color:var(--ink2); }
 .ndk-badge b { color:var(--ink); font-weight:600; }
@@ -48,7 +46,7 @@
 
 /* sekce */
 .ndk-sec { padding:58px 0; }
-.ndk-sec.alt { background:var(--soft); }
+.ndk-sec.alt { background:#fff; border-top:1px solid var(--line); }
 .ndk-kicker { font-size:13px; font-weight:600; color:var(--blue); text-transform:uppercase; letter-spacing:.08em; margin-bottom:8px; }
 .ndk h2 { font-size:32px; line-height:1.15; font-weight:700; letter-spacing:-.01em; margin:0 0 12px; }
 .ndk-sub { font-size:16px; color:var(--ink2); line-height:1.55; margin:0 0 28px; max-width:60ch; }
@@ -118,7 +116,7 @@
         <div class="ndk-panel">
           <p class="ndk-lbl">Typ karty</p>
           <div class="ndk-types">
-            <button type="button" class="ndk-type" data-type="e" aria-pressed="true"><b>Elektronická</b><span>Pošleme e-mailem hned nebo v den, který zvolíte.</span></button>
+            <button type="button" class="ndk-type" data-type="e" aria-pressed="true"><b>Elektronická</b><span>Přijde e-mailem hned po zaplacení, vám nebo obdarovanému.</span></button>
             <button type="button" class="ndk-type" data-type="p" aria-pressed="false"><b>Plastová</b><span>V dárkové obálce. Osobní odběr nebo doručení.</span></button>
           </div>
           <p class="ndk-lbl">Hodnota</p>
@@ -144,7 +142,7 @@
       <div class="ndk-kicker">Jak to funguje</div>
       <h2>Tři kroky k radosti</h2>
       <div class="ndk-steps">
-        <div class="ndk-step"><div class="n">1</div><b>Vyberte kartu</b><p>Elektronickou pošleme obdarovanému e-mailem i s vaším věnováním. Plastovou předáme v dárkové obálce, osobně nebo s doručením.</p></div>
+        <div class="ndk-step"><div class="n">1</div><b>Vyberte kartu</b><p>Elektronickou pošleme e-mailem hned po zaplacení, vám nebo rovnou obdarovanému i s vaším věnováním. Plastovou předáme v dárkové obálce, osobně nebo s doručením.</p></div>
         <div class="ndk-step"><div class="n">2</div><b>Obdarovaný ji uplatní</b><p>Naskenuje QR kód nebo zadá kód na <b style="white-space:nowrap">vezminarin.cz/poukaz</b>. Celá částka se mu připíše na účet NARIN.</p></div>
         <div class="ndk-step"><div class="n">3</div><b>Vybere si květiny</b><p>Zůstatek může čerpat postupně při objednávkách na vezminarin.cz. Karta platí 12 měsíců od aktivace.</p></div>
       </div>
@@ -185,7 +183,7 @@
         <div class="ndk-q"><button type="button">Jak dlouho karta platí? <span>+</span></button><p>12 měsíců od aktivace. Elektronická karta se aktivuje po zaplacení, plastovou aktivujeme při předání.</p></div>
         <div class="ndk-q"><button type="button">Jak se karta uplatní? <span>+</span></button><p>Obdarovaný naskenuje QR kód na kartě nebo zadá kód na <a href="https://vezminarin.cz/poukaz">vezminarin.cz/poukaz</a>, přihlásí se nebo zaregistruje a celá částka se mu jednorázově připíše na účet.</p></div>
         <div class="ndk-q"><button type="button">Musí se utratit najednou? <span>+</span></button><p>Ne. Zůstatek na účtu lze čerpat postupně při dalších objednávkách na vezminarin.cz.</p></div>
-        <div class="ndk-q"><button type="button">Kdy dorazí elektronická karta? <span>+</span></button><p>V košíku vyplníte e-mail obdarovaného, věnování a den odeslání. Kartu pošleme ten den v 9:00. Když den nevyplníte, odejde hned po zaplacení.</p></div>
+        <div class="ndk-q"><button type="button">Kdy dorazí elektronická karta? <span>+</span></button><p>Hned po zaplacení. V košíku vyberete, jestli ji pošleme vám (přepošlete ji sami), nebo rovnou na e-mail obdarovaného i s vaším věnováním.</p></div>
         <div class="ndk-q"><button type="button">Jak dostanu plastovou kartu? <span>+</span></button><p>Vyzvednete si ji u nás v prodejně, nebo vám ji doručíme i s kyticí. Plastových karet je jen pár kusů, je to limitovaná edice.</p></div>
       </div>
     </div>
@@ -198,6 +196,8 @@
 
   // --- nastavení ---
   var IMG = 'https://narin-work.vercel.app/darkove-karty/kocka-';
+  var CDN = {500: 'tila6561-3962-4436-a666-363835303132', 1000: 'tila6137-6432-4666-b561-336230643435', 1500: 'tila3136-3035-4632-a231-306434646363', 2000: 'tila3531-3835-4439-a536-653662333832'};
+  function pic(n, w) { return 'https://static.tildacdn.com/' + CDN[n] + '/-/resize/' + (w || 900) + 'x/kocka-' + n + '.jpg'; }
   var NOMS = [500, 1000, 1500, 2000];
   var CAPTIONS = { 500: 'Černá kočka v lučním kvítí', 1000: 'Bílá kočka ve fialových květech', 1500: 'Siamská kočka při západu slunce', 2000: 'Zrzavé kotě na zahradní cestě' };
   var PLASTIC_SOLD_OUT = {};  // vyprodané plastové karty, např. {1500: true}
@@ -210,8 +210,8 @@
   var state = { type: 'e', nom: 500 };
   var card = root.querySelector('#ndkCard'), img = root.querySelector('#ndkImg');
 
-  NOMS.forEach(function (n) { var i = new Image(); i.src = IMG + n + '.jpg'; });
-  img.src = IMG + state.nom + '.jpg';
+  setTimeout(function () { NOMS.forEach(function (n) { var i = new Image(); i.src = pic(n); }); }, 1500);
+  img.src = pic(state.nom);
 
   // tlačítka nominálů
   var nomsEl = root.querySelector('#ndkNoms');
@@ -227,10 +227,10 @@
   NOMS.forEach(function (n) {
     var g = document.createElement('button');
     g.type = 'button'; g.className = 'ndk-gal';
-    g.innerHTML = '<img src="' + IMG + n + '.jpg" alt="' + CAPTIONS[n] + '" loading="lazy"><b>' + fmt(n) + ' Kč</b><span>' + CAPTIONS[n] + '</span>';
+    g.innerHTML = '<img src="' + pic(n, 600) + '" alt="' + CAPTIONS[n] + '" loading="lazy"><b>' + fmt(n) + ' Kč</b><span>' + CAPTIONS[n] + '</span>';
     g.addEventListener('click', function () { setNom(n); root.querySelector('.ndk-hero').scrollIntoView({ behavior: 'smooth' }); });
     gal.appendChild(g);
-    var c = document.createElement('img'); c.src = IMG + n + '.jpg'; c.alt = ''; c.loading = 'lazy'; col.appendChild(c);
+    var c = document.createElement('img'); c.src = pic(n, 600); c.alt = ''; c.loading = 'lazy'; col.appendChild(c);
   });
 
   // otočení karty: do poloviny, výměna obrázku, zbytek z druhé strany
@@ -279,14 +279,14 @@
       ? '💳 <b>Plastová karta</b> · limitovaná edice' : '✉️ <b>Elektronická karta</b> · přijde e-mailem';
     root.querySelector('#ndkNote').textContent = state.type === 'p'
       ? 'Plastovou kartu předáme v dárkové obálce. Aktivujeme ji při předání, platí 12 měsíců.'
-      : 'V košíku vyplníte e-mail obdarovaného, věnování a den odeslání. Platí 12 měsíců od zaplacení.';
+      : 'Přijde e-mailem hned po zaplacení. V košíku vyberete, jestli vám, nebo rovnou obdarovanému. Platí 12 měsíců.';
     var add = root.querySelector('#ndkAdd'); add.textContent = 'Do košíku'; add.removeAttribute('data-done');
   }
 
   function setNom(n) {
     if (state.type === 'p' && PLASTIC_SOLD_OUT[n]) return;
     if (n === state.nom) return;
-    state.nom = n; render(); spinTo(IMG + n + '.jpg');
+    state.nom = n; render(); spinTo(pic(n));
   }
 
   root.querySelectorAll('.ndk-type').forEach(function (b) {
@@ -295,7 +295,7 @@
       state.type = b.dataset.type;
       if (state.type === 'p' && PLASTIC_SOLD_OUT[state.nom]) {
         var free = NOMS.filter(function (n) { return !PLASTIC_SOLD_OUT[n]; })[0];
-        if (free) { state.nom = free; img.src = IMG + free + '.jpg'; }
+        if (free) { state.nom = free; img.src = pic(free); }
       }
       render();
     });
@@ -308,7 +308,7 @@
     var uid = UIDS[state.nom + state.type];
     if (typeof window.tcart__addProduct !== 'function') { location.href = 'https://vezminarin.cz/darkove-karty'; return; }
     try {
-      window.tcart__addProduct({ name: name, price: state.nom, amount: 1, quantity: 1, count: 1, uid: uid, img: IMG + state.nom + '.jpg' });
+      window.tcart__addProduct({ name: name, price: state.nom, amount: 1, quantity: 1, count: 1, uid: uid, img: pic(state.nom) });
       b.textContent = 'V košíku ✓'; b.setAttribute('data-done', '');
       if (typeof window.tcart__openCart === 'function') setTimeout(window.tcart__openCart, 300);
     } catch (e) {}
@@ -329,7 +329,7 @@
   try {
     var q = new URLSearchParams(location.search);
     if (q.get('typ') === 'plastova') state.type = 'p';
-    var n = Number(q.get('karta')); if (NOMS.indexOf(n) >= 0) { state.nom = n; img.src = IMG + n + '.jpg'; }
+    var n = Number(q.get('karta')); if (NOMS.indexOf(n) >= 0) { state.nom = n; img.src = pic(n); }
   } catch (e) {}
 
   render();

@@ -11,7 +11,7 @@ def rep(old, new):
 
 
 CSS = """
-.nk-gc-stage{position:relative;aspect-ratio:1/1;border-radius:22px;overflow:hidden;display:grid;place-items:center;perspective:1200px;background:radial-gradient(110% 80% at 85% 0%,#e3edff 0%,rgba(227,237,255,0) 60%),radial-gradient(90% 70% at 0% 100%,#fbe6f4 0%,rgba(251,230,244,0) 62%),#f7f9fc}
+.nk-gc-stage{position:relative;aspect-ratio:1/1;border-radius:22px;overflow:hidden;display:grid;place-items:center;perspective:1200px;background:#fff;border:1px solid var(--line)}
 .nk-gc-card{width:86%;aspect-ratio:85.6/54;border-radius:4.2%/6.6%;background:#dfe6f2 center/cover no-repeat;box-shadow:0 30px 50px -22px rgba(27,53,102,.55),0 6px 14px rgba(27,53,102,.12);transform:rotate(-4deg);animation:nkGcIn .6s cubic-bezier(.2,.8,.2,1) both}
 .nk-gc-card.plast{box-shadow:0 30px 50px -22px rgba(27,53,102,.55),0 2px 0 #dfe6f2,0 4px 0 #cbd5e6,0 6px 14px rgba(27,53,102,.14)}
 .nk-gc-card.flip{animation:nkGcFlip .55s cubic-bezier(.2,.8,.2,1) both}
@@ -34,7 +34,7 @@ CSS = """
 .nk-gc-cats{display:flex;gap:10px;align-items:flex-start;margin:16px 0 0;padding:12px 14px;border-radius:16px;background:#fbf6ee;font-size:13.5px;line-height:1.45;color:#4a505b}
 .nk-gc-more{display:inline-flex;align-items:center;gap:6px;margin:14px 0 4px;font-size:14.5px;font-weight:600;color:var(--blue)!important;text-decoration:none}
 .nk-gc-more:hover{text-decoration:underline}
-@media (max-width:760px){.nk-gc-stage{aspect-ratio:4/3;border-radius:0 0 22px 22px;margin:0 -16px}.nk-gc-noms button{height:44px;font-size:14px}}
+@media (max-width:760px){.nk-gc-stage{aspect-ratio:4/3;border-radius:0;border:0;margin:0 -16px}.nk-gc-noms button{height:44px;font-size:14px}}
 @media (prefers-reduced-motion:reduce){.nk-gc-card,.nk-gc-card.flip{animation:none}}
 </style>
 <script>"""
@@ -61,10 +61,10 @@ GIFT_JS = """
       '<div class="nk-price"><b>' + czk(d.basePrice) + '</b><span>' + esc(g.scene) + '</span></div>',
       '<div class="nk-gc-k">Hodnota</div><div class="nk-gc-noms">' + Object.keys(GIFT).map(function (n) { return '<button data-gn="' + n + '" class="' + (+n === gc.n ? 'on' : '') + '">' + czk(+n) + '</button>'; }).join('') + '</div>',
       '<div class="nk-gc-k">Typ karty</div><div class="nk-gc-types">'
-        + '<button data-gt="e" class="' + (e ? 'on' : '') + '"><b>Elektronická</b><span>E-mailem hned, nebo v den, který vyberete</span></button>'
+        + '<button data-gt="e" class="' + (e ? 'on' : '') + '"><b>Elektronická</b><span>Přijde e-mailem hned po zaplacení</span></button>'
         + '<button data-gt="p" class="' + (e ? '' : 'on') + '"><b>Plastová</b><span>V dárkové obálce, osobně nebo s kyticí</span></button></div>',
       '<ol class="nk-gc-steps">' + (e
-        ? '<li><span>V košíku vyplníte e-mail obdarovaného, věnování a den odeslání.</span></li><li><span>Kartu s obrazem kočky pošleme e-mailem v 9:00, nebo hned po zaplacení.</span></li>'
+        ? '<li><span>Kartu s obrazem kočky a kódem pošleme e-mailem hned po zaplacení.</span></li><li><span>V košíku vyberete, jestli přijde vám, nebo rovnou obdarovanému i s vaším věnováním.</span></li>'
         : '<li><span>Kartu předáme v dárkové obálce, osobně v Praze nebo s doručením spolu s kyticí.</span></li><li><span>Aktivujeme ji při předání. Obdarovaný naskenuje QR kód na kartě.</span></li>')
         + '<li><span>Celá částka se mu připíše na účet NARIN a čerpá ji postupně na květiny. Platí 12 měsíců.</span></li></ol>',
       '<div class="nk-gc-cats"><span>🐾</span><span>Z každé karty posíláme 50 Kč kočkám v útulcích. Platíme to my, hodnota karty zůstává celá.</span></div>',

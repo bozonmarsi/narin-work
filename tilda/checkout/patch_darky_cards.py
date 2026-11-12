@@ -11,7 +11,7 @@ def rep(old, new):
 
 rep(".ndp-end { height:48px; }",
     ".ndp-end { height:48px; }\n"
-    ".ndp-gwrap { position:relative; border-radius:26px; padding:clamp(22px,3.4vw,40px) clamp(18px,3vw,36px) clamp(14px,2vw,22px); background:radial-gradient(110% 90% at 92% 0%,#e3edff 0%,rgba(227,237,255,0) 58%),radial-gradient(90% 80% at 0% 100%,#fde3f3 0%,rgba(253,227,243,0) 60%),#fbf9fd; overflow:hidden; }\n"
+    ".ndp-gwrap { position:relative; border-radius:26px; padding:clamp(22px,3.4vw,40px) clamp(18px,3vw,36px) clamp(14px,2vw,22px); background:#fff; border:1px solid var(--line); overflow:hidden; }\n"
     ".ndp-ghead { display:flex; align-items:flex-end; justify-content:space-between; gap:18px; flex-wrap:wrap; margin-bottom:18px; }\n"
     ".ndp-ghead h2 { font-family:'Gelasio',Georgia,serif; font-size:clamp(32px,4vw,48px); line-height:1.1; font-weight:700; color:var(--pink); }\n"
     ".ndp-ghead p { margin-top:8px; max-width:34em; font-size:16px; line-height:1.5; color:var(--soft); }\n"
@@ -52,5 +52,28 @@ rep("  function lineHtml(l, items) {\n",
     "  }\n"
     "  function lineHtml(l, items) {\n"
     "    if (l.kind === 'cards') return cardsHtml(l, items);\n")
+
+# ---- speed: resized photos, saved copy of the products, throttled scroll work ----
+rep("  function firstImage(p) { try { var g = JSON.parse(p.gallery || '[]'); return (g[0] && g[0].img) || ''; } catch (e) { return ''; } }",
+    "  function firstImage(p) { try { var g = JSON.parse(p.gallery || '[]'); return small((g[0] && g[0].img) || ''); } catch (e) { return ''; } }\n"
+    "  // Tilda CDN serves a smaller copy: /-/resize/600x/ before the file name (cards are at most ~300 px wide, x2 for retina)\n"
+    "  function small(u) { if (!u || !/static\\.tildacdn\\./.test(u) || /\\/-\\/resize\\//.test(u)) return u; var i = u.lastIndexOf('/'); return u.slice(0, i) + '/-/resize/600x/' + u.slice(i + 1); }")
+rep("  drawHero(); startBalloons(); setTop();\n  ['resize', 'scroll'].forEach(function (ev) { window.addEventListener(ev, setTop, {passive: true}); });\n  Promise.all([Promise.all(CONFIG.lines.map(function (l) { return loadPart(l.part); })), loadHidden()])\n    .then(function (r) { draw(r[0], r[1]); });",
+    "  drawHero(); startBalloons(); setTop();\n"
+    "  var topQueued = false;\n"
+    "  function setTopSoon() { if (topQueued) return; topQueued = true; requestAnimationFrame(function () { topQueued = false; setTop(); }); }\n"
+    "  ['resize', 'scroll'].forEach(function (ev) { window.addEventListener(ev, setTopSoon, {passive: true}); });\n"
+    "  // The last list is saved: the page shows it at once and refreshes it in the background.\n"
+    "  var CACHE = 'narin_darky_v1', shownSig = '';\n"
+    "  function show(parts, hiddenList) { var sig = JSON.stringify([parts.map(function (l) { return l.map(function (p) { return [p.uid, p.title, p.price, p.gallery]; }); }), hiddenList]); if (sig === shownSig) return; shownSig = sig; draw(parts, new Set(hiddenList)); }\n"
+    "  try { var c0 = JSON.parse(localStorage.getItem(CACHE) || 'null'); if (c0 && c0.parts && c0.parts.length === CONFIG.lines.length && Date.now() - c0.t < 7 * 864e5) show(c0.parts, c0.hidden || []); } catch (e) {}\n"
+    "  Promise.all([Promise.all(CONFIG.lines.map(function (l) { return loadPart(l.part); })), loadHidden()])\n"
+    "    .then(function (r) {\n"
+    "      var parts = r[0].map(function (l) { return l.map(function (p) { return {uid: p.uid, title: p.title, price: p.price, gallery: p.gallery, url: p.url}; }); }), hiddenList = Array.from(r[1]);\n"
+    "      if (!parts.some(function (l) { return l.length; }) && shownSig) return;\n"
+    "      show(parts, hiddenList);\n"
+    "      try { localStorage.setItem(CACHE, JSON.stringify({t: Date.now(), parts: parts, hidden: hiddenList})); } catch (e) {}\n"
+    "    });")
+
 open(dst, 'w', encoding='utf-8').write(s)
 print('ok')

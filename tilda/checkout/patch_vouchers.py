@@ -52,9 +52,9 @@ rep("      '<div class=\"np-note\" id=\"npRNote\" hidden></div>' +\n      nextBt
 rep("'<div class=\"np-prog\" id=\"npProg\"><i></i><i></i><i></i><i></i></div>'",
     "'<div class=\"np-prog\" id=\"npProg\"><i></i><i></i><i></i>' + (VO ? '' : '<i></i>') + '</div>'")
 rep("<p>Květiny připravíme čerstvé a doručíme v den, který si vyberete.</p>",
-    "<p>' + (VO ? 'Dárkovou kartu pošleme e-mailem, hned po zaplacení nebo v den, který vyberete.' : 'Květiny připravíme čerstvé a doručíme v den, který si vyberete.') + '</p>")
+    "<p>' + (VO ? 'Dárkovou kartu pošleme e-mailem hned po zaplacení, vám nebo rovnou obdarovanému.' : 'Květiny připravíme čerstvé a doručíme v den, který si vyberete.') + '</p>")
 rep("      section('c2', 2, 'Pro koho jsou květiny?', 'Pro vás, nebo jako dárek', s3) +",
-    "      section('c2', 2, VO ? 'Komu kartu pošleme?' : 'Pro koho jsou květiny?', VO ? 'E-mailem, hned nebo v den, který vyberete' : 'Pro vás, nebo jako dárek', s3) +")
+    "      section('c2', 2, VO ? 'Komu kartu pošleme?' : 'Pro koho jsou květiny?', VO ? 'E-mailem hned po zaplacení' : 'Pro vás, nebo jako dárek', s3) +")
 rep("      section('c4', 4, 'Platba',", "      section('c4', VO ? 3 : 4, 'Platba',")
 rep("'<div class=\"np-trust\"><i class=\"ti ti-shield-check\"></i><span>Platbu zpracovává Stripe. Údaje o kartě nikdy nevidíme.</span></div></div></aside>'",
     "'<div class=\"np-trust\"><i class=\"ti ti-shield-check\"></i><span>Platbu zpracovává Stripe. Údaje o kartě nikdy nevidíme.</span></div>' +\n"
@@ -65,6 +65,7 @@ rep("  function renderWho() {",
     "  function renderVch() {\n"
     "    var el = $('#npVch'); if (!el) return;\n"
     "    if (!hasEV()) { el.innerHTML = ''; return; }\n"
+    "    S.vc.when = 'now'; /* e-cards always go out right after payment */\n"
     "    var v = S.vc, other = v.to === 'other', t = sod(new Date());\n"
     "    var h = (VO ? '' : '<div class=\"np-sub\"><span>Elektronická dárková karta</span></div>') +\n"
     "      '<div class=\"np-tiles\" id=\"npVTo\">' +\n"
@@ -74,12 +75,9 @@ rep("  function renderWho() {",
     "    if (other) {\n"
     "      h += '<div class=\"np-row\">' + field('vemail', 'E-mail obdarovaného', 'email', { mode: 'email', ac: 'off' }) + '</div><div class=\"np-row\">' + field('vname', 'Jméno obdarovaného', 'text', { req: false }) + '</div>' +\n"
     "        '<div class=\"np-row\"><div class=\"np-f\" data-k=\"vmsg\"><label class=\"l\" for=\"np_vmsg\">Věnování</label><textarea class=\"np-in\" id=\"np_vmsg\" rows=\"3\" maxlength=\"500\" placeholder=\"Např. Všechno nejlepší k narozeninám!\"></textarea><div class=\"np-msg\"></div></div></div>' +\n"
-    "        '<div class=\"np-sub\"><span>Kdy kartu poslat</span></div>' +\n"
-    "        '<div class=\"np-tiles\" id=\"npVWhen\">' +\n"
-    "        '<button type=\"button\" class=\"np-tile' + (v.when === 'date' ? '' : ' on') + '\" data-vw=\"now\"><span class=\"ic\"><i class=\"ti ti-bolt\"></i></span><span><b>Hned</b><span class=\"s\">Po zaplacení</span></span></button>' +\n"
-    "        '<button type=\"button\" class=\"np-tile' + (v.when === 'date' ? ' on' : '') + '\" data-vw=\"date\"><span class=\"ic\"><i class=\"ti ti-calendar-event\"></i></span><span><b>V určitý den</b><span class=\"s\">Ráno v 9:00</span></span></button>' +\n"
-    "        '</div>';\n"
-    "      if (v.when === 'date') h += '<div class=\"np-row\">' + field('vdate', 'Den odeslání', 'date') + '</div><div class=\"np-vhint\">Nejdřív zítra, nejpozději za 60 dní.</div>';\n"
+    "        '<div class=\"np-vhint\">Kartu pošleme na tento e-mail hned po zaplacení. Vám přijde potvrzení.</div>';\n"
+    "    } else {\n"
+    "      h += '<div class=\"np-vhint\">Kartu s kódem pošleme na váš e-mail hned po zaplacení. Přepošlete ji, vytiskněte nebo pošlete přes WhatsApp.</div>';\n"
     "    }\n"
     "    el.innerHTML = h;\n"
     "    var e1 = $('#np_vemail'); if (e1) e1.value = v.email || '';\n"
@@ -123,7 +121,7 @@ rep("num.innerHTML = done ? '<i class=\"ti ti-check\"></i>' : id.charAt(1); }",
     "num.innerHTML = done ? '<i class=\"ti ti-check\"></i>' : String(i + 1); }")
 rep("    if (id === 'c2') {\n      if (S.who === 'me') return 'Pro mě';",
     "    if (id === 'c2') {\n"
-    "      if (VO) return S.vc.to === 'other' ? 'Pro ' + String(S.vc.email || '').trim() + ' · ' + (S.vc.when === 'date' && S.vc.date ? shortDate(S.vc.date) + ' v 9:00' : 'hned po zaplacení') : 'Kód pošleme na váš e-mail';\n"
+    "      if (VO) return S.vc.to === 'other' ? 'Pro ' + String(S.vc.email || '').trim() + ' · ' + 'hned po zaplacení' : 'Kód pošleme na váš e-mail';\n"
     "      if (S.who === 'me') return 'Pro mě';")
 
 # ---- cart hand-over ----

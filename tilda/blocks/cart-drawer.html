@@ -223,7 +223,7 @@
         return '<div class="nc-sm" data-open="' + esc(e.uid) + '"><img src="' + esc(e.img) + '" alt="" loading="lazy"><p>' + esc(splitColor(e.n).base) + '</p><b>' + czk(e.pr) + '</b><button type="button" class="nc-add" data-add="' + esc(e.uid) + '" aria-label="Přidat">+</button></div>';
       }).join('') + '</div></div>';
       var ptsBase = total - cardSum();
-      html += onlyEV() ? '<p class="nc-note">Kartu pošleme e-mailem, bez poplatku. Komu a kdy, vyberete v dalším kroku.</p>'
+      html += onlyEV() ? '<p class="nc-note">Kartu pošleme e-mailem hned po zaplacení, bez poplatku. Vám, nebo rovnou obdarovanému, vyberete v dalším kroku.</p>'
         : '<p class="nc-note">Doručení a poplatek od ' + czk(DELIVERY_FROM) + ' vyberete v dalším kroku' + (ptsBase >= 50 ? ' · získáte ' + pts(ptsBase) : '') + '</p>';
       if (items().some(isCard)) html += '<p class="nc-note">🐾 Z každé dárkové karty posíláme 50 Kč kočkám v útulcích.</p>';
     }

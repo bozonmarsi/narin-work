@@ -51,7 +51,7 @@
 .ndp-empty p { font-size:18px; line-height:1.5; color:var(--soft); }
 .ndp-btn { display:inline-flex; align-items:center; height:50px; margin-top:18px; padding:0 26px; border-radius:16px; background:var(--pink); color:#fff; font-weight:500; text-decoration:none; }
 .ndp-end { height:48px; }
-.ndp-gwrap { position:relative; border-radius:26px; padding:clamp(22px,3.4vw,40px) clamp(18px,3vw,36px) clamp(14px,2vw,22px); background:radial-gradient(110% 90% at 92% 0%,#e3edff 0%,rgba(227,237,255,0) 58%),radial-gradient(90% 80% at 0% 100%,#fde3f3 0%,rgba(253,227,243,0) 60%),#fbf9fd; overflow:hidden; }
+.ndp-gwrap { position:relative; border-radius:26px; padding:clamp(22px,3.4vw,40px) clamp(18px,3vw,36px) clamp(14px,2vw,22px); background:#fff; border:1px solid var(--line); overflow:hidden; }
 .ndp-ghead { display:flex; align-items:flex-end; justify-content:space-between; gap:18px; flex-wrap:wrap; margin-bottom:18px; }
 .ndp-ghead h2 { font-family:'Gelasio',Georgia,serif; font-size:clamp(32px,4vw,48px); line-height:1.1; font-weight:700; color:var(--pink); }
 .ndp-ghead p { margin-top:8px; max-width:34em; font-size:16px; line-height:1.5; color:var(--soft); }
@@ -110,7 +110,9 @@
     }
     return {base: n, word: '', css: ''};
   }
-  function firstImage(p) { try { var g = JSON.parse(p.gallery || '[]'); return (g[0] && g[0].img) || ''; } catch (e) { return ''; } }
+  function firstImage(p) { try { var g = JSON.parse(p.gallery || '[]'); return small((g[0] && g[0].img) || ''); } catch (e) { return ''; } }
+  // Tilda CDN serves a smaller copy: /-/resize/600x/ before the file name (cards are at most ~300 px wide, x2 for retina)
+  function small(u) { if (!u || !/static\.tildacdn\./.test(u) || /\/-\/resize\//.test(u)) return u; var i = u.lastIndexOf('/'); return u.slice(0, i) + '/-/resize/600x/' + u.slice(i + 1); }
   function drawHero() {
     var h = CONFIG.hero;
     $('ndpLogo').src = h.logo; $('ndpLogo').alt = 'NARIN dárky';
@@ -224,8 +226,19 @@
     drawChips(shown);
   }
   drawHero(); startBalloons(); setTop();
-  ['resize', 'scroll'].forEach(function (ev) { window.addEventListener(ev, setTop, {passive: true}); });
+  var topQueued = false;
+  function setTopSoon() { if (topQueued) return; topQueued = true; requestAnimationFrame(function () { topQueued = false; setTop(); }); }
+  ['resize', 'scroll'].forEach(function (ev) { window.addEventListener(ev, setTopSoon, {passive: true}); });
+  // The last list is saved: the page shows it at once and refreshes it in the background.
+  var CACHE = 'narin_darky_v1', shownSig = '';
+  function show(parts, hiddenList) { var sig = JSON.stringify([parts.map(function (l) { return l.map(function (p) { return [p.uid, p.title, p.price, p.gallery]; }); }), hiddenList]); if (sig === shownSig) return; shownSig = sig; draw(parts, new Set(hiddenList)); }
+  try { var c0 = JSON.parse(localStorage.getItem(CACHE) || 'null'); if (c0 && c0.parts && c0.parts.length === CONFIG.lines.length && Date.now() - c0.t < 7 * 864e5) show(c0.parts, c0.hidden || []); } catch (e) {}
   Promise.all([Promise.all(CONFIG.lines.map(function (l) { return loadPart(l.part); })), loadHidden()])
-    .then(function (r) { draw(r[0], r[1]); });
+    .then(function (r) {
+      var parts = r[0].map(function (l) { return l.map(function (p) { return {uid: p.uid, title: p.title, price: p.price, gallery: p.gallery, url: p.url}; }); }), hiddenList = Array.from(r[1]);
+      if (!parts.some(function (l) { return l.length; }) && shownSig) return;
+      show(parts, hiddenList);
+      try { localStorage.setItem(CACHE, JSON.stringify({t: Date.now(), parts: parts, hidden: hiddenList})); } catch (e) {}
+    });
 })();
 </script>
