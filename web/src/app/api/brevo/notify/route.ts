@@ -263,7 +263,7 @@ function voucherCard(amount: number, code: string, validUntil: string | null) {
     <div style="font-size:34px;font-weight:700;line-height:1.15;color:#ffffff;">${czk(amount)}</div>
     <div style="height:14px;"></div>
     <div style="font-size:13px;font-weight:600;letter-spacing:0.14em;color:#ffffff;">${esc(code)}</div>
-    ${validUntil ? `<div style="margin-top:6px;font-size:11.5px;color:#dbe8ff;">Platí do ${esc(validUntil)}</div>` : ""}
+    <div style="margin-top:6px;font-size:11.5px;color:#dbe8ff;">${validUntil ? `Platí do ${esc(validUntil)}` : "Platí 12 měsíců od uplatnění"}</div>
   </td></tr>
 </table>`;
 }
@@ -701,7 +701,7 @@ export async function POST(request: Request) {
             badgeBg: ACCENT_BG,
             headline: n > 1 ? "Poukazy jsou zaplacené" : "Poukaz je zaplacený",
             bodyHtml: body,
-            extraHtml: `<p style="margin:0 0 14px;font-size:12.5px;color:${MUTED};">${n > 1 ? `${n} poukazy` : "Poukaz"} v celkové hodnotě <b style="color:${INK};">${czk(payload.total ?? 0)}</b>. Platí 12 měsíců od zaplacení.</p>`,
+            extraHtml: `<p style="margin:0 0 14px;font-size:12.5px;color:${MUTED};">${n > 1 ? `${n} poukazy` : "Poukaz"} v celkové hodnotě <b style="color:${INK};">${czk(payload.total ?? 0)}</b>. Platnost 12 měsíců začíná, až si částku přidáte na svůj účet.</p>`,
             ctaLabel: "Jak poukazy fungují",
             ctaUrl: "https://vezminarin.cz/to-buyers#poukazy",
             footNote: `Do 14 dnů od nákupu můžete od smlouvy odstoupit, pokud poukaz ještě nebyl uplatněn. Stačí napsat na <a href="mailto:support@vezminarin.cz" style="color:${ACCENT};text-decoration:none;font-weight:500;">support@vezminarin.cz</a>.`,
@@ -742,7 +742,7 @@ export async function POST(request: Request) {
             ctaUrl: `https://vezminarin.cz/poukaz?c=${encodeURIComponent(payload.code)}&h=${Math.round(Number(payload.amount) || 0)}`,
             secondaryCtaLabel: "Jak to funguje",
             secondaryCtaUrl: "https://vezminarin.cz/to-buyers#poukazy",
-            footNote: `Poukaz lze uplatnit jen jednou a platí do ${until ?? "12 měsíců od aktivace"}. Kód ${esc(payload.code)} chraňte jako hotovost.<br>🐾 Z každé dárkové karty posíláme 50 Kč kočkám v útulcích.`,
+            footNote: `Poukaz lze uplatnit jen jednou a platí ${until ? `do ${until}` : "12 měsíců od uplatnění"}. Kód ${esc(payload.code)} chraňte jako hotovost.<br>🐾 Z každé dárkové karty posíláme 50 Kč kočkám v útulcích.`,
           }),
         );
       }

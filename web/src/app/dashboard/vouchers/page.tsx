@@ -219,7 +219,7 @@ export default function VouchersPage() {
     const v = data as Voucher;
     setActMsg({
       ok: true,
-      text: `Сертификат ${v.code} включён на ${money(v.amount)}. Действует до ${formatDate(v.expires_at)}.`,
+      text: `Сертификат ${v.code} включён на ${money(v.amount)}. ${v.expires_at ? `Действует до ${formatDate(v.expires_at)}.` : "12 месяцев начнутся, когда клиент добавит сумму на депозит."}`,
     });
     setActCode("");
     setActAmount("");
