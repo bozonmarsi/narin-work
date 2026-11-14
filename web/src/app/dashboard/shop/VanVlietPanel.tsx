@@ -608,19 +608,19 @@ export function VanVlietPanel() {
   // буквам. Полностью заменяет алиасы для каждого цветка, который попал
   // в её ответ. То же самое раз в полмесяца делает pg_cron — это ручной
   // запуск того же самого, когда нужно обновить прямо сейчас.
-  async function refreshAliases() {
+  async function refreshAliases(onlyMissing = false) {
     setRefreshingAliases(true);
     setRefreshResult(null);
     try {
       const supabase = createClient();
-      let { data, error: fnError } = await supabase.functions.invoke("vanvliet-alias-refresh", { body: {} });
+      let { data, error: fnError } = await supabase.functions.invoke("vanvliet-alias-refresh", { body: { onlyMissing } });
       // Статус 546 — платформа Supabase убила процесс за превышение
       // CPU/памяти проекта ("not enough compute resources"), не наша
       // ошибка в коде. Один тяжёлый вызов (каталог + ИИ с расширенным
       // размышлением) иногда едва не укладывается в лимит — вторая
       // попытка почти всегда проходит без изменений в промпте/effort.
       if (fnError && (fnError as { context?: Response })?.context?.status === 546) {
-        ({ data, error: fnError } = await supabase.functions.invoke("vanvliet-alias-refresh", { body: {} }));
+        ({ data, error: fnError } = await supabase.functions.invoke("vanvliet-alias-refresh", { body: { onlyMissing } }));
       }
       if (fnError) throw fnError;
       if (data?.ok === false) {
@@ -1225,13 +1225,24 @@ export function VanVlietPanel() {
       </div>
       ) : (
       <div className="space-y-3">
-        <button
-          onClick={refreshAliases}
-          disabled={refreshingAliases}
-          className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-500 hover:border-accent hover:text-accent disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-400"
-        >
-          {refreshingAliases ? "Обновляю соответствия (может занять минуту)…" : "🔄 Обновить соответствия (AI)"}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => refreshAliases(true)}
+            disabled={refreshingAliases}
+            title="Быстро: подбирает название у Van Vliet только для цветов, у которых ещё нет ни одного соответствия (серые «?»). Остальные не трогает."
+            className="rounded-md border border-accent px-2 py-1 text-xs text-accent hover:bg-accent hover:text-white disabled:opacity-50"
+          >
+            {refreshingAliases ? "Подбираю…" : "✨ Подобрать для новых"}
+          </button>
+          <button
+            onClick={() => refreshAliases(false)}
+            disabled={refreshingAliases}
+            title="Тяжёлый полный пересчёт всех соответствий. Иногда не укладывается в лимит ресурсов — тогда используй «Подобрать для новых»."
+            className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-500 hover:border-accent hover:text-accent disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-400"
+          >
+            {refreshingAliases ? "Обновляю соответствия (может занять минуту)…" : "🔄 Обновить все соответствия (AI)"}
+          </button>
+        </div>
 
         <div className="space-y-1.5 rounded-md border border-zinc-200 p-2 dark:border-zinc-700">
           <p className="text-xs font-medium">Добавить соответствие вручную</p>

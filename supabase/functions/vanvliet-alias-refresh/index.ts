@@ -283,11 +283,34 @@ Deno.serve(async (req) => {
     // соответствий — они не продаются, а только засоряют словарь
     // (лишние вызовы Claude на мёртвые товары, лишние строки в "Наличие
     // у поставщика").
-    const { data: materials } = await supabase
+    const { data: allMaterials } = await supabase
       .from('product_stickers')
       .select('id, product_name')
       .eq('category', 'ohapka')
       .eq('archived', false)
+
+    // Лёгкий режим (кнопка «Подобрать для новых»): только цветы, у которых ещё
+    // НЕТ ни одного соответствия, и без долгого «размышления» модели. Полный
+    // прогон (каталог целиком + все цветы + adaptive thinking) на проекте Nano
+    // иногда упирается в лимит ресурсов (ответ 546 «not enough compute
+    // resources»), а для пары новых цветов он избыточен.
+    let onlyMissing = false
+    try {
+      const reqBody = await req.clone().json()
+      onlyMissing = reqBody?.onlyMissing === true
+    } catch {
+      // пустое тело — полный режим
+    }
+    let materials = allMaterials
+    if (onlyMissing) {
+      const { data: haveAliases } = await supabase
+        .from('product_name_aliases')
+        .select('product_sticker_id')
+        .eq('supplier_id', supplier.id)
+      const have = new Set((haveAliases ?? []).map((a) => a.product_sticker_id))
+      materials = (allMaterials ?? []).filter((m) => !have.has(m.id))
+      if (materials.length === 0) return json({ ok: true, onlyMissing: true, materialsConsidered: 0, updatedMaterials: 0, totalAliases: 0, prunedMaterials: 0, genusRejected: 0, report: [] })
+    }
 
     const targetDate = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Prague' })
     const catalog = await loadCatalog(username, password, targetDate)
@@ -305,7 +328,7 @@ Deno.serve(async (req) => {
       .select('product_sticker_id, alias')
       .eq('supplier_id', supplier.id)
       .eq('is_manual', true)
-    const materialNameByIdForExamples = new Map((materials ?? []).map((m) => [m.id, m.product_name]))
+    const materialNameByIdForExamples = new Map((allMaterials ?? []).map((m) => [m.id, m.product_name]))
     const manualExampleLines = (manualAliases ?? [])
       .map((a) => {
         const name = materialNameByIdForExamples.get(a.product_sticker_id)
@@ -353,9 +376,9 @@ ${catalogLines}
       },
       body: JSON.stringify({
         model: 'claude-sonnet-5',
-        max_tokens: 24000,
-        thinking: { type: 'adaptive' },
-        output_config: { effort: 'high' },
+        ...(onlyMissing
+          ? { max_tokens: 4000 }
+          : { max_tokens: 24000, thinking: { type: 'adaptive' }, output_config: { effort: 'high' } }),
         messages: [{ role: 'user', content: prompt }],
       }),
     })
@@ -460,6 +483,7 @@ ${catalogLines}
       totalAliases,
       prunedMaterials,
       genusRejected,
+      onlyMissing,
     })
   } catch (e) {
     if (e instanceof UpstreamError) {
