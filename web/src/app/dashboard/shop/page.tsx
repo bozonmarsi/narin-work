@@ -46,6 +46,11 @@ type Product = {
   price_markup_multiplier: number;
   auto_special_order: boolean;
   force_tomorrow: boolean;
+  // Заказали у поставщика, ждём поставку: на сайте «Doručíme» с датой, после
+  // приёмки на склад флаг снимается сам (триггер в базе).
+  arrival_pending: boolean;
+  arrival_qty: number | null;
+  arrival_date: string | null;
 };
 
 // Van Vliet — оптовый поставщик, его цена без DPH; конечная цена на
@@ -424,6 +429,7 @@ function ProductCard({
   onToggleFragrant,
   onUploadImage,
   onToggleSpecialOrder,
+  onToggleArrival,
   onToggleForceTomorrow,
   onToggleManualHide,
   onSetAddedToTilda,
@@ -462,6 +468,7 @@ function ProductCard({
   onToggleFragrant: (id: string, current: boolean) => void;
   onUploadImage: (id: string, file: File) => void;
   onToggleSpecialOrder: (id: string, current: boolean) => void;
+  onToggleArrival: (id: string, current: boolean) => void;
   onToggleForceTomorrow: (id: string, current: boolean) => void;
   onToggleManualHide: (id: string, current: boolean) => void;
   onSetAddedToTilda: (id: string, value: boolean) => void;
@@ -1015,7 +1022,15 @@ function ProductCard({
             🚫 {p.manually_hidden ? "Скрыто вручную" : "Скрыто с сайта"}
           </p>
         )}
-        {p.special_order ? (
+        {p.arrival_pending && p.special_order && (
+          <p
+            title="Цветы заказаны у поставщика. После приёмки на склад этот режим выключится сам."
+            className="rounded-md bg-orange-50 dark:bg-orange-500/10 px-2 py-1 text-[11px] font-medium text-orange-600 dark:text-orange-400 ring-1 ring-inset ring-orange-200 dark:ring-orange-500/30"
+          >
+            📦 Заказано{p.arrival_qty ? ` ${p.arrival_qty} шт.` : ""}{p.arrival_date ? ` — приедут ${p.arrival_date.slice(8, 10)}.${p.arrival_date.slice(5, 7)}` : ""}. После приёмки на склад вернётся в обычный режим.
+          </p>
+        )}
+        {p.special_order && !p.arrival_pending ? (
           <p
             title={p.auto_special_order ? "Проставлено автоматически — не хватает цветка из состава" : undefined}
             className="rounded-md bg-orange-50 dark:bg-orange-500/10 px-2 py-1 text-[11px] font-medium text-orange-600 dark:text-orange-400 ring-1 ring-inset ring-orange-200 dark:ring-orange-500/30"
@@ -1064,6 +1079,19 @@ function ProductCard({
             }`}
           >
             {p.force_tomorrow ? "🕐 На сайте «Доставим завтра» — выключить" : "🕐 Плашка «Доставим завтра»"}
+          </button>
+        )}
+        {p.category === "ohapka" && (p.arrival_pending || (!p.special_order && !p.archived)) && (
+          <button
+            onClick={() => onToggleArrival(p.id, p.arrival_pending)}
+            title="Нажми, когда заказала цветы у поставщика: на сайте они станут видны с датой ближайшей доставки и не продадутся сверх заказанного. Когда оприходуешь их на складе (Приёмка), режим выключится сам."
+            className={`rounded-md px-2 py-1 text-[11px] font-medium ${
+              p.arrival_pending
+                ? "bg-orange-100 text-orange-700 ring-1 ring-inset ring-orange-300 dark:bg-orange-500/20 dark:text-orange-300 dark:ring-orange-500/40"
+                : "border border-orange-300 text-orange-700 dark:border-orange-500/40 dark:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-500/10"
+            }`}
+          >
+            {p.arrival_pending ? "📦 Ждём поставку — отменить" : "📦 Заказали — приедут"}
           </button>
         )}
         <div className="flex items-center justify-between gap-2">
@@ -1268,6 +1296,15 @@ export default function ShopPage() {
         .order("product_name", { ascending: true }),
       supabase.from("product_availability").select("product_name"),
     ]);
+    // Отдельным запросом: если SQL с колонками ещё не применён, страница всё равно загрузится.
+    const arrivalById = new Map<string, { qty: number | null; date: string | null }>();
+    const arrivalRes = await supabase.from("product_stickers").select("id, arrival_qty, arrival_date").eq("arrival_pending", true);
+    if (!arrivalRes.error) {
+      for (const r of (arrivalRes.data ?? []) as { id: string; arrival_qty: number | null; arrival_date: string | null }[]) arrivalById.set(r.id, { qty: r.arrival_qty, date: r.arrival_date });
+    } else {
+      const fallback = await supabase.from("product_stickers").select("id").eq("arrival_pending", true);
+      if (!fallback.error) for (const r of (fallback.data ?? []) as { id: string }[]) arrivalById.set(r.id, { qty: null, date: null });
+    }
     setProducts(
       (productsRes.data ?? [])
         .filter((p) => p.product_name && p.product_name !== "__default__")
@@ -1298,6 +1335,9 @@ export default function ShopPage() {
           price_markup_multiplier: p.price_markup_multiplier ?? 2.5,
           auto_special_order: p.auto_special_order ?? false,
           force_tomorrow: p.force_tomorrow ?? false,
+          arrival_pending: arrivalById.has(p.id),
+          arrival_qty: arrivalById.get(p.id)?.qty ?? null,
+          arrival_date: arrivalById.get(p.id)?.date ?? null,
         })),
     );
     setAvailableToday(new Set((availabilityRes.data ?? []).map((r) => r.product_name)));
@@ -1674,6 +1714,42 @@ export default function ShopPage() {
     // человека, а не автоматика по нехватке цветка (см. миграцию
     // set_recipe_shortage_automation), она больше не должна его трогать.
     await supabase.from("product_stickers").update({ special_order: !specialOrder, auto_special_order: false }).eq("id", productId);
+    // «Убрать под заказ» заодно снимает «ждём поставку» (если колонки ещё нет — молча пропускаем)
+    if (specialOrder) await supabase.from("product_stickers").update({ arrival_pending: false }).eq("id", productId);
+    loadAvailability();
+  }
+
+  // «Заказали, приедут»: на сайте товар виден как «Doručíme <дата>» (как «под заказ»),
+  // не продаётся больше, чем заказано, а когда цветы оприходуют на складе, база сама вернёт обычный режим.
+  async function toggleArrival(productId: string, current: boolean) {
+    const supabase = createClient();
+    const on = !current;
+    let qty: number | null = null;
+    let arriveIso: string | null = null;
+    if (on) {
+      const q = window.prompt("Сколько СТЕБЛЕЙ ждёшь? (пусто — без лимита)", "");
+      if (q === null) return;
+      const n = parseInt(q.replace(/\D/g, ""), 10);
+      qty = Number.isFinite(n) && n > 0 ? n : null;
+      const d = window.prompt("Когда приедут? Дата ДД.ММ (пусто — не знаю)", "");
+      if (d === null) return;
+      const m = d.match(/(\d{1,2})[.\/-](\d{1,2})/);
+      if (m) {
+        const now = new Date();
+        let y = now.getFullYear();
+        const cand = new Date(y, parseInt(m[2], 10) - 1, parseInt(m[1], 10));
+        if (cand.getTime() < now.getTime() - 86400000) y += 1;
+        arriveIso = `${y}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+      }
+    }
+    const { error } = await supabase.from("product_stickers").update({ arrival_pending: on }).eq("id", productId);
+    if (error) {
+      alert("Не получилось: в базе ещё нет нужной колонки. Нужно применить SQL (migrations/20261114020000_arrival_pending.sql).");
+      return;
+    }
+    await supabase.from("product_stickers").update({ special_order: on, auto_special_order: false, ...(on ? { manually_hidden: false } : {}) }).eq("id", productId);
+    // количество и дата — отдельным запросом: если SQL 20261115010000 ещё не применён, основное всё равно сработает
+    await supabase.from("product_stickers").update(on ? { arrival_qty: qty, arrival_date: arriveIso } : { arrival_qty: null, arrival_date: null, force_tomorrow: false }).eq("id", productId);
     loadAvailability();
   }
 
@@ -2252,6 +2328,7 @@ export default function ShopPage() {
                   onToggleFragrant={toggleFragrant}
                   onUploadImage={uploadStickerImage}
                   onToggleSpecialOrder={toggleSpecialOrder}
+                  onToggleArrival={toggleArrival}
                   onToggleForceTomorrow={toggleForceTomorrow}
                   onToggleManualHide={toggleManualHide}
                   onSetAddedToTilda={setAddedToTilda}
@@ -2594,6 +2671,7 @@ export default function ShopPage() {
                 onToggleFragrant={toggleFragrant}
                 onUploadImage={uploadStickerImage}
                 onToggleSpecialOrder={toggleSpecialOrder}
+                  onToggleArrival={toggleArrival}
                 onToggleForceTomorrow={toggleForceTomorrow}
                 onToggleManualHide={toggleManualHide}
                 onSetAddedToTilda={setAddedToTilda}

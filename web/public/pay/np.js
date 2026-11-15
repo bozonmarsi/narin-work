@@ -249,7 +249,7 @@
       '<section class="np-card" id="c2"><div class="np-h"><span class="n">2</span><h2>Doručení<small id="npDelSub">Kam a kdy kytice přivezeme</small></h2></div>' +
       '<div class="np-opts two" id="npModes">' +
       '<label class="np-opt"><input type="radio" name="npmode" value="courier"><span class="dot"></span><span class="tx"><b>Kurýrem</b><span>Až ke dveřím po celé Praze a okolí</span></span><span class="pr" id="npModePrC"></span></label>' +
-      '<label class="np-opt"><input type="radio" name="npmode" value="pickup"><span class="dot"></span><span class="tx"><b>Osobní odběr</b><span>Vyzvednutí v Praze 10, jen servisní poplatek</span></span><span class="pr">80&nbsp;Kč</span></label>' +
+      '<label class="np-opt"><input type="radio" name="npmode" value="pickup"><span class="dot"></span><span class="tx"><b>Osobní odběr</b><span>Vyzvednutí v Praze 7, jen servisní poplatek</span></span><span class="pr">80&nbsp;Kč</span></label>' +
       '</div>' +
       '<div id="npGiftWrap"></div>' +
       '<div id="npCourier">' +
@@ -258,7 +258,7 @@
       '<div class="np-row two">' + field('city', 'Město', 'text', { ac: 'address-level2' }) + field('psc', 'PSČ', 'text', { ac: 'postal-code', mode: 'numeric' }) + '</div>' +
       '<div class="np-row three">' + field('floor', 'Patro', 'text', { req: false }) + field('apt', 'Číslo bytu', 'text', { req: false }) + field('intercom', 'Kód interkomu', 'text', { req: false }) + '</div>' +
       '</div>' +
-      '<div id="npPickup" hidden><div class="np-pick"><span class="ic">📍</span><div><b>Na Hroudě 63, 100 00 Praha 10</b><br>Zatím nemáme prodejnu, vyzvednutí probíhá vedle skladu. Podrobné info dostanete e-mailem.</div></div></div>' +
+      '<div id="npPickup" hidden><div class="np-pick"><span class="ic">📍</span><div><b>Dukelských hrdinů 617/56, 170 00 Praha 7 – Holešovice</b><br>Zatím nemáme prodejnu, vyzvednutí probíhá přímo vedle Výstaviště. Podrobné info dostanete e-mailem.</div></div></div>' +
       '<div id="npWhen">' +
       '<div class="np-group" id="g_date"><div class="np-sub-h"><span id="npDateLbl">Datum doručení</span><small id="npDateErr" style="color:var(--err)"></small></div>' +
       '<div class="np-chips" id="npChips"></div>' +
