@@ -540,14 +540,16 @@ export async function POST(request: Request) {
         const PHONE_SHOW = "+420 776 421 993";
         const day = delivery_date && /^\d{4}-\d{2}-\d{2}/.test(String(delivery_date)) ? czDate(String(delivery_date).slice(0, 10)) : null;
         const whenText = [day, delivery_time ? `v ${esc(String(delivery_time))} h` : null].filter(Boolean).join(" ");
-        const mapUrl = pickup_address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(String(pickup_address))}` : "";
+        // Osobní odběr je v Praze 7 (ne na skladu z warehouse_location, ten slouží kurýrům).
+        const PICKUP_ADDRESS = "Dukelských hrdinů 617/56, 170 00 Praha 7 – Holešovice (vedle Výstaviště)";
+        const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent("Dukelských hrdinů 617/56, Praha 7")}`;
         const infoRow = (label: string, value: string, last = false) =>
           `<tr><td style="padding:${last ? "9px 15px 13px" : "13px 15px 9px"};font-size:13.5px;color:${INK};line-height:1.5;">
             <span style="display:block;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:${PREPARING};margin-bottom:3px;">${label}</span>${value}
           </td></tr>`;
         const infoBox = `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:${PREPARING_BG};border-radius:12px;margin-bottom:18px;">
           ${whenText ? infoRow("Kdy na vás čekáme", `<b>${whenText}</b>`) : ""}
-          ${infoRow("Kde", `${pickup_address ?? ""}${mapUrl ? ` · <a href="${mapUrl}" style="color:${ACCENT};text-decoration:none;font-weight:600;">Otevřít v mapě</a>` : ""}`)}
+          ${infoRow("Kde", `${PICKUP_ADDRESS}${mapUrl ? ` · <a href="${mapUrl}" style="color:${ACCENT};text-decoration:none;font-weight:600;">Otevřít v mapě</a>` : ""}`)}
           ${infoRow("Až dorazíte", `Zavolejte nám na <a href="tel:${PHONE_TEL}" style="color:${ACCENT};text-decoration:none;font-weight:600;">${PHONE_SHOW}</a>`, true)}
         </table>`;
         await sendBrevoEmail(
