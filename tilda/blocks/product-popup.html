@@ -382,7 +382,7 @@
   // several kinds of flowers in the cart) wants tools, kenzans and vases. Points from the flower,
   // its role in a bouquet and the cart decide; a tie keeps the mixed order.
   var GIFT_RE = /(^|\s)(ruz|rose|hortenz|pivon|tulip|lili|chryzant|karafi|gerber|slunecnic|eustom|alstroem|frezi|amarylis|iris|kosat)/;
-  var CRAFT_RE = /(eryng|macka|prote|leukadend|banksi|anthur|amarant|craspedi|skimm|eukalypt|ilex|cesmin|kala\b|kaly|calla|ranunk|pryskyr|astilb|bodlak|scabios|nigell|delphin|ostrozk|veronik|bavlnik|pampas|hyperic|trezalk|pistac|ruscus|aspidistr|limonium|statice|orchid|heliconi|strelitz|exot|vytrval|gypsof|zelen|vetvic)/;
+  var CRAFT_RE = /(eryng|macka|prote|leukadend|banksi|anthur|amarant|craspedi|skimm|eukalypt|ilex|cesmin|kala\b|kaly|calla|ranun|pryskyr|astilb|bodlak|scabios|nigell|delphin|ostrozk|veronik|bavlnik|pampas|hyperic|trezalk|pistac|ruscus|aspidistr|limonium|statice|orchid|heliconi|strelitz|exot|vytrval|gypsof|zelen|vetvic)/;
   function plain(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
   function segmentFor(name, role) {
     var n = plain(name), craft = 0, gift = 0;
@@ -433,8 +433,8 @@
     if (isStab) out = stabs.concat(gifts, vases.filter(function (v) { return !v.low; }));
     else if (seg === 'gift') {
       // vase first, gifts around it, one tool at most and only after a few cards; no kenzans
-      var firstTool = g.tool.concat(g.other).slice(0, 1);
-      out = [].concat(vases.slice(0, 1), gifts.slice(0, 2), vases.slice(1, 2), firstTool, zip(gifts.slice(2), vases.slice(2).filter(function (v) { return !v.low; }), stabs));
+      var firstTool = g.tool.concat(g.other).slice(0, 1), gv = vases.filter(function (v) { return !v.low; });
+      out = [].concat(gv.slice(0, 1), gifts.slice(0, 2), gv.slice(1, 2), firstTool, zip(gifts.slice(2), gv.slice(2), stabs));
     } else if (seg === 'craft') {
       // the arranger: tool, kenzan, vases (low ones first), the other tool and care, gifts at the very end
       var lowFirst = vases.filter(function (v) { return v.low; }).concat(vases.filter(function (v) { return !v.low; }));
