@@ -127,6 +127,8 @@ VARIANTS = {
     "L-sign-flowerbox": "lettering along the arch, NARIN in the middle, a window box of daisies on stems at the bottom",
     "M-wreath": "NARIN crowned by a half wreath of daisies and leaves, the line below",
     "N-sign-border": "lettering along the arch, NARIN in the middle, a neat border of daisies along the bottom",
+    "O-garden-arc": "a garden along the bottom (daisies, the logo tulips, sprigs, grass), bigger lettering along the arch",
+    "P-garden-line": "the same garden, the line of words set big and straight under NARIN",
 }
 
 
@@ -263,7 +265,78 @@ def sign_art(ink, flowers):
     return [layer("keyline", [key]), layer("daisies", flowers), layer("logo", [lg]), layer("text", arc)]
 
 
+# the tulip from the logo, without the piece of the white A that sits inside its group
+TULIP = re.sub(r'<path fill="#FEFEFE"[^>]*/>', "", re.search(r'<g id="tulip"[^>]*>(.*?)</g>', logo_src, re.S).group(1))
+TULIP_FOOT, TULIP_H = (60, 2311), 2281      # stem foot and height in the tulip group's own units
+
+
+def tulip(x, ground, h, mirror=False):
+    k = h / TULIP_H
+    return (f'<g transform="translate({x:.1f} {ground:.1f}) scale({-k if mirror else k:.5f} {k:.5f}) '
+            f'translate({-TULIP_FOOT[0]} {-TULIP_FOOT[1]})">{TULIP}</g>')
+
+
+def sprig(x, ground, h, side):
+    out = [f'<path d="M{x:.1f} {ground} Q{x + side * 6:.1f} {ground - h * 0.5:.1f} {x + side * 10:.1f} {ground - h:.1f}" '
+           f'fill="none" stroke="{LEAF_GREEN}" stroke-width="6" stroke-linecap="round"/>']
+    for i, f in enumerate((0.35, 0.6, 0.85)):
+        yy, xx = ground - h * f, x + side * 10 * f
+        out.append(leaf(xx, yy, 40 - i * 6, -90 - 50, LEAF_GREEN if i % 2 else LEAF_LIGHT))
+        out.append(leaf(xx, yy, 40 - i * 6, -90 + 50, LEAF_LIGHT if i % 2 else LEAF_GREEN))
+    out.append(leaf(x + side * 10, ground - h, 34, -90, LEAF_LIGHT))
+    return out
+
+
+def garden(max_h, inset=34):
+    """A symmetric strip of garden along the bottom edge: daisies on stems, the logo tulips, leafy sprigs, grass."""
+    grass, stems, tulips, heads = [], [], [], []
+    rnd = random.Random(8)
+    for x in range(40, AW - 40, 13):
+        h = rnd.uniform(16, 34)
+        if not arch_inner(x, AH - h, 4, inset - 10):
+            continue
+        lean = rnd.uniform(-7, 7)
+        grass.append(f'<path d="M{x - 4} {AH + 1} Q{x + lean * 0.3:.1f} {AH - h * 0.6:.1f} {x + lean:.1f} {AH - h:.1f} '
+                     f'Q{x + 1 + lean * 0.3:.1f} {AH - h * 0.5:.1f} {x + 4} {AH + 1}Z" fill="{rnd.choice([LEAF_GREEN, LEAF_LIGHT, "#3DAF5C"])}"/>')
+    kinds = ["daisy", "tulip", "sprig", "daisy", "daisy", "tulip", "daisy", "sprig", "daisy", "tulip"]
+    hf = [0.72, 0.96, 0.62, 0.86, 0.66, 1.0, 0.78, 0.6, 0.9, 0.82]
+    cols = [BLUE, None, None, RED, YELLOW, None, PURPLE, None, LILAC, None]
+    step, d = 74, 62
+    for k, kind in enumerate(kinds):
+        for side in ((1,) if k == 0 else (-1, 1)):
+            x, h = AW / 2 + side * k * step, max_h * hf[k]
+            if not arch_inner(x, AH - h, d / 2, inset):
+                continue
+            if kind == "tulip":
+                tulips.append(tulip(x - side * 22, AH + 2, h * 0.92, mirror=side < 0))
+            elif kind == "sprig":
+                stems += sprig(x, AH + 2, h, side)
+            else:
+                hx, hy = x + side * 5, AH - h
+                stems.append(f'<path d="M{x:.1f} {AH + 2} Q{x:.1f} {AH - h * 0.5:.1f} {hx:.1f} {hy:.1f}" fill="none" '
+                             f'stroke="{LEAF_GREEN}" stroke-width="7" stroke-linecap="round"/>')
+                stems.append(leaf(x, AH - h * 0.4, 48, -90 + side * 55, LEAF_LIGHT))
+                heads.append(daisy(hx, hy, d, cols[k], side * 8))
+    return grass + stems + tulips + heads
+
+
+def keyline(ink, inset=34, a0=24, a1=156):
+    rx, ry = AW / 2 - inset, AH - inset
+    t0, t1 = math.radians(a0), math.radians(a1)
+    xa, ya = AW / 2 - rx * math.cos(t0), AH - ry * math.sin(t0)
+    xb, yb = AW / 2 - rx * math.cos(t1), AH - ry * math.sin(t1)
+    return f'<path d="M{xa:.1f} {ya:.1f} A{rx} {ry} 0 0 1 {xb:.1f} {yb:.1f}" fill="none" stroke="{ink}" stroke-width="4" stroke-linecap="round"/>'
+
+
 def composed_art(ink, variant):
+    if variant == "O-garden-arc":
+        arc = text_on_arch("KVĚTINY · DÁRKY · POKOJOVKY", 74, 112, ink, tracking=0.12)
+        lg, _ = logo(AW / 2, 300, 700, ink)
+        return [layer("keyline", [keyline(ink, 30, 26, 154)]), layer("garden", garden(170)), layer("logo", [lg]), layer("text", arc)]
+    if variant == "P-garden-line":
+        lg, lh = logo(AW / 2, 165, 740, ink)
+        line = bottom_line(ink, 165 + lh + 125, 1160, 104, "dot")
+        return [layer("keyline", [keyline(ink, 34, 20, 160)]), layer("garden", garden(140)), layer("logo", [lg]), layer("text", line)]
     if variant == "L-sign-flowerbox":
         return sign_art(ink, flowerbox(stems=True))
     if variant == "N-sign-border":
@@ -277,7 +350,7 @@ def composed_art(ink, variant):
 
 
 def arch_art(ink, variant="A-garland"):
-    if variant in ("L-sign-flowerbox", "M-wreath", "N-sign-border"):
+    if variant in ("L-sign-flowerbox", "M-wreath", "N-sign-border", "O-garden-arc", "P-garden-line"):
         return composed_art(ink, variant)
     SCAT = ("E-scatter", "F-pattern", "G-scatter-small", "H-big", "I-bigger")
     if variant in ("J-big-nosub", "K-bigger-nosub"):
