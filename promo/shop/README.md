@@ -19,7 +19,7 @@ Sixteen layouts of the label daisies, all daisies of one size within a layout:
 | `L-sign-flowerbox` | sign-painter layout: keyline and "KVĚTINY · DÁRKY · POKOJOVKY" along the arch, NARIN in the middle, daisies on stems along the bottom like a window box |
 | `M-wreath` | NARIN crowned by a half wreath of daisies and leaves, the line below |
 | `N-sign-border` | as L, with a plain border of daisies instead of the stems |
-| `O-garden-arc` | a garden along the bottom (daisies on stems, the tulips from the logo, leafy sprigs, grass); bigger lettering along the arch |
+| `O-garden-arc` | a garden along the bottom (daisies, lupines, bellflowers, primroses, zinnias, grass; drawn in `flowers.py` in the label-daisy style); bigger lettering along the arch |
 | `P-garden-line` | the same garden; "Květiny · Dárky · Pokojovky" big and straight under NARIN |
 
 - `out/arch-decal-<variant>.svg`: print file; the magenta `cut-guide (do not print)` layer is the glass outline.

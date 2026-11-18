@@ -14,6 +14,9 @@ from fontTools.pens.svgPathPen import SVGPathPen
 from fontTools.pens.transformPen import TransformPen
 from fontTools.ttLib import TTFont
 
+sys.path.insert(0, str(pathlib.Path(__file__).parent))
+import flowers as FL  # noqa: E402
+
 HERE = pathlib.Path(__file__).parent
 FONT = TTFont(sys.argv[1])
 OUT = pathlib.Path(sys.argv[2]) if len(sys.argv) > 2 else HERE
@@ -127,7 +130,7 @@ VARIANTS = {
     "L-sign-flowerbox": "lettering along the arch, NARIN in the middle, a window box of daisies on stems at the bottom",
     "M-wreath": "NARIN crowned by a half wreath of daisies and leaves, the line below",
     "N-sign-border": "lettering along the arch, NARIN in the middle, a neat border of daisies along the bottom",
-    "O-garden-arc": "a garden along the bottom (daisies, the logo tulips, sprigs, grass), bigger lettering along the arch",
+    "O-garden-arc": "a garden along the bottom (daisies, lupines, bellflowers, primroses, zinnias, grass), bigger lettering along the arch",
     "P-garden-line": "the same garden, the line of words set big and straight under NARIN",
 }
 
@@ -265,17 +268,6 @@ def sign_art(ink, flowers):
     return [layer("keyline", [key]), layer("daisies", flowers), layer("logo", [lg]), layer("text", arc)]
 
 
-# the tulip from the logo, without the piece of the white A that sits inside its group
-TULIP = re.sub(r'<path fill="#FEFEFE"[^>]*/>', "", re.search(r'<g id="tulip"[^>]*>(.*?)</g>', logo_src, re.S).group(1))
-TULIP_FOOT, TULIP_H = (60, 2311), 2281      # stem foot and height in the tulip group's own units
-
-
-def tulip(x, ground, h, mirror=False):
-    k = h / TULIP_H
-    return (f'<g transform="translate({x:.1f} {ground:.1f}) scale({-k if mirror else k:.5f} {k:.5f}) '
-            f'translate({-TULIP_FOOT[0]} {-TULIP_FOOT[1]})">{TULIP}</g>')
-
-
 def sprig(x, ground, h, side):
     out = [f'<path d="M{x:.1f} {ground} Q{x + side * 6:.1f} {ground - h * 0.5:.1f} {x + side * 10:.1f} {ground - h:.1f}" '
            f'fill="none" stroke="{LEAF_GREEN}" stroke-width="6" stroke-linecap="round"/>']
@@ -288,8 +280,8 @@ def sprig(x, ground, h, side):
 
 
 def garden(max_h, inset=34):
-    """A symmetric strip of garden along the bottom edge: daisies on stems, the logo tulips, leafy sprigs, grass."""
-    grass, stems, tulips, heads = [], [], [], []
+    """A symmetric strip of garden along the bottom edge: daisies, lupines, bellflowers, primroses, zinnias, grass."""
+    grass, stems, heads = [], [], []
     rnd = random.Random(8)
     for x in range(40, AW - 40, 13):
         h = rnd.uniform(16, 34)
@@ -298,26 +290,30 @@ def garden(max_h, inset=34):
         lean = rnd.uniform(-7, 7)
         grass.append(f'<path d="M{x - 4} {AH + 1} Q{x + lean * 0.3:.1f} {AH - h * 0.6:.1f} {x + lean:.1f} {AH - h:.1f} '
                      f'Q{x + 1 + lean * 0.3:.1f} {AH - h * 0.5:.1f} {x + 4} {AH + 1}Z" fill="{rnd.choice([LEAF_GREEN, LEAF_LIGHT, "#3DAF5C"])}"/>')
-    kinds = ["daisy", "tulip", "sprig", "daisy", "daisy", "tulip", "daisy", "sprig", "daisy", "tulip"]
-    hf = [0.72, 0.96, 0.62, 0.86, 0.66, 1.0, 0.78, 0.6, 0.9, 0.82]
-    cols = [BLUE, None, None, RED, YELLOW, None, PURPLE, None, LILAC, None]
-    step, d = 74, 62
-    for k, kind in enumerate(kinds):
+    # symmetric planting from the middle outwards; every kind is drawn in the label-daisy style (flowers.py)
+    plan = [("daisy", BLUE, 0.74), ("lupine", PURPLE, 1.0), ("five", YELLOW, 0.62), ("daisy", RED, 0.84),
+            ("bells", COBALT, 0.95), ("pompom", LILAC, 0.7), ("daisy", YELLOW, 0.86), ("lupine", BLUE, 0.98),
+            ("five", RED, 0.66), ("daisy", LILAC, 0.8)]
+    step, d = 72, 62
+    for k, (kind, col, hf) in enumerate(plan):
         for side in ((1,) if k == 0 else (-1, 1)):
-            x, h = AW / 2 + side * k * step, max_h * hf[k]
+            x, h = AW / 2 + side * k * step, max_h * hf
             if not arch_inner(x, AH - h, d / 2, inset):
                 continue
-            if kind == "tulip":
-                tulips.append(tulip(x - side * 22, AH + 2, h * 0.92, mirror=side < 0))
-            elif kind == "sprig":
-                stems += sprig(x, AH + 2, h, side)
+            if kind == "lupine":
+                stems += FL.lupine(x, AH + 2, h + 20, col, LILAC if col != LILAC else PURPLE)
+            elif kind == "bells":
+                stems += FL.bellflower(x - side * 14, AH + 2, h, col, side)
             else:
-                hx, hy = x + side * 5, AH - h
-                stems.append(f'<path d="M{x:.1f} {AH + 2} Q{x:.1f} {AH - h * 0.5:.1f} {hx:.1f} {hy:.1f}" fill="none" '
-                             f'stroke="{LEAF_GREEN}" stroke-width="7" stroke-linecap="round"/>')
-                stems.append(leaf(x, AH - h * 0.4, 48, -90 + side * 55, LEAF_LIGHT))
-                heads.append(daisy(hx, hy, d, cols[k], side * 8))
-    return grass + stems + tulips + heads
+                els, (hx, hy) = FL.on_stem(None, x, AH + 2, h, side)
+                stems += els
+                if kind == "daisy":
+                    heads.append(daisy(hx, hy, d, col, side * 8))
+                elif kind == "five":
+                    heads.append(FL.five_petal(hx, hy, d * 0.95, col, side * 12))
+                else:
+                    heads.append(FL.pompom(hx, hy, d, col))
+    return grass + stems + heads
 
 
 def keyline(ink, inset=34, a0=24, a1=156):
