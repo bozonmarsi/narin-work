@@ -409,7 +409,7 @@
   }
   function paintMeta(it, s, mode) {
     var n = Object.keys(ans).some(function (k) { return ans[k]; }) ? items.filter(function (x) { return fits(x); }).length : items.length;
-    root.querySelector('.nbg-cnt').textContent = 'Odpovídá ' + n + ' ' + word(n);
+    root.querySelector('.nbg-cnt').textContent = 'Hledáme vaši kytici';
     badge.querySelector('span').textContent = mode === 'cycle' ? 'Naše kytice' : 'Nejlépe odpovídá';
     badge.classList.add('on');
     nameEl.textContent = it.name;
@@ -468,7 +468,7 @@
           var lead = q.k === 'n' ? '<span class="nbg-sw" style="background:' + (SWATCH[o[0]] || 'var(--sky2)') + '"></span>'
             : '<span class="nbg-ico"><i class="ti ' + (q.k === 'b' ? 'ti-wallet' : (ICON[o[0]] || 'ti-flower')) + '"></i></span>';
           return '<button type="button" class="nbg-tile' + (ans[q.k] === o[0] ? ' sel' : '') + '" data-k="' + q.k + '" data-v="' + esc(o[0]) + '"' + (n ? '' : ' disabled') + '>' + lead +
-            '<span class="nbg-tl">' + esc(o[1]) + '<small>' + (n ? n + ' ' + word(n) : 'nic nenajdeme') + '</small></span></button>';
+            '<span class="nbg-tl">' + esc(o[1]) + '</span></button>';
         }).join('') + '</div>';
       stage.classList.remove('out');
     }, 200);
