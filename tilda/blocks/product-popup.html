@@ -377,13 +377,35 @@
   function extraGroup(e) { return e.kind === 'stabilized' ? 'stab' : e.cat === 'darky' ? 'gift' : 'care'; }
   function hashOf(s) { var h = 0, i; s = String(s); for (i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; }
   function turn(list, n) { n = list.length ? n % list.length : 0; return list.slice(n).concat(list.slice(0, n)); }
-  // Order of the extras (owner, 2026-11-18): the tool for this flower first (secateur when unknown),
-  // then vases (one card per model; a low vase or kenzan first for low flowers), then the other tool,
-  // then gifts and stabilized flowers taking turns. The vase models rotate from product to product,
-  // the important items never move to the back.
+  // Who is looking (owner, 2026-11-18): a GIFT buyer (classic gift flowers, a ready bouquet in the cart)
+  // wants vases and gifts, at most one tool; a FLOWER LOVER who arranges (exotics, fillers, greenery,
+  // several kinds of flowers in the cart) wants tools, kenzans and vases. Points from the flower,
+  // its role in a bouquet and the cart decide; a tie keeps the mixed order.
+  var GIFT_RE = /(^|\s)(ruz|rose|hortenz|pivon|tulip|lili|chryzant|karafi|gerber|slunecnic|eustom|alstroem|frezi|amarylis|iris|kosat)/;
+  var CRAFT_RE = /(eryng|macka|prote|leukadend|banksi|anthur|amarant|craspedi|skimm|eukalypt|ilex|cesmin|kala\b|kaly|calla|ranunk|pryskyr|astilb|bodlak|scabios|nigell|delphin|ostrozk|veronik|bavlnik|pampas|hyperic|trezalk|pistac|ruscus|aspidistr|limonium|statice|orchid|heliconi|strelitz|exot|vytrval|gypsof|zelen|vetvic)/;
+  function plain(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+  function segmentFor(name, role) {
+    var n = plain(name), craft = 0, gift = 0;
+    if (CRAFT_RE.test(n)) craft += 3;
+    if (GIFT_RE.test(n)) gift += 3;
+    if (role === 'filler' || role === 'greenery' || role === 'accent') craft += 1; else if (role === 'focal') gift += 1;
+    var cart = (window.tcart && window.tcart.products) || [], flowers = {}, P = (bundle && bundle.p) || {};
+    cart.forEach(function (it) {
+      var cp = P[String(it.uid)] || null, nm = plain(it.name);
+      if (cp && cp.k === 'ohapka') { flowers[nm] = 1; if (cp.r === 'filler' || cp.r === 'greenery') craft += 1; }
+      else if ((cp && /^(buket|banky|set|darky)$/.test(cp.k)) || /kytice|kovka|poukaz|pohlednic/.test(nm)) gift += 1;
+      if (/nuzk|sekator|kenzan/.test(nm)) craft += 1;
+    });
+    if (Object.keys(flowers).length >= 2) craft += 1;
+    return craft > gift ? 'craft' : gift > craft ? 'gift' : 'mixed';
+  }
+  var lastSeg = 'mixed';
   function extrasFor(c, uid, isStab) {
     var tool = (c && c.tool) || 'secateur', low = c && c.low, shown = {}, self = splitColor(cardData && cardData.name).base;
-    var g = {tool: [], other: [], vase: [], gift: [], stab: []};
+    var p = bundle && bundle.p[uid];
+    var seg = isStab ? 'mixed' : segmentFor(cardData && cardData.name, p && p.r);
+    lastSeg = seg;
+    var g = {tool: [], other: [], vase: [], kenzan: [], kcare: [], gift: [], stab: []};
     if (!cat) return [];   // availability first: a hidden item must not flash in the rail
     ((bundle && bundle.x) || []).forEach(function (e) {
       if (e.uid === uid) return;
@@ -394,32 +416,32 @@
         if (shown[sp.base] || sp.base === self) return;
         shown[sp.base] = 1;
       }
-      var it = {uid: e.uid, name: e.n, price: e.pr, image: e.img};
-      var isTool = e.kind === 'secateur' || e.kind === 'scissors';
-      var isVase = e.kind === 'vase' || e.kind === 'vase_low' || e.kind === 'kenzan';
-      if (isStab && (isTool || e.kind === 'kenzan' || e.kind === 'vase_low')) return;   // no water, no cutting
-      if (isTool) { it.group = 'care'; it.tag = EXTRA_TAG.care; (e.kind === tool ? g.tool : g.other).push(it); }
-      else if (isVase) {
-        if (e.kind === 'kenzan' && !low) return;
-        it.group = 'care'; it.tag = EXTRA_TAG.vase; it.fit = low && (e.kind === 'vase_low' || e.kind === 'kenzan'); g.vase.push(it);
-      }
+      var it = {uid: e.uid, name: e.n, price: e.pr, image: e.img, group: 'care', tag: EXTRA_TAG.care};
+      if (e.kind === 'secateur' || e.kind === 'scissors') (e.kind === tool ? g.tool : g.other).push(it);
+      else if (e.kind === 'kenzan') { it.tag = EXTRA_TAG.vase; g.kenzan.push(it); }
+      else if (e.kind === 'kenzan_care') g.kcare.push(it);
+      else if (e.kind === 'vase' || e.kind === 'vase_low') { it.tag = EXTRA_TAG.vase; it.fit = low && e.kind === 'vase_low'; it.low = e.kind === 'vase_low'; g.vase.push(it); }
       else if (e.kind === 'stabilized') { it.group = 'stab'; it.tag = EXTRA_TAG.stab; g.stab.push(it); }
       else if (e.cat === 'darky') { it.group = 'gift'; it.tag = EXTRA_TAG.gift; g.gift.push(it); }
-      else { it.group = 'care'; it.tag = EXTRA_TAG.care; g.other.push(it); }
+      else g.other.push(it);
     });
     var hash = hashOf(uid);
-    var vases = turn(g.vase.filter(function (v) { return !v.fit; }), hash);
-    vases = g.vase.filter(function (v) { return v.fit; }).concat(vases);
+    var vases = g.vase.filter(function (v) { return v.fit; }).concat(turn(g.vase.filter(function (v) { return !v.fit; }), hash));
     var gifts = turn(g.gift, hash), stabs = turn(g.stab, hash);
-    var out = [].concat(g.tool, vases.slice(0, 2), g.other, vases.slice(2));
-    var rest = [], i = 0;
-    while (gifts[i] || stabs[i]) { if (gifts[i]) rest.push(gifts[i]); if (stabs[i]) rest.push(stabs[i]); i++; }
-    // a few vases first, then gifts mixed in, so the rail is not only vases
-    var head = [].concat(g.tool, vases.slice(0, 2), g.other), tail = vases.slice(2), mix = [];
-    i = 0;
-    while (tail[i] || rest[i]) { if (rest[i]) mix.push(rest[i]); if (tail[i]) mix.push(tail[i]); i++; }
-    out = head.concat(mix);
-    if (isStab) out = stabs.concat(gifts, vases);
+    function zip() { var lists = [].slice.call(arguments), out = [], i = 0, more = true; while (more) { more = false; lists.forEach(function (l) { if (l[i]) { out.push(l[i]); more = true; } }); i++; } return out; }
+    var out;
+    if (isStab) out = stabs.concat(gifts, vases.filter(function (v) { return !v.low; }));
+    else if (seg === 'gift') {
+      // vase first, gifts around it, one tool at most and only after a few cards; no kenzans
+      var firstTool = g.tool.concat(g.other).slice(0, 1);
+      out = [].concat(vases.slice(0, 1), gifts.slice(0, 2), vases.slice(1, 2), firstTool, zip(gifts.slice(2), vases.slice(2).filter(function (v) { return !v.low; }), stabs));
+    } else if (seg === 'craft') {
+      // the arranger: tool, kenzan, vases (low ones first), the other tool and care, gifts at the very end
+      var lowFirst = vases.filter(function (v) { return v.low; }).concat(vases.filter(function (v) { return !v.low; }));
+      out = [].concat(g.tool, g.kenzan, lowFirst.slice(0, 2), g.other, g.kcare, zip(lowFirst.slice(2), stabs), gifts);
+    } else {
+      out = [].concat(g.tool, vases.slice(0, 2), g.other, zip(gifts, vases.slice(2), stabs));
+    }
     return out.slice(0, EXTRA_MAX);
   }
   function extrasWord(items) {
@@ -539,7 +561,7 @@
       + '<div class="nk-info">' + info.join('') + '</div></div>'
       + (pairs.items.length ? '<div class="nk-sec"><div class="nk-tz' + (S.openTz ? ' open' : '') + '"><button data-tz><span class="nk-av">' + pairs.items.slice(0, 4).map(function (r) { return '<span><img src="' + img(r.image, 120) + '" alt=""></span>'; }).join('') + '</span><span class="tt"><b>Složte si vlastní kytici</b><small>' + pairs.items.length + ' květin, které k ní ladí barvou i tvarem</small></span><span class="nk-go">Ukázat' + chev + '</span></button>'
         + '<div class="nk-tzb"><div data-host="pair"></div><div class="nk-sum"></div></div></div></div>' : '')
-      + (extras.length ? '<div class="nk-sec"><div class="nk-sh"><h3>Často kupují spolu</h3><small>' + esc(extrasWord(extras)) + '</small></div><div data-host="extra"></div></div>' : '')
+      + (extras.length ? '<div class="nk-sec"><div class="nk-sh"><h3>' + (lastSeg === 'craft' ? 'Pro aranžování' : lastSeg === 'gift' ? 'Ke kytici se hodí' : 'Často kupují spolu') + '</h3><small>' + esc(extrasWord(extras)) + '</small></div><div data-host="extra"></div></div>' : '')
       + '<div class="nk-buy"><div class="nk-qty"><button data-q="-1" aria-label="Méně">−</button><span>' + S.qty + '</span><button data-q="1" aria-label="Více">+</button></div><button class="nk-cta" data-cart><span>Do košíku</span><span>' + czk(d.basePrice * S.qty) + '</span></button></div>';
 
     buildRail(box.querySelector('[data-host=pair]'), pairs.items, 'pair');
