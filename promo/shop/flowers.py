@@ -182,5 +182,5 @@ def leafy(x, ground, h):
         out.append(f'<path transform="translate({x:.1f} {ground:.1f}) rotate({ang})" fill="{col}" '
                    f'd="M0 0 C{L * 0.25:.1f} {-w:.1f} {L * 0.9:.1f} {-w:.1f} {L:.1f} 0 C{L * 0.9:.1f} {w:.1f} {L * 0.25:.1f} {w:.1f} 0 0Z"/>')
         out.append(f'<path transform="translate({x:.1f} {ground:.1f}) rotate({ang})" d="M{L * 0.15:.1f} 0 L{L * 0.8:.1f} 0" '
-                   f'stroke="#E6F4EA" stroke-width="3" stroke-linecap="round" opacity="0.7"/>')
+                   f'stroke="#A8DDB8" stroke-width="3" stroke-linecap="round"/>')
     return out

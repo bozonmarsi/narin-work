@@ -1,5 +1,9 @@
 # NARIN shop front: arch glass decal (SVG)
 
+**Final for production: `print/`** (variant `P-garden-line`): `NARIN-arch-1440x700mm.svg/.pdf` (1:1, outside mounting),
+`…-MIRRORED.svg/.pdf` (inside mounting), `NARIN-arch-spec.pdf` (dimensioned drawing, sizes, colours, material; Czech + Russian).
+Regenerate: `python3 make_svgs.py Ubuntu-Medium.ttf out` then `python3 make_spec.py`; PDFs are printed from the SVG/HTML with headless Chromium.
+
 Print-ready SVG for the arch glass over the entrance, 1440 × 700 mm (1 unit = 1 mm), text outlined (no fonts needed).
 Sixteen layouts of the label daisies, all daisies of one size within a layout:
 

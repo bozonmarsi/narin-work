@@ -470,6 +470,19 @@ def arch_decal(ink, variant):
     return svg(AW, AH, "\n".join([guide] + arch_art(ink, variant)), f"NARIN: arch glass decal 144 x 70 cm, {variant}: {VARIANTS[variant]}")
 
 
+def print_file(ink, variant, mirror=False):
+    """Production file: artwork clipped exactly to the glass, cut contour on its own layer; optionally mirrored
+    for mounting on the inside of the glass."""
+    art = "\n".join(arch_art(ink, variant))
+    cut = layer("CUT contour - do not print", [f'<path d="{ARCH}" fill="none" stroke="#FF00FF" stroke-width="0.5"/>'])
+    body = (f'<defs><clipPath id="glass"><path d="{ARCH}"/></clipPath></defs>\n'
+            f'<g id="artwork" clip-path="url(#glass)">\n{art}\n</g>\n{cut}')
+    if mirror:
+        body = f'<g transform="matrix(-1 0 0 1 {AW} 0)">\n{body}\n</g>'
+    side = "MIRRORED for mounting inside the glass" if mirror else "for mounting on the outside of the glass"
+    return svg(AW, AH, body, f"NARIN arch glass 1440 x 700 mm, print file, {side}")
+
+
 def arch_mock(ink, variant):
     pad, frame = 120, 55
     W, H = AW + 2 * pad, AH + pad + 40
@@ -498,6 +511,10 @@ files = logo_files()
 for v in VARIANTS:
     files[f"arch-decal-{v}.svg"] = arch_decal(WHITE, v)
     files[f"arch-mockup-{v}.svg"] = arch_mock(WHITE, v)
+PRINT = OUT.parent / "print"
+PRINT.mkdir(exist_ok=True)
+(PRINT / "NARIN-arch-1440x700mm.svg").write_text(print_file(WHITE, "P-garden-line"), encoding="utf-8")
+(PRINT / "NARIN-arch-1440x700mm-MIRRORED.svg").write_text(print_file(WHITE, "P-garden-line", True), encoding="utf-8")
 for name, content in files.items():
     (OUT / name).write_text(content, encoding="utf-8")
     print(f"{name:32s} {len(content) // 1024:5d} KB")
