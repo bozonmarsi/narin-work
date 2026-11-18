@@ -124,6 +124,9 @@ VARIANTS = {
     "I-bigger": "even bigger equal daisies, fewest, over the whole glass around the text",
     "J-big-nosub": "as H, without \"květinový ateliér\", with a bigger logo and bottom line",
     "K-bigger-nosub": "as I, without \"květinový ateliér\", with a bigger logo and bottom line",
+    "L-sign-flowerbox": "lettering along the arch, NARIN in the middle, a window box of daisies on stems at the bottom",
+    "M-wreath": "NARIN crowned by a half wreath of daisies and leaves, the line below",
+    "N-sign-border": "lettering along the arch, NARIN in the middle, a neat border of daisies along the bottom",
 }
 
 
@@ -170,7 +173,112 @@ def ellipse_points(n, inset, t0, t1):
     return out
 
 
+# ---------- composed layouts ----------
+LEAF_GREEN, LEAF_LIGHT = "#2A9A4B", "#19C98A"
+
+
+def text_on_arch(text, size, inset, ink, tracking=0.16, center_deg=90):
+    """Outline `text` along the arch, baseline on an ellipse `inset` mm inside the glass edge, centred at the top."""
+    rx, ry = AW / 2 - inset, AH - inset
+    ts = [math.radians(i / 20) for i in range(0, 3601)]          # 0..180 deg, left to right
+    pts = [(AW / 2 - rx * math.cos(t), AH - ry * math.sin(t)) for t in ts]
+    acc = [0.0]
+    for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+        acc.append(acc[-1] + math.hypot(x1 - x0, y1 - y0))
+    mid = acc[int(center_deg * 20)]
+    gs, cmap, hmtx = FONT.getGlyphSet(), FONT.getBestCmap(), FONT["hmtx"]
+    k = size / FONT["head"].unitsPerEm
+    adv = [hmtx[cmap[ord(ch)]][0] * k for ch in text]
+    total = sum(adv) + tracking * size * (len(text) - 1)
+    pos, out, j = mid - total / 2, [], 0
+    for ch, a in zip(text, adv):
+        c = pos + a / 2
+        while acc[j] < c and j < len(acc) - 1:
+            j += 1
+        (x0, y0), (x1, y1) = pts[max(j - 1, 0)], pts[min(j + 1, len(pts) - 1)]
+        ang = math.degrees(math.atan2(y1 - y0, x1 - x0))
+        if ch != " ":
+            g, _ = text_path(ch, size, 0, 0, ink, "middle")
+            out.append(f'<g transform="translate({pts[j][0]:.1f} {pts[j][1]:.1f}) rotate({ang:.2f})">{g}</g>')
+        pos += a + tracking * size
+    return out
+
+
+def leaf(x, y, length, angle, color):
+    w = length * 0.32
+    return (f'<path transform="translate({x:.1f} {y:.1f}) rotate({angle:.1f})" fill="{color}" '
+            f'd="M0 0 Q{length * 0.45:.1f} {-w:.1f} {length:.1f} 0 Q{length * 0.45:.1f} {w:.1f} 0 0Z"/>')
+
+
+def flowerbox(stems=True):
+    """Daisies on stems growing from the bottom edge, symmetric, two heights, like a window box."""
+    items, heads = [], []
+    order = [BLUE, RED, YELLOW, PURPLE, GREEN, LILAC, RED, YELLOW]
+    step, d = 92, 64
+    for k in range(0, 8):
+        for side in ((1,) if k == 0 else (-1, 1)):
+            x = AW / 2 + side * k * step
+            h = (112 if k % 2 == 0 else 84) if stems else 60   # alternate tall / short
+            if not arch_inner(x, AH - h, d / 2, 18):
+                continue
+            hx, hy = x + (side * 4 if stems else 0), AH - h
+            if not stems:
+                heads.append(daisy(hx, hy, d, order[k % len(order)], 0))
+                continue
+            items.append(f'<path d="M{x:.1f} {AH + 2} Q{x:.1f} {AH - h * 0.5:.1f} {hx:.1f} {hy:.1f}" fill="none" '
+                         f'stroke="{LEAF_GREEN}" stroke-width="7" stroke-linecap="round"/>')
+            items.append(leaf(x, AH - h * 0.38, 46, -90 + side * (55 if k % 2 else -55), LEAF_LIGHT))
+            heads.append(daisy(hx, hy, d, order[k % len(order)], 0))
+    return items + heads
+
+
+def wreath(cx, cy, rx, ry, n, d):
+    """A half wreath above (cx, cy): leaves along the curve, daisies at even steps, symmetric colours."""
+    items, heads = [], []
+    order = [BLUE, RED, YELLOW, PURPLE, LILAC, GREEN]
+    for i in range(n):
+        t = math.radians(8 + (180 - 16) * i / (n - 1))
+        x, y = cx - rx * math.cos(t), cy - ry * math.sin(t)
+        tang = math.degrees(math.atan2(-ry * math.cos(t), rx * math.sin(t)))
+        m = min(i, n - 1 - i)
+        heads.append(daisy(x, y, d, order[m % len(order)], 0))
+        if i < n - 1:   # a pair of leaves between this daisy and the next
+            t2 = math.radians(8 + (180 - 16) * (i + 0.5) / (n - 1))
+            lx, ly = cx - rx * math.cos(t2), cy - ry * math.sin(t2)
+            ang = math.degrees(math.atan2(-ry * math.cos(t2), rx * math.sin(t2)))
+            items.append(leaf(lx, ly, 46, ang + 180 + 35, LEAF_GREEN))
+            items.append(leaf(lx, ly, 46, ang - 35, LEAF_LIGHT))
+    return items + heads
+
+
+def sign_art(ink, flowers):
+    """Sign-painter layout: a keyline and the line of words following the arch, the wordmark below."""
+    arc = text_on_arch("KVĚTINY · DÁRKY · POKOJOVKY", 60, 122, ink, tracking=0.2)
+    rx, ry = AW / 2 - 36, AH - 36
+    t0, t1 = math.radians(24), math.radians(156)
+    xa, ya = AW / 2 - rx * math.cos(t0), AH - ry * math.sin(t0)
+    xb, yb = AW / 2 - rx * math.cos(t1), AH - ry * math.sin(t1)
+    key = f'<path d="M{xa:.1f} {ya:.1f} A{rx} {ry} 0 0 1 {xb:.1f} {yb:.1f}" fill="none" stroke="{ink}" stroke-width="4" stroke-linecap="round"/>'
+    lg, _ = logo(AW / 2, 315, 760, ink)
+    return [layer("keyline", [key]), layer("daisies", flowers), layer("logo", [lg]), layer("text", arc)]
+
+
+def composed_art(ink, variant):
+    if variant == "L-sign-flowerbox":
+        return sign_art(ink, flowerbox(stems=True))
+    if variant == "N-sign-border":
+        return sign_art(ink, flowerbox(stems=False))
+    # M-wreath
+    logo_w, top = 680, 250
+    lg, lh = logo(AW / 2, top, logo_w, ink)
+    flowers = wreath(AW / 2, top + lh * 0.95, 500, 330, 13, 56)
+    line = bottom_line(ink, 625, 1180, 92, "dot")
+    return [layer("daisies", flowers), layer("logo", [lg]), layer("text", line)]
+
+
 def arch_art(ink, variant="A-garland"):
+    if variant in ("L-sign-flowerbox", "M-wreath", "N-sign-border"):
+        return composed_art(ink, variant)
     SCAT = ("E-scatter", "F-pattern", "G-scatter-small", "H-big", "I-bigger")
     if variant in ("J-big-nosub", "K-bigger-nosub"):
         # no subtitle: the wordmark and the bottom line get the room
