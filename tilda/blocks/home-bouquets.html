@@ -164,6 +164,7 @@
   function kc(n) { return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0') + '\u00a0Kč'; }
   function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim(); }
   function jparse(v) { if (!v) return []; if (typeof v !== 'string') return v; try { return JSON.parse(v); } catch (e) { try { return JSON.parse(v.replace(/'/g, '"')); } catch (e2) { return []; } } }
+  function num(v) { var n = parseFloat(String(v == null ? '' : v).replace(/[\s\u00a0]/g, '').replace(',', '.')); return isFinite(n) ? n : 0; }
   function plainText(h) { var d = document.createElement('div'); d.innerHTML = h || ''; var t = (d.textContent || '').trim(); var i = t.indexOf('Vyberte si velikost'); return (i > 0 ? t.slice(0, i) : t).trim(); }
 
   // ---------- data ----------
@@ -176,10 +177,10 @@
     var eds = jparse(p.editions), sizes = [];
     eds.forEach(function (e) {
       var sz = e.Velikost || e['Velikost'] || '';
-      var price = parseFloat(e.price) || 0;
+      var price = num(e.price);
       sizes.push({ size: sz || '', price: price, uid: String(e.uid), img: e.img || img0, sku: e.sku || '' });
     });
-    if (!sizes.length) sizes.push({ size: '', price: parseFloat(p.price) || 0, uid: String(p.uid), img: img0, sku: p.sku || '' });
+    if (!sizes.length) sizes.push({ size: '', price: num(p.price), uid: String(p.uid), img: img0, sku: p.sku || '' });
     var order = { S: 1, M: 2, L: 3 };
     sizes.sort(function (a, b) { return (order[a.size] || 9) - (order[b.size] || 9); });
     return { priced: sizes.some(function (s) { return s.price > 0; }), uid: String(p.uid), name: p.title, text: plainText(p.text || p.descr), url: p.url, kind: kind, sizes: sizes, tags: TAGS[String(p.uid)] || (kind === 'kovka' ? DEF_KOVKA : { o: [], k: [], n: [] }) };
