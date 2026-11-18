@@ -368,12 +368,13 @@
   Promise.all([
     part(PART_KYTICE),
     part(PART_KOVKY),
-    fetch(SB + 'get_available_products?apikey=' + KEY).then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; })
+    Promise.resolve(window.__narinCat || fetch(SB + 'get_catalog_page_data?apikey=' + KEY).then(function (r) { return r.ok ? r.json() : null; })).catch(function () { return null; })
   ]).then(function (res) {
-    var avail = {};
-    (res[2] || []).forEach(function (r) { avail[norm(r.product_name)] = 1; });
-    var kytice = res[0].map(function (p) { return toItem(p, 'kytice'); });
-    var kovky = res[1].map(function (p) { return toItem(p, 'kovka'); }).filter(function (it) { return avail[norm(it.name)]; });
+    var cat = res[2] || {}, avail = {}, hidden = {};
+    (cat.available || []).forEach(function (n) { avail[norm(n)] = 1; });
+    (cat.unsourceable || []).forEach(function (n) { hidden[norm(n)] = 1; });
+    var kytice = res[0].map(function (p) { return toItem(p, 'kytice'); }).filter(function (it) { return !hidden[norm(it.name)]; });
+    var kovky = res[1].map(function (p) { return toItem(p, 'kovka'); }).filter(function (it) { return avail[norm(it.name)] && !hidden[norm(it.name)]; });
     start(kytice, kovky);
   });
 })();
