@@ -371,43 +371,56 @@
     ['touchend', 'touchcancel'].forEach(function (ev) { rail.addEventListener(ev, function () { hold = false; later(); }, {passive: true}); });
   }
 
-  var EXTRA_TAG = {care: ['Péče', '#219c44'], gift: ['Dárek', '#e0607e'], stab: ['Stabilizované', '#a5835a']};
-  var EXTRA_WORD = {care: 'péče a vázy', gift: 'dárky', stab: 'stabilizované květiny'};
+  var EXTRA_TAG = {care: ['Péče', '#219c44'], vase: ['Váza', '#186ce0'], gift: ['Dárek', '#e0607e'], stab: ['Stabilizované', '#a5835a']};
+  var EXTRA_WORD = {care: 'nůžky a vázy', gift: 'dárky', stab: 'stabilizované květiny'};
   var EXTRA_MAX = 12;
   function extraGroup(e) { return e.kind === 'stabilized' ? 'stab' : e.cat === 'darky' ? 'gift' : 'care'; }
   function hashOf(s) { var h = 0, i; s = String(s); for (i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; }
   function turn(list, n) { n = list.length ? n % list.length : 0; return list.slice(n).concat(list.slice(0, n)); }
-  // Care items, gifts and stabilized flowers take turns. The mix differs from product to product but
-  // stays the same while the popup is open; an item that fits this flower always stays in front.
+  // Order of the extras (owner, 2026-11-18): the tool for this flower first (secateur when unknown),
+  // then vases (one card per model; a low vase or kenzan first for low flowers), then the other tool,
+  // then gifts and stabilized flowers taking turns. The vase models rotate from product to product,
+  // the important items never move to the back.
   function extrasFor(c, uid, isStab) {
-    var tool = c && c.tool, low = c && c.low, groups = {}, shown = {}, self = splitColor(cardData && cardData.name).base;
+    var tool = (c && c.tool) || 'secateur', low = c && c.low, shown = {}, self = splitColor(cardData && cardData.name).base;
+    var g = {tool: [], other: [], vase: [], gift: [], stab: []};
     if (!cat) return [];   // availability first: a hidden item must not flash in the rail
     ((bundle && bundle.x) || []).forEach(function (e) {
       if (e.uid === uid) return;
       if (cat.un.has(norm(e.n))) return;   // hidden on the site or out of stock
       if (e.kind === 'postcard') return;   // the plain postcard is offered free in the cart
-      if ((e.kind === 'secateur' || e.kind === 'scissors') && tool && e.kind !== tool) return;
       var sp = splitColor(e.n);
       if (sp.word) {   // one card per product, its colours are chosen in its own popup
         if (shown[sp.base] || sp.base === self) return;
         shown[sp.base] = 1;
       }
-      var g = extraGroup(e);
-      if (isStab && g === 'care') return;   // no scissors or vases for a flower without water
-      var fit = e.kind === tool || (low && (e.kind === 'vase_low' || e.kind === 'kenzan'));
-      (groups[g] = groups[g] || []).push({uid: e.uid, name: e.n, price: e.pr, image: e.img, fit: fit, group: g});
+      var it = {uid: e.uid, name: e.n, price: e.pr, image: e.img};
+      var isTool = e.kind === 'secateur' || e.kind === 'scissors';
+      var isVase = e.kind === 'vase' || e.kind === 'vase_low' || e.kind === 'kenzan';
+      if (isStab && (isTool || e.kind === 'kenzan' || e.kind === 'vase_low')) return;   // no water, no cutting
+      if (isTool) { it.group = 'care'; it.tag = EXTRA_TAG.care; (e.kind === tool ? g.tool : g.other).push(it); }
+      else if (isVase) {
+        if (e.kind === 'kenzan' && !low) return;
+        it.group = 'care'; it.tag = EXTRA_TAG.vase; it.fit = low && (e.kind === 'vase_low' || e.kind === 'kenzan'); g.vase.push(it);
+      }
+      else if (e.kind === 'stabilized') { it.group = 'stab'; it.tag = EXTRA_TAG.stab; g.stab.push(it); }
+      else if (e.cat === 'darky') { it.group = 'gift'; it.tag = EXTRA_TAG.gift; g.gift.push(it); }
+      else { it.group = 'care'; it.tag = EXTRA_TAG.care; g.other.push(it); }
     });
-    var hash = hashOf(uid), names = turn(['care', 'gift', 'stab'].filter(function (g) { return groups[g]; }), hash);
-    function fits(g) { return groups[g].some(function (i) { return i.fit; }) ? 1 : 0; }
-    names.sort(function (a, b) { return fits(b) - fits(a); });
-    names.forEach(function (g) { groups[g] = turn(groups[g], hash).sort(function (a, b) { return (b.fit ? 1 : 0) - (a.fit ? 1 : 0); }); });
-    var out = [], i = 0, more = true;
-    while (more && out.length < EXTRA_MAX) {
-      more = false;
-      names.forEach(function (g) { var it = groups[g][i]; if (it && out.length < EXTRA_MAX) { if (names.length > 1) it.tag = EXTRA_TAG[g]; out.push(it); more = true; } });
-      i++;
-    }
-    return out;
+    var hash = hashOf(uid);
+    var vases = turn(g.vase.filter(function (v) { return !v.fit; }), hash);
+    vases = g.vase.filter(function (v) { return v.fit; }).concat(vases);
+    var gifts = turn(g.gift, hash), stabs = turn(g.stab, hash);
+    var out = [].concat(g.tool, vases.slice(0, 2), g.other, vases.slice(2));
+    var rest = [], i = 0;
+    while (gifts[i] || stabs[i]) { if (gifts[i]) rest.push(gifts[i]); if (stabs[i]) rest.push(stabs[i]); i++; }
+    // a few vases first, then gifts mixed in, so the rail is not only vases
+    var head = [].concat(g.tool, vases.slice(0, 2), g.other), tail = vases.slice(2), mix = [];
+    i = 0;
+    while (tail[i] || rest[i]) { if (rest[i]) mix.push(rest[i]); if (tail[i]) mix.push(tail[i]); i++; }
+    out = head.concat(mix);
+    if (isStab) out = stabs.concat(gifts, vases);
+    return out.slice(0, EXTRA_MAX);
   }
   function extrasWord(items) {
     return ['care', 'gift', 'stab'].filter(function (g) { return items.some(function (i) { return i.group === g; }); }).map(function (g) { return EXTRA_WORD[g]; }).join(' · ');
