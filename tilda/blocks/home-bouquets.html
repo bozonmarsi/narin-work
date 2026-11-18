@@ -137,6 +137,8 @@
   var SB = 'https://wqburlamuipxmenqsjnx.supabase.co/rest/v1/rpc/';
   var KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxYnVybGFtdWlweG1lbnFzam54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTY2MTIsImV4cCI6MjA4ODgzMjYxMn0.NYnQoorm3z5gkjr954JdYhzDNmYfCjefzK1ddq3cflw';
   var PART_KYTICE = '984982781784', PART_KOVKY = '135670060784';
+  // Pruvodce je docasne vypnuty (majitel chce novy design). Okno velikosti pro kytice v katalogu bezi dal.
+  var GUIDE_ON = false;
 
   // Tagy podle uid produktu v Tilde. Kovky bez vlastniho radku berou DEF_KOVKA.
   var TAGS = {
@@ -317,7 +319,7 @@
     items = all.filter(function (it) { return it.priced; }).map(function (it) {
       return Object.assign({}, it, { sizes: it.sizes.filter(function (s) { return s.price > 0; }) });
     });
-    if (!items.length) return;
+    if (!items.length || !GUIDE_ON) return;
     budgets = makeBudgets();
     qs = Q.filter(function (q) { return optionsFor(q.k).length > 1; });
     root.classList.add('on');
