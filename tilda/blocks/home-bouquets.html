@@ -365,7 +365,7 @@
   function fits(it, a) {
     a = a || ans;
     for (var k in a) {
-      if (!a[k]) continue;
+      if (!a[k] || k === 'k') continue; // komu: kytici lze darovat komukoli, jen ovlivni poradi
       if (k === 'b') { var b = budget(a); if (b && !it.sizes.some(function (s) { return inBudget(s, b); })) return false; }
       else if ((it.tags[k] || []).indexOf(a[k]) < 0) return false;
     }
@@ -461,13 +461,17 @@
       if (step >= qs.length) { renderDone(); stage.classList.remove('out'); return; }
       var q = qs[step], before = {};
       for (var k in ans) if (k !== q.k) before[k] = ans[k];
+      // komu: vzdy vsechny moznosti; ostatni otazky jen moznosti, pro ktere opravdu mame kytici
+      var opts = q.k === 'k' ? Object.keys(L.k).map(function (v) { return [v, L.k[v]]; }) : optionsFor(q.k).filter(function (o) {
+        var a = {}; for (var x in before) a[x] = before[x]; a[q.k] = o[0];
+        return items.some(function (it) { return fits(it, a); });
+      });
+      if (!opts.length) opts = optionsFor(q.k);
       stage.innerHTML = (step === 0 ? '<p class="nbg-intro">Odpovězte na pár otázek. Kytice se bude měnit podle toho, co vybíráte.</p>' : '') +
-        '<p class="nbg-q">' + q.q + '</p><div class="nbg-tiles">' + optionsFor(q.k).map(function (o) {
-          var a = {}; for (var x in before) a[x] = before[x]; a[q.k] = o[0];
-          var n = items.filter(function (it) { return fits(it, a); }).length;
+        '<p class="nbg-q">' + q.q + '</p><div class="nbg-tiles">' + opts.map(function (o) {
           var lead = q.k === 'n' ? '<span class="nbg-sw" style="background:' + (SWATCH[o[0]] || 'var(--sky2)') + '"></span>'
             : '<span class="nbg-ico"><i class="ti ' + (q.k === 'b' ? 'ti-wallet' : (ICON[o[0]] || 'ti-flower')) + '"></i></span>';
-          return '<button type="button" class="nbg-tile' + (ans[q.k] === o[0] ? ' sel' : '') + '" data-k="' + q.k + '" data-v="' + esc(o[0]) + '"' + (n ? '' : ' disabled') + '>' + lead +
+          return '<button type="button" class="nbg-tile' + (ans[q.k] === o[0] ? ' sel' : '') + '" data-k="' + q.k + '" data-v="' + esc(o[0]) + '">' + lead +
             '<span class="nbg-tl">' + esc(o[1]) + '</span></button>';
         }).join('') + '</div>';
       stage.classList.remove('out');
