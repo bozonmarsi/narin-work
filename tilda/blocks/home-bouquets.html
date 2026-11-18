@@ -1,6 +1,7 @@
 <!--
   NARIN: kytice na hlavni strance. HTML blok T123 mezi bannery a katalogem.
-  Dve casti: pruvodce vyberem (4 otazky) a promo zona s kyticemi.
+  Pruvodce vyberem (4 otazky). Kytice maji v katalogu svou cervenou promo polosu (katalogovy blok),
+  klik na kartu kytice v katalogu otevre zde okno s vyberem velikosti S M L (misto beznoho okna produktu).
   Data: Tilda obchod, cast Kytice (varianty S M L) a cast Kovky (jen co je skladem).
   Moznosti otazek i rozpocet se skladaji z toho, co realne je na kartach.
   Tagy (prilezitost, komu, nalada) jsou v poli TAGS podle uid produktu.
@@ -32,6 +33,21 @@
 .nbq-steps span::after{content:'';position:absolute;inset:0;background:var(--blue);transform:scaleX(0);transform-origin:left;transition:transform .45s cubic-bezier(.2,.8,.2,1)}
 .nbq-steps span.done::after{transform:scaleX(1)}
 .nbq-q{font-size:16px;font-weight:600;margin-bottom:10px}
+.nbq-picked{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 12px;min-height:0}
+.nbq-picked span{display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:999px;background:#fff;color:var(--blue);font-size:12.5px;font-weight:500;box-shadow:inset 0 0 0 1px var(--sky2)}
+@media (min-width:900px){.nbq-guide{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);column-gap:40px;padding:34px 36px 30px}.nbq-guide>.nbq-eyebrow,.nbq-guide>h2,.nbq-guide>.nbq-sub{grid-column:1}.nbq-guide>.nbq-steps,.nbq-guide>.nbq-picked,.nbq-guide>.nbq-stage,.nbq-guide>.nbq-nav{grid-column:1/-1}}
+/* okno velikosti pro kytice z katalogu */
+.nbq-ov{--blue:#186ce0;--blue-d:#1257b8;--sky:#f3f7fd;--sky2:#e4edfb;--red:#e8322e;--ink:#16181d;--ink2:#4a505b;--muted:#8a8f98;--line:#e9ebef;position:fixed;inset:0;z-index:2147483000;background:rgba(17,24,39,.5);display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;transition:opacity .22s ease;font-family:'Rubik',sans-serif;-webkit-font-smoothing:antialiased}
+.nbq-ov.on{opacity:1}
+.nbq-ov *,.nbq-ov *::before,.nbq-ov *::after{box-sizing:border-box}
+.nbq-ov h3,.nbq-ov p{margin:0}
+.nbq-ov button{font-family:inherit;cursor:pointer}
+.nbq-ov-box{position:relative;width:100%;max-width:400px;max-height:calc(100dvh - 32px);overflow:auto;border-radius:24px;transform:translateY(14px) scale(.98);transition:transform .32s cubic-bezier(.2,.8,.2,1)}
+.nbq-ov.on .nbq-ov-box{transform:none}
+.nbq-ov .nbq-card{border:none}
+.nbq-ov .nbq-card:hover{transform:none;box-shadow:none}
+.nbq-ov-x{position:absolute;right:12px;top:12px;z-index:2;width:38px;height:38px;border-radius:50%;border:none;background:rgba(255,255,255,.92);color:var(--ink);font-size:20px;line-height:1;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+@media (max-width:520px){.nbq-ov{align-items:flex-end;padding:0}.nbq-ov-box{max-width:none;border-radius:24px 24px 0 0;max-height:92dvh}}
 .nbq-chips{display:flex;flex-wrap:wrap;gap:8px}
 .nbq-chip{height:42px;padding:0 16px;border-radius:999px;border:1.5px solid var(--sky2);background:#fff;color:var(--ink);font-size:14.5px;font-weight:500;transition:transform .12s ease,border-color .2s,background .2s,color .2s;white-space:nowrap}
 .nbq-chip:hover{border-color:var(--blue)}
@@ -104,23 +120,13 @@
     <div class="nbq-guide">
       <span class="nbq-eyebrow"><i></i>Průvodce výběrem</span>
       <h2>Najdeme <b>tu pravou kytici</b> za 20 vteřin</h2>
-      <p class="nbq-sub">Čtyři krátké otázky a ukážeme vám, co se hodí. Bez registrace.</p>
+      <p class="nbq-sub">Řekněte nám, pro koho a k jaké příležitosti – a my vybereme kytici i velikost, která sedí do rozpočtu.</p>
       <div class="nbq-steps"></div>
+      <div class="nbq-picked"></div>
       <div class="nbq-stage"></div>
       <div class="nbq-nav"><button class="nbq-back" type="button">&larr; Zpět</button><button class="nbq-reset" type="button">Začít znovu</button></div>
     </div>
 
-    <div class="nbq-promo">
-      <div class="nbq-head">
-        <div>
-          <span class="nbq-eyebrow"><i></i>Kytice NARIN</span>
-          <h2>Kytice s&nbsp;příběhem <span>z&nbsp;knih</span></h2>
-          <p>Každá kytice nese jméno literární hrdinky – Clara, Margarita, Matilda, Daisy… – a má tři velikosti S, M a L.</p>
-        </div>
-        <div class="nbq-arrows"><button class="nbq-arrow" data-d="-1" type="button" aria-label="Předchozí"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button><button class="nbq-arrow" data-d="1" type="button" aria-label="Další"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button></div>
-      </div>
-      <div class="nbq-rail nbq-all"></div>
-    </div>
   </div>
 </section>
 
@@ -153,7 +159,6 @@
   var items = [], ans = {}, step = 0, budgets = [];
   var stage = root.querySelector('.nbq-stage'), stepsEl = root.querySelector('.nbq-steps');
   var back = root.querySelector('.nbq-back'), reset = root.querySelector('.nbq-reset');
-  var rail = root.querySelector('.nbq-all');
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function kc(n) { return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0') + '\u00a0Kč'; }
@@ -257,6 +262,10 @@
   var qs = [];
   function renderStep() {
     stepsEl.innerHTML = qs.map(function (q, i) { return '<span class="' + (i < step ? 'done' : '') + '"></span>'; }).join('');
+    root.querySelector('.nbq-picked').innerHTML = qs.slice(0, step).map(function (q) {
+      var v = ans[q.k]; var lab = q.k === 'b' ? (budgets.filter(function (b) { return b.id === v; })[0] || {}).label : (L[q.k][v] || v);
+      return lab ? '<span>' + esc(lab) + '</span>' : '';
+    }).join('');
     back.className = 'nbq-back' + (step > 0 ? ' on' : '');
     reset.className = 'nbq-reset' + (step >= qs.length ? ' on' : '');
     stage.classList.add('out');
@@ -301,34 +310,60 @@
   back.addEventListener('click', function () { if (step > 0) { step--; renderStep(); } });
   reset.addEventListener('click', function () { ans = {}; step = 0; renderStep(); });
 
-  // ---------- promo rail ----------
-  function arrows() {
-    var l = root.querySelector('.nbq-arrow[data-d="-1"]'), r = root.querySelector('.nbq-arrow[data-d="1"]');
-    l.disabled = rail.scrollLeft < 4;
-    r.disabled = rail.scrollLeft + rail.clientWidth >= rail.scrollWidth - 4;
-  }
-  root.querySelectorAll('.nbq-arrow').forEach(function (b) {
-    b.addEventListener('click', function () { rail.scrollBy({ left: Number(b.getAttribute('data-d')) * rail.clientWidth * 0.9, behavior: 'smooth' }); });
-  });
-  rail.addEventListener('scroll', arrows, { passive: true });
-
   function start(kytice, kovky) {
     var all = kytice.concat(kovky).filter(function (it) { return it.sizes.length; });
-    if (!all.length) return;
-    var bq = all.filter(function (it) { return it.kind === 'kytice'; });
+    kytice.forEach(function (it) { if (it.sizes.length) bouquetByName[norm(it.name)] = it; });
     items = all.filter(function (it) { return it.priced; }).map(function (it) {
       return Object.assign({}, it, { sizes: it.sizes.filter(function (s) { return s.price > 0; }) });
     });
-    if (items.length) {
-      budgets = makeBudgets();
-      qs = Q.filter(function (q) { return optionsFor(q.k).length > 1; });
-    } else root.querySelector('.nbq-guide').style.display = 'none';
-    var promo = root.querySelector('.nbq-promo');
-    if (bq.length) bq.forEach(function (it) { rail.appendChild(card(it)); }); else promo.style.display = 'none';
+    if (!items.length) return;
+    budgets = makeBudgets();
+    qs = Q.filter(function (q) { return optionsFor(q.k).length > 1; });
     root.classList.add('on');
-    if (items.length) renderStep();
-    arrows();
+    renderStep();
   }
+
+  // ---------- kytice v katalogu: okno s vyberem velikosti ----------
+  var bouquetByName = {}, ov = null;
+  function closeOv() {
+    if (!ov) return;
+    var o = ov; ov = null; o.classList.remove('on');
+    document.documentElement.style.overflow = '';
+    setTimeout(function () { o.remove(); }, 230);
+  }
+  function openOv(it) {
+    closeOv();
+    ov = document.createElement('div');
+    ov.className = 'nbq-ov';
+    var box = document.createElement('div'); box.className = 'nbq-ov-box';
+    var x = document.createElement('button'); x.className = 'nbq-ov-x'; x.type = 'button'; x.setAttribute('aria-label', 'Zavřít'); x.innerHTML = '&times;';
+    box.appendChild(x); box.appendChild(card(it));
+    ov.appendChild(box);
+    document.body.appendChild(ov);
+    document.documentElement.style.overflow = 'hidden';
+    requestAnimationFrame(function () { ov && ov.classList.add('on'); });
+    ov.addEventListener('click', function (e) { if (e.target === ov || e.target.closest('.nbq-ov-x')) closeOv(); });
+  }
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeOv(); });
+  function bouquetFromEvent(e) {
+    if (e.target.closest('.nbq-ov, .t1002__addBtn, .t1002__addBtn_active')) return null;
+    var c = e.target.closest('.t-store__card, .js-product');
+    if (!c) return null;
+    var n = c.querySelector('.js-product-name');
+    return n ? bouquetByName[norm(n.textContent)] || null : null;
+  }
+  // window + capture runs before the shared product pop-up (document + capture).
+  window.addEventListener('mousedown', function (e) {
+    if (e.button !== 0) return;
+    var it = bouquetFromEvent(e); if (!it) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    openOv(it);
+  }, true);
+  window.addEventListener('click', function (e) {
+    if (!bouquetFromEvent(e)) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+  }, true);
+
   if (window.__nbqMock) return start(window.__nbqMock.kytice, window.__nbqMock.kovky);
   Promise.all([
     part(PART_KYTICE),

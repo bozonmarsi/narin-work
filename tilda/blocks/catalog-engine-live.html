@@ -125,6 +125,15 @@ html.narin-cat-on .js-store-grid-cont .t-store__card:not([data-narin-seen]) { di
 .narin-cat-promo-section.theme-atelier .t1002__addBtn svg path { stroke: #219c44 !important; }
 .narin-cat-promo-section.theme-atelier .t1002__addBtn_active svg path, .narin-cat-promo-section.theme-atelier .t1002__addBtn:hover svg path { fill: #219c44 !important; }
 /* Stabilized flowers: beige strip, so its head is dark text instead of white; brown names, prices and buttons. */
+.narin-cat-promo-section.theme-buket { background: #e8322e; }
+.narin-cat-promo-section.theme-buket .narin-cat-promo-name, .narin-cat-promo-section.theme-buket .narin-cat-promo-cta, .narin-cat-promo-section.theme-buket .narin-cat-promo-caption { color: #fff; }
+.narin-cat-promo-section.theme-buket .js-product-name, .narin-cat-promo-section.theme-buket .js-product-price, .narin-cat-promo-section.theme-buket .t-store__card__price-value, .narin-cat-promo-section.theme-buket .t-store__card__price, .narin-cat-promo-section.theme-buket .t-store__card__price-currency { color: #fff !important; }
+.narin-cat-promo-section.theme-buket [class*="t-btnflex"]:not(.t1002__addBtn),
+.narin-cat-promo-section.theme-buket [class*="t-btnflex"]:not(.t1002__addBtn):hover { background-color: #fff !important; background-image: none !important; color: #e8322e !important; }
+.narin-cat-promo-section.theme-buket .t1002__addBtn, .narin-cat-promo-section.theme-buket .t1002__addBtn_active { border-color: #fff !important; }
+.narin-cat-promo-section.theme-buket .t1002__addBtn svg path { stroke: #fff !important; }
+.narin-cat-promo-section.theme-buket .t1002__addBtn_active svg path, .narin-cat-promo-section.theme-buket .t1002__addBtn:hover svg path { fill: #fff !important; }
+.narin-cat-promo-section.theme-buket .t-store__card__imgwrapper { border-radius: 14px; overflow: hidden; background: #fff; }
 .narin-cat-promo-section.theme-stab { background: #e8dcc8; }
 .narin-cat-promo-section.theme-stab .narin-cat-promo-name, .narin-cat-promo-section.theme-stab .narin-cat-promo-cta, .narin-cat-promo-section.theme-stab .narin-cat-promo-caption { color: #4a3826; }
 .narin-cat-promo-section.theme-stab .js-product-name, .narin-cat-promo-section.theme-stab .js-product-price, .narin-cat-promo-section.theme-stab .t-store__card__price-value, .narin-cat-promo-section.theme-stab .t-store__card__price { color: #7a5c3a !important; }
@@ -198,13 +207,13 @@ html.narin-cat-on .js-store-grid-cont .t-store__card:not([data-narin-seen]) { di
 
     var TABS = [
         { key: 'all', label: cz('V&#353;e'), category: 'ohapka', caption: null },
-        { key: 'set', label: 'Sety', category: 'set', caption: cz('Sestavte si vlastn&#237; kompozici nebo rozm&#237;st&#283;te kv&#283;tiny do r&#367;zn&#253;ch v&#225;z.') },
+        { key: 'buket', label: 'Kytice', category: 'buket', theme: 'buket', caption: cz('Autorsk&#233; kytice ve velikostech S, M a L.') },
         { key: 'banky', label: 'Kovky', category: 'banky', caption: cz('Kv&#283;tiny naaran&#382;ovan&#233; p&#345;&#237;mo ve v&#225;ze, p&#345;ipraven&#233; k p&#345;ed&#225;n&#237;.') },
-        { key: 'buket', label: 'Kytice', category: 'buket', caption: cz('Hotov&#233; kytice p&#345;ipraven&#233; k p&#345;ed&#225;n&#237;.') },
         { key: 'ohapka', label: cz('N&#225;ru&#269;e'), category: 'ohapka', caption: null },
         // optional: the tab stays hidden until at least one such product is on sale.
         // stripLast: its strip goes after the Atelier and the gifts, not with the other tabs.
         { key: 'stabilizovane', label: cz('Stabilizovan&#233;'), category: 'stabilizovane', optional: true, stripLast: true, theme: 'stab', caption: cz('Prav&#233; kv&#283;tiny, kter&#233; si d&#237;ky stabilizaci uchovaj&#237; kr&#225;su i bez vody.') },
+        { key: 'set', label: 'Sety', category: 'set', caption: cz('Sestavte si vlastn&#237; kompozici nebo rozm&#237;st&#283;te kv&#283;tiny do r&#367;zn&#253;ch v&#225;z.') },
     ];
 
     // Two more strips without a tab of their own: the Atelier (green) and the gifts
