@@ -330,7 +330,7 @@
 
     var s2 = '<div class="np-tiles" id="npModes">' +
       '<label class="np-tile" data-m="courier"><input type="radio" name="npmode" value="courier"><span class="ic"><i class="ti ti-truck-delivery"></i></span><span><b>Kurýrem</b><span class="s">Až ke dveřím po Praze a okolí</span></span><span class="pr" id="npModePrC"></span></label>' +
-      '<label class="np-tile" data-m="pickup"><input type="radio" name="npmode" value="pickup"><span class="ic"><i class="ti ti-building-store"></i></span><span><b>Osobní odběr</b><span class="s">Vyzvednutí v Praze 7</span></span><span class="pr free">Zdarma</span></label>' +
+      '<label class="np-tile" data-m="pickup"><input type="radio" name="npmode" value="pickup"><span class="ic"><i class="ti ti-building-store"></i></span><span><b>Osobní odběr</b><span class="s">V prodejně v Praze 7</span></span><span class="pr free">Zdarma</span></label>' +
       '</div>' +
       '<div id="npGiftWrap"></div>' +
       '<div id="npCourier">' +
@@ -339,7 +339,7 @@
       '<div class="np-row two">' + field('city', 'Město', 'text', { ac: 'address-level2' }) + field('psc', 'PSČ', 'text', { ac: 'postal-code', mode: 'numeric' }) + '</div>' +
       '<div class="np-row three">' + field('floor', 'Patro', 'text', { req: false }) + field('apt', 'Číslo bytu', 'text', { req: false }) + field('intercom', 'Kód interkomu', 'text', { req: false }) + '</div>' +
       '</div>' +
-      '<div id="npPickup" hidden><div class="np-pick"><span class="ic"><i class="ti ti-map-pin"></i></span><div><b>Dukelských hrdinů 617/56, 170 00 Praha 7 – Holešovice</b><br>Zatím nemáme prodejnu, vyzvednutí probíhá přímo vedle Výstaviště. Podrobné info dostanete e-mailem.</div></div></div>' +
+      '<div id="npPickup" hidden><div class="np-pick"><span class="ic"><i class="ti ti-map-pin"></i></span><div><b>Dukelských hrdinů 617/56, 170 00 Praha 7 – Holešovice</b><br>Naše prodejna NARIN, kousek od Výstaviště. Kytici vám připravíme k času, který si vyberete.</div></div></div>' +
       '<div id="npWhen">' +
       '<div class="np-group" id="g_date"><div class="np-sub"><span id="npDateLbl">Datum doručení</span><small id="npDateErr"></small></div>' +
       '<div class="np-chips" id="npChips"></div>' +
@@ -587,7 +587,7 @@
     $$('input[name="npmode"]', ROOT).forEach(function (r) {
       r.checked = r.value === S.mode; var t = r.closest('.np-tile'); if (t) t.classList.toggle('on', r.checked);
       if (r.value === 'pickup') {
-        r.disabled = !!AV.pickup.off; if (t) { t.classList.toggle('dis', !!AV.pickup.off); var sub = t.querySelector('.s'); if (sub) sub.textContent = AV.pickup.off ? 'Dočasně nedostupný' : 'Vyzvednutí v Praze 7'; }
+        r.disabled = !!AV.pickup.off; if (t) { t.classList.toggle('dis', !!AV.pickup.off); var sub = t.querySelector('.s'); if (sub) sub.textContent = AV.pickup.off ? 'Dočasně nedostupný' : 'V prodejně v Praze 7'; }
       }
     });
     $('#npCourier').hidden = S.mode !== 'courier' || !!S.gift;

@@ -541,7 +541,7 @@ export async function POST(request: Request) {
         const day = delivery_date && /^\d{4}-\d{2}-\d{2}/.test(String(delivery_date)) ? czDate(String(delivery_date).slice(0, 10)) : null;
         const whenText = [day, delivery_time ? `v ${esc(String(delivery_time))} h` : null].filter(Boolean).join(" ");
         // Osobní odběr je v Praze 7 (ne na skladu z warehouse_location, ten slouží kurýrům).
-        const PICKUP_ADDRESS = "Dukelských hrdinů 617/56, 170 00 Praha 7 – Holešovice (vedle Výstaviště)";
+        const PICKUP_ADDRESS = "Prodejna NARIN, Dukelských hrdinů 617/56, 170 00 Praha 7 – Holešovice (vedle Výstaviště)";
         const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent("Dukelských hrdinů 617/56, Praha 7")}`;
         const infoRow = (label: string, value: string, last = false) =>
           `<tr><td style="padding:${last ? "9px 15px 13px" : "13px 15px 9px"};font-size:13.5px;color:${INK};line-height:1.5;">
@@ -560,7 +560,7 @@ export async function POST(request: Request) {
             badgeEmoji: "🌼",
             badgeBg: PREPARING_BG,
             headline: "Vaše kytice je hotová",
-            bodyHtml: `S láskou jsme ji pro vás dokončili a čekáme na vás ${whenText ? `<b>${whenText}</b>` : "v domluvený čas"}. Stačí přijet a počkat venku, <b>my vám květiny vynesme</b>. Zavolejte nám prosím, až budete na místě.`,
+            bodyHtml: `S láskou jsme ji pro vás dokončili a čekáme na vás ${whenText ? `<b>${whenText}</b>` : "v domluvený čas"}. Zastavte se pro ni v <b>naší prodejně NARIN</b> kousek od Výstaviště.`,
             extraHtml: infoBox,
             ctaLabel: "Zavolat, že jsem na místě",
             ctaUrl: `tel:${PHONE_TEL}`,
