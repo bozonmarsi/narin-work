@@ -1,0 +1,336 @@
+<!--
+  NARIN: kytice na hlavni strance. HTML blok T123 mezi bannery a katalogem.
+  Dve casti: pruvodce vyberem (4 otazky) a promo zona s kyticemi.
+  Data: Tilda obchod, cast Kytice (varianty S M L) a cast Kovky (jen co je skladem).
+  Moznosti otazek i rozpocet se skladaji z toho, co realne je na kartach.
+  Tagy (prilezitost, komu, nalada) jsou v poli TAGS podle uid produktu.
+  Kdyz zadna kytice ani kovka neni, cely blok zustane skryty.
+-->
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+.nbq{--blue:#186ce0;--blue-d:#1257b8;--sky:#f3f7fd;--sky2:#e4edfb;--red:#e8322e;--red-soft:#fdeceb;--ink:#16181d;--ink2:#4a505b;--muted:#8a8f98;--line:#e9ebef;
+  font-family:'Rubik',sans-serif;color:var(--ink);background:#fff;-webkit-font-smoothing:antialiased;display:none;padding:8px 0 28px}
+.nbq.on{display:block}
+.nbq *,.nbq *::before,.nbq *::after{box-sizing:border-box}
+.nbq h2,.nbq h3,.nbq p{margin:0}
+.nbq button{font-family:inherit;cursor:pointer}
+.nbq-wrap{max-width:1200px;margin:0 auto;padding:0 16px}
+
+/* pruvodce */
+.nbq-guide{position:relative;border-radius:28px;background:var(--sky);padding:26px 22px 22px;overflow:hidden}
+.nbq-guide::after{content:'';position:absolute;right:-60px;top:-60px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(24,108,224,.12),rgba(24,108,224,0) 70%);pointer-events:none}
+.nbq-eyebrow{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--red)}
+.nbq-eyebrow i{width:18px;height:3px;border-radius:2px;background:var(--red);display:inline-block}
+.nbq-guide h2{font-size:clamp(24px,3.2vw,34px);font-weight:600;letter-spacing:-.02em;line-height:1.12;margin:8px 0 4px}
+.nbq-guide h2 b{color:var(--blue);font-weight:600}
+.nbq-sub{font-size:14.5px;color:var(--ink2);line-height:1.5;max-width:520px}
+.nbq-steps{display:flex;gap:6px;margin:18px 0 14px}
+.nbq-ribbon.mood{background:#fff;color:var(--red);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.nbq-ribbon.mood::before{background:var(--red)}
+.nbq-ph img{transition:opacity .2s ease,transform .6s cubic-bezier(.2,.8,.2,1)}
+.nbq-steps span{flex:1;height:4px;border-radius:2px;background:var(--sky2);overflow:hidden;position:relative}
+.nbq-steps span::after{content:'';position:absolute;inset:0;background:var(--blue);transform:scaleX(0);transform-origin:left;transition:transform .45s cubic-bezier(.2,.8,.2,1)}
+.nbq-steps span.done::after{transform:scaleX(1)}
+.nbq-q{font-size:16px;font-weight:600;margin-bottom:10px}
+.nbq-chips{display:flex;flex-wrap:wrap;gap:8px}
+.nbq-chip{height:42px;padding:0 16px;border-radius:999px;border:1.5px solid var(--sky2);background:#fff;color:var(--ink);font-size:14.5px;font-weight:500;transition:transform .12s ease,border-color .2s,background .2s,color .2s;white-space:nowrap}
+.nbq-chip:hover{border-color:var(--blue)}
+.nbq-chip:active{transform:scale(.97)}
+.nbq-chip.sel{background:var(--blue);border-color:var(--blue);color:#fff}
+.nbq-stage{min-height:96px;transition:opacity .25s ease,transform .25s ease}
+.nbq-stage.out{opacity:0;transform:translateY(6px)}
+.nbq-nav{display:flex;align-items:center;justify-content:space-between;margin-top:14px;min-height:22px}
+.nbq-back{border:none;background:none;color:var(--blue);font-size:14px;font-weight:500;padding:0;display:none}
+.nbq-back.on{display:inline}
+.nbq-reset{border:none;background:none;color:var(--muted);font-size:13px;padding:0;display:none}
+.nbq-reset.on{display:inline}
+.nbq-res-h{font-size:16px;font-weight:600;margin-bottom:12px}
+.nbq-res-h small{display:block;font-size:13px;font-weight:400;color:var(--muted);margin-top:2px}
+
+/* promo zona */
+.nbq-promo{margin-top:34px}
+.nbq-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:16px}
+.nbq-head h2{font-size:clamp(26px,3.6vw,40px);font-weight:600;letter-spacing:-.02em;line-height:1.05}
+.nbq-head h2 span{color:var(--red)}
+.nbq-head p{font-size:14px;color:var(--ink2);margin-top:6px;max-width:460px;line-height:1.45}
+.nbq-arrows{display:flex;gap:8px;flex-shrink:0}
+.nbq-arrow{width:42px;height:42px;border-radius:50%;border:1.5px solid var(--line);background:#fff;color:var(--ink);display:flex;align-items:center;justify-content:center;transition:border-color .2s,opacity .2s}
+.nbq-arrow:hover{border-color:var(--blue);color:var(--blue)}
+.nbq-arrow[disabled]{opacity:.35;cursor:default}
+.nbq-arrow svg{width:18px;height:18px}
+.nbq-rail{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 48px)/4);gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding:2px 2px 6px;margin:0 -2px}
+.nbq-rail::-webkit-scrollbar{display:none}
+@media (max-width:1000px){.nbq-rail{grid-auto-columns:calc((100% - 32px)/3)}}
+@media (max-width:720px){.nbq-rail{grid-auto-columns:78%;gap:12px}.nbq-arrows{display:none}}
+.nbq-results .nbq-rail{grid-auto-columns:calc((100% - 32px)/3)}
+@media (max-width:720px){.nbq-results .nbq-rail{grid-auto-columns:78%}}
+
+/* karta */
+.nbq-card{scroll-snap-align:start;display:flex;flex-direction:column;min-width:0;background:#fff;border-radius:22px;border:1px solid var(--line);overflow:hidden;transition:box-shadow .25s ease,transform .25s ease}
+.nbq-card:hover{box-shadow:0 14px 34px -18px rgba(24,108,224,.35);transform:translateY(-2px)}
+.nbq-ph{position:relative;aspect-ratio:4/5;background:var(--sky);overflow:hidden}
+.nbq-ph img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .6s cubic-bezier(.2,.8,.2,1)}
+.nbq-card:hover .nbq-ph img{transform:scale(1.03)}
+.nbq-ph .nbq-noimg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:44px;color:var(--blue);opacity:.35}
+.nbq-ribbon{position:absolute;left:12px;top:12px;padding:5px 10px 5px 9px;border-radius:999px;background:var(--red);color:#fff;font-size:11.5px;font-weight:600;letter-spacing:.02em;display:inline-flex;align-items:center;gap:5px}
+.nbq-ribbon::before{content:'';width:6px;height:6px;border-radius:50%;background:#fff}
+.nbq-ribbon.tmr{background:#fff;color:var(--ink2);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.nbq-ribbon.tmr::before{background:var(--muted)}
+.nbq-body{padding:14px 14px 14px;display:flex;flex-direction:column;gap:10px;flex:1}
+.nbq-name{font-size:17px;font-weight:600;letter-spacing:-.01em;line-height:1.2}
+.nbq-flw{font-size:13px;color:var(--ink2);line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.nbq-flw b{font-weight:500;color:var(--muted)}
+.nbq-sizes{display:flex;gap:6px}
+.nbq-size{flex:1;min-width:0;border:1.5px solid var(--line);background:#fff;border-radius:14px;padding:7px 4px 6px;display:flex;flex-direction:column;align-items:center;gap:1px;transition:border-color .2s,background .2s}
+.nbq-size b{font-size:15px;font-weight:600;color:var(--ink)}
+.nbq-size em{font-style:normal;font-size:11px;color:var(--muted);white-space:nowrap;letter-spacing:-.01em}
+@media (max-width:720px){.nbq-size em{font-size:10px}.nbq-size{padding:6px 2px 5px}.nbq-add{font-size:14px;gap:6px}.nbq-body{padding:12px 12px 12px}}
+.nbq-size em.td{color:var(--blue);font-weight:500}
+.nbq-size.sel{border-color:var(--blue);background:var(--sky)}
+.nbq-add{margin-top:auto;height:46px;white-space:nowrap;border:none;border-radius:999px;background:var(--blue);color:#fff;font-size:15px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .2s,transform .12s}
+.nbq-add:hover{background:var(--blue-d)}
+.nbq-add:active{transform:scale(.98)}
+.nbq-add.ok{background:var(--ink)}
+.nbq-add svg{width:18px;height:18px}
+.nbq-when{font-size:12.5px;color:var(--ink2);text-align:center;margin-top:-3px}
+.nbq-when b{font-weight:600;color:var(--blue)}
+.nbq-when.tmr b{color:var(--ink)}
+@media (prefers-reduced-motion:reduce){.nbq *{transition:none!important}}
+</style>
+
+<section class="nbq" id="kytice" aria-label="Kytice NARIN">
+  <div class="nbq-wrap">
+    <div class="nbq-guide">
+      <span class="nbq-eyebrow"><i></i>Průvodce výběrem</span>
+      <h2>Najdeme <b>tu pravou kytici</b> za 20 vteřin</h2>
+      <p class="nbq-sub">Čtyři krátké otázky a ukážeme vám, co se hodí. Bez registrace.</p>
+      <div class="nbq-steps"></div>
+      <div class="nbq-stage"></div>
+      <div class="nbq-nav"><button class="nbq-back" type="button">&larr; Zpět</button><button class="nbq-reset" type="button">Začít znovu</button></div>
+    </div>
+
+    <div class="nbq-promo">
+      <div class="nbq-head">
+        <div>
+          <span class="nbq-eyebrow"><i></i>Kytice NARIN</span>
+          <h2>Kytice s&nbsp;příběhem <span>z&nbsp;knih</span></h2>
+          <p>Každá kytice nese jméno literární hrdinky – Cinderella, Anna Karenina, Pippi… – a má tři velikosti S, M a L.</p>
+        </div>
+        <div class="nbq-arrows"><button class="nbq-arrow" data-d="-1" type="button" aria-label="Předchozí"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button><button class="nbq-arrow" data-d="1" type="button" aria-label="Další"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button></div>
+      </div>
+      <div class="nbq-rail nbq-all"></div>
+    </div>
+  </div>
+</section>
+
+<script>
+(function () {
+  var root = document.getElementById('kytice');
+  if (!root || root.__nbq) return; root.__nbq = 1;
+  var SB = 'https://wqburlamuipxmenqsjnx.supabase.co/rest/v1/rpc/';
+  var KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxYnVybGFtdWlweG1lbnFzam54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTY2MTIsImV4cCI6MjA4ODgzMjYxMn0.NYnQoorm3z5gkjr954JdYhzDNmYfCjefzK1ddq3cflw';
+  var PART_KYTICE = '984982781784', PART_KOVKY = '135670060784';
+
+  // Tagy podle uid produktu v Tilde. Kovky bez vlastniho radku berou DEF_KOVKA.
+  var TAGS = {
+    '854913749674': { o: ['vanoce', 'podekovani', 'jentak'], k: ['maminka', 'kolegyne', 'kamaradka'], n: ['slavnostni'] },
+    '470555828164': { o: ['vanoce', 'narozeniny', 'podekovani'], k: ['maminka', 'babicka', 'kolegyne'], n: ['jemna'] },
+    '337106830694': { o: ['laska', 'narozeniny', 'omluva'], k: ['partnerka', 'maminka'], n: ['elegantni'] },
+    '370679130724': { o: ['narozeniny', 'jentak', 'podekovani'], k: ['kamaradka', 'dcera', 'kolegyne'], n: ['vesela'] }
+  };
+  var DEF_KOVKA = { o: ['jentak', 'podekovani', 'narozeniny'], k: ['kolegyne', 'kamaradka', 'sebe'], n: ['hrava'] };
+  var L = {
+    o: { narozeniny: 'Narozeniny', laska: 'Z lásky', vanoce: 'Vánoce', podekovani: 'Poděkování', omluva: 'Omluva', jentak: 'Jen tak' },
+    k: { maminka: 'Mamince', babicka: 'Babičce', partnerka: 'Partnerce', kamaradka: 'Kamarádce', kolegyne: 'Kolegyni', dcera: 'Dceři', sebe: 'Sobě' },
+    n: { slavnostni: 'Slavnostní', jemna: 'Jemná', elegantni: 'Elegantní', vesela: 'Veselá', hrava: 'Hravá' }
+  };
+  var Q = [{ k: 'o', q: 'Pro jakou příležitost?' }, { k: 'k', q: 'Komu je kytice?' }, { k: 'n', q: 'Jakou má mít náladu?' }, { k: 'b', q: 'Kolik chcete utratit?' }];
+
+  var items = [], ans = {}, step = 0, budgets = [];
+  var stage = root.querySelector('.nbq-stage'), stepsEl = root.querySelector('.nbq-steps');
+  var back = root.querySelector('.nbq-back'), reset = root.querySelector('.nbq-reset');
+  var rail = root.querySelector('.nbq-all');
+
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function kc(n) { return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0') + '\u00a0Kč'; }
+  function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim(); }
+  function jparse(v) { if (!v) return []; if (typeof v !== 'string') return v; try { return JSON.parse(v); } catch (e) { try { return JSON.parse(v.replace(/'/g, '"')); } catch (e2) { return []; } } }
+  function plainText(h) { var d = document.createElement('div'); d.innerHTML = h || ''; var t = (d.textContent || '').trim(); var i = t.indexOf('Vyberte si velikost'); return (i > 0 ? t.slice(0, i) : t).trim(); }
+
+  // ---------- data ----------
+  function part(uid) {
+    return fetch('https://store.tildaapi.one/api/getproductslist/?storepartuid=' + uid + '&recid=5956861803&c=' + Date.now() + '&getparts=false&getoptions=true&slice=1&size=100')
+      .then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { return (j && j.products) || []; }).catch(function () { return []; });
+  }
+  function toItem(p, kind) {
+    var gal = jparse(p.gallery), img0 = gal[0] && gal[0].img;
+    var eds = jparse(p.editions), sizes = [];
+    eds.forEach(function (e) {
+      var sz = e.Velikost || e['Velikost'] || '';
+      var price = parseFloat(e.price);
+      if (!(price > 0)) return;
+      sizes.push({ size: sz || '', price: price, uid: String(e.uid), img: e.img || img0, sku: e.sku || '' });
+    });
+    if (!sizes.length && parseFloat(p.price) > 0) sizes.push({ size: '', price: parseFloat(p.price), uid: String(p.uid), img: img0, sku: p.sku || '' });
+    var order = { S: 1, M: 2, L: 3 };
+    sizes.sort(function (a, b) { return (order[a.size] || 9) - (order[b.size] || 9); });
+    return { uid: String(p.uid), name: p.title, text: plainText(p.text || p.descr), url: p.url, kind: kind, sizes: sizes, tags: TAGS[String(p.uid)] || (kind === 'kovka' ? DEF_KOVKA : { o: [], k: [], n: [] }) };
+  }
+
+  // ---------- karta ----------
+  function card(it, pick) {
+    var sizes = it.sizes;
+    var cur = pick || (sizes.filter(function (s) { return s.size === 'M'; })[0] ? 'M' : sizes[0].size);
+    var el = document.createElement('article');
+    el.className = 'nbq-card';
+    function sz() { return sizes.filter(function (s) { return s.size === cur; })[0] || sizes[0]; }
+    function draw() {
+      var s = sz(), mood = it.tags.n && it.tags.n[0];
+      el.innerHTML =
+        '<div class="nbq-ph">' + (s.img ? '<img loading="lazy" src="' + esc(s.img) + '" alt="' + esc(it.name) + '">' : '<div class="nbq-noimg">&#10047;</div>') +
+          (mood ? '<span class="nbq-ribbon mood">' + esc(L.n[mood] || mood) + '</span>' : '') + '</div>' +
+        '<div class="nbq-body">' +
+          '<h3 class="nbq-name">' + esc(it.name) + '</h3>' +
+          (it.text ? '<p class="nbq-flw">' + esc(it.text) + '</p>' : '') +
+          (sizes.length > 1 ? '<div class="nbq-sizes">' + sizes.map(function (x) {
+            return '<button type="button" class="nbq-size' + (x.size === cur ? ' sel' : '') + '" data-s="' + esc(x.size) + '"><b>' + esc(x.size) + '</b><em>' + kc(x.price) + '</em></button>';
+          }).join('') + '</div>' : '') +
+          '<button type="button" class="nbq-add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12l-1 13H7L6 7z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>Do košíku · ' + kc(s.price) + '</button>' +
+        '</div>';
+    }
+    el.addEventListener('click', function (e) {
+      var t = e.target.closest('.nbq-size');
+      if (t) { cur = t.getAttribute('data-s'); draw(); return; }
+      var a = e.target.closest('.nbq-add');
+      if (a) {
+        add(it, sz());
+        a.classList.add('ok'); a.innerHTML = 'V košíku ✓';
+        setTimeout(draw, 1600);
+      }
+    });
+    draw();
+    return el;
+  }
+  function add(it, s) {
+    function go() {
+      var o = { name: it.name, price: s.price, amount: 1, quantity: 1, count: 1, uid: s.uid, sku: s.sku, img: s.img, url: it.url };
+      if (s.size) o.options = [{ option: 'Velikost', variant: s.size, price: s.price }];
+      try { window.tcart__addProduct(o); } catch (e) {}
+    }
+    if (window.tcart__addProduct) return go();
+    var t = setInterval(function () { if (window.tcart__addProduct) { clearInterval(t); go(); } }, 300);
+    setTimeout(function () { clearInterval(t); }, 10000);
+  }
+
+  // ---------- rozpocet podle realnych cen ----------
+  function round100(n) { return Math.round(n / 100) * 100; }
+  function makeBudgets() {
+    var prices = [];
+    items.forEach(function (it) { it.sizes.forEach(function (s) { if (prices.indexOf(s.price) < 0) prices.push(s.price); }); });
+    prices.sort(function (a, b) { return a - b; });
+    var out = [];
+    if (prices.length <= 3) {
+      prices.forEach(function (p) { out.push({ id: 'p' + p, label: kc(p), lo: p, hi: p }); });
+    } else {
+      var a = round100(prices[Math.floor(prices.length / 3)]), b = round100(prices[Math.floor(prices.length * 2 / 3)]);
+      if (b <= a) b = a + 100;
+      out.push({ id: 'b1', label: 'do ' + kc(a), lo: 0, hi: a });
+      out.push({ id: 'b2', label: kc(a).replace('\u00a0Kč', '') + ' – ' + kc(b), lo: a, hi: b });
+      out.push({ id: 'b3', label: 'nad ' + kc(b), lo: b, hi: 1e9 });
+    }
+    if (out.length > 1) out.push({ id: 'any', label: 'Nevadí', lo: 0, hi: 1e9 });
+    return out;
+  }
+  function optionsFor(k) {
+    if (k === 'b') return budgets.map(function (b) { return [b.id, b.label]; });
+    var seen = {}, list = [];
+    items.forEach(function (it) { (it.tags[k] || []).forEach(function (v) { if (!seen[v]) { seen[v] = 1; list.push(v); } }); });
+    var order = Object.keys(L[k]);
+    list.sort(function (a, b) { return order.indexOf(a) - order.indexOf(b); });
+    return list.map(function (v) { return [v, L[k][v] || v]; });
+  }
+
+  // ---------- pruvodce ----------
+  var qs = [];
+  function renderStep() {
+    stepsEl.innerHTML = qs.map(function (q, i) { return '<span class="' + (i < step ? 'done' : '') + '"></span>'; }).join('');
+    back.className = 'nbq-back' + (step > 0 ? ' on' : '');
+    reset.className = 'nbq-reset' + (step >= qs.length ? ' on' : '');
+    stage.classList.add('out');
+    setTimeout(function () {
+      if (step < qs.length) {
+        var q = qs[step];
+        stage.innerHTML = '<p class="nbq-q">' + q.q + '</p><div class="nbq-chips">' + optionsFor(q.k).map(function (o) {
+          return '<button type="button" class="nbq-chip' + (ans[q.k] === o[0] ? ' sel' : '') + '" data-k="' + q.k + '" data-v="' + esc(o[0]) + '">' + esc(o[1]) + '</button>';
+        }).join('') + '</div>';
+      } else { stage.innerHTML = ''; stage.appendChild(results()); }
+      stage.classList.remove('out');
+    }, 180);
+  }
+  function results() {
+    var b = budgets.filter(function (x) { return x.id === ans.b; })[0] || { lo: 0, hi: 1e9, id: 'any' };
+    var scored = [];
+    items.forEach(function (it) {
+      var sc = 0;
+      ['o', 'k', 'n'].forEach(function (k) { if (ans[k] && (it.tags[k] || []).indexOf(ans[k]) >= 0) sc += 3; });
+      var fit = it.sizes.filter(function (s) { return s.price >= b.lo && s.price <= b.hi; });
+      var pick = fit.length ? fit[fit.length - 1] : null;
+      if (pick) sc += 4;
+      else { pick = it.sizes.slice().sort(function (x, y) { return Math.abs(x.price - b.lo) - Math.abs(y.price - b.lo); })[0]; }
+      scored.push({ it: it, s: pick, sc: sc + (it.kind === 'kytice' ? 0.5 : 0) });
+    });
+    scored.sort(function (x, y) { return y.sc - x.sc || x.s.price - y.s.price; });
+    var best = scored.slice(0, 3);
+    var wrap = document.createElement('div');
+    wrap.className = 'nbq-results';
+    wrap.innerHTML = '<p class="nbq-res-h">Tohle by se mohlo líbit<small>Velikost jsme vybrali podle rozpočtu, změnit ji můžete přímo na kartě.</small></p>';
+    var rr = document.createElement('div'); rr.className = 'nbq-rail';
+    best.forEach(function (x) { rr.appendChild(card(x.it, x.s.size)); });
+    wrap.appendChild(rr);
+    return wrap;
+  }
+  stage.addEventListener('click', function (e) {
+    var c = e.target.closest('.nbq-chip'); if (!c) return;
+    ans[c.getAttribute('data-k')] = c.getAttribute('data-v');
+    c.classList.add('sel');
+    step++; renderStep();
+  });
+  back.addEventListener('click', function () { if (step > 0) { step--; renderStep(); } });
+  reset.addEventListener('click', function () { ans = {}; step = 0; renderStep(); });
+
+  // ---------- promo rail ----------
+  function arrows() {
+    var l = root.querySelector('.nbq-arrow[data-d="-1"]'), r = root.querySelector('.nbq-arrow[data-d="1"]');
+    l.disabled = rail.scrollLeft < 4;
+    r.disabled = rail.scrollLeft + rail.clientWidth >= rail.scrollWidth - 4;
+  }
+  root.querySelectorAll('.nbq-arrow').forEach(function (b) {
+    b.addEventListener('click', function () { rail.scrollBy({ left: Number(b.getAttribute('data-d')) * rail.clientWidth * 0.9, behavior: 'smooth' }); });
+  });
+  rail.addEventListener('scroll', arrows, { passive: true });
+
+  function start(kytice, kovky) {
+    items = kytice.concat(kovky).filter(function (it) { return it.sizes.length; });
+    if (!items.length) return;
+    budgets = makeBudgets();
+    qs = Q.filter(function (q) { return optionsFor(q.k).length > 1; });
+    var bq = items.filter(function (it) { return it.kind === 'kytice'; });
+    var promo = root.querySelector('.nbq-promo');
+    if (bq.length) bq.forEach(function (it) { rail.appendChild(card(it)); }); else promo.style.display = 'none';
+    root.classList.add('on');
+    renderStep(); arrows();
+  }
+  if (window.__nbqMock) return start(window.__nbqMock.kytice, window.__nbqMock.kovky);
+  Promise.all([
+    part(PART_KYTICE),
+    part(PART_KOVKY),
+    fetch(SB + 'get_available_products?apikey=' + KEY).then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; })
+  ]).then(function (res) {
+    var avail = {};
+    (res[2] || []).forEach(function (r) { avail[norm(r.product_name)] = 1; });
+    var kytice = res[0].map(function (p) { return toItem(p, 'kytice'); });
+    var kovky = res[1].map(function (p) { return toItem(p, 'kovka'); }).filter(function (it) { return avail[norm(it.name)]; });
+    start(kytice, kovky);
+  });
+})();
+</script>
