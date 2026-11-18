@@ -91,6 +91,7 @@
 .nbq-add:hover{background:var(--blue-d)}
 .nbq-add:active{transform:scale(.98)}
 .nbq-add.ok{background:var(--ink)}
+.nbq-add.soon{background:var(--sky);color:var(--ink2);cursor:default}
 .nbq-add svg{width:18px;height:18px}
 .nbq-when{font-size:12.5px;color:var(--ink2);text-align:center;margin-top:-3px}
 .nbq-when b{font-weight:600;color:var(--blue)}
@@ -114,7 +115,7 @@
         <div>
           <span class="nbq-eyebrow"><i></i>Kytice NARIN</span>
           <h2>Kytice s&nbsp;příběhem <span>z&nbsp;knih</span></h2>
-          <p>Každá kytice nese jméno literární hrdinky – Clara, Lucy, Margarita, Anne… – a má tři velikosti S, M a L.</p>
+          <p>Každá kytice nese jméno literární hrdinky – Clara, Margarita, Matilda, Daisy… – a má tři velikosti S, M a L.</p>
         </div>
         <div class="nbq-arrows"><button class="nbq-arrow" data-d="-1" type="button" aria-label="Předchozí"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button><button class="nbq-arrow" data-d="1" type="button" aria-label="Další"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button></div>
       </div>
@@ -136,13 +137,16 @@
     '854913749674': { o: ['vanoce', 'podekovani', 'jentak'], k: ['maminka', 'kolegyne', 'kamaradka'], n: ['slavnostni'] },
     '470555828164': { o: ['vanoce', 'narozeniny', 'podekovani'], k: ['maminka', 'babicka', 'kolegyne'], n: ['jemna'] },
     '337106830694': { o: ['laska', 'narozeniny', 'omluva'], k: ['partnerka', 'maminka'], n: ['elegantni'] },
-    '370679130724': { o: ['narozeniny', 'jentak', 'podekovani'], k: ['kamaradka', 'dcera', 'kolegyne'], n: ['vesela'] }
+    '370679130724': { o: ['narozeniny', 'jentak', 'podekovani'], k: ['kamaradka', 'dcera', 'kolegyne'], n: ['vesela'] },
+    '852946763324': { o: ['narozeniny', 'jentak', 'podekovani'], k: ['dcera', 'kamaradka', 'kolegyne'], n: ['hrava'] },
+    '338915278194': { o: ['laska', 'omluva', 'narozeniny'], k: ['partnerka', 'maminka'], n: ['elegantni'] },
+    '820957205954': { o: ['narozeniny', 'podekovani', 'jentak'], k: ['kamaradka', 'kolegyne', 'maminka'], n: ['slunecna'] }
   };
   var DEF_KOVKA = { o: ['jentak', 'podekovani', 'narozeniny'], k: ['kolegyne', 'kamaradka', 'sebe'], n: ['hrava'] };
   var L = {
     o: { narozeniny: 'Narozeniny', laska: 'Z lásky', vanoce: 'Vánoce', podekovani: 'Poděkování', omluva: 'Omluva', jentak: 'Jen tak' },
     k: { maminka: 'Mamince', babicka: 'Babičce', partnerka: 'Partnerce', kamaradka: 'Kamarádce', kolegyne: 'Kolegyni', dcera: 'Dceři', sebe: 'Sobě' },
-    n: { slavnostni: 'Slavnostní', jemna: 'Jemná', elegantni: 'Elegantní', vesela: 'Veselá', hrava: 'Hravá' }
+    n: { slavnostni: 'Slavnostní', jemna: 'Jemná', elegantni: 'Elegantní', vesela: 'Veselá', hrava: 'Hravá', slunecna: 'Slunečná' }
   };
   var Q = [{ k: 'o', q: 'Pro jakou příležitost?' }, { k: 'k', q: 'Komu je kytice?' }, { k: 'n', q: 'Jakou má mít náladu?' }, { k: 'b', q: 'Kolik chcete utratit?' }];
 
@@ -167,14 +171,13 @@
     var eds = jparse(p.editions), sizes = [];
     eds.forEach(function (e) {
       var sz = e.Velikost || e['Velikost'] || '';
-      var price = parseFloat(e.price);
-      if (!(price > 0)) return;
+      var price = parseFloat(e.price) || 0;
       sizes.push({ size: sz || '', price: price, uid: String(e.uid), img: e.img || img0, sku: e.sku || '' });
     });
-    if (!sizes.length && parseFloat(p.price) > 0) sizes.push({ size: '', price: parseFloat(p.price), uid: String(p.uid), img: img0, sku: p.sku || '' });
+    if (!sizes.length) sizes.push({ size: '', price: parseFloat(p.price) || 0, uid: String(p.uid), img: img0, sku: p.sku || '' });
     var order = { S: 1, M: 2, L: 3 };
     sizes.sort(function (a, b) { return (order[a.size] || 9) - (order[b.size] || 9); });
-    return { uid: String(p.uid), name: p.title, text: plainText(p.text || p.descr), url: p.url, kind: kind, sizes: sizes, tags: TAGS[String(p.uid)] || (kind === 'kovka' ? DEF_KOVKA : { o: [], k: [], n: [] }) };
+    return { priced: sizes.some(function (s) { return s.price > 0; }), uid: String(p.uid), name: p.title, text: plainText(p.text || p.descr), url: p.url, kind: kind, sizes: sizes, tags: TAGS[String(p.uid)] || (kind === 'kovka' ? DEF_KOVKA : { o: [], k: [], n: [] }) };
   }
 
   // ---------- karta ----------
@@ -193,16 +196,16 @@
           '<h3 class="nbq-name">' + esc(it.name) + '</h3>' +
           (it.text ? '<p class="nbq-flw">' + esc(it.text) + '</p>' : '') +
           (sizes.length > 1 ? '<div class="nbq-sizes">' + sizes.map(function (x) {
-            return '<button type="button" class="nbq-size' + (x.size === cur ? ' sel' : '') + '" data-s="' + esc(x.size) + '"><b>' + esc(x.size) + '</b><em>' + kc(x.price) + '</em></button>';
+            return '<button type="button" class="nbq-size' + (x.size === cur ? ' sel' : '') + '" data-s="' + esc(x.size) + '"><b>' + esc(x.size) + '</b><em>' + (x.price > 0 ? kc(x.price) : 'brzy') + '</em></button>';
           }).join('') + '</div>' : '') +
-          '<button type="button" class="nbq-add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12l-1 13H7L6 7z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>Do košíku · ' + kc(s.price) + '</button>' +
+          (s.price > 0 ? '<button type="button" class="nbq-add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12l-1 13H7L6 7z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>Do košíku · ' + kc(s.price) + '</button>' : '<button type="button" class="nbq-add soon" disabled>Cena brzy</button>') +
         '</div>';
     }
     el.addEventListener('click', function (e) {
       var t = e.target.closest('.nbq-size');
       if (t) { cur = t.getAttribute('data-s'); draw(); return; }
       var a = e.target.closest('.nbq-add');
-      if (a) {
+      if (a && !a.disabled) {
         add(it, sz());
         a.classList.add('ok'); a.innerHTML = 'V košíku ✓';
         setTimeout(draw, 1600);
@@ -310,15 +313,21 @@
   rail.addEventListener('scroll', arrows, { passive: true });
 
   function start(kytice, kovky) {
-    items = kytice.concat(kovky).filter(function (it) { return it.sizes.length; });
-    if (!items.length) return;
-    budgets = makeBudgets();
-    qs = Q.filter(function (q) { return optionsFor(q.k).length > 1; });
-    var bq = items.filter(function (it) { return it.kind === 'kytice'; });
+    var all = kytice.concat(kovky).filter(function (it) { return it.sizes.length; });
+    if (!all.length) return;
+    var bq = all.filter(function (it) { return it.kind === 'kytice'; });
+    items = all.filter(function (it) { return it.priced; }).map(function (it) {
+      return Object.assign({}, it, { sizes: it.sizes.filter(function (s) { return s.price > 0; }) });
+    });
+    if (items.length) {
+      budgets = makeBudgets();
+      qs = Q.filter(function (q) { return optionsFor(q.k).length > 1; });
+    } else root.querySelector('.nbq-guide').style.display = 'none';
     var promo = root.querySelector('.nbq-promo');
     if (bq.length) bq.forEach(function (it) { rail.appendChild(card(it)); }); else promo.style.display = 'none';
     root.classList.add('on');
-    renderStep(); arrows();
+    if (items.length) renderStep();
+    arrows();
   }
   if (window.__nbqMock) return start(window.__nbqMock.kytice, window.__nbqMock.kovky);
   Promise.all([
