@@ -122,6 +122,8 @@ VARIANTS = {
     "G-scatter-small": "smaller equal daisies, scattered more densely, daisies as separators",
     "H-big": "bigger equal daisies, fewer, over the whole glass around the text",
     "I-bigger": "even bigger equal daisies, fewest, over the whole glass around the text",
+    "J-big-nosub": "as H, without \"květinový ateliér\", with a bigger logo and bottom line",
+    "K-bigger-nosub": "as I, without \"květinový ateliér\", with a bigger logo and bottom line",
 }
 
 
@@ -170,6 +172,18 @@ def ellipse_points(n, inset, t0, t1):
 
 def arch_art(ink, variant="A-garland"):
     SCAT = ("E-scatter", "F-pattern", "G-scatter-small", "H-big", "I-bigger")
+    if variant in ("J-big-nosub", "K-bigger-nosub"):
+        # no subtitle: the wordmark and the bottom line get the room
+        logo_w, top, line_y = 840, 140, 592
+        lg, lh = logo(AW / 2, top, logo_w, ink)
+        line = bottom_line(ink, line_y, 1240, 108, "dot")
+        pad = 14
+        blocked = [(AW / 2 - logo_w / 2 - pad, top - pad, AW / 2 + logo_w / 2 + pad, top + lh + pad),
+                   (AW / 2 - 620 - pad, line_y - 78 - pad, AW / 2 + 620 + pad, line_y + 24 + pad)]
+        box = {"x0": 0, "x1": AW, "y0": 0, "y1": AH, "test": lambda x, y, r: arch_inner(x, y, r, 30)}
+        r, gap, seed = (40, 46, 7) if variant == "J-big-nosub" else (47, 40, 4)
+        flowers = scatter(box, blocked, 80000, r, r, gap, seed=seed)
+        return [layer("daisies", flowers), layer("logo", [lg]), layer("text", line)]
     logo_w, top = (700, 165) if variant == "A-garland" else (660, 150) if variant in SCAT else (760, 140)
     lg, lh = logo(AW / 2, top, logo_w, ink)
     sub_y = top + lh + 84

@@ -1,7 +1,7 @@
 # NARIN shop front: arch glass decal (SVG)
 
 Print-ready SVG for the arch glass over the entrance, 1440 × 700 mm (1 unit = 1 mm), text outlined (no fonts needed).
-Nine layouts of the label daisies, all daisies of one size within a layout:
+Eleven layouts of the label daisies, all daisies of one size within a layout:
 
 | variant | daisies |
 |---|---|
@@ -14,9 +14,11 @@ Nine layouts of the label daisies, all daisies of one size within a layout:
 | `G-scatter-small` | smaller equal daisies scattered more densely, daisies in place of the dots |
 | `H-big` | bigger, fewer equal daisies over the whole glass, around the text |
 | `I-bigger` | the same with even bigger, fewer daisies |
+| `J-big-nosub` | without "květinový ateliér": bigger logo and bottom line, big daisies around |
+| `K-bigger-nosub` | the same with bigger, fewer daisies |
 
 - `out/arch-decal-<variant>.svg`: print file; the magenta `cut-guide (do not print)` layer is the glass outline.
-- `out/arch-mockup-<variant>.svg`: the same in the frame, for viewing only. `out/preview/arch-variants.jpg` `arch-variants-scatter.jpg` and `arch-variants-big.jpg` compare them.
+- `out/arch-mockup-<variant>.svg`: the same in the frame, for viewing only. `out/preview/arch-variants.jpg` `arch-variants-scatter.jpg` `arch-variants-big.jpg` and `arch-variants-nosub.jpg` compare them.
 - `out/narin-logo-*.svg`, `out/narin-lockup-*.svg`: logo / logo with "květinový ateliér", white and blue.
 
 Measure the glass before printing: the plan gives 144 × 70 cm as approximate.
