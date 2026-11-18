@@ -869,7 +869,8 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
   var PUB = 'sb_publishable_ORMmBYvVjH6i2GanWa2JyA_mWm3fTCZ';
   var PLACES_KEY = 'AIzaSyDEuFdJdQRQSrxlkZO_hc2hvZAhGACJ3IU';
   var CART_ID = 'rec1915296063', FORM_ID = 'form1915296063';
-  var CFG = { wh: { lat: 50.0710426, lng: 14.4883401 }, base: 159, service: 80, free: 14, perKm: 18, maxKm: 40 };
+  /* 2026-11-18: no service fee any more (pickup free, courier = delivery only); warehouse moved to Praha 7 (same as warehouse_location) */
+  var CFG = { wh: { lat: 50.1036125, lng: 14.4321458 }, base: 159, service: 0, free: 14, perKm: 18, maxKm: 40 };
   var SLOTS = ['9-12', '12-15', '15-18', '18-20'];
   var TIMES = []; for (var h = 9; h <= 20; h++) { TIMES.push((h < 10 ? '0' : '') + h + ':00'); if (h < 20) TIMES.push((h < 10 ? '0' : '') + h + ':30'); }
   var DRAFT_KEY = 'npay_draft_v2';
@@ -2212,7 +2213,7 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
     if (VO) h += '<div class="free"><span>Doručení e-mailem</span><b>Zdarma</b></div>';
     else if (S.mode === 'courier') h += '<div><span>Doručení kurýrem' + (f.extra ? ' (vč. příplatku za vzdálenost)' : '') + '</span><b>' + (f.need || f.empty ? 'od ' + kc(f.delivery) : kc(f.delivery)) + '</b></div>';
     else h += '<div class="free"><span>Osobní odběr</span><b>Zdarma</b></div>';
-    if (!VO) h += '<div class="info" id="npSvc"><span>Servisní poplatek<i class="ti ti-info-circle"></i></span><b>' + kc(f.service) + '</b></div>';
+    if (!VO && f.service > 0) h += '<div class="info" id="npSvc"><span>Servisní poplatek<i class="ti ti-info-circle"></i></span><b>' + kc(f.service) + '</b></div>';
     lines.innerHTML = h;
     var cats = $('#npCats'); if (cats) cats.hidden = !hasVoucher();
     setMoney($('#npTotal'), t.total);
@@ -2347,7 +2348,7 @@ textarea.np-in { min-height: 78px; padding: 11px 14px; }
     var f = cartForm(); if (!f) return;
     var fee = feeCalc();
     /* e-cards only: pickup option without the service fee (nothing to prepare or deliver) */
-    $$('input[name="delivery"]', f).forEach(function (r) { if (/kur/i.test(r.value)) return; if (r.__npP === undefined) r.__npP = r.getAttribute('data-delivery-price'); if (VO) r.setAttribute('data-delivery-price', '0'); else if (r.__npP != null) r.setAttribute('data-delivery-price', r.__npP); });
+    $$('input[name="delivery"]', f).forEach(function (r) { if (/kur/i.test(r.value)) return; if (r.__npP === undefined) r.__npP = r.getAttribute('data-delivery-price'); r.setAttribute('data-delivery-price', String(CFG.service)); });
     $$('input[name="delivery"]', f).forEach(function (r) { if (/kur/i.test(r.value)) r.setAttribute('data-delivery-price', String(fee.fee)); });
     var want = S.mode === 'courier' ? function (v) { return /kur/i.test(v); } : function (v) { return !/kur/i.test(v); };
     setCartClick('delivery', want);

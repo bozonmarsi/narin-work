@@ -35,7 +35,8 @@ const SUCCESS_URL = `${SITE}/payment-successful`;
 const CANCEL_URL = `${SITE}/payment-failed`;
 const CATALOG_URL =
   "https://store.tildaapi.one/api/getproductslist/?storepartuid=388736252314&recid=1&c=1&getparts=true&getoptions=true&slice=1&size=500";
-const PICKUP_FEE = 80;
+// Servisni poplatek zrusen 2026-11-18: osobni odber je zdarma, kuryr = jen doprava.
+const PICKUP_FEE = 0;
 const CASH_URL = `${SITE}/objednavka-hotovost`;
 const POINTS_SHARE = 0.3; // body lze uplatnit az na 30 % hodnoty zbozi
 
@@ -211,7 +212,7 @@ async function deliveryFee(supabase: any, mode: string, form: Record<string, any
   }
   // jako na strance: Praha 1xxxx bez souradnic = zakladni cena, jinak vybrat adresu ze seznamu
   const psc = String(form?.psc || "").replace(/\s+/g, "");
-  if (/^1\d{4}$/.test(psc)) return { fee: 159 + PICKUP_FEE, km: null };
+  if (/^1\d{4}$/.test(psc)) return { fee: 159, km: null };
   throw new Fail("address_not_selected");
 }
 
@@ -354,8 +355,8 @@ export async function create(supabase: any, email: string, body: any) {
   const orderId = newOrderId();
   const courier = body.delivery === "courier";
   const deliveryLabel = courier
-    ? `Doručení kurýrem + servisní poplatek = ${q.delivery}`
-    : `Servisní poplatek = ${PICKUP_FEE}`;
+    ? `Doručení kurýrem = ${q.delivery}`
+    : `Osobní odběr = ${PICKUP_FEE}`;
   const paySys = cash ? "cash" : q.card > 0 ? "stripe" : "deposit";
 
   // stejny tvar dat, jaky posila Tilda -> tilda-webhook ulozi objednavku,
@@ -372,7 +373,7 @@ export async function create(supabase: any, email: string, body: any) {
       orderid: orderId,
       amount: String(Math.round((q.total - q.points) * 100) / 100),
       subtotal: String(q.goods),
-      delivery: courier ? "Doručení kurýrem + servisní poplatek" : "Servisní poplatek",
+      delivery: courier ? "Doručení kurýrem" : "Osobní odběr",
       delivery_price: q.delivery,
       delivery_fio: "",
       delivery_address: "",

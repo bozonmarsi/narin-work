@@ -39,8 +39,8 @@ export function statusColor(status: string | null) {
 }
 
 // Courier-delivery orders always mention "kurýrem" in this field (Tilda's
-// "Doručení kurýrem + servisní poplatek = 239"); self-pickup only has
-// "Servisní poplatek = 80" — no courier involved at all, so the whole
+// "Doručení kurýrem = 159", before 2026-11-18 "... + servisní poplatek = 239");
+// self-pickup is "Osobní odběr = 0" (earlier "Servisní poplatek = 80") — no courier, so the whole
 // courier_assigned/in_transit/arriving part of the workflow doesn't apply.
 export function isPickupOrder(deliveryType: string | null) {
   return !(deliveryType ?? "").toLowerCase().includes("kurýrem");

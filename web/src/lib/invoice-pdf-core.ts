@@ -108,7 +108,7 @@ function orderLines(o: OrderLineItem): InvoiceLine[] {
   const goods = lines.reduce((sum, l) => sum + l.amount, 0);
   const delivery = Number(pay?.delivery_price) || 0;
   if (delivery > 0) {
-    lines.push({ name: decodeEntities(pay?.delivery || "Doručení a servisní poplatek"), qty: 1, unit: delivery, amount: delivery, kind: "delivery" });
+    lines.push({ name: decodeEntities(pay?.delivery || "Doručení"), qty: 1, unit: delivery, amount: delivery, kind: "delivery" });
   }
   const diff = Math.round((goods + delivery - total) * 100) / 100;
   if (diff > 0.5) {

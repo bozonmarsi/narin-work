@@ -24,7 +24,8 @@ function newRow(): Row {
   return { key: crypto.randomUUID(), stickerId: "", quantity: "1", price: "" };
 }
 
-const SERVICE_FEE = 80;
+// Сервисный сбор отменён 2026-11-18: самовывоз бесплатно, курьер = только доставка.
+const SERVICE_FEE = 0;
 const COURIER_FEE = 159;
 
 const PAYMENT_METHODS: { value: string; label: string; icon: string }[] = [
@@ -155,7 +156,7 @@ export function NewOrderModal({ stickers, onClose, onCreated }: { stickers: Stic
     // отдельно узнаваемый (как KASSA-, так и PREDPL- у подписок) —
     // иначе order_id остаётся пустым и заказ в списке показывает "№—".
     const orderId = "KASSA-" + crypto.randomUUID().split("-")[0].toUpperCase();
-    const deliveryType = fulfillment === "courier" ? "Doručení kurýrem + servisní poplatek = 239" : "Servisní poplatek = 80";
+    const deliveryType = fulfillment === "courier" ? `Doručení kurýrem = ${COURIER_FEE}` : "Osobní odběr = 0";
     const deliveryDate =
       fulfillment === "courier" ? new Date(courierAt).toISOString() : fulfillment === "pickup_later" ? new Date(pickupLaterAt).toISOString() : now;
 
@@ -469,10 +470,12 @@ export function NewOrderModal({ stickers, onClose, onCreated }: { stickers: Stic
             <span>Товары</span>
             <span>{goodsTotal} Kč</span>
           </div>
-          <div className="flex justify-between">
-            <span>Сервисный сбор</span>
-            <span>{SERVICE_FEE} Kč</span>
-          </div>
+          {SERVICE_FEE > 0 && (
+            <div className="flex justify-between">
+              <span>Сервисный сбор</span>
+              <span>{SERVICE_FEE} Kč</span>
+            </div>
+          )}
           {fulfillment === "courier" && (
             <div className="flex justify-between">
               <span>Доставка</span>
