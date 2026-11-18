@@ -130,7 +130,7 @@ VARIANTS = {
     "L-sign-flowerbox": "lettering along the arch, NARIN in the middle, a window box of daisies on stems at the bottom",
     "M-wreath": "NARIN crowned by a half wreath of daisies and leaves, the line below",
     "N-sign-border": "lettering along the arch, NARIN in the middle, a neat border of daisies along the bottom",
-    "O-garden-arc": "a garden along the bottom (daisies, lupines, bellflowers, primroses, zinnias, grass), bigger lettering along the arch",
+    "O-garden-arc": "a garden along the bottom (two rows of many flowers, leaves and grass), bigger lettering along the arch",
     "P-garden-line": "the same garden, the line of words set big and straight under NARIN",
 }
 
@@ -280,8 +280,8 @@ def sprig(x, ground, h, side):
 
 
 def garden(max_h, inset=34):
-    """A symmetric strip of garden along the bottom edge: daisies, lupines, bellflowers, primroses, zinnias, grass."""
-    grass, stems, heads = [], [], []
+    """A mirrored garden along the bottom edge: a back and a front row of many kinds of flowers, leaves and grass."""
+    grass = []
     rnd = random.Random(8)
     for x in range(40, AW - 40, 13):
         h = rnd.uniform(16, 34)
@@ -290,30 +290,50 @@ def garden(max_h, inset=34):
         lean = rnd.uniform(-7, 7)
         grass.append(f'<path d="M{x - 4} {AH + 1} Q{x + lean * 0.3:.1f} {AH - h * 0.6:.1f} {x + lean:.1f} {AH - h:.1f} '
                      f'Q{x + 1 + lean * 0.3:.1f} {AH - h * 0.5:.1f} {x + 4} {AH + 1}Z" fill="{rnd.choice([LEAF_GREEN, LEAF_LIGHT, "#3DAF5C"])}"/>')
-    # symmetric planting from the middle outwards; every kind is drawn in the label-daisy style (flowers.py)
-    plan = [("daisy", BLUE, 0.74), ("lupine", PURPLE, 1.0), ("five", YELLOW, 0.62), ("daisy", RED, 0.84),
-            ("bells", COBALT, 0.95), ("pompom", LILAC, 0.7), ("daisy", YELLOW, 0.86), ("lupine", BLUE, 0.98),
-            ("five", RED, 0.66), ("daisy", LILAC, 0.8)]
-    step, d = 72, 62
-    for k, (kind, col, hf) in enumerate(plan):
-        for side in ((1,) if k == 0 else (-1, 1)):
-            x, h = AW / 2 + side * k * step, max_h * hf
-            if not arch_inner(x, AH - h, d / 2, inset):
-                continue
-            if kind == "lupine":
-                stems += FL.lupine(x, AH + 2, h + 20, col, LILAC if col != LILAC else PURPLE)
-            elif kind == "bells":
-                stems += FL.bellflower(x - side * 14, AH + 2, h, col, side)
-            else:
-                els, (hx, hy) = FL.on_stem(None, x, AH + 2, h, side)
-                stems += els
-                if kind == "daisy":
-                    heads.append(daisy(hx, hy, d, col, side * 8))
-                elif kind == "five":
-                    heads.append(FL.five_petal(hx, hy, d * 0.95, col, side * 12))
+    # two rows, mirrored from the middle: a taller back row and a lower front row between its plants.
+    # Every kind is drawn in the label-daisy style (flowers.py); many are two-tone.
+    CORAL, WHITE_, MINT = "#FF7C77", "#FFFFFF", "#19C98A"
+    back = [("gerbera", YELLOW, CORAL, 1.0), ("cosmos", LILAC, PURPLE, 0.86), ("anemone", RED, BLUE, 0.94),
+            ("daisy", BLUE, None, 0.8), ("cluster", COBALT, YELLOW, 0.9), ("gerbera", CORAL, YELLOW, 0.95),
+            ("cosmos", WHITE_, YELLOW, 0.82), ("bells", PURPLE, None, 0.8), ("daisy", YELLOW, None, 0.74)]
+    front = [("leafy", None, None, 0.5), ("five", YELLOW, None, 0.5), ("pompom", LILAC, None, 0.56),
+             ("buds", CORAL, None, 0.6), ("anemone", WHITE_, PURPLE, 0.46), ("leafy", None, None, 0.48),
+             ("five", RED, None, 0.5), ("pompom", YELLOW, None, 0.52), ("buds", PURPLE, None, 0.5)]
+    step, d = 80, 64
+    layers = {"back": ([], []), "front": ([], [])}
+    for row, plan, off in (("back", back, 0.0), ("front", front, 0.5)):
+        st, hd = layers[row]
+        for k, (kind, col, mid, hf) in enumerate(plan):
+            for side in ((1,) if k + off == 0 else (-1, 1)):
+                x, h = AW / 2 + side * (k + off) * step, max_h * hf
+                dd = d if row == "back" else d * 0.82
+                if not arch_inner(x, AH - h, dd / 2, inset):
+                    continue
+                if kind == "leafy":
+                    st += FL.leafy(x, AH + 2, h * 0.75)
+                elif kind == "bells":
+                    st += FL.bellflower(x - side * 14, AH + 2, h, col, side)
+                elif kind == "cluster":
+                    st += FL.tiny_cluster(x, AH + 2, h, col, mid, side)
+                elif kind == "buds":
+                    st += FL.buds(x, AH + 2, h, col, side)
                 else:
-                    heads.append(FL.pompom(hx, hy, d, col))
-    return grass + stems + heads
+                    els, (hx, hy) = FL.on_stem(None, x, AH + 2, h, side)
+                    st += els
+                    if kind == "daisy":
+                        hd.append(daisy(hx, hy, dd, col, side * 8))
+                    elif kind == "five":
+                        hd.append(FL.five_petal(hx, hy, dd * 0.95, col, side * 12))
+                    elif kind == "pompom":
+                        hd.append(FL.pompom(hx, hy, dd, col))
+                    elif kind == "cosmos":
+                        hd.append(FL.cosmos(hx, hy, dd, col, mid, side * 10))
+                    elif kind == "gerbera":
+                        hd.append(FL.gerbera(hx, hy, dd * 1.05, col, mid))
+                    else:
+                        hd.append(FL.anemone(hx, hy, dd * 0.9, col, mid, side * 15))
+    stems = layers["back"][0] + layers["back"][1] + layers["front"][0] + layers["front"][1]
+    return grass + stems
 
 
 def keyline(ink, inset=34, a0=24, a1=156):

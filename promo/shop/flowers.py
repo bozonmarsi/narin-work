@@ -116,3 +116,71 @@ def on_stem(head, x, ground, h, side=1, leaf_side=None):
     ls = side if leaf_side is None else leaf_side
     # the stem stops under the head, so the hole in the middle stays see-through
     return [stem(x, ground, hx, hy + 20, 7), leaf(x, ground - h * 0.4, 48, -90 + ls * 55, LEAF_B)], (hx, hy)
+
+
+# ---------- more kinds, two-tone (a coloured middle instead of the hole) ----------
+def _disc(x, y, r, color):
+    return f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r:.1f}" fill="{color}"/>'
+
+
+def cosmos(x, y, d, color, center, rot=0.0):
+    """Eight broad notched petals and a round middle."""
+    R = d / 2
+    return f'<path fill="{color}" d="{_petals(x, y, R, 8, 0.3, rot)}"/>' + _disc(x, y, R * 0.24, center)
+
+
+def gerbera(x, y, d, color, center, rot=0.0):
+    """Many thin petals around a big middle with a ring."""
+    R = d / 2
+    return (f'<path fill="{color}" d="{_petals(x, y, R, 18, 0.12, rot, notch=False)}"/>'
+            + _disc(x, y, R * 0.4, center) + _disc(x, y, R * 0.22, color))
+
+
+def anemone(x, y, d, color, center, rot=0.0):
+    """Six round, overlapping petals and a dark middle."""
+    R, out = d / 2, []
+    for i in range(6):
+        t = math.radians(rot) + 2 * math.pi * i / 6
+        out.append(_disc(x + R * 0.5 * math.cos(t), y + R * 0.5 * math.sin(t), R * 0.48, color))
+    return "".join(out) + _disc(x, y, R * 0.28, center)
+
+
+def tiny_cluster(x, ground, h, color, center, side=1):
+    """A branched stem with small five-petal flowers (forget-me-not)."""
+    tx, ty = x + side * 8, ground - h
+    out = [stem(x, ground, tx, ty + 10, 6), leaf(x, ground - h * 0.35, 40, -90 + side * 55, LEAF_A)]
+    spots = [(0, 0), (-24, 14), (22, 10), (-10, 34), (16, 36), (-30, 40), (30, 34)]
+    for i, (dx, dy) in enumerate(spots):
+        fx, fy = tx + dx, ty + dy
+        if i:
+            out.append(f'<path d="M{tx:.1f} {ty + 30:.1f} L{fx:.1f} {fy:.1f}" stroke="{STEM}" stroke-width="3" stroke-linecap="round"/>')
+    for dx, dy in spots:
+        out.append(f'<path fill="{color}" d="{_petals(tx + dx, ty + dy, 14, 5, 0.42, -90)}"/>' + _disc(tx + dx, ty + dy, 3.5, center))
+    return out
+
+
+def buds(x, ground, h, color, side=1):
+    """A curving stem with three round buds."""
+    tx, ty = x + side * 26, ground - h
+    out = [f'<path d="M{x:.1f} {ground:.1f} Q{x:.1f} {ground - h * 0.8:.1f} {tx:.1f} {ty:.1f}" fill="none" '
+           f'stroke="{STEM}" stroke-width="6" stroke-linecap="round"/>', leaf(x, ground - h * 0.3, 42, -90 - side * 55, LEAF_B)]
+    for f, r in ((1.0, 15), (0.7, 12), (0.45, 10)):
+        bx = (1 - f) ** 2 * x + 2 * (1 - f) * f * x + f * f * tx
+        by = (1 - f) ** 2 * ground + 2 * (1 - f) * f * (ground - h * 0.8) + f * f * ty
+        ox = side * (16 if f < 1 else 0)
+        out.append(f'<path d="M{bx:.1f} {by:.1f} L{bx + ox:.1f} {by - 8:.1f}" stroke="{STEM}" stroke-width="4" stroke-linecap="round"/>')
+        out.append(f'<ellipse cx="{bx + ox:.1f}" cy="{by - 8 - r * 0.6:.1f}" rx="{r * 0.85:.1f}" ry="{r:.1f}" fill="{color}"/>')
+        out.append(f'<path d="M{bx + ox - r * 0.6:.1f} {by - 8:.1f} Q{bx + ox:.1f} {by - 8 - r * 0.9:.1f} {bx + ox + r * 0.6:.1f} {by - 8:.1f}Z" fill="{LEAF_A}"/>')
+    return out
+
+
+def leafy(x, ground, h):
+    """A clump of big round-tipped leaves, like a house plant."""
+    out = []
+    for ang, L, col in ((-150, h * 0.8, LEAF_A), (-120, h, LEAF_B), (-90, h * 1.1, LEAF_A), (-60, h, LEAF_B), (-30, h * 0.8, LEAF_A)):
+        w = L * 0.42
+        out.append(f'<path transform="translate({x:.1f} {ground:.1f}) rotate({ang})" fill="{col}" '
+                   f'd="M0 0 C{L * 0.25:.1f} {-w:.1f} {L * 0.9:.1f} {-w:.1f} {L:.1f} 0 C{L * 0.9:.1f} {w:.1f} {L * 0.25:.1f} {w:.1f} 0 0Z"/>')
+        out.append(f'<path transform="translate({x:.1f} {ground:.1f}) rotate({ang})" d="M{L * 0.15:.1f} 0 L{L * 0.8:.1f} 0" '
+                   f'stroke="#E6F4EA" stroke-width="3" stroke-linecap="round" opacity="0.7"/>')
+    return out
