@@ -280,7 +280,7 @@ def sprig(x, ground, h, side):
 
 
 def garden(max_h, inset=34):
-    """A mirrored garden along the bottom edge: a back and a front row of many kinds of flowers, leaves and grass."""
+    """A mixed garden along the bottom edge: a back and a front row of many kinds of flowers, leaves and grass."""
     grass = []
     rnd = random.Random(8)
     for x in range(40, AW - 40, 13):
@@ -290,48 +290,73 @@ def garden(max_h, inset=34):
         lean = rnd.uniform(-7, 7)
         grass.append(f'<path d="M{x - 4} {AH + 1} Q{x + lean * 0.3:.1f} {AH - h * 0.6:.1f} {x + lean:.1f} {AH - h:.1f} '
                      f'Q{x + 1 + lean * 0.3:.1f} {AH - h * 0.5:.1f} {x + 4} {AH + 1}Z" fill="{rnd.choice([LEAF_GREEN, LEAF_LIGHT, "#3DAF5C"])}"/>')
-    # two rows, mirrored from the middle: a taller back row and a lower front row between its plants.
-    # Every kind is drawn in the label-daisy style (flowers.py); many are two-tone.
-    CORAL, WHITE_, MINT = "#FF7C77", "#FFFFFF", "#19C98A"
-    back = [("gerbera", YELLOW, CORAL, 1.0), ("cosmos", LILAC, PURPLE, 0.86), ("anemone", RED, BLUE, 0.94),
-            ("daisy", BLUE, None, 0.8), ("cluster", COBALT, YELLOW, 0.9), ("gerbera", CORAL, YELLOW, 0.95),
-            ("cosmos", WHITE_, YELLOW, 0.82), ("bells", PURPLE, None, 0.8), ("daisy", YELLOW, None, 0.74)]
-    front = [("leafy", None, None, 0.5), ("five", YELLOW, None, 0.5), ("pompom", LILAC, None, 0.56),
-             ("buds", CORAL, None, 0.6), ("anemone", WHITE_, PURPLE, 0.46), ("leafy", None, None, 0.48),
-             ("five", RED, None, 0.5), ("pompom", YELLOW, None, 0.52), ("buds", PURPLE, None, 0.5)]
-    step, d = 80, 64
+    # two rows of mixed flowers, not mirrored: each spot takes the next kind/colour pair from a shuffled deck,
+    # never the same kind or the same main colour as its left neighbour. Kinds are drawn in flowers.py.
+    CORAL, WHITE_ = "#FF7C77", "#FFFFFF"
+    combos = [("gerbera", YELLOW, CORAL), ("gerbera", CORAL, YELLOW), ("gerbera", PURPLE, YELLOW), ("gerbera", WHITE_, CORAL),
+              ("cosmos", LILAC, PURPLE), ("cosmos", WHITE_, YELLOW), ("cosmos", CORAL, YELLOW), ("cosmos", YELLOW, RED),
+              ("anemone", RED, BLUE), ("anemone", WHITE_, PURPLE), ("anemone", PURPLE, YELLOW), ("anemone", COBALT, WHITE_),
+              ("daisy", BLUE, None), ("daisy", YELLOW, None), ("daisy", RED, None), ("daisy", PURPLE, None), ("daisy", LILAC, None),
+              ("five", YELLOW, None), ("five", RED, None), ("five", WHITE_, None), ("five", LILAC, None),
+              ("pompom", LILAC, None), ("pompom", YELLOW, None), ("pompom", CORAL, None), ("pompom", PURPLE, None),
+              ("cluster", COBALT, YELLOW), ("cluster", LILAC, YELLOW), ("cluster", WHITE_, YELLOW),
+              ("buds", CORAL, None), ("buds", PURPLE, None), ("buds", YELLOW, None),
+              ("bells", PURPLE, None), ("bells", COBALT, None)]
+    deck = []
+
+    def draw_next(prev):
+        nonlocal deck
+        for _ in range(200):
+            if not deck:
+                deck = combos[:]
+                rnd.shuffle(deck)
+            c = deck.pop()
+            if prev is None or (c[0] != prev[0] and c[1] != prev[1]):
+                return c
+            deck.insert(0, c)
+        return deck.pop()
+
+    step, d = 76, 64
     layers = {"back": ([], []), "front": ([], [])}
-    for row, plan, off in (("back", back, 0.0), ("front", front, 0.5)):
+    for row, x0, hmin, hmax in (("back", 60, 0.78, 1.0), ("front", 60 + step / 2, 0.42, 0.6)):
         st, hd = layers[row]
-        for k, (kind, col, mid, hf) in enumerate(plan):
-            for side in ((1,) if k + off == 0 else (-1, 1)):
-                x, h = AW / 2 + side * (k + off) * step, max_h * hf
-                dd = d if row == "back" else d * 0.82
-                if not arch_inner(x, AH - h, dd / 2, inset):
-                    continue
-                if kind == "leafy":
-                    st += FL.leafy(x, AH + 2, h * 0.75)
-                elif kind == "bells":
-                    st += FL.bellflower(x - side * 14, AH + 2, h, col, side)
-                elif kind == "cluster":
-                    st += FL.tiny_cluster(x, AH + 2, h, col, mid, side)
-                elif kind == "buds":
-                    st += FL.buds(x, AH + 2, h, col, side)
+        prev, x, n = None, x0, 0
+        while x < AW - 40:
+            xx = x + rnd.uniform(-12, 12)
+            h = max_h * rnd.uniform(hmin, hmax)
+            dd = d * (1 if row == "back" else 0.82)
+            x += step
+            n += 1
+            if not arch_inner(xx, AH - h, dd / 2, inset):
+                continue
+            if row == "front" and n % 5 == 3:
+                st += FL.leafy(xx, AH + 2, h * 0.75)
+                continue
+            kind, col, mid = c = draw_next(prev)
+            prev = c
+            side = rnd.choice((-1, 1))
+            if kind == "bells":
+                st += FL.bellflower(xx - side * 14, AH + 2, h, col, side)
+            elif kind == "cluster":
+                st += FL.tiny_cluster(xx, AH + 2, h, col, mid, side)
+            elif kind == "buds":
+                st += FL.buds(xx, AH + 2, h, col, side)
+            else:
+                els, (hx, hy) = FL.on_stem(None, xx, AH + 2, h, side)
+                st += els
+                rot = rnd.uniform(0, 40)
+                if kind == "daisy":
+                    hd.append(daisy(hx, hy, dd, col, rot))
+                elif kind == "five":
+                    hd.append(FL.five_petal(hx, hy, dd * 0.95, col, rot))
+                elif kind == "pompom":
+                    hd.append(FL.pompom(hx, hy, dd, col, rot))
+                elif kind == "cosmos":
+                    hd.append(FL.cosmos(hx, hy, dd, col, mid, rot))
+                elif kind == "gerbera":
+                    hd.append(FL.gerbera(hx, hy, dd * 1.05, col, mid, rot))
                 else:
-                    els, (hx, hy) = FL.on_stem(None, x, AH + 2, h, side)
-                    st += els
-                    if kind == "daisy":
-                        hd.append(daisy(hx, hy, dd, col, side * 8))
-                    elif kind == "five":
-                        hd.append(FL.five_petal(hx, hy, dd * 0.95, col, side * 12))
-                    elif kind == "pompom":
-                        hd.append(FL.pompom(hx, hy, dd, col))
-                    elif kind == "cosmos":
-                        hd.append(FL.cosmos(hx, hy, dd, col, mid, side * 10))
-                    elif kind == "gerbera":
-                        hd.append(FL.gerbera(hx, hy, dd * 1.05, col, mid))
-                    else:
-                        hd.append(FL.anemone(hx, hy, dd * 0.9, col, mid, side * 15))
+                    hd.append(FL.anemone(hx, hy, dd * 0.9, col, mid, rot))
     stems = layers["back"][0] + layers["back"][1] + layers["front"][0] + layers["front"][1]
     return grass + stems
 
