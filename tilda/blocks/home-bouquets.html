@@ -219,12 +219,13 @@
   if (!root || root.__nbq) return; root.__nbq = 1;
   var SB = 'https://wqburlamuipxmenqsjnx.supabase.co/rest/v1/rpc/';
   var KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxYnVybGFtdWlweG1lbnFzam54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTY2MTIsImV4cCI6MjA4ODgzMjYxMn0.NYnQoorm3z5gkjr954JdYhzDNmYfCjefzK1ddq3cflw';
-  var PART_KYTICE = '984982781784', PART_KOVKY = '135670060784';
+  var PART_KYTICE = '984982781784', PART_KOVKY = '135670060784', PART_VANOCE = '358159892734';
   // Pruvodce je docasne vypnuty (majitel chce novy design). Okno velikosti pro kytice v katalogu bezi dal.
   var GUIDE_ON = true;
 
   // Tagy podle uid produktu v Tilde. Kovky bez vlastniho radku berou DEF_KOVKA.
   var TAGS = {
+    '895726974854': { o: ['vanoce'], k: ['maminka', 'babicka', 'kolegyne', 'sebe'], n: ['slavnostni'] },
     '854913749674': { o: ['vanoce', 'podekovani', 'jentak'], k: ['maminka', 'kolegyne', 'kamaradka'], n: ['slavnostni'] },
     '470555828164': { o: ['vanoce', 'narozeniny', 'podekovani'], k: ['maminka', 'babicka', 'kolegyne'], n: ['jemna'] },
     '337106830694': { o: ['laska', 'narozeniny', 'omluva'], k: ['partnerka', 'maminka'], n: ['elegantni'] },
@@ -560,7 +561,7 @@
 
   if (window.__nbqMock) return start(window.__nbqMock.kytice, window.__nbqMock.kovky);
   Promise.all([
-    part(PART_KYTICE),
+    Promise.all([part(PART_KYTICE), part(PART_VANOCE)]).then(function (r) { return r[0].concat(r[1]); }),
     part(PART_KOVKY),
     Promise.resolve(window.__narinCat || fetch(SB + 'get_catalog_page_data?apikey=' + KEY).then(function (r) { return r.ok ? r.json() : null; })).catch(function () { return null; })
   ]).then(function (res) {

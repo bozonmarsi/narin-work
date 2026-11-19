@@ -125,6 +125,19 @@ html.narin-cat-on .js-store-grid-cont .t-store__card:not([data-narin-seen]) { di
 .narin-cat-promo-section.theme-atelier .t1002__addBtn svg path { stroke: #219c44 !important; }
 .narin-cat-promo-section.theme-atelier .t1002__addBtn_active svg path, .narin-cat-promo-section.theme-atelier .t1002__addBtn:hover svg path { fill: #219c44 !important; }
 /* Stabilized flowers: beige strip, so its head is dark text instead of white; brown names, prices and buttons. */
+.narin-cat-promo-section.theme-xmas { position: relative; overflow: hidden; background-color: #123d27; background-image: radial-gradient(circle at 12% 18%, rgba(255,255,255,.55) 0 1.5px, transparent 2.5px), radial-gradient(circle at 78% 12%, rgba(255,255,255,.45) 0 1.2px, transparent 2.2px), radial-gradient(circle at 42% 8%, rgba(242,200,111,.9) 0 1.6px, transparent 2.6px), radial-gradient(circle at 92% 46%, rgba(255,255,255,.4) 0 1.3px, transparent 2.3px), radial-gradient(circle at 6% 70%, rgba(242,200,111,.8) 0 1.4px, transparent 2.4px), radial-gradient(circle at 60% 30%, rgba(255,255,255,.35) 0 1px, transparent 2px), radial-gradient(120% 80% at 100% 0%, rgba(201,40,46,.45), transparent 60%), radial-gradient(90% 70% at 0% 100%, rgba(242,200,111,.18), transparent 60%); background-size: 180px 160px, 220px 190px, 260px 210px, 200px 230px, 240px 200px, 150px 170px, 100% 100%, 100% 100%; }
+.narin-cat-promo-section.theme-xmas::before { content: '\2605'; position: absolute; right: 18px; top: 10px; font-size: 54px; line-height: 1; color: rgba(242,200,111,.22); pointer-events: none; }
+.narin-cat-promo-section.theme-xmas .narin-cat-promo-name { color: #f2c86f; }
+.narin-cat-promo-section.theme-xmas .narin-cat-promo-cta, .narin-cat-promo-section.theme-xmas .narin-cat-promo-caption { color: #f5efe2; }
+.narin-cat-promo-section.theme-xmas .t-store__card { background: #fff; border-radius: 18px; overflow: hidden; }
+.narin-cat-promo-section.theme-xmas .js-product-name { color: #123d27 !important; }
+.narin-cat-promo-section.theme-xmas .js-product-price, .narin-cat-promo-section.theme-xmas .t-store__card__price-value, .narin-cat-promo-section.theme-xmas .t-store__card__price, .narin-cat-promo-section.theme-xmas .t-store__card__price-currency { color: #b3262b !important; }
+.narin-cat-promo-section.theme-xmas [class*="t-btnflex"]:not(.t1002__addBtn),
+.narin-cat-promo-section.theme-xmas [class*="t-btnflex"]:not(.t1002__addBtn):hover { background-color: #b3262b !important; background-image: none !important; color: #fff !important; }
+.narin-cat-promo-section.theme-xmas .t1002__addBtn, .narin-cat-promo-section.theme-xmas .t1002__addBtn_active { border-color: #b3262b !important; }
+.narin-cat-promo-section.theme-xmas .t1002__addBtn svg path { stroke: #b3262b !important; }
+.narin-cat-promo-section.theme-xmas .t1002__addBtn_active svg path, .narin-cat-promo-section.theme-xmas .t1002__addBtn:hover svg path { fill: #b3262b !important; }
+.narin-cat-promo-section.theme-xmas .t-store__card__imgwrapper, .narin-cat-promo-section.theme-xmas .t-store__card__bgimg, .narin-cat-promo-section.theme-xmas .js-product-img { background-color: #fff; }
 .narin-cat-promo-section.theme-buket { background: #e8322e; }
 .narin-cat-promo-section.theme-buket .narin-cat-promo-name, .narin-cat-promo-section.theme-buket .narin-cat-promo-cta, .narin-cat-promo-section.theme-buket .narin-cat-promo-caption { color: #fff; }
 .narin-cat-promo-section.theme-buket .t-store__card { background: #fff; border-radius: 18px; overflow: hidden; }
@@ -208,6 +221,8 @@ html.narin-cat-on .js-store-grid-cont .t-store__card:not([data-narin-seen]) { di
 
     var TABS = [
         { key: 'all', label: cz('V&#353;e'), category: 'ohapka', caption: null },
+        // Seasonal tab: until is the first day it disappears, noStrip because the Vanoce strip below covers it.
+        { key: 'vanoce', label: cz('V&#225;noce'), category: 'vanoce', optional: true, noStrip: true, until: '2026-12-27', caption: cz('V&#225;no&#269;n&#237; v&#283;nce a dekorace.') },
         { key: 'buket', label: 'Kytice', category: 'buket', theme: 'buket', caption: cz('Autorsk&#233; kytice ve velikostech S, M a L.') },
         { key: 'banky', label: 'Kovky', category: 'banky', caption: cz('Kv&#283;tiny naaran&#382;ovan&#233; p&#345;&#237;mo ve v&#225;ze, p&#345;ipraven&#233; k p&#345;ed&#225;n&#237;.') },
         { key: 'ohapka', label: cz('N&#225;ru&#269;e'), category: 'ohapka', caption: null },
@@ -226,10 +241,19 @@ html.narin-cat-on .js-store-grid-cont .t-store__card:not([data-narin-seen]) { di
     // the Atelier comes first, then the gifts. The link of a strip opens its own page.
     // enabled false hides a strip (the gifts are off for now).
     var EXTRA_STRIPS = [
+        // Christmas strip: first of all strips (lead), dark green with gold, wreaths first, then the Christmas decor of Darky.
+        { key: 'vanoce', enabled: true, lead: true, until: '2026-12-27', label: cz('V&#225;noce'), theme: 'xmas', max: 12, colors: true, first: /^V\u011bnec|^Venec/i, parts: ['358159892734', '993821239224'], caption: cz('V&#283;nce na dve&#345;e a v&#225;no&#269;n&#237; dekorace pro sv&#225;te&#269;n&#237; domov.') },
         { key: 'atelier', enabled: true, label: cz('Ateli&#233;r'), theme: 'atelier', href: '/atelier', parts: ['485654870754', '506105163064'], rank: [/jednocepel|sekator/, /nuzk/, /^(?!.*(kartac|rovnat)).*(kenzan|vaz|vas)/], caption: cz('Pom&#367;cky pro p&#233;&#269;i o kv&#283;tiny a aran&#382;ov&#225;n&#237;.') },
         { key: 'darky', enabled: true, label: cz('D&#225;rky'), theme: 'gift', href: '/darky', max: 10, colors: true, first: /^V.za /, parts: ['993821239224', '781578738204', '213343836974', '180608331724', '959356544794'], caption: cz('Mal&#233; radosti ke kytici i bez d&#367;vodu.') },
     ];
-    var EXTRA_CACHE_KEY = 'narin_extra_strips_v3';
+    // seasonal tabs and strips switch themselves off on their until day
+    (function () {
+        var now = Date.now();
+        function live(t) { return !t.until || now < new Date(t.until + 'T00:00:00').getTime(); }
+        TABS = TABS.filter(live);
+        EXTRA_STRIPS = EXTRA_STRIPS.filter(live);
+    })();
+    var EXTRA_CACHE_KEY = 'narin_extra_strips_v4';
     var EXTRA_MAX_AGE_MS = 30 * 60 * 1000;
     var extraItems = {};
 
@@ -543,7 +567,7 @@ html.narin-cat-on .js-store-grid-cont .t-store__card:not([data-narin-seen]) { di
 
     function insertPromoSections(visibleCards, allCards) {
         if (state.activeTab !== 'all') return;
-        var otherTabs = TABS.filter(function (t) { return t.category !== 'ohapka'; });
+        var otherTabs = TABS.filter(function (t) { return t.category !== 'ohapka' && !t.noStrip; });
         if (!otherTabs.length) return;
         // Every category with available products gets exactly one strip, in tab
         // order, after every fourth card. The candidates of each category are
@@ -601,6 +625,7 @@ html.narin-cat-on .js-store-grid-cont .t-store__card:not([data-narin-seen]) { di
             if (cards.length) queue.push({ tab: tab, cards: cards });
         });
         otherTabs.filter(function (t) { return t.stripLast; }).forEach(queueTab);
+        queue = queue.filter(function (q) { return q.tab.lead; }).concat(queue.filter(function (q) { return !q.tab.lead; }));
         for (var i = 3; i < visibleCards.length && queue.length; i += 4) {
             var item = queue.shift();
             visibleCards[i].insertAdjacentElement('afterend', buildPromoSection(item.tab, item.cards));
