@@ -242,7 +242,7 @@ html.narin-cat-on .js-store-grid-cont .t-store__card:not([data-narin-seen]) { di
     // enabled false hides a strip (the gifts are off for now).
     var EXTRA_STRIPS = [
         // Christmas strip: first of all strips (lead), dark green with gold, wreaths first, then the Christmas decor of Darky.
-        { key: 'vanoce', enabled: true, lead: true, until: '2026-12-27', label: cz('V&#225;noce'), theme: 'xmas', max: 12, colors: true, first: /^V\u011bnec|^Venec/i, parts: ['358159892734', '993821239224'], caption: cz('V&#283;nce na dve&#345;e a v&#225;no&#269;n&#237; dekorace pro sv&#225;te&#269;n&#237; domov.') },
+        { key: 'vanoce', enabled: true, lead: true, until: '2026-12-27', label: cz('V&#225;noce'), theme: 'xmas', max: 12, colors: true, rank: [/^venec/, /amarylis/], parts: ['358159892734', '993821239224'], caption: cz('V&#283;nce na dve&#345;e a v&#225;no&#269;n&#237; dekorace pro sv&#225;te&#269;n&#237; domov.') },
         { key: 'atelier', enabled: true, label: cz('Ateli&#233;r'), theme: 'atelier', href: '/atelier', parts: ['485654870754', '506105163064'], rank: [/jednocepel|sekator/, /nuzk/, /^(?!.*(kartac|rovnat)).*(kenzan|vaz|vas)/], caption: cz('Pom&#367;cky pro p&#233;&#269;i o kv&#283;tiny a aran&#382;ov&#225;n&#237;.') },
         { key: 'darky', enabled: true, label: cz('D&#225;rky'), theme: 'gift', href: '/darky', max: 10, colors: true, first: /^V.za /, parts: ['993821239224', '781578738204', '213343836974', '180608331724', '959356544794'], caption: cz('Mal&#233; radosti ke kytici i bez d&#367;vodu.') },
     ];
