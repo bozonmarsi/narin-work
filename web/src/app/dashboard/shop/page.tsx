@@ -107,6 +107,7 @@ const PICKUP_TIMES: string[] = (() => {
 })();
 
 const CATEGORY_OPTIONS = [
+  { value: "vanoce", label: "Vánoce", color: "bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 ring-red-200 dark:ring-red-500/30" },
   { value: "buket", label: "Букеты", color: "bg-pink-50 dark:bg-pink-500/10 text-pink-700 dark:text-pink-400 ring-pink-200 dark:ring-pink-500/30" },
   { value: "set", label: "Сеты", color: "bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 ring-purple-200 dark:ring-purple-500/30" },
   { value: "ohapka", label: "Náruče", color: "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 ring-amber-200 dark:ring-amber-500/30" },
@@ -1157,7 +1158,7 @@ export default function ShopPage() {
       if (AUTO_STOCK_CATEGORIES.has(p.category ?? "")) return (p.quantity ?? 0) - (reserved[p.id] ?? 0) > 0;
       // Кованки и кытицы: если количество задано — "в наличии" по нему (как
       // на сайте), иначе по ручному переключателю product_availability.
-      if ((p.category === "banky" || p.category === "buket") && p.quantity != null) return p.quantity > 0;
+      if ((p.category === "banky" || p.category === "buket" || p.category === "vanoce") && p.quantity != null) return p.quantity > 0;
       return availableToday.has(p.name);
     },
     [reserved, availableToday],

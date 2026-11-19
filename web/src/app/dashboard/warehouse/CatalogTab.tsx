@@ -27,6 +27,7 @@ type WriteOffTarget = { id: string | null; remaining: number; productName: strin
 // категорию одним и тем же набором значений везде, откуда бы товар ни
 // добавили.
 const CATEGORY_OPTIONS = [
+  { value: "vanoce", label: "Vánoce" },
   { value: "buket", label: "Букеты" },
   { value: "set", label: "Сеты" },
   { value: "ohapka", label: "Náruče" },
