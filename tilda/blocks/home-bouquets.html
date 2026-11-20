@@ -185,7 +185,8 @@
 .nbq-add.ok{background:var(--ink)}
 .nbq-add.soon{background:var(--sky);color:var(--ink2);cursor:default}
 .nbq-add svg{width:18px;height:18px}
-.nbq-when{font-size:12.5px;color:var(--ink2);text-align:center;margin-top:-3px}
+.nbq-when{font-size:12.5px;color:var(--ink2);text-align:center;margin:-2px 0 0}
+.nbg-done p.nbq-when{font-size:13px;margin:-4px 0 12px}
 .nbq-when b{font-weight:600;color:var(--blue)}
 .nbq-when.tmr b{color:var(--ink)}
 @media (prefers-reduced-motion:reduce){.nbq *{transition:none!important}}
@@ -268,7 +269,14 @@
     if (!sizes.length) sizes.push({ size: '', price: num(p.price), uid: String(p.uid), img: img0, sku: p.sku || '' });
     var order = { S: 1, M: 2, L: 3 };
     sizes.sort(function (a, b) { return (order[a.size] || 9) - (order[b.size] || 9); });
-    return { priced: sizes.some(function (s) { return s.price > 0; }), uid: String(p.uid), name: p.title, text: plainText(p.text || p.descr), url: p.url, kind: kind, sizes: sizes, tags: TAGS[String(p.uid)] || (kind === 'kovka' ? DEF_KOVKA : { o: [], k: [], n: [] }) };
+    return { priced: sizes.some(function (s) { return s.price > 0; }), uid: String(p.uid), name: p.title, text: plainText(p.text || p.descr), url: p.url, kind: kind, bq: !!p.__bq, sizes: sizes, tags: TAGS[String(p.uid)] || (kind === 'kovka' ? DEF_KOVKA : { o: [], k: [], n: [] }) };
+  }
+
+  // ---------- doruceni: kytice dnes, velikost S az zitra ----------
+  function whenOf(it, size) { if (!it.bq) return ''; return size === 'S' && it.sizes.length > 1 ? 'tmr' : 'td'; }
+  function whenHtml(it, size) {
+    var w = whenOf(it, size); if (!w) return '';
+    return '<p class="nbq-when' + (w === 'tmr' ? ' tmr' : '') + '">Doručíme <b>' + (w === 'tmr' ? 'zítra' : 'dnes') + '</b></p>';
   }
 
   // ---------- karta ----------
@@ -289,6 +297,7 @@
           (sizes.length > 1 ? '<div class="nbq-sizes">' + sizes.map(function (x) {
             return '<button type="button" class="nbq-size' + (x.size === cur ? ' sel' : '') + '" data-s="' + esc(x.size) + '"><b>' + esc(x.size) + '</b><em>' + (x.price > 0 ? kc(x.price) : 'brzy') + '</em></button>';
           }).join('') + '</div>' : '') +
+          (s.price > 0 ? whenHtml(it, s.size) : '') +
           (s.price > 0 ? '<button type="button" class="nbq-add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12l-1 13H7L6 7z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>Do košíku · ' + kc(s.price) + '</button>' : '<button type="button" class="nbq-add soon" disabled>Cena brzy</button>') +
         '</div>';
     }
@@ -485,7 +494,7 @@
     el.innerHTML = '<p class="nbg-q">' + esc(it.name) + '</p>' + (it.text ? '<p>' + esc(it.text) + '</p>' : '') +
       (it.sizes.length > 1 ? '<div class="nbq-sizes">' + it.sizes.map(function (x) {
         return '<button type="button" class="nbq-size' + (x.size === focusSize ? ' sel' : '') + '" data-s="' + esc(x.size) + '"><b>' + esc(x.size) + '</b><em>' + kc(x.price) + '</em></button>';
-      }).join('') + '</div>' : '') +
+      }).join('') + '</div>' : '') + whenHtml(it, focusSize) +
       '<button type="button" class="nbq-add"><i class="ti ti-shopping-bag" style="font-size:19px"></i>Do košíku · ' + kc(sz(it, focusSize).price) + '</button>';
     el.addEventListener('click', function (e) {
       var t = e.target.closest('.nbq-size');
@@ -562,7 +571,7 @@
 
   if (window.__nbqMock) return start(window.__nbqMock.kytice, window.__nbqMock.kovky);
   Promise.all([
-    Promise.all([part(PART_KYTICE), part(PART_VANOCE)]).then(function (r) { return r[0].concat(r[1]); }),
+    Promise.all([part(PART_KYTICE), part(PART_VANOCE)]).then(function (r) { r[0].forEach(function (p) { p.__bq = 1; }); return r[0].concat(r[1]); }),
     part(PART_KOVKY),
     Promise.resolve(window.__narinCat || fetch(SB + 'get_catalog_page_data?apikey=' + KEY).then(function (r) { return r.ok ? r.json() : null; })).catch(function () { return null; })
   ]).then(function (res) {

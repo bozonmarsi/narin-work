@@ -1043,6 +1043,11 @@ html.narin-cat-on .js-store-grid-cont .t-store__card:not([data-narin-seen]) { di
         });
         unsourceableNames = new Set((data.unsourceable || []).map(normalize));
         availableNames = new Set((data.available || []).map(normalize));
+        // Kytice (category buket) are made every day: always delivered today
+        // (size S only tomorrow, shown in the size sheet).
+        (data.tags || []).forEach(function (row) {
+            if (row.category === 'buket') availableNames.add(normalize(row.product_name));
+        });
         specialNames = new Set((data.special || []).map(normalize));
         (data.badges || []).forEach(function (row) {
             badgeMap[normalize(row.product_name)] = row;
