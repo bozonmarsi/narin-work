@@ -226,6 +226,14 @@ export default function MatchingPage() {
     await load();
     setBusy(null);
   }
+  async function scanNow() {
+    setBusy("scan");
+    setError(null);
+    const { data, error: fnErr } = await createClient().functions.invoke("vanvliet-stock-scan", { body: {} });
+    if (fnErr || data?.ok === false) setError(fnErr?.message ?? "Сканер Van Vliet не ответил");
+    await load();
+    setBusy(null);
+  }
   function review(a: Alias, action: string) {
     let note: string | null = null;
     if (action === "reject") {
@@ -265,12 +273,21 @@ export default function MatchingPage() {
             проверенным связям; себестоимость = цена стебля × 1,21 (DPH) × штук в охапке.
           </p>
         </div>
+        <div className="flex gap-2">
+        <button
+          onClick={scanNow}
+          disabled={busy !== null}
+          className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm font-medium hover:border-accent hover:text-accent disabled:opacity-50 dark:border-zinc-700"
+        >
+          {busy === "scan" ? "Читаю каталог…" : "↻ Обновить каталог VV"}
+        </button>
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Поиск: наш товар или название VV"
           className="w-64 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
         />
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">
