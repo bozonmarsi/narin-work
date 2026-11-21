@@ -215,7 +215,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   pathname.startsWith("/dashboard/matching") ? "bg-accent text-white" : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 }`}
               >
-                Соответствия
+                Цветы и цены
               </Link>
               <Link
                 href="/dashboard/users"

@@ -25,7 +25,9 @@ type Product = {
   image_url: string | null;
   price: number | null;
   order_unit_size: number | null;
+  price_markup_multiplier: number | null;
 };
+type Kept = { product_sticker_id: string; action: string; suggested: number | null; old_price: number | null; at: string };
 type Alias = {
   id: string;
   alias: string;
@@ -48,7 +50,7 @@ type Variant = {
   stock: number | null;
   last_in_stock_at: string | null;
 };
-type Filter = "review" | "conflict" | "nolink" | "all";
+type Filter = "prices" | "review" | "conflict" | "nolink" | "all";
 
 const VARIANT_COLS = "sig, product, core, color, quality, grower, photo, order_per, price, stock, last_in_stock_at";
 const kc = (n: number) => `${Math.round(n).toLocaleString("cs-CZ")} Kč`;
@@ -56,6 +58,9 @@ const withDph = (n: number) => (n * DPH).toFixed(1).replace(".", ",");
 const coreOf = (a: Alias) => a.alias.trim().toLowerCase();
 const isChecked = (a: Alias) => a.status === "approved" && !!a.reviewed_at;
 const toCheck = (a: Alias) => a.status === "suggested" || (a.status === "approved" && !a.reviewed_at);
+const K_OPTIONS = [2, 2.2, 2.5, 3];
+const THRESHOLD = 0.1;
+const roundUp10 = (n: number) => Math.ceil(n / 10) * 10;
 
 export default function MatchingPage() {
   const { profile } = useDashboard();
@@ -65,7 +70,10 @@ export default function MatchingPage() {
   const [blocks, setBlocks] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<Filter>("review");
+  const [filter, setFilter] = useState<Filter>("prices");
+  const [lastDecision, setLastDecision] = useState<Map<string, Kept>>(new Map());
+  const [busyPrice, setBusyPrice] = useState<string | null>(null);
+  const [custom, setCustom] = useState<Record<string, string>>({});
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [scanning, setScanning] = useState(false);
@@ -76,13 +84,19 @@ export default function MatchingPage() {
   const load = useCallback(async () => {
     const supabase = createClient();
     const { data: sup } = await supabase.from("suppliers").select("id").eq("name", "Van Vliet").maybeSingle();
-    const [p, a, b] = await Promise.all([
-      supabase.from("product_stickers").select("id, product_name, image_url, price, order_unit_size").eq("category", "ohapka").eq("archived", false).order("product_name"),
+    const [p, a, b, pc] = await Promise.all([
+      supabase
+        .from("product_stickers")
+        .select("id, product_name, image_url, price, order_unit_size, price_markup_multiplier")
+        .eq("category", "ohapka")
+        .eq("archived", false)
+        .order("product_name"),
       supabase
         .from("product_name_aliases")
         .select("id, alias, product_sticker_id, status, source, note, reviewed_at")
         .eq("supplier_id", sup?.id ?? "00000000-0000-0000-0000-000000000000"),
       supabase.from("vv_variant_blocks").select("sig, product_sticker_id"),
+      supabase.from("price_changes").select("product_sticker_id, action, suggested, old_price, at").order("at", { ascending: false }).limit(1000),
     ]);
     if (p.error || a.error) {
       setError((p.error || a.error)?.message ?? "load_failed");
@@ -96,6 +110,9 @@ export default function MatchingPage() {
     setAliases(al);
     setVariants((vv ?? []) as Variant[]);
     setBlocks(new Set((b.data ?? []).map((x: { sig: string; product_sticker_id: string }) => `${x.product_sticker_id}#${x.sig}`)));
+    const last = new Map<string, Kept>();
+    for (const r of (pc.data ?? []) as Kept[]) if (!last.has(r.product_sticker_id)) last.set(r.product_sticker_id, r);
+    setLastDecision(last);
     setLoading(false);
   }, []);
 
@@ -135,7 +152,23 @@ export default function MatchingPage() {
       const stem = prices.length ? Math.min(...prices) : null;
       const stemMax = prices.length ? Math.max(...prices) : null;
       const cost = stem != null ? stem * DPH * (p.order_unit_size || 1) : null;
+      const k = p.price_markup_multiplier || 2.5;
+      const suggested = cost != null ? roundUp10(cost * k) : null;
+      const diff = suggested != null && p.price ? (suggested - p.price) / p.price : null;
+      // «оставить» гасит предложение, пока расчёт не уйдёт ещё больше чем на 10 % от того, что было отклонено
+      const dec = lastDecision.get(p.id);
+      const keptAway =
+        dec?.action === "kept" &&
+        dec.suggested != null &&
+        suggested != null &&
+        Number(dec.old_price) === Number(p.price) &&
+        Math.abs(suggested - Number(dec.suggested)) / Number(dec.suggested) <= THRESHOLD;
+      const proposal = suggested != null && diff != null && Math.abs(diff) > THRESHOLD && !keptAway;
       return {
+        k,
+        suggested,
+        diff,
+        proposal,
         list,
         stem,
         stemMax,
@@ -152,11 +185,12 @@ export default function MatchingPage() {
     const m = new Map<string, ReturnType<typeof summarize>>();
     for (const p of products) m.set(p.id, summarize(p));
     return m;
-  }, [products, aliasesByProduct, byCore, blocks, owners]);
+  }, [products, aliasesByProduct, byCore, blocks, owners, lastDecision]);
 
   const counts = useMemo(() => {
     const all = Array.from(infos.values());
     return {
+      prices: all.filter((i) => i.proposal).length,
       review: all.filter((i) => i.review).length,
       conflict: all.filter((i) => i.conflict).length,
       nolink: all.filter((i) => i.noLink).length,
@@ -169,6 +203,7 @@ export default function MatchingPage() {
     return products.filter((p) => {
       const i = infos.get(p.id)!;
       if (q && !decodeHtmlEntities(p.product_name).toLowerCase().includes(q) && !i.list.some((a) => a.alias.toLowerCase().includes(q))) return false;
+      if (filter === "prices") return i.proposal;
       if (filter === "review") return i.review;
       if (filter === "conflict") return i.conflict;
       if (filter === "nolink") return i.noLink;
@@ -218,6 +253,35 @@ export default function MatchingPage() {
       setError(err.message);
     }
   }
+  async function setK(p: Product, k: number) {
+    const before = products;
+    setProducts((list) => list.map((x) => (x.id === p.id ? { ...x, price_markup_multiplier: k } : x)));
+    const { error: err } = await createClient().from("product_stickers").update({ price_markup_multiplier: k }).eq("id", p.id);
+    if (err) {
+      setProducts(before);
+      setError(err.message);
+    }
+  }
+  async function decide(p: Product, action: "apply" | "keep", price?: number) {
+    const i = infos.get(p.id)!;
+    if (action === "apply" && price && p.price && !window.confirm(`${nameOf.get(p.id)}: ${kc(p.price)} → ${kc(price)} на сайте?`)) return;
+    setBusyPrice(p.id);
+    setError(null);
+    const { data, error: fnErr } = await createClient().functions.invoke("tilda-price", {
+      body: { product_id: p.id, action, price, suggested: i.suggested, cost: i.cost != null ? Math.round(i.cost) : null, stem: i.stem, k: i.k },
+    });
+    setBusyPrice(null);
+    if (fnErr || !data?.ok) {
+      setError(`Цена не изменена: ${data?.error ?? fnErr?.message ?? "ошибка"}`);
+      return;
+    }
+    const at = new Date().toISOString();
+    if (action === "apply" && price) setProducts((list) => list.map((x) => (x.id === p.id ? { ...x, price } : x)));
+    setLastDecision((m) =>
+      new Map(m).set(p.id, { product_sticker_id: p.id, action: action === "apply" ? "applied" : "kept", suggested: i.suggested, old_price: action === "apply" ? (price ?? null) : p.price, at }),
+    );
+    setCustom((c) => ({ ...c, [p.id]: "" }));
+  }
   async function scanNow() {
     setScanning(true);
     setError(null);
@@ -239,17 +303,18 @@ export default function MatchingPage() {
   if (loading) return <p className="p-6 text-sm text-zinc-500">Загружаю соответствия…</p>;
 
   const FILTERS: { key: Filter; label: string }[] = [
+    { key: "prices", label: "Цены" },
     { key: "review", label: "Проверить" },
     { key: "conflict", label: "Конфликты" },
     { key: "nolink", label: "Без связи" },
     { key: "all", label: "Все" },
   ];
-  const expandAll = filter === "review";
+  const expandAll = filter === "review" || filter === "prices";
 
   return (
     <div className="mx-auto max-w-5xl space-y-3 pb-16">
       <div className="flex flex-wrap items-center gap-2">
-        <h1 className="mr-auto text-lg font-semibold">Соответствия Van Vliet</h1>
+        <h1 className="mr-auto text-lg font-semibold">Цветы и цены</h1>
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -281,8 +346,8 @@ export default function MatchingPage() {
         </label>
       </div>
       <p className="text-[11px] text-zinc-500">
-        Себестоимость = самый дешёвый подтверждённый сорт в наличии × 1,21 DPH × штук в охапке. ✓ — проверено, ✗ — не он. Тап по фото — крупно и «вариант не
-        подходит».
+        Себестоимость = самый дешёвый подтверждённый сорт Van Vliet в наличии × 1,21 DPH × штук в охапке. Цена = себестоимость × k, вверх до 10 Kč.
+        Предложение появляется, когда она отличается от сайта больше чем на 10 %. ✓ — сорт проверен, ✗ — не он, тап по фото — «вариант не подходит».
       </p>
 
       {error && (
@@ -323,6 +388,12 @@ export default function MatchingPage() {
                     )}
                   </p>
                 </div>
+                {i.proposal && i.suggested != null && i.diff != null && (
+                  <span className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-semibold ${i.diff > 0 ? "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-200" : "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300"}`}>
+                    → {kc(i.suggested)} {i.diff > 0 ? "↑" : "↓"}
+                    {Math.abs(Math.round(i.diff * 100))} %
+                  </span>
+                )}
                 {pct != null && (
                   <span className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-semibold ${pct < 45 ? "bg-red-50 text-red-600 dark:bg-red-500/10" : "bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-400"}`}>
                     {pct} %
@@ -338,12 +409,62 @@ export default function MatchingPage() {
 
               {isOpen && (
                 <div className="space-y-1.5 px-2.5 pb-2.5">
-                  {i.stem != null && (
-                    <p className="text-[11px] text-zinc-500">
-                      стебель {i.stem === i.stemMax ? i.stem : `${i.stem}–${i.stemMax}`} Kč + 21 % = {withDph(i.stem)} Kč × {p.order_unit_size ?? 1} шт
-                      {i.margin != null ? ` · маржа ${kc(i.margin)}` : ""}
-                    </p>
-                  )}
+                  <div className="rounded-lg bg-zinc-50 px-2 py-1.5 text-xs dark:bg-zinc-900">
+                    <div className="flex flex-wrap items-center gap-1">
+                      <span className="mr-1 text-zinc-500">k</span>
+                      {K_OPTIONS.map((k) => (
+                        <button
+                          key={k}
+                          onClick={() => setK(p, k)}
+                          className={`rounded px-1.5 py-0.5 font-semibold ${i.k === k ? "bg-accent text-white" : "border border-zinc-300 text-zinc-600 dark:border-zinc-600 dark:text-zinc-300"}`}
+                        >
+                          ×{k}
+                        </button>
+                      ))}
+                      {!K_OPTIONS.includes(i.k) && <span className="rounded bg-accent px-1.5 py-0.5 font-semibold text-white">×{i.k}</span>}
+                    </div>
+                    {i.stem != null && i.cost != null ? (
+                      <p className="mt-1 text-zinc-500">
+                        {i.stem === i.stemMax ? i.stem : `${i.stem}–${i.stemMax}`} Kč + 21 % = {withDph(i.stem)} × {p.order_unit_size ?? 1} шт = себест. <b>{kc(i.cost)}</b> × {i.k} ={" "}
+                        <b className="text-zinc-800 dark:text-zinc-100">{i.suggested != null ? kc(i.suggested) : "—"}</b>
+                        {i.old ? " · по старой цене VV" : ""}
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-zinc-500">Нет цены Van Vliet — подтверди сорт ✓ ниже, и расчёт появится.</p>
+                    )}
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      <span>
+                        Сайт <b>{p.price ? kc(p.price) : "—"}</b>
+                        {i.margin != null && pct != null ? <span className="text-zinc-500"> · маржа {kc(i.margin)}</span> : null}
+                      </span>
+                      {i.suggested != null && p.price !== i.suggested && (
+                        <button
+                          disabled={busyPrice === p.id}
+                          onClick={() => decide(p, "apply", i.suggested!)}
+                          className="rounded bg-accent px-2 py-0.5 font-semibold text-white disabled:opacity-50"
+                        >
+                          {busyPrice === p.id ? "…" : `Поставить ${kc(i.suggested)}`}
+                        </button>
+                      )}
+                      <input
+                        value={custom[p.id] ?? ""}
+                        onChange={(e) => setCustom((c) => ({ ...c, [p.id]: e.target.value.replace(/[^0-9]/g, "") }))}
+                        placeholder="своя"
+                        inputMode="numeric"
+                        className="w-16 rounded border border-zinc-300 bg-white px-1.5 py-0.5 dark:border-zinc-600 dark:bg-zinc-950"
+                      />
+                      {custom[p.id] && (
+                        <button disabled={busyPrice === p.id} onClick={() => decide(p, "apply", Number(custom[p.id]))} className="rounded border border-accent px-2 py-0.5 font-semibold text-accent disabled:opacity-50">
+                          OK
+                        </button>
+                      )}
+                      {i.proposal && (
+                        <button disabled={busyPrice === p.id} onClick={() => decide(p, "keep")} className="rounded border border-zinc-300 px-2 py-0.5 text-zinc-600 disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-300">
+                          Оставить {p.price ? kc(p.price) : ""}
+                        </button>
+                      )}
+                    </div>
+                  </div>
                   {links.map((a) => {
                     const vs = byCore.get(coreOf(a)) ?? [];
                     const others = (owners.get(coreOf(a)) ?? []).filter((id) => id !== p.id);
