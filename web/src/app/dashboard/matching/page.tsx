@@ -347,7 +347,7 @@ export default function MatchingPage() {
                         </>
                       ) : null}
                       <span className="block text-xs text-zinc-500">
-                        стебель {i.stem} Kč + 21 % DPH = {(i.stem * DPH).toFixed(1)} Kč × {p.order_unit_size ?? 1} шт
+                        стебель {i.stem} Kč + 21 % DPH = {((i.stem ?? 0) * DPH).toFixed(1)} Kč × {p.order_unit_size ?? 1} шт
                         {i.primary ? " · по основному сорту" : " · самый дешёвый из связей"}
                         {i.stemIsOld ? " · последняя известная цена" : ""}
                       </span>
