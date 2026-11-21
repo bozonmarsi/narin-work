@@ -347,7 +347,8 @@ export default function MatchingPage() {
                         </>
                       ) : null}
                       <span className="block text-xs text-zinc-500">
-                        стебель {i.stem} Kč без DPH{i.primary ? " · по основному сорту" : " · самый дешёвый из связей"}
+                        стебель {i.stem} Kč + 21 % DPH = {(i.stem * DPH).toFixed(1)} Kč × {p.order_unit_size ?? 1} шт
+                        {i.primary ? " · по основному сорту" : " · самый дешёвый из связей"}
                         {i.stemIsOld ? " · последняя известная цена" : ""}
                       </span>
                     </p>
@@ -446,7 +447,13 @@ export default function MatchingPage() {
                                   {[v.color, v.quality, v.grower].filter(Boolean).join(" · ")}
                                 </p>
                                 <p>
-                                  {v.price != null ? <b>{v.price} Kč/шт</b> : "—"}
+                                  {v.price != null ? (
+                                    <>
+                                      <b>{(v.price * DPH).toFixed(1)} Kč/шт с DPH</b> <span className="text-zinc-500">({v.price} без)</span>
+                                    </>
+                                  ) : (
+                                    "—"
+                                  )}
                                   {v.order_per ? <span className="text-zinc-500"> · по {v.order_per}</span> : null}
                                 </p>
                                 <p className={has ? "text-green-600" : "text-zinc-500"}>
@@ -496,7 +503,7 @@ export default function MatchingPage() {
             <p className="mt-2 font-medium">{zoom.product}</p>
             <p className="text-sm text-zinc-500">{[zoom.color, zoom.quality, zoom.grower].filter(Boolean).join(" · ")}</p>
             <p className="text-sm">
-              {zoom.price != null ? `${zoom.price} Kč/шт без DPH (${(zoom.price * DPH).toFixed(1)} с DPH)` : ""}
+              {zoom.price != null ? `${(zoom.price * DPH).toFixed(1)} Kč/шт с DPH (${zoom.price} без DPH)` : ""}
               {zoom.order_per ? ` · по ${zoom.order_per} шт` : ""}
             </p>
             <button onClick={() => setZoom(null)} className="mt-2 w-full rounded-lg bg-zinc-100 py-2 text-sm dark:bg-zinc-800">
@@ -574,7 +581,7 @@ function LinkDialog({ product, onClose, onLinked }: { product: Product; onClose:
               <p className="mt-1 font-medium leading-tight">{v.product}</p>
               <p className="text-zinc-500">{[v.color, v.quality, v.grower].filter(Boolean).join(" · ")}</p>
               <p>
-                {v.price != null ? `${v.price} Kč/шт` : "—"} · {(v.stock ?? 0) > 0 ? `есть ${v.stock}` : "нет"}
+                {v.price != null ? `${(v.price * DPH).toFixed(1)} Kč/шт с DPH` : "—"} · {(v.stock ?? 0) > 0 ? `есть ${v.stock}` : "нет"}
               </p>
             </button>
           ))}

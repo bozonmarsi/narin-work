@@ -877,11 +877,12 @@ function ProductCard({
           )}
           {p.category === "ohapka" && p.vanvliet_cheapest_price != null && (
             <div
-              title="Самая дешёвая актуальная цена этого цветка у Van Vliet (без DPH) за 1 стебель × число стеблей в пучке × коэффициент × DPH 21%, округлено до 10 — не себестоимость, а подсказка для цены на сайте"
+              title="Себестоимость = цена стебля у Van Vliet (без DPH) × 1,21 DPH × число стеблей в пучке. Цена на сайте = себестоимость × коэффициент, округлено до 10"
               className="mt-1 space-y-0.5"
             >
               <p className="text-[9px] text-zinc-400 dark:text-zinc-500">
-                {p.vanvliet_cheapest_price} Kč × {p.order_unit_size} шт
+                себестоимость {p.vanvliet_cheapest_price} × 1,21 DPH × {p.order_unit_size} шт ={" "}
+                <b>{Math.round(p.vanvliet_cheapest_price * DPH_RATE * p.order_unit_size)} Kč</b>
               </p>
               <div className="flex flex-wrap items-center gap-1">
                 {MARKUP_OPTIONS.map((m) => (
