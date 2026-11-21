@@ -53,7 +53,16 @@ function coreName(name: string): string {
     .toLowerCase()
 }
 
-type CatalogItem = { product: string; color: string; key: number; stock: number; price: number }
+type CatalogItem = {
+  product: string; color: string; key: number; stock: number; price: number
+  quality?: string; grower?: string; photo?: string; orderPer?: number
+}
+
+// One row per variety in vv_catalog: same name from another grower or of
+// another quality is a separate variant the owner can reject on its own.
+function sigOf(c: CatalogItem): string {
+  return [c.product, c.color, c.grower ?? '', c.quality ?? ''].map((x) => String(x ?? '').trim().toLowerCase()).join('|')
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -84,21 +93,24 @@ Deno.serve(async (req) => {
 
     // Архивные позиции больше не продаются — незачем тратить проверку на
     // то, есть ли они у поставщика.
-    const [{ data: materials }, { data: aliases }] = await Promise.all([
+    const [{ data: materials }, { data: aliases }, { data: blocks }] = await Promise.all([
       supabase.from('product_stickers').select('id, product_name').eq('category', 'ohapka').eq('archived', false),
-      supabase.from('product_name_aliases').select('alias, product_sticker_id').eq('supplier_id', supplier.id),
+      // Only links the owner approved count. Suggestions and rejected links
+      // never change what the site shows.
+      supabase.from('product_name_aliases').select('alias, product_sticker_id, is_primary')
+        .eq('supplier_id', supplier.id).eq('status', 'approved'),
+      supabase.from('vv_variant_blocks').select('sig, product_sticker_id'),
     ])
-
-    // Только сырьё, у которого вообще есть сохранённое соответствие с
-    // Van Vliet — без алиаса нечего сравнивать, столбец у него остаётся
-    // NULL (не трогаем), и триггер тогда смотрит только на наш остаток,
-    // как и раньше.
     const aliasesByMaterial = new Map<string, string[]>()
+    const primaryByMaterial = new Map<string, string>()
     for (const a of aliases ?? []) {
+      const core = coreName(a.alias)
       const list = aliasesByMaterial.get(a.product_sticker_id) ?? []
-      list.push(a.alias.toLowerCase())
+      list.push(core)
       aliasesByMaterial.set(a.product_sticker_id, list)
+      if (a.is_primary) primaryByMaterial.set(a.product_sticker_id, core)
     }
+    const blocked = new Set((blocks ?? []).map((b) => `${b.product_sticker_id}#${b.sig}`))
     const materialsWithAlias = (materials ?? []).filter((m) => aliasesByMaterial.has(m.id))
     if (materialsWithAlias.length === 0) {
       return json({ ok: true, checked: 0, note: 'no materials with vanvliet aliases yet' })
@@ -127,46 +139,64 @@ Deno.serve(async (req) => {
     }
 
     const catalog: CatalogItem[] = searchData.catalog ?? []
-    const inStockItems = catalog.filter((c) => c.stock > 0)
-    // Множество нормализованных названий, у которых реально есть остаток
-    // (stock > 0) — сравниваем алиасы именно с ним.
-    const inStockNames = new Set(inStockItems.map((c) => coreName(c.product)))
-    // Самая низкая цена среди позиций в наличии с этим нормализованным
-    // названием — для подсказки по цене (см. миграцию
-    // vanvliet_price_recommendation) нужна именно самая дешёвая, а не
-    // любая случайная партия/сорт под тем же алиасом.
-    const minPriceByName = new Map<string, number>()
-    for (const c of inStockItems) {
-      const name = coreName(c.product)
-      const prev = minPriceByName.get(name)
-      if (prev === undefined || c.price < prev) minPriceByName.set(name, c.price)
+    const nowIso = new Date().toISOString()
+
+    // 1. Memory of the Van Vliet catalogue: every variety with photo, price
+    //    per stem (without DPH), quality, grower, pack size and stock.
+    //    The price is kept when the variety is gone, so it is never lost.
+    const bySig = new Map<string, CatalogItem>()
+    for (const c of catalog) {
+      const sig = sigOf(c)
+      const prev = bySig.get(sig)
+      if (!prev || (c.stock > 0 && (prev.stock <= 0 || c.price < prev.price))) bySig.set(sig, c)
+    }
+    const rows = Array.from(bySig.entries()).map(([sig, c]) => {
+      const r: Record<string, unknown> = {
+        sig, vv_key: c.key, product: c.product, core: coreName(c.product), color: c.color,
+        quality: c.quality ?? null, grower: c.grower ?? null, photo: c.photo || null,
+        order_per: c.orderPer ?? null, stock: c.stock, last_seen: nowIso,
+      }
+      if (c.price > 0) r.price = c.price
+      if (c.stock > 0) r.last_in_stock_at = nowIso
+      return r
+    })
+    let catalogSaved = 0
+    for (let i = 0; i < rows.length; i += 400) {
+      const part = rows.slice(i, i + 400)
+      const { error } = await supabase.from('vv_catalog').upsert(part, { onConflict: 'sig' })
+      if (!error) catalogSaved += part.length
+    }
+    const day = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Prague' })
+    const hist = rows.filter((r) => r.price != null).map((r) => ({ sig: r.sig, day, price: r.price, stock: r.stock }))
+    for (let i = 0; i < hist.length; i += 400) {
+      await supabase.from('vv_price_history').upsert(hist.slice(i, i + 400), { onConflict: 'sig,day' })
     }
 
+    // 2. Per flower: in stock tomorrow (approved links, minus rejected
+    //    variants) and the price of the primary variety (or the cheapest).
+    const inStockItems = Array.from(bySig.entries()).filter(([, c]) => c.stock > 0)
     let updated = 0
     const report: { name: string; inStock: boolean; cheapestPrice: number | null }[] = []
-    const checkedAt = new Date().toISOString()
+    const checkedAt = nowIso
     for (const m of materialsWithAlias) {
-      const materialAliases = aliasesByMaterial.get(m.id) ?? []
-      const inStock = materialAliases.some((alias) => inStockNames.has(alias))
-      // Самое дешёвое среди ВСЕХ алиасов этого цветка, не только первого
-      // совпавшего — сорта/расфасовки одного и того же цветка у
-      // поставщика стоят по-разному.
-      let cheapestPrice: number | null = null
-      for (const alias of materialAliases) {
-        const price = minPriceByName.get(alias)
-        if (price !== undefined && (cheapestPrice === null || price < cheapestPrice)) cheapestPrice = price
-      }
-      const { error } = await supabase
-        .from('product_stickers')
-        .update({ vanvliet_in_stock: inStock, vanvliet_stock_checked_at: checkedAt, vanvliet_cheapest_price: cheapestPrice })
-        .eq('id', m.id)
+      const cores = new Set(aliasesByMaterial.get(m.id) ?? [])
+      const eligible = inStockItems.filter(([sig, c]) => cores.has(coreName(c.product)) && !blocked.has(`${m.id}#${sig}`))
+      const inStock = eligible.length > 0
+      const primary = primaryByMaterial.get(m.id)
+      const pool = primary ? eligible.filter(([, c]) => coreName(c.product) === primary) : []
+      const prices = (pool.length ? pool : eligible).map(([, c]) => c.price).filter((p) => p > 0)
+      const cheapestPrice = prices.length ? Math.min(...prices) : null
+      // The last known price stays when nothing is offered today.
+      const patch: Record<string, unknown> = { vanvliet_in_stock: inStock, vanvliet_stock_checked_at: checkedAt }
+      if (cheapestPrice !== null) patch.vanvliet_cheapest_price = cheapestPrice
+      const { error } = await supabase.from('product_stickers').update(patch).eq('id', m.id)
       if (!error) {
         updated++
         report.push({ name: m.product_name, inStock, cheapestPrice })
       }
     }
 
-    return json({ ok: true, catalogSize: catalog.length, materialsChecked: materialsWithAlias.length, updated, report })
+    return json({ ok: true, catalogSize: catalog.length, catalogSaved, materialsChecked: materialsWithAlias.length, updated, report })
   } catch (e) {
     return json({ ok: false, error: String(e) }, 500)
   }

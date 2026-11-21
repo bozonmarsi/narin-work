@@ -323,11 +323,19 @@ Deno.serve(async (req) => {
     // на этой архитектуре: тонкой настройки модели тут нет, но реальные
     // проверенные примеры в промпте задают ей верную планку для похожих
     // неочевидных случаев (как с Heřmánek → Chamomile).
+    // Learning from the owner: every link she approved is a positive example,
+    // every link she rejected is a negative one (sent to the model as NOT).
     const { data: manualAliases } = await supabase
       .from('product_name_aliases')
       .select('product_sticker_id, alias')
       .eq('supplier_id', supplier.id)
-      .eq('is_manual', true)
+      .eq('status', 'approved')
+      .or('is_manual.eq.true,reviewed_at.not.is.null')
+    const { data: rejectedAliases } = await supabase
+      .from('product_name_aliases')
+      .select('product_sticker_id, alias, note')
+      .eq('supplier_id', supplier.id)
+      .eq('status', 'rejected')
     const materialNameByIdForExamples = new Map((allMaterials ?? []).map((m) => [m.id, m.product_name]))
     const manualExampleLines = (manualAliases ?? [])
       .map((a) => {
@@ -340,8 +348,18 @@ Deno.serve(async (req) => {
       manualExampleLines.length > 0
         ? `\n\nУже подтверждённые человеком примеры сопоставления (реальные, проверенные — ориентируйся на них при похожих неочевидных случаях):\n${manualExampleLines.join('\n')}\n`
         : ''
+    const rejectedLines = (rejectedAliases ?? [])
+      .map((a) => {
+        const name = materialNameByIdForExamples.get(a.product_sticker_id)
+        return name ? `${name} != ${a.alias}${a.note ? ` (${a.note})` : ''}` : null
+      })
+      .filter((l): l is string => Boolean(l))
+      .slice(0, 60)
+    const rejectedBlock = rejectedLines.length > 0
+      ? `\n\nЧеловек проверил по фото и ОТКЛОНИЛ эти сопоставления - никогда не предлагай их снова и избегай похожих ошибок:\n${rejectedLines.join('\n')}\n`
+      : ''
 
-    const prompt = `Ты работаешь в цветочном интернет-магазине и сверяешь прайс-лист поставщика с нашим ассортиментом, чтобы найти, под каким торговым названием у поставщика продаётся тот же товар, что и у нас.${examplesBlock}
+    const prompt = `Ты работаешь в цветочном интернет-магазине и сверяешь прайс-лист поставщика с нашим ассортиментом, чтобы найти, под каким торговым названием у поставщика продаётся тот же товар, что и у нас.${examplesBlock}${rejectedBlock}
 
 Наш ассортимент (разговорные чешские названия товаров, формат "id: название"):
 ${materialLines}
@@ -430,7 +448,6 @@ ${catalogLines}
     // навсегда, пока модель случайно не найдёт для этого же цветка что-то
     // новое. Пустой список соответствий — честное "не знаем", а не старое
     // неверное значение.
-    const materialsWithManualAlias = new Set((manualAliases ?? []).map((a) => a.product_sticker_id))
 
     let genusRejected = 0
     for (const m of materials ?? []) {
@@ -443,29 +460,36 @@ ${catalogLines}
       // предложила (is_manual = false) — подтверждённое человеком
       // никогда не трогаем здесь, иначе ручная правка держалась бы
       // ровно до следующего прогона.
+      // Since the matching review (2026-11-21): the model only SUGGESTS.
+      // Only its own unreviewed suggestions are replaced; anything the owner
+      // has seen (approved, rejected, legacy links) is never touched here.
       await supabase
         .from('product_name_aliases')
         .delete()
         .eq('supplier_id', supplier.id)
         .eq('product_sticker_id', m.id)
         .eq('is_manual', false)
+        .eq('status', 'suggested')
 
       if (cores.length === 0) {
         prunedMaterials++
-        // Сбрасываем "есть/нет у поставщика" в "не проверено" только
-        // если для цветка вообще не осталось НИ ОДНОГО алиаса (ни
-        // ИИ-шного, ни ручного) — если человек уже подтвердил своё
-        // соответствие, сканеру по-прежнему есть что проверять, статус
-        // трогать не нужно.
-        if (!materialsWithManualAlias.has(m.id)) {
-          await supabase
-            .from('product_stickers')
-            .update({ vanvliet_in_stock: null, vanvliet_stock_checked_at: null })
-            .eq('id', m.id)
-        }
+        // Suggestions never change what the site shows: the status of a flower
+        // without an approved link is reset by reset_vanvliet_status_without_alias.
         continue
       }
-      const rows = cores.map((alias) => ({ supplier_id: supplier.id, alias, product_sticker_id: m.id, is_manual: false }))
+      // Skip names this product already has in any status: a rejected one
+      // must never come back as a suggestion, an approved one needs nothing.
+      const { data: existing } = await supabase
+        .from('product_name_aliases')
+        .select('alias')
+        .eq('supplier_id', supplier.id)
+        .eq('product_sticker_id', m.id)
+      const known = new Set((existing ?? []).map((a) => a.alias.trim().toLowerCase()))
+      const fresh = cores.filter((alias) => !known.has(alias.trim().toLowerCase()))
+      if (fresh.length === 0) continue
+      const rows = fresh.map((alias) => ({
+        supplier_id: supplier.id, alias, product_sticker_id: m.id, is_manual: false, status: 'suggested', source: 'ai',
+      }))
       const { error } = await supabase.from('product_name_aliases').insert(rows)
       if (!error) {
         updatedMaterials++
