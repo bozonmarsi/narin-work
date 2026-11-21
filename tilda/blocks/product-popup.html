@@ -400,6 +400,14 @@
     return craft > gift ? 'craft' : gift > craft ? 'gift' : 'mixed';
   }
   var lastSeg = 'mixed';
+  function stemHeight(c, name) {
+    var m = String((c && c.height_text) || '').match(/\d+/g);
+    if (!m) { var x = /(\d{2,3})(?:\s*[-\u2013]\s*(\d{2,3}))?\s*cm/i.exec(name || ''); if (x) m = x[2] ? [x[1], x[2]] : [x[1]]; }
+    if (!m) return 0;
+    var n = m.slice(0, 2).map(Number);
+    return n.length > 1 ? (n[0] + n[1]) / 2 : n[0];
+  }
+  function vaseHeight(name) { var m = String(name || '').match(/(\d{2})\s*cm/g); return m ? parseInt(m[m.length - 1], 10) : 0; }
   function extrasFor(c, uid, isStab) {
     var tool = (c && c.tool) || 'secateur', low = c && c.low, shown = {}, self = splitColor(cardData && cardData.name).base;
     var p = bundle && bundle.p[uid];
@@ -426,7 +434,14 @@
       else g.other.push(it);
     });
     var hash = hashOf(uid);
-    var vases = g.vase.filter(function (v) { return v.fit; }).concat(turn(g.vase.filter(function (v) { return !v.fit; }), hash));
+    // vases by the stem height: a vase about half as tall as the stems goes first
+    var fh = stemHeight(c, cardData && cardData.name), rest = g.vase.filter(function (v) { return !v.fit; });
+    if (fh) {
+      var ideal = fh * 0.45;
+      rest = rest.map(function (v, i) { var vh = vaseHeight(v.name); return {v: v, i: i, d: vh ? Math.abs(vh - ideal) : 99}; })
+        .sort(function (x, y) { return x.d - y.d || x.i - y.i; }).map(function (x) { return x.v; });
+    } else rest = turn(rest, hash);
+    var vases = g.vase.filter(function (v) { return v.fit; }).concat(rest);
     var gifts = turn(g.gift, hash), stabs = turn(g.stab, hash);
     function zip() { var lists = [].slice.call(arguments), out = [], i = 0, more = true; while (more) { more = false; lists.forEach(function (l) { if (l[i]) { out.push(l[i]); more = true; } }); i++; } return out; }
     var out;
