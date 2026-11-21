@@ -1,8 +1,8 @@
--- Tri nove vazy v Atelieru (Tilda part Atelier + Kvetiny). Cena podle majitele: 190 / 220 / 280 Kc.
+-- Tri nove vazy na kvetiny v Darcich (Tilda part vazy v Darcich + Kvetiny). Cena podle majitele: 190 / 220 / 280 Kc.
 -- Bez sledovani poctu (quantity null) jako ostatni pomucky. Do doporuceni v okne kvetiny
--- se dostanou samy: get_product_card_bundle bere vse z kategorie atelier, accessory_kind = vase.
+-- se dostanou samy: get_product_card_bundle bere vse z kategorie darky, accessory_kind = vase.
 insert into product_stickers (product_name, image_url, tilda_uid, tilda_url, category, price, quantity, order_unit_size, added_to_tilda, manually_hidden, special_order)
-select v.name, v.img, v.uid, 'https://vezminarin.cz/tproduct/' || v.uid, 'atelier', v.price, null, 1, true, false, false
+select v.name, v.img, v.uid, 'https://vezminarin.cz/tproduct/' || v.uid, 'darky', v.price, null, 1, true, false, false
 from (values
   ('Váza Rýhovaná 20 cm', '944949807374', 190, 'https://static.tildacdn.com/tila3830-3835-4233-b862-653566323363/vaza-ryhovana.webp'),
   ('Váza Plástev 24 cm',  '133595324234', 220, 'https://static.tildacdn.com/tila6631-3466-4462-b333-333161663730/vaza-plastev.webp'),
