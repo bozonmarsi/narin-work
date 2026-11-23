@@ -1,9 +1,9 @@
 <meta charset="utf-8">
 <title>FC Sajfer intro</title>
 <style>
-/* Layout: a fixed 9:16 stage (1080×1920) letterboxed in the window. White ground, the club colours flowing
-   as soft blurred light behind three logos stacked top to bottom. Single light look. */
-:root { --paper: #FFFFFF; --frame: #EEF0F4; --navy: #0B1A3A; color-scheme: light; }
+/* Layout: a fixed 9:16 stage (1080×1920) letterboxed in the window. Dark ground, the club colours flowing
+   as strong blurred light behind three logos stacked top to bottom. Single light look. */
+:root { --paper: #FFFFFF; --frame: #0B0E16; --navy: #0B1A3A; color-scheme: dark; }
 html, body { height: 100%; margin: 0; }
 body { background: var(--frame); overflow: hidden; font-family: Arial, sans-serif; }
 #film { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
@@ -21,11 +21,11 @@ body { background: var(--frame); overflow: hidden; font-family: Arial, sans-seri
   <button class="btn" id="restart" aria-label="Od začátku"><svg viewBox="0 0 16 16"><path d="M8 2.5a5.5 5.5 0 1 1-5.2 3.7l1.6.6A3.8 3.8 0 1 0 8 4.2V6L4.6 3.4 8 .8z"/></svg></button>
 </div>
 <script>
-const IMG_SRC = { crest: "%%crest_color%%", A: "%%A_color%%" };
+const IMG_SRC = { crest: "%%crest_color%%", A: "%%A_white%%" };
 const MARK = "%%MARK%%";                      // kit maker's mark, 510 × 292 units
 const SW = 1080, SH = 1920, DUR = 5;
 // colours of the crest and the kits
-const COLS = ["#007BF5", "#F82118", "#F7CF05", "#006633", "#002E9E", "#F7CF05", "#F82118", "#2A9A4B"];
+const COLS = ["#007BF5", "#F82118", "#F7CF05", "#00A651", "#002E9E", "#F7CF05", "#F82118", "#1FB25A"];
 
 const cv = document.getElementById("film"), ctx = cv.getContext("2d"), img = {};
 let W = 0, H = 0, K = 1, OX = 0, OY = 0, DPR = 1;
@@ -37,18 +37,19 @@ const expo = p => (p <= 0 ? 0 : p >= 1 ? 1 : 1 - Math.pow(2, -10 * p));
 const blobs = COLS.map((c, i) => ({ c, ph: i * 1.7, sp: 0.5 + (i % 3) * 0.18, r: 430 + (i % 4) * 60,
   ax: 260 + (i % 3) * 70, ay: 300 + (i % 2) * 120, cx: SW * (0.2 + 0.6 * ((i * 37) % 10) / 10), cy: SH * (0.15 + 0.7 * ((i * 53) % 10) / 10) }));
 function ground(t) {
-  ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, SW, SH);
-  const fade = expo(t / 0.6);
+  ctx.fillStyle = "#04050B"; ctx.fillRect(0, 0, SW, SH);
+  const fade = expo(t / 0.5);
+  ctx.globalCompositeOperation = "screen";            // saturated colours add up where they meet and shimmer
   for (const b of blobs) {
-    const x = b.cx + Math.sin(t * b.sp + b.ph) * b.ax, y = b.cy + Math.cos(t * b.sp * 0.8 + b.ph) * b.ay;
+    const x = b.cx + Math.sin(t * b.sp * 1.6 + b.ph) * b.ax * 1.2, y = b.cy + Math.cos(t * b.sp * 1.3 + b.ph) * b.ay * 1.2;
     const g = ctx.createRadialGradient(x, y, 0, x, y, b.r);
-    g.addColorStop(0, b.c + "8C"); g.addColorStop(0.45, b.c + "40"); g.addColorStop(1, b.c + "00");
+    g.addColorStop(0, b.c + "E6"); g.addColorStop(0.4, b.c + "80"); g.addColorStop(1, b.c + "00");
     ctx.globalAlpha = fade; ctx.fillStyle = g; ctx.fillRect(0, 0, SW, SH);
   }
-  ctx.globalAlpha = 1;
-  // a white veil in the middle keeps the logos crisp and readable
-  const v = ctx.createRadialGradient(SW / 2, SH / 2, 0, SW / 2, SH / 2, 760);
-  v.addColorStop(0, "rgba(255,255,255,.88)"); v.addColorStop(0.55, "rgba(255,255,255,.55)"); v.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
+  // a soft dark pool in the middle so the logos stay crisp
+  const v = ctx.createRadialGradient(SW / 2, SH / 2, 0, SW / 2, SH / 2, 700);
+  v.addColorStop(0, "rgba(4,5,11,.55)"); v.addColorStop(0.6, "rgba(4,5,11,.25)"); v.addColorStop(1, "rgba(4,5,11,0)");
   ctx.fillStyle = v; ctx.fillRect(0, 0, SW, SH);
 }
 
@@ -73,19 +74,19 @@ function logo(draw, x, y, w, h, t, t0) {
   ctx.save();
   ctx.beginPath(); ctx.rect(x - 20, y - 60, w + 40, (h + 80) * k); ctx.clip();
   ctx.globalAlpha = clamp(p * 2.5, 0, 1);
-  ctx.shadowColor = "rgba(11,26,58,.18)"; ctx.shadowBlur = 40 * K * DPR; ctx.shadowOffsetY = 14 * K * DPR;
+  ctx.shadowColor = "rgba(0,0,0,.45)"; ctx.shadowBlur = 40 * K * DPR; ctx.shadowOffsetY = 12 * K * DPR;
   ctx.drawImage(off, x - 1, y - 1 + dy, w + 2, h + 2);
   ctx.restore();
 }
 const markPath = new Path2D(MARK);
 const drawCrest = (g, w, h) => g.drawImage(img.crest, 0, 0, w, h);
 const drawA = (g, w, h) => g.drawImage(img.A, 0, 0, w, h);
-const drawMark = (g, w, h) => { g.save(); g.scale(w / 510, h / 292); g.fillStyle = "#0B1A3A"; g.fill(markPath); g.restore(); };
-function rule(cx, y, w, t, t0) { const k = expo((t - t0) / 0.3); if (k <= 0) return; ctx.fillStyle = "rgba(11,26,58,.28)"; ctx.fillRect(cx - w * k / 2, y - 1.5, w * k, 3); }
+const drawMark = (g, w, h) => { g.save(); g.scale(w / 510, h / 292); g.fillStyle = "#A7ADB8"; g.fill(markPath); g.restore(); };
+function rule(cx, y, w, t, t0) { const k = expo((t - t0) / 0.3); if (k <= 0) return; ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.fillRect(cx - w * k / 2, y - 1.5, w * k, 3); }
 
 function frame(t) {
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  ctx.fillStyle = "#EEF0F4"; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = "#0B0E16"; ctx.fillRect(0, 0, W, H);
   ctx.setTransform(K * DPR, 0, 0, K * DPR, OX * DPR, OY * DPR);
   ctx.save(); ctx.beginPath(); ctx.rect(0, 0, SW, SH); ctx.clip();
   ground(t);

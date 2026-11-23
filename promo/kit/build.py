@@ -5,7 +5,7 @@ import pathlib
 here = pathlib.Path(__file__).parent
 html = (here / "template.html").read_text(encoding="utf-8")
 html = html.replace("%%MARK%%", (here / "mark_path.txt").read_text().strip())
-for name in ("crest_color", "A_color"):
+for name in ("crest_color", "A_white"):
     f = next((p for p in (here / "assets").glob(name + ".*") if p.suffix in (".png", ".webp", ".jpg")), None)
     uri = ""
     if f:
