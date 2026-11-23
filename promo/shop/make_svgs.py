@@ -36,10 +36,6 @@ LOGO_BODY = re.sub(r"^.*?<svg[^>]*>|</svg>\s*$", "", logo_src, flags=re.S)
 
 
 # ---------- helpers ----------
-def clamp(v, a, b):
-    return max(a, min(b, v))
-
-
 def daisy(x, y, d, color, rot=0.0, hole=True):
     s = d / 100
     return (f'<path transform="translate({x:.1f} {y:.1f}) rotate({rot:.1f}) scale({s:.4f})" fill="{color}" '
@@ -284,85 +280,67 @@ def sprig(x, ground, h, side):
 
 
 def garden(max_h, inset=34):
-    """A mixed garden on a continuous lawn: grass band, back row, grass band, front row, front grass band."""
+    """A mixed garden along the bottom edge on a continuous lawn: a back and a front row of many kinds of flowers."""
+    grass = []
     rnd = random.Random(8)
-
-    def grass_band(hmin, hmax, step, color):
-        """One solid strip of grass across the whole glass: a flat base with blade tips along the top edge."""
-        d, x = f"M-10 {AH + 4} L-10 {AH - hmin * 0.5:.1f}", -10.0
-        while x < AW + 10:
-            w = step * rnd.uniform(0.7, 1.3)
-            h = rnd.uniform(hmin, hmax)
-            lean = rnd.uniform(-0.35, 0.35) * w
-            d += (f" Q{x + w * 0.35:.1f} {AH - h * 0.45:.1f} {x + w / 2 + lean:.1f} {AH - h:.1f}"
-                  f" Q{x + w * 0.65:.1f} {AH - h * 0.45:.1f} {x + w:.1f} {AH - hmin * 0.5:.1f}")
-            x += w
-        return f'<path fill="{color}" d="{d} L{AW + 10} {AH + 4}Z"/>'
-
+    for x in range(40, AW - 40, 13):
+        h = rnd.uniform(16, 34)
+        if not arch_inner(x, AH - h, 4, inset - 10):
+            continue
+        lean = rnd.uniform(-7, 7)
+        grass.append(f'<path d="M{x - 4} {AH + 1} Q{x + lean * 0.3:.1f} {AH - h * 0.6:.1f} {x + lean:.1f} {AH - h:.1f} '
+                     f'Q{x + 1 + lean * 0.3:.1f} {AH - h * 0.5:.1f} {x + 4} {AH + 1}Z" fill="{rnd.choice([LEAF_GREEN, LEAF_LIGHT, "#3DAF5C"])}"/>')
     # two rows of mixed flowers, not mirrored: each spot takes the next kind/colour pair from a shuffled deck,
     # never the same kind or the same main colour as its left neighbour. Kinds are drawn in flowers.py.
     CORAL, WHITE_ = "#FF7C77", "#FFFFFF"
-    # back row: the showy flowers (orchids, irises, callas, gerberas, cosmos); front row: small ones and leaves
-    back_deck = [("orchid", WHITE_, RED), ("orchid", LILAC, PURPLE), ("orchid", WHITE_, PURPLE), ("orchid", CORAL, YELLOW),
-                 ("rose", RED, None), ("rose", LILAC, None), ("rose", CORAL, None), ("peony", LILAC, None), ("peony", CORAL, None),
-                 ("sunflower", YELLOW, None), ("poppy", RED, None), ("poppy", CORAL, None), ("hydrangea", COBALT, None),
-                 ("hydrangea", LILAC, None), ("hydrangea", PURPLE, None), ("carnation", CORAL, None), ("carnation", RED, None),
-                 ("iris", PURPLE, None), ("iris", COBALT, None), ("iris", YELLOW, None), ("iris", WHITE_, None),
-                 ("calla", WHITE_, None), ("calla", YELLOW, None), ("calla", CORAL, None), ("calla", PURPLE, None),
-                 ("gerbera", YELLOW, CORAL), ("gerbera", CORAL, YELLOW), ("gerbera", WHITE_, CORAL),
-                 ("cosmos", LILAC, PURPLE), ("cosmos", WHITE_, YELLOW), ("anemone", RED, BLUE), ("daisy", BLUE, None)]
-    front_deck = [("five", YELLOW, None), ("five", RED, None), ("five", WHITE_, None), ("five", LILAC, None),
-                  ("pompom", LILAC, None), ("pompom", YELLOW, None), ("pompom", CORAL, None),
-                  ("cluster", COBALT, YELLOW), ("cluster", WHITE_, YELLOW), ("buds", CORAL, None), ("buds", PURPLE, None),
-                  ("bells", PURPLE, None), ("bells", COBALT, None), ("daisy", YELLOW, None), ("daisy", RED, None),
-                  ("anemone", WHITE_, PURPLE), ("anemone", PURPLE, YELLOW), ("crocus", PURPLE, None), ("crocus", WHITE_, None),
-                  ("crocus", YELLOW, None), ("rose", YELLOW, None), ("poppy", RED, None), ("carnation", LILAC, None)]
-    decks = {"back": [], "front": []}
+    combos = [("gerbera", YELLOW, CORAL), ("gerbera", CORAL, YELLOW), ("gerbera", PURPLE, YELLOW), ("gerbera", WHITE_, CORAL),
+              ("cosmos", LILAC, PURPLE), ("cosmos", WHITE_, YELLOW), ("cosmos", CORAL, YELLOW), ("cosmos", YELLOW, RED),
+              ("anemone", RED, BLUE), ("anemone", WHITE_, PURPLE), ("anemone", PURPLE, YELLOW), ("anemone", COBALT, WHITE_),
+              ("daisy", BLUE, None), ("daisy", YELLOW, None), ("daisy", RED, None), ("daisy", PURPLE, None), ("daisy", LILAC, None),
+              ("five", YELLOW, None), ("five", RED, None), ("five", WHITE_, None), ("five", LILAC, None),
+              ("pompom", LILAC, None), ("pompom", YELLOW, None), ("pompom", CORAL, None), ("pompom", PURPLE, None),
+              ("cluster", COBALT, YELLOW), ("cluster", LILAC, YELLOW), ("cluster", WHITE_, YELLOW),
+              ("buds", CORAL, None), ("buds", PURPLE, None), ("buds", YELLOW, None),
+              ("bells", PURPLE, None), ("bells", COBALT, None)]
+    deck = []
 
-    def draw_next(row, prev):
-        for _ in range(300):
-            if not decks[row]:
-                decks[row] = (back_deck if row == "back" else front_deck)[:]
-                rnd.shuffle(decks[row])
-            c = decks[row].pop()
+    def draw_next(prev):
+        nonlocal deck
+        for _ in range(200):
+            if not deck:
+                deck = combos[:]
+                rnd.shuffle(deck)
+            c = deck.pop()
             if prev is None or (c[0] != prev[0] and c[1] != prev[1]):
                 return c
-            decks[row].insert(0, c)
-        return decks[row].pop()
+            deck.insert(0, c)
+        return deck.pop()
 
+    step, d = 76, 64
     layers = {"back": ([], []), "front": ([], [])}
-    bands = {"back": grass_band(34, 64, 26, LEAF_GREEN), "front": grass_band(22, 42, 22, "#3DAF5C")}
-    for row, x0, step, hmin, hmax in (("back", 50, 76, 0.8, 1.0), ("front", 40, 60, 0.4, 0.58)):
+    for row, x0, hmin, hmax in (("back", 60, 0.78, 1.0), ("front", 60 + step / 2, 0.42, 0.6)):
         st, hd = layers[row]
         prev, x, n = None, x0, 0
         while x < AW - 40:
-            xx = x + rnd.uniform(-10, 10)
+            xx = x + rnd.uniform(-12, 12)
             h = max_h * rnd.uniform(hmin, hmax)
-            dd = 64 if row == "back" else 52
+            dd = d * (1 if row == "back" else 0.82)
             x += step
             n += 1
             if not arch_inner(xx, AH - h, dd / 2, inset):
                 continue
-            if row == "front" and n % 8 == 5:
-                st += FL.leafy(xx, AH + 2, h * 0.6)
+            if row == "front" and n % 5 == 3:
+                st += FL.leafy(xx, AH + 2, h * 0.75)
                 continue
-            kind, col, mid = c = draw_next(row, prev)
+            kind, col, mid = c = draw_next(prev)
             prev = c
             side = rnd.choice((-1, 1))
-            if kind == "orchid":
-                st += FL.orchid(xx, AH + 2, h * 0.95, col, mid, side)
-            elif kind == "iris":
-                st += FL.iris(xx, AH + 2, h + 10, col, side)
-            elif kind == "calla":
-                st += FL.calla(xx, AH + 2, h + 20, col, side)
-            elif kind == "bells":
+            if kind == "bells":
                 st += FL.bellflower(xx - side * 14, AH + 2, h, col, side)
             elif kind == "cluster":
                 st += FL.tiny_cluster(xx, AH + 2, h, col, mid, side)
             elif kind == "buds":
                 st += FL.buds(xx, AH + 2, h, col, side)
-            elif kind == "crocus":
-                st += FL.crocus(xx, AH + 2, h * 0.8, col, side)
             else:
                 els, (hx, hy) = FL.on_stem(None, xx, AH + 2, h, side)
                 st += els
@@ -377,161 +355,26 @@ def garden(max_h, inset=34):
                     hd.append(FL.cosmos(hx, hy, dd, col, mid, rot))
                 elif kind == "gerbera":
                     hd.append(FL.gerbera(hx, hy, dd * 1.05, col, mid, rot))
-                elif kind == "rose":
-                    hd.append(FL.rose(hx, hy, dd, col, rot))
-                elif kind == "peony":
-                    hd.append(FL.peony(hx, hy, dd * 1.08, col, rot))
-                elif kind == "sunflower":
-                    hd.append(FL.sunflower(hx, hy, dd * 1.1, rot))
-                elif kind == "poppy":
-                    hd.append(FL.poppy(hx, hy, dd * 0.95, col, rot))
-                elif kind == "hydrangea":
-                    hd.append(FL.hydrangea(hx, hy, dd * 1.05, col, rot))
-                elif kind == "carnation":
-                    hd.append(FL.carnation(hx, hy + dd * 0.2, dd, col))
                 else:
                     hd.append(FL.anemone(hx, hy, dd * 0.9, col, mid, rot))
-    # grass, back row, grass, front row, grass: the stems of every row disappear into one continuous lawn
-    return ([bands["back"]] + layers["back"][0] + layers["back"][1] + [bands["front"]]
-            + layers["front"][0] + layers["front"][1] + [grass_band(12, 24, 18, LEAF_LIGHT)])
+    # a continuous lawn: one band behind everything, one between the rows, one in front, so every stem grows
+    # out of the same grass. Its own random generator keeps the flower layout exactly as before.
+    lawn_rnd = random.Random(31)
 
+    def lawn(hmin, hmax, step, color):
+        d, x = f"M-10 {AH + 4} L-10 {AH - hmin * 0.5:.1f}", -10.0
+        while x < AW + 10:
+            w = step * lawn_rnd.uniform(0.7, 1.3)
+            h = lawn_rnd.uniform(hmin, hmax)
+            lean = lawn_rnd.uniform(-0.35, 0.35) * w
+            d += (f" Q{x + w * 0.35:.1f} {AH - h * 0.45:.1f} {x + w / 2 + lean:.1f} {AH - h:.1f}"
+                  f" Q{x + w * 0.65:.1f} {AH - h * 0.45:.1f} {x + w:.1f} {AH - hmin * 0.5:.1f}")
+            x += w
+        return f'<path fill="{color}" d="{d} L{AW + 10} {AH + 4}Z"/>'
 
-def meadow(max_h, inset=34, seed=12, top_limit=0):
-    """An organic meadow along the bottom: a band of long curving grass, wild and garden flowers on slender,
-    leaning stems at heights that rise and fall like a real border, some heads turned or tilted, buds and
-    baby's breath between them, more grass in front. Everything grows out of one continuous green base."""
-    rnd = random.Random(seed)
-    CORAL, WHITE_, CREAM = "#FF7C77", "#FFFFFF", "#FFF4DC"
-    G = AH + 3
-
-    def silhouette(x):
-        k = 0.74 + 0.18 * math.sin(x / 170 + 1.1) + 0.12 * math.sin(x / 61 + 0.4)
-        return max_h * clamp(k, 0.42, 1.0)
-
-    def pick(table):
-        r, acc = rnd.uniform(0, sum(w for w, *_ in table)), 0
-        for w, *v in table:
-            acc += w
-            if r <= acc:
-                return v
-        return table[-1][1:]
-
-    kinds = [(16, "chamomile"), (12, "daisy"), (10, "cosmos"), (9, "poppy"), (8, "cornflower"), (9, "iris"),
-             (9, "orchid"), (8, "bud"), (6, "five"), (6, "anemone"), (4, "babys"), (4, "rose"), (3, "peony")]
-    colours = {"daisy": [(3, BLUE), (2, COBALT), (2, RED), (2, YELLOW), (1, PURPLE), (1, LILAC), (1, CORAL)],
-               "cosmos": [(3, WHITE_), (3, LILAC), (2, CORAL), (2, PURPLE), (1, YELLOW), (1, RED)],
-               "poppy": [(3, RED), (2, CORAL), (2, YELLOW), (1, WHITE_)],
-               "cornflower": [(3, COBALT), (2, BLUE), (2, PURPLE), (1, LILAC), (1, WHITE_)],
-               "bud": [(2, CORAL), (2, LILAC), (1, WHITE_), (1, YELLOW), (1, PURPLE), (1, RED)],
-               "five": [(2, YELLOW), (2, WHITE_), (1, LILAC), (1, COBALT), (1, CORAL)],
-               "anemone": [(2, WHITE_), (2, RED), (1, PURPLE), (1, LILAC), (1, COBALT)],
-               "rose": [(2, CORAL), (2, RED), (1, CREAM), (1, YELLOW), (1, LILAC)],
-               "peony": [(2, LILAC), (1, WHITE_), (1, CORAL)],
-               "iris": [(1, PURPLE), (1, COBALT), (1, YELLOW), (1, WHITE_), (1, LILAC)],
-               "orchid": [(2, (WHITE_, RED)), (2, (LILAC, PURPLE)), (1, (CORAL, YELLOW)), (1, (WHITE_, PURPLE)), (1, (YELLOW, RED))]}
-
-    decks = {}
-
-    def colour_of(kind):
-        """Deal colours per kind from a shuffled deck, so every colourway of a kind shows up in turn."""
-        if not decks.get(kind):
-            deck = [c for w, c in colours.get(kind, [(1, WHITE_)]) for _ in range(w)]
-            rnd.shuffle(deck)
-            decks[kind] = deck
-        return decks[kind].pop()
-
-    def blades(n, hmin, hmax, cols, scale):
-        out = []
-        for _ in range(n):
-            x = rnd.uniform(-5, AW + 5)
-            h = rnd.uniform(hmin, hmax) * (silhouette(x) / max_h) ** scale
-            if not arch_inner(x, G - h, 2, inset - 22):
-                continue
-            out.append(FL.grass_blade(x, G, h, rnd.uniform(-0.45, 0.45) * h, rnd.uniform(4, 8), rnd.choice(cols)))
-        return out
-
-    back_grass = blades(170, max_h * 0.35, max_h * 0.75, ["#238544", LEAF_GREEN, "#2F8F48"], 1.0)
-    # head sizes (mm) per kind; every head keeps its own space: no two heads overlap
-    SIZES = {"chamomile": (52, 62), "daisy": (50, 58), "cosmos": (56, 66), "poppy": (54, 64), "cornflower": (42, 50),
-             "five": (40, 48), "anemone": (48, 56), "rose": (48, 56), "peony": (60, 68), "iris": (64, 72),
-             "orchid": (74, 82), "bud": (26, 32), "babys": (64, 72)}
-    plants, heads = [], []
-
-    def place(x, kind, tries=8):
-        sz = rnd.uniform(*SIZES[kind])
-        r = sz / 2
-        for _ in range(tries):                                   # try a few heights / leans for a free spot
-            lean = rnd.uniform(-24, 24)
-            hy = rnd.uniform(top_limit + r + 4, G - max_h * 0.42)
-            hx = x + lean
-            if not arch_inner(hx, hy, r, inset - 6):
-                continue
-            if all(math.hypot(hx - ox, hy - oy) > r + orr + 6 for ox, oy, orr in heads):
-                heads.append((hx, hy, r))
-                plants.append((G - hy, x, lean, hx, hy, kind, sz))
-                return True
-        return False
-
-    # the favourites first, spread over the width: irises and orchids, alternating
-    for i, x in enumerate((150, 330, 520, 720, 920, 1110, 1290)):
-        place(x + rnd.uniform(-30, 30), "iris" if i % 2 == 0 else "orchid", 30)
-    x = 30.0
-    while x < AW - 30:
-        x += rnd.uniform(14, 24)
-        kind = pick(kinds)[0]
-        if kind in ("iris", "orchid"):
-            kind = "chamomile"
-        place(x, kind)
-    items = []
-    for h, x, lean, hx, hy, kind, sz in sorted(plants, key=lambda p: -p[0]):       # tall ones behind
-        if kind == "babys":
-            items += FL.babys_breath(x, G, h - 10, rnd)
-            continue
-        if kind == "orchid":
-            petal, lip = colour_of("orchid")
-            items += FL.orchid(hx - (1 if lean >= 0 else -1) * h * 0.3, G, h - 8, petal, lip, 1 if lean >= 0 else -1, scale=sz / 72, leaves=False)
-            continue
-        col = colour_of(kind)
-        stem, c = FL.curved_stem(x, G, hx, hy, lean)
-        items.append(stem)
-        for _ in range(rnd.choice((0, 1, 1, 2))):                            # slim leaves along the stem
-            f = rnd.uniform(0.18, 0.5)
-            lx, ly = FL.point_on(x, G, c, hx, hy, f)
-            side = rnd.choice((-1, 1))
-            items.append(FL.slim_leaf(lx, ly, rnd.uniform(26, 44), -90 + side * rnd.uniform(35, 65), rnd.choice((LEAF_GREEN, LEAF_LIGHT, "#3DAF5C"))))
-        ang = lean * 0.7
-        squash = rnd.choice((1.0, 1.0, 0.9, 0.8))
-        rot = rnd.uniform(0, 40)
-        if kind == "bud":
-            items.append(FL.bud(hx, hy + sz * 0.4, sz, col, lean * 1.1))
-            continue
-        if kind == "iris":
-            for dx, k in ((-6, 0.62), (7, 0.5)):                          # two sword leaves
-                items.append(FL.grass_blade(x + dx, G, h * k, rnd.uniform(-0.2, 0.2) * h, 10, rnd.choice((LEAF_GREEN, LEAF_LIGHT))))
-            items.append(FL.tilted(FL.iris_flower(hx, hy, sz, col), hx, hy, lean * 0.35, rnd.choice((1.0, 0.92, 0.85))))
-            continue
-        if kind == "chamomile":
-            head = FL.chamomile(hx, hy, sz, rot)
-        elif kind == "daisy":
-            head = daisy(hx, hy, sz, col, rot)
-        elif kind == "cosmos":
-            head = FL.cosmos(hx, hy, sz, col, YELLOW if col != YELLOW else RED, rot)
-        elif kind == "poppy":
-            head = FL.poppy(hx, hy, sz, col, rot)
-        elif kind == "cornflower":
-            head = FL.cornflower(hx, hy, sz, col, rot)
-        elif kind == "five":
-            head = FL.five_petal(hx, hy, sz, col, rot)
-        elif kind == "anemone":
-            head = FL.anemone(hx, hy, sz, col, BLUE if col == WHITE_ else "#14204A", rot)
-        elif kind == "rose":
-            head = FL.rose(hx, hy, sz, col, rot)
-        else:
-            head = FL.peony(hx, hy, sz, col, rot)
-        items.append(FL.tilted(head, hx, hy, ang, squash))
-    front_grass = blades(150, max_h * 0.12, max_h * 0.42, [LEAF_LIGHT, "#3DAF5C", LEAF_GREEN], 0.5)
-    base = f'<path fill="{LEAF_GREEN}" d="M-10 {AH + 4} L-10 {AH - 10} Q{AW * 0.25} {AH - 16} {AW / 2} {AH - 11} T{AW + 10} {AH - 12} L{AW + 10} {AH + 4}Z"/>'
-    return back_grass + items + front_grass + [base]
+    return ([lawn(30, 58, 22, "#238544")] + layers["back"][0] + layers["back"][1]
+            + [lawn(20, 38, 18, LEAF_GREEN)] + grass + layers["front"][0] + layers["front"][1]
+            + [lawn(10, 22, 15, "#3DAF5C")])
 
 
 def keyline(ink, inset=34, a0=24, a1=156):
@@ -546,11 +389,11 @@ def composed_art(ink, variant):
     if variant == "O-garden-arc":
         arc = text_on_arch("KVĚTINY · DÁRKY · ROSTLINY", 74, 112, ink, tracking=0.12)
         lg, _ = logo(AW / 2, 300, 700, ink)
-        return [layer("keyline", [keyline(ink, 30, 26, 154)]), layer("garden", meadow(185, top_limit=470)), layer("logo", [lg]), layer("text", arc)]
+        return [layer("keyline", [keyline(ink, 30, 26, 154)]), layer("garden", garden(170)), layer("logo", [lg]), layer("text", arc)]
     if variant == "P-garden-line":
         lg, lh = logo(AW / 2, 165, 740, ink)
         line = bottom_line(ink, 165 + lh + 125, 1160, 104, "dot")
-        return [layer("keyline", [keyline(ink, 34, 20, 160)]), layer("garden", meadow(175, top_limit=528)), layer("logo", [lg]), layer("text", line)]
+        return [layer("keyline", [keyline(ink, 34, 20, 160)]), layer("garden", garden(140)), layer("logo", [lg]), layer("text", line)]
     if variant == "L-sign-flowerbox":
         return sign_art(ink, flowerbox(stems=True))
     if variant == "N-sign-border":
