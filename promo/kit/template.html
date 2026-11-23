@@ -23,7 +23,7 @@ body { background: var(--frame); overflow: hidden; font-family: Arial, sans-seri
 <script>
 const IMG_SRC = { crest: "%%crest_color%%", A: "%%A_white%%" };
 const MARK = "%%MARK%%";                      // kit maker's mark, 510 × 292 units
-const SW = 1080, SH = 1920, DUR = 5;
+const SW = 1080, SH = 1920, DUR = 7;
 // colours of the crest and the kits
 
 const cv = document.getElementById("film"), ctx = cv.getContext("2d"), img = {};
@@ -78,36 +78,98 @@ function ground(t) {
   ctx.fillStyle = ctx.createPattern(grain, "repeat"); ctx.fillRect(0, 0, SW, SH);
 }
 
-/* one logo: drops in from above, unmasks top to bottom, a quick shine passes over it */
-const off = document.createElement("canvas"), og = off.getContext("2d");
-function logo(draw, x, y, w, h, t, t0) {
-  const p = (t - t0) / 0.45;
+/* ---------- gentle easing ---------- */
+const sine = p => 0.5 - 0.5 * Math.cos(Math.PI * clamp(p, 0, 1));
+const outCubic = p => 1 - Math.pow(1 - clamp(p, 0, 1), 3);
+const inOutQuint = p => { p = clamp(p, 0, 1); return p < 0.5 ? 16 * p ** 5 : 1 - Math.pow(-2 * p + 2, 5) / 2; };
+
+const markPath = new Path2D(MARK);
+const drawMark = (g, w, h) => { g.save(); g.scale(w / 510, h / 292); g.fillStyle = "#D3D7DE"; g.fill(markPath); g.restore(); };
+
+/* a logo that settles in softly: out of a blur, a little rise, a slow fade */
+function soft(drawFn, x, y, w, h, p) {
   if (p <= 0) return;
-  const k = expo(p), s = 2;
-  off.width = Math.ceil(w * s) + 4; off.height = Math.ceil(h * s) + 4;
-  og.setTransform(s, 0, 0, s, 2, 2); og.clearRect(-2, -2, w + 4, h + 4);
-  draw(og, w, h);
-  const gp = clamp((t - t0 - 0.25) / 0.5, 0, 1);
-  if (gp > 0 && gp < 1) {
-    og.globalCompositeOperation = "source-atop";
-    const sx = lerp(-0.5, 1.5, gp) * w, lg = og.createLinearGradient(sx - w * 0.3, 0, sx + w * 0.3, h);
-    lg.addColorStop(0, "rgba(255,255,255,0)"); lg.addColorStop(0.5, "rgba(255,255,255,.75)"); lg.addColorStop(1, "rgba(255,255,255,0)");
-    og.fillStyle = lg; og.fillRect(0, 0, w, h);
-    og.globalCompositeOperation = "source-over";
-  }
-  const dy = (1 - k) * -40;
+  const k = outCubic(p);
   ctx.save();
-  ctx.beginPath(); ctx.rect(x - 20, y - 60, w + 40, (h + 80) * k); ctx.clip();
-  ctx.globalAlpha = clamp(p * 2.5, 0, 1);
-  ctx.shadowColor = "rgba(0,0,0,.45)"; ctx.shadowBlur = 40 * K * DPR; ctx.shadowOffsetY = 12 * K * DPR;
-  ctx.drawImage(off, x - 1, y - 1 + dy, w + 2, h + 2);
+  ctx.globalAlpha = k;
+  ctx.filter = `blur(${((1 - k) * 14 * K * DPR).toFixed(2)}px)`;
+  ctx.shadowColor = "rgba(0,0,0,.4)"; ctx.shadowBlur = 36 * K * DPR; ctx.shadowOffsetY = 10 * K * DPR;
+  ctx.translate(x + w / 2, y + h / 2 + (1 - k) * 22);
+  const sc = lerp(0.96, 1, k); ctx.scale(sc, sc);
+  drawFn(ctx, -w / 2, -h / 2, w, h);
   ctx.restore();
 }
-const markPath = new Path2D(MARK);
-const drawCrest = (g, w, h) => g.drawImage(img.crest, 0, 0, w, h);
-const drawA = (g, w, h) => g.drawImage(img.A, 0, 0, w, h);
-const drawMark = (g, w, h) => { g.save(); g.scale(w / 510, h / 292); g.fillStyle = "#D3D7DE"; g.fill(markPath); g.restore(); };
-function rule(cx, y, w, t, t0) { const k = expo((t - t0) / 0.3); if (k <= 0) return; ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.fillRect(cx - w * k / 2, y - 1.5, w * k, 3); }
+
+/* a separator: a hairline that fades out at both ends, with a small diamond in the middle */
+function separator(cx, y, w, p) {
+  if (p <= 0) return;
+  const k = outCubic(p), half = w * k / 2;
+  const g = ctx.createLinearGradient(cx - half, 0, cx + half, 0);
+  g.addColorStop(0, "rgba(255,255,255,0)"); g.addColorStop(0.5, "rgba(255,255,255,.7)"); g.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = g; ctx.fillRect(cx - half, y - 1, half * 2, 2);
+  const d = 6 * sine(p * 1.3);
+  ctx.save(); ctx.translate(cx, y); ctx.rotate(Math.PI / 4); ctx.fillStyle = `rgba(255,255,255,${0.9 * k})`;
+  ctx.fillRect(-d / 2, -d / 2, d, d); ctx.restore();
+}
+
+/* the kit's pinstripes, drawn down the screen from the centre outwards */
+function pinstripes(t, alpha) {
+  if (alpha <= 0) return;
+  const step = 54, n = Math.ceil(SW / step) + 1;
+  for (let i = 0; i < n; i++) {
+    const x = (i - (n - 1) / 2) * step + SW / 2, dist = Math.abs(x - SW / 2) / (SW / 2);
+    const p = sine((t - 0.15 - dist * 0.45) / 1.1);
+    if (p <= 0) continue;
+    const g = ctx.createLinearGradient(0, 0, 0, SH * p);
+    g.addColorStop(0, `rgba(255,255,255,${0.16 * alpha})`); g.addColorStop(0.85, `rgba(255,255,255,${0.16 * alpha})`); g.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = g; ctx.fillRect(x - 1.5, 0, 3, SH * p);
+  }
+}
+
+/* the portcullis from the crest: an arched gateway draws itself, the stripes become the gate's bars,
+   cross-bars slide in, then the gate rises into the arch like a castle gate and the crest appears behind it */
+function archPath(cx, top, w, h) {
+  const r = w / 2, x0 = cx - r, x1 = cx + r, p = new Path2D();
+  p.moveTo(x0, top + h); p.lineTo(x0, top + r); p.arc(cx, top + r, r, Math.PI, 0); p.lineTo(x1, top + h);
+  return p;
+}
+function portcullis(cx, top, w, h, t) {
+  const draw = (t - 0.7) / 0.9, form = (t - 1.0) / 0.8, lift = inOutQuint((t - 1.95) / 1.3);
+  const fadeArch = 1 - sine((t - 2.6) / 0.7);
+  if (draw <= 0 || fadeArch <= 0) return;
+  const arch = archPath(cx, top, w, h);
+  const inner = new Path2D(); inner.addPath(archPath(cx, top, w, h)); inner.closePath();
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,.35)"; ctx.shadowBlur = 24 * K * DPR; ctx.shadowOffsetY = 8 * K * DPR;
+  // the gate, clipped to the gateway so it slides up into the arch
+  if (form > 0 && lift < 1) {
+    ctx.save(); ctx.clip(inner);
+    const bars = 7, gapX = (w - 40) / (bars - 1), rows = 6, gapY = (h - 60) / rows, bw = 13;
+    const dy = -lift * (h + 40);
+    ctx.fillStyle = "#F4F6FA";
+    for (let i = 0; i < bars; i++) {
+      const x = cx - (w - 40) / 2 + i * gapX, p = sine(form - Math.abs(i - 3) * 0.05);
+      if (p <= 0) continue;
+      const len = (h - 30) * p;
+      ctx.fillRect(x - bw / 2, top + dy, bw, len);
+      if (p > 0.95) { ctx.beginPath(); ctx.moveTo(x - bw / 2 - 5, top + dy + len); ctx.lineTo(x + bw / 2 + 5, top + dy + len); ctx.lineTo(x, top + dy + len + 34); ctx.closePath(); ctx.fill(); }
+    }
+    for (let r = 0; r < rows; r++) {
+      const p = sine((form - 0.3 - r * 0.06) / 0.6);
+      if (p <= 0) continue;
+      const y = top + dy + 40 + r * gapY, half = (w / 2) * p;
+      ctx.fillRect(cx - half, y - bw / 2, half * 2, bw);
+    }
+    ctx.restore();
+  }
+  // the gateway outline draws itself from both feet up to the keystone
+  const L = 2 * (h - w / 2) + Math.PI * w / 2;
+  ctx.globalAlpha = fadeArch;
+  ctx.strokeStyle = "#F4F6FA"; ctx.lineWidth = 12; ctx.lineCap = "round";
+  ctx.setLineDash([L * sine(draw), L]); ctx.stroke(arch);
+  ctx.setLineDash([]);
+  ctx.restore();
+}
 
 function frame(t) {
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -115,21 +177,26 @@ function frame(t) {
   ctx.setTransform(K * DPR, 0, 0, K * DPR, OX * DPR, OY * DPR);
   ctx.save(); ctx.beginPath(); ctx.rect(0, 0, SW, SH); ctx.clip();
   ground(t);
-  // the stack, centred: crest, mark, NARIN A
-  // the logos share one size: each fits (about) the same square
-  // the crest gets a little more room: it carries fine detail and would otherwise look smaller
+  pinstripes(t, 1 - 0.65 * sine((t - 2.4) / 1.2));                  // stay on as a faint kit texture
+
+  // layout: the three logos fit about the same square; the crest gets a little more room for its detail
   const fit = (w, h, box) => { const k = box / Math.max(w, h); return [w * k, h * k]; };
   const [cw, ch] = fit(img.crest.naturalWidth, img.crest.naturalHeight, 380);
   const [mw, mh] = fit(510, 292, 310);
   const [aw, ah] = fit(img.A.naturalWidth, img.A.naturalHeight, 330);
-  const gap = 110, total = ch + mh + ah + gap * 2;
-  const float = Math.sin(t * 1.2) * 6;
+  const gap = 120, total = ch + mh + ah + gap * 2, float = Math.sin(t * 0.9) * 5;
   let y = (SH - total) / 2 + float;
-  logo(drawCrest, SW / 2 - cw / 2, y, cw, ch, t, 0.35); y += ch + gap;
-  rule(SW / 2, y - gap / 2, 140, t, 0.6);
-  logo(drawMark, SW / 2 - mw / 2, y, mw, mh, t, 0.62); y += mh + gap;
-  rule(SW / 2, y - gap / 2, 140, t, 0.85);
-  logo(drawA, SW / 2 - aw / 2, y, aw, ah, t, 0.88);
+  const cy0 = y;
+
+  // the crest appears behind the lifting gate
+  soft((g, x, yy, w, h) => g.drawImage(img.crest, x, yy, w, h), SW / 2 - cw / 2, cy0, cw, ch, (t - 2.15) / 1.2);
+  portcullis(SW / 2, cy0 - 30, cw * 1.3, ch + 60, t);
+  y += ch + gap;
+  separator(SW / 2, y - gap / 2, 220, (t - 3.0) / 0.9);
+  soft(drawMark, SW / 2 - mw / 2, y, mw, mh, (t - 3.25) / 1.0);
+  y += mh + gap;
+  separator(SW / 2, y - gap / 2, 220, (t - 3.6) / 0.9);
+  soft((g, x, yy, w, h) => g.drawImage(img.A, x, yy, w, h), SW / 2 - aw / 2, y, aw, ah, (t - 3.85) / 1.0);
   ctx.restore();
 }
 
