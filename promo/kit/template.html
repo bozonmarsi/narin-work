@@ -25,7 +25,6 @@ const IMG_SRC = { crest: "%%crest_color%%", A: "%%A_white%%" };
 const MARK = "%%MARK%%";                      // kit maker's mark, 510 × 292 units
 const SW = 1080, SH = 1920, DUR = 5;
 // colours of the crest and the kits
-const COLS = ["#007BF5", "#F82118", "#F7CF05", "#00A651", "#002E9E", "#F7CF05", "#F82118", "#1FB25A"];
 
 const cv = document.getElementById("film"), ctx = cv.getContext("2d"), img = {};
 let W = 0, H = 0, K = 1, OX = 0, OY = 0, DPR = 1;
@@ -33,24 +32,50 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, k) => a + (b - a) * k;
 const expo = p => (p <= 0 ? 0 : p >= 1 ? 1 : 1 - Math.pow(2, -10 * p));
 
-/* soft colour light flowing behind, on white */
-const blobs = COLS.map((c, i) => ({ c, ph: i * 1.7, sp: 0.5 + (i % 3) * 0.18, r: 430 + (i % 4) * 60,
-  ax: 260 + (i % 3) * 70, ay: 300 + (i % 2) * 120, cx: SW * (0.2 + 0.6 * ((i * 37) % 10) / 10), cy: SH * (0.15 + 0.7 * ((i * 53) % 10) / 10) }));
+/* a live colour mesh: five big fields in the club colours orbit slowly, blurred together on a small canvas
+   and scaled up, so the colours melt into each other instead of reading as spots */
+const FIELDS = [
+  { c: "#007BF5", cx: 0.22, cy: 0.18, ax: 0.22, ay: 0.12, sp: 0.21, ph: 0.0, r: 0.62 },
+  { c: "#F82118", cx: 0.82, cy: 0.30, ax: 0.18, ay: 0.16, sp: 0.17, ph: 1.9, r: 0.55 },
+  { c: "#F7CF05", cx: 0.72, cy: 0.78, ax: 0.20, ay: 0.12, sp: 0.19, ph: 3.6, r: 0.52 },
+  { c: "#00A651", cx: 0.18, cy: 0.74, ax: 0.18, ay: 0.14, sp: 0.23, ph: 5.1, r: 0.58 },
+  { c: "#002E9E", cx: 0.50, cy: 0.52, ax: 0.26, ay: 0.20, sp: 0.13, ph: 2.6, r: 0.7 }
+];
+const meshA = document.createElement("canvas"), meshB = document.createElement("canvas");
+meshA.width = meshB.width = 108; meshA.height = meshB.height = 192;
+const ma = meshA.getContext("2d"), mb = meshB.getContext("2d");
+let grain = null;
+function makeGrain() {
+  const c = document.createElement("canvas"); c.width = c.height = 256; const g = c.getContext("2d");
+  let s = 7; const r = () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
+  for (let i = 0; i < 6000; i++) { g.fillStyle = `rgba(255,255,255,${r() * 0.05})`; g.fillRect(r() * 256, r() * 256, 1.2, 1.2); }
+  return c;
+}
 function ground(t) {
-  ctx.fillStyle = "#04050B"; ctx.fillRect(0, 0, SW, SH);
-  const fade = expo(t / 0.5);
-  ctx.globalCompositeOperation = "screen";            // saturated colours add up where they meet and shimmer
-  for (const b of blobs) {
-    const x = b.cx + Math.sin(t * b.sp * 1.6 + b.ph) * b.ax * 1.2, y = b.cy + Math.cos(t * b.sp * 1.3 + b.ph) * b.ay * 1.2;
-    const g = ctx.createRadialGradient(x, y, 0, x, y, b.r);
-    g.addColorStop(0, b.c + "E6"); g.addColorStop(0.4, b.c + "80"); g.addColorStop(1, b.c + "00");
-    ctx.globalAlpha = fade; ctx.fillStyle = g; ctx.fillRect(0, 0, SW, SH);
+  const fade = expo(t / 0.7);
+  ma.globalCompositeOperation = "source-over"; ma.fillStyle = "#04050B"; ma.fillRect(0, 0, 108, 192);
+  ma.globalCompositeOperation = "screen";
+  for (const f of FIELDS) {
+    const x = (f.cx + Math.sin(t * f.sp + f.ph) * f.ax) * 108, y = (f.cy + Math.cos(t * f.sp * 0.9 + f.ph) * f.ay) * 192;
+    const g = ma.createRadialGradient(x, y, 0, x, y, f.r * 108);
+    g.addColorStop(0, f.c); g.addColorStop(0.55, f.c + "88"); g.addColorStop(1, f.c + "00");
+    ma.globalAlpha = 0.95 * fade; ma.fillStyle = g; ma.fillRect(0, 0, 108, 192);
   }
-  ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
-  // a soft dark pool in the middle so the logos stay crisp
-  const v = ctx.createRadialGradient(SW / 2, SH / 2, 0, SW / 2, SH / 2, 700);
-  v.addColorStop(0, "rgba(4,5,11,.55)"); v.addColorStop(0.6, "rgba(4,5,11,.25)"); v.addColorStop(1, "rgba(4,5,11,0)");
+  ma.globalAlpha = 1;
+  mb.filter = "blur(9px)"; mb.drawImage(meshA, 0, 0); mb.filter = "none";
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(meshB, -60, -100, SW + 120, SH + 200);
+  // depth: darker towards the middle and the edges, so the logos sit on a calm field
+  const v = ctx.createRadialGradient(SW / 2, SH / 2, 0, SW / 2, SH / 2, 760);
+  v.addColorStop(0, "rgba(4,5,11,.62)"); v.addColorStop(0.55, "rgba(4,5,11,.28)"); v.addColorStop(1, "rgba(4,5,11,.05)");
   ctx.fillStyle = v; ctx.fillRect(0, 0, SW, SH);
+  // a slow diagonal band of light
+  const p = ((t * 0.12) % 1.4) - 0.2;
+  ctx.save(); ctx.translate(SW / 2, SH / 2); ctx.rotate(-0.55);
+  const bx = lerp(-1500, 1500, p), lg = ctx.createLinearGradient(bx - 300, 0, bx + 300, 0);
+  lg.addColorStop(0, "rgba(255,255,255,0)"); lg.addColorStop(0.5, "rgba(255,255,255,.06)"); lg.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = lg; ctx.fillRect(-1800, -1800, 3600, 3600); ctx.restore();
+  ctx.fillStyle = ctx.createPattern(grain, "repeat"); ctx.fillRect(0, 0, SW, SH);
 }
 
 /* one logo: drops in from above, unmasks top to bottom, a quick shine passes over it */
@@ -81,7 +106,7 @@ function logo(draw, x, y, w, h, t, t0) {
 const markPath = new Path2D(MARK);
 const drawCrest = (g, w, h) => g.drawImage(img.crest, 0, 0, w, h);
 const drawA = (g, w, h) => g.drawImage(img.A, 0, 0, w, h);
-const drawMark = (g, w, h) => { g.save(); g.scale(w / 510, h / 292); g.fillStyle = "#A7ADB8"; g.fill(markPath); g.restore(); };
+const drawMark = (g, w, h) => { g.save(); g.scale(w / 510, h / 292); g.fillStyle = "#D3D7DE"; g.fill(markPath); g.restore(); };
 function rule(cx, y, w, t, t0) { const k = expo((t - t0) / 0.3); if (k <= 0) return; ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.fillRect(cx - w * k / 2, y - 1.5, w * k, 3); }
 
 function frame(t) {
@@ -91,10 +116,13 @@ function frame(t) {
   ctx.save(); ctx.beginPath(); ctx.rect(0, 0, SW, SH); ctx.clip();
   ground(t);
   // the stack, centred: crest, mark, NARIN A
-  const cw = 470, ch = cw * img.crest.naturalHeight / img.crest.naturalWidth;
-  const mw = 300, mh = mw * 292 / 510;
-  const ah = 270, aw = ah * img.A.naturalWidth / img.A.naturalHeight;
-  const gap = 90, total = ch + mh + ah + gap * 2;
+  // the logos share one size: each fits (about) the same square
+  // the crest gets a little more room: it carries fine detail and would otherwise look smaller
+  const fit = (w, h, box) => { const k = box / Math.max(w, h); return [w * k, h * k]; };
+  const [cw, ch] = fit(img.crest.naturalWidth, img.crest.naturalHeight, 380);
+  const [mw, mh] = fit(510, 292, 310);
+  const [aw, ah] = fit(img.A.naturalWidth, img.A.naturalHeight, 330);
+  const gap = 110, total = ch + mh + ah + gap * 2;
   const float = Math.sin(t * 1.2) * 6;
   let y = (SH - total) / 2 + float;
   logo(drawCrest, SW / 2 - cw / 2, y, cw, ch, t, 0.35); y += ch + gap;
@@ -130,6 +158,7 @@ function loop(now) {
 window.__kovka = { seek: s => { t = s; frame(t); }, pause: () => setPlaying(false), dur: DUR + 1 };
 (async () => {
   await Promise.all(Object.entries(IMG_SRC).map(([k, src]) => new Promise(res => { const im = new Image(); im.onload = res; im.onerror = res; im.src = src; img[k] = im; })));
+  grain = makeGrain();
   resize(); addEventListener("resize", resize);
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) { t = DUR; setPlaying(false); }
   requestAnimationFrame(loop);
