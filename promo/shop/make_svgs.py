@@ -293,49 +293,55 @@ def garden(max_h, inset=34):
     # two rows of mixed flowers, not mirrored: each spot takes the next kind/colour pair from a shuffled deck,
     # never the same kind or the same main colour as its left neighbour. Kinds are drawn in flowers.py.
     CORAL, WHITE_ = "#FF7C77", "#FFFFFF"
-    combos = [("gerbera", YELLOW, CORAL), ("gerbera", CORAL, YELLOW), ("gerbera", PURPLE, YELLOW), ("gerbera", WHITE_, CORAL),
-              ("cosmos", LILAC, PURPLE), ("cosmos", WHITE_, YELLOW), ("cosmos", CORAL, YELLOW), ("cosmos", YELLOW, RED),
-              ("anemone", RED, BLUE), ("anemone", WHITE_, PURPLE), ("anemone", PURPLE, YELLOW), ("anemone", COBALT, WHITE_),
-              ("daisy", BLUE, None), ("daisy", YELLOW, None), ("daisy", RED, None), ("daisy", PURPLE, None), ("daisy", LILAC, None),
-              ("five", YELLOW, None), ("five", RED, None), ("five", WHITE_, None), ("five", LILAC, None),
-              ("pompom", LILAC, None), ("pompom", YELLOW, None), ("pompom", CORAL, None), ("pompom", PURPLE, None),
-              ("cluster", COBALT, YELLOW), ("cluster", LILAC, YELLOW), ("cluster", WHITE_, YELLOW),
-              ("buds", CORAL, None), ("buds", PURPLE, None), ("buds", YELLOW, None),
-              ("bells", PURPLE, None), ("bells", COBALT, None)]
-    deck = []
+    # back row: the showy flowers (orchids, irises, callas, gerberas, cosmos); front row: small ones and leaves
+    back_deck = [("orchid", WHITE_, RED), ("orchid", LILAC, PURPLE), ("orchid", WHITE_, PURPLE), ("orchid", CORAL, YELLOW),
+                 ("iris", PURPLE, None), ("iris", COBALT, None), ("iris", YELLOW, None), ("iris", WHITE_, None),
+                 ("calla", WHITE_, None), ("calla", YELLOW, None), ("calla", CORAL, None), ("calla", PURPLE, None),
+                 ("gerbera", YELLOW, CORAL), ("gerbera", CORAL, YELLOW), ("gerbera", WHITE_, CORAL),
+                 ("cosmos", LILAC, PURPLE), ("cosmos", WHITE_, YELLOW), ("anemone", RED, BLUE), ("daisy", BLUE, None)]
+    front_deck = [("five", YELLOW, None), ("five", RED, None), ("five", WHITE_, None), ("five", LILAC, None),
+                  ("pompom", LILAC, None), ("pompom", YELLOW, None), ("pompom", CORAL, None),
+                  ("cluster", COBALT, YELLOW), ("cluster", WHITE_, YELLOW), ("buds", CORAL, None), ("buds", PURPLE, None),
+                  ("bells", PURPLE, None), ("bells", COBALT, None), ("daisy", YELLOW, None), ("daisy", RED, None),
+                  ("anemone", WHITE_, PURPLE), ("anemone", PURPLE, YELLOW)]
+    decks = {"back": [], "front": []}
 
-    def draw_next(prev):
-        nonlocal deck
-        for _ in range(200):
-            if not deck:
-                deck = combos[:]
-                rnd.shuffle(deck)
-            c = deck.pop()
+    def draw_next(row, prev):
+        for _ in range(300):
+            if not decks[row]:
+                decks[row] = (back_deck if row == "back" else front_deck)[:]
+                rnd.shuffle(decks[row])
+            c = decks[row].pop()
             if prev is None or (c[0] != prev[0] and c[1] != prev[1]):
                 return c
-            deck.insert(0, c)
-        return deck.pop()
+            decks[row].insert(0, c)
+        return decks[row].pop()
 
-    step, d = 76, 64
     layers = {"back": ([], []), "front": ([], [])}
-    for row, x0, hmin, hmax in (("back", 60, 0.78, 1.0), ("front", 60 + step / 2, 0.42, 0.6)):
+    for row, x0, step, hmin, hmax in (("back", 70, 96, 0.82, 1.0), ("front", 50, 80, 0.38, 0.55)):
         st, hd = layers[row]
         prev, x, n = None, x0, 0
         while x < AW - 40:
-            xx = x + rnd.uniform(-12, 12)
+            xx = x + rnd.uniform(-10, 10)
             h = max_h * rnd.uniform(hmin, hmax)
-            dd = d * (1 if row == "back" else 0.82)
+            dd = 64 if row == "back" else 52
             x += step
             n += 1
             if not arch_inner(xx, AH - h, dd / 2, inset):
                 continue
-            if row == "front" and n % 5 == 3:
-                st += FL.leafy(xx, AH + 2, h * 0.75)
+            if row == "front" and n % 6 == 3:
+                st += FL.leafy(xx, AH + 2, h * 0.6)
                 continue
-            kind, col, mid = c = draw_next(prev)
+            kind, col, mid = c = draw_next(row, prev)
             prev = c
             side = rnd.choice((-1, 1))
-            if kind == "bells":
+            if kind == "orchid":
+                st += FL.orchid(xx, AH + 2, h * 0.95, col, mid, side)
+            elif kind == "iris":
+                st += FL.iris(xx, AH + 2, h + 10, col, side)
+            elif kind == "calla":
+                st += FL.calla(xx, AH + 2, h + 20, col, side)
+            elif kind == "bells":
                 st += FL.bellflower(xx - side * 14, AH + 2, h, col, side)
             elif kind == "cluster":
                 st += FL.tiny_cluster(xx, AH + 2, h, col, mid, side)
@@ -377,7 +383,7 @@ def composed_art(ink, variant):
     if variant == "P-garden-line":
         lg, lh = logo(AW / 2, 165, 740, ink)
         line = bottom_line(ink, 165 + lh + 125, 1160, 104, "dot")
-        return [layer("keyline", [keyline(ink, 34, 20, 160)]), layer("garden", garden(140)), layer("logo", [lg]), layer("text", line)]
+        return [layer("keyline", [keyline(ink, 34, 20, 160)]), layer("garden", garden(128)), layer("logo", [lg]), layer("text", line)]
     if variant == "L-sign-flowerbox":
         return sign_art(ink, flowerbox(stems=True))
     if variant == "N-sign-border":
