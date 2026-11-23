@@ -255,10 +255,10 @@ def orchid_flower(x, y, S, color, lip, rot=0.0):
     return "".join(out)
 
 
-def orchid(x, ground, h, color, lip, side=1):
+def orchid(x, ground, h, color, lip, side=1, scale=1.0, leaves=True):
     """A potted-orchid spray: two broad leaves at the foot, an arching spike with flowers and buds."""
     out = []
-    for a, L, c in ((-168 if side > 0 else -12, 70, LEAF_A), (-12 if side > 0 else -168, 64, LEAF_B)):
+    for a, L, c in (((-168 if side > 0 else -12, 70, LEAF_A), (-12 if side > 0 else -168, 64, LEAF_B)) if leaves else ()):
         w = L * 0.36
         out.append(f'<path transform="translate({x:.1f} {ground - 4:.1f}) rotate({a})" fill="{c}" '
                    f'd="M0 0 C{L * 0.2:.1f} {-w:.1f} {L * 0.85:.1f} {-w:.1f} {L:.1f} 0 C{L * 0.85:.1f} {w * 0.8:.1f} {L * 0.2:.1f} {w * 0.8:.1f} 0 0Z"/>')
@@ -273,7 +273,7 @@ def orchid(x, ground, h, color, lip, side=1):
         out.append(f'<ellipse cx="{bx:.1f}" cy="{by + 6:.1f}" rx="{r * 0.8:.1f}" ry="{r:.1f}" fill="{shade(color, -0.08)}"/>')
     for f, S in ((0.8, 58), (0.62, 66)):                       # flowers hang just under the spike, up high
         bx, by = at(f)
-        out.append(orchid_flower(bx + side * 4, by + S * 0.28, S, color, lip, side * 6))
+        out.append(orchid_flower(bx + side * 4, by + S * scale * 0.28, S * scale, color, lip, side * 6))
     return out
 
 

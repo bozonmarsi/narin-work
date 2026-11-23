@@ -416,17 +416,29 @@ def meadow(max_h, inset=34, seed=12, top_limit=0):
                 return v
         return table[-1][1:]
 
-    kinds = [(22, "chamomile"), (14, "daisy"), (12, "cosmos"), (10, "poppy"), (10, "cornflower"), (10, "bud"),
-             (6, "five"), (6, "anemone"), (5, "babys"), (3, "rose"), (2, "peony")]
-    colours = {"daisy": [(3, BLUE), (2, COBALT), (1, RED), (1, YELLOW)],
-               "cosmos": [(3, WHITE_), (3, LILAC), (2, CORAL), (1, PURPLE)],
-               "poppy": [(3, RED), (2, CORAL)],
-               "cornflower": [(3, COBALT), (2, BLUE), (1, PURPLE)],
-               "bud": [(2, CORAL), (2, LILAC), (1, WHITE_), (1, YELLOW)],
-               "five": [(2, YELLOW), (2, WHITE_), (1, LILAC)],
-               "anemone": [(2, WHITE_), (1, RED)],
-               "rose": [(2, CORAL), (1, RED), (1, CREAM)],
-               "peony": [(2, LILAC), (1, WHITE_)]}
+    kinds = [(16, "chamomile"), (12, "daisy"), (10, "cosmos"), (9, "poppy"), (8, "cornflower"), (9, "iris"),
+             (7, "orchid"), (8, "bud"), (6, "five"), (6, "anemone"), (4, "babys"), (4, "rose"), (3, "peony")]
+    colours = {"daisy": [(3, BLUE), (2, COBALT), (2, RED), (2, YELLOW), (1, PURPLE), (1, LILAC), (1, CORAL)],
+               "cosmos": [(3, WHITE_), (3, LILAC), (2, CORAL), (2, PURPLE), (1, YELLOW), (1, RED)],
+               "poppy": [(3, RED), (2, CORAL), (2, YELLOW), (1, WHITE_)],
+               "cornflower": [(3, COBALT), (2, BLUE), (2, PURPLE), (1, LILAC), (1, WHITE_)],
+               "bud": [(2, CORAL), (2, LILAC), (1, WHITE_), (1, YELLOW), (1, PURPLE), (1, RED)],
+               "five": [(2, YELLOW), (2, WHITE_), (1, LILAC), (1, COBALT), (1, CORAL)],
+               "anemone": [(2, WHITE_), (2, RED), (1, PURPLE), (1, LILAC), (1, COBALT)],
+               "rose": [(2, CORAL), (2, RED), (1, CREAM), (1, YELLOW), (1, LILAC)],
+               "peony": [(2, LILAC), (1, WHITE_), (1, CORAL)],
+               "iris": [(1, PURPLE), (1, COBALT), (1, YELLOW), (1, WHITE_), (1, LILAC)],
+               "orchid": [(2, (WHITE_, RED)), (2, (LILAC, PURPLE)), (1, (CORAL, YELLOW)), (1, (WHITE_, PURPLE)), (1, (YELLOW, RED))]}
+
+    decks = {}
+
+    def colour_of(kind):
+        """Deal colours per kind from a shuffled deck, so every colourway of a kind shows up in turn."""
+        if not decks.get(kind):
+            deck = [c for w, c in colours.get(kind, [(1, WHITE_)]) for _ in range(w)]
+            rnd.shuffle(deck)
+            decks[kind] = deck
+        return decks[kind].pop()
 
     def blades(n, hmin, hmax, cols, scale):
         out = []
@@ -455,7 +467,11 @@ def meadow(max_h, inset=34, seed=12, top_limit=0):
         if kind == "babys":
             items += FL.babys_breath(x, G, h, rnd)
             continue
-        col = pick(colours.get(kind, [(1, WHITE_)]))[0]
+        if kind == "orchid":
+            petal, lip = colour_of("orchid")
+            items += FL.orchid(x, G, h * 0.92, petal, lip, 1 if lean >= 0 else -1, scale=0.85, leaves=False)
+            continue
+        col = colour_of(kind)
         stem, c = FL.curved_stem(x, G, hx, hy, lean)
         items.append(stem)
         for _ in range(rnd.choice((0, 1, 1, 2))):                            # slim leaves along the stem
@@ -468,6 +484,11 @@ def meadow(max_h, inset=34, seed=12, top_limit=0):
         rot = rnd.uniform(0, 40)
         if kind == "bud":
             items.append(FL.bud(hx, hy + 4, rnd.uniform(20, 28), col, lean * 1.1))
+            continue
+        if kind == "iris":
+            for dx, k in ((-6, 0.62), (7, 0.5)):                          # two sword leaves
+                items.append(FL.grass_blade(x + dx, G, h * k, rnd.uniform(-0.2, 0.2) * h, 10, rnd.choice((LEAF_GREEN, LEAF_LIGHT))))
+            items.append(FL.tilted(FL.iris_flower(hx, hy + 6, rnd.uniform(56, 66), col), hx, hy + 6, lean * 0.35, rnd.choice((1.0, 0.92, 0.85))))
             continue
         if kind == "chamomile":
             head = FL.chamomile(hx, hy, rnd.uniform(40, 54), rot)
