@@ -85,7 +85,7 @@ const outCubic = p => 1 - Math.pow(1 - clamp(p, 0, 1), 3);
 const inOutQuint = p => { p = clamp(p, 0, 1); return p < 0.5 ? 16 * p ** 5 : 1 - Math.pow(-2 * p + 2, 5) / 2; };
 
 const markPath = new Path2D(MARK);
-const drawMark = (g, w, h) => { g.save(); g.scale(w / 510, h / 292); g.fillStyle = "#D3D7DE"; g.fill(markPath); g.restore(); };
+const drawMark = (g, x, y, w, h) => { g.save(); g.translate(x, y); g.scale(w / 510, h / 292); g.fillStyle = "#D3D7DE"; g.fill(markPath); g.restore(); };
 
 /* a logo that settles in softly: out of a blur, a little rise, a slow fade */
 function soft(drawFn, x, y, w, h, p) {
