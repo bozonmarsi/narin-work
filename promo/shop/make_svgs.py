@@ -36,6 +36,10 @@ LOGO_BODY = re.sub(r"^.*?<svg[^>]*>|</svg>\s*$", "", logo_src, flags=re.S)
 
 
 # ---------- helpers ----------
+def clamp(v, a, b):
+    return max(a, min(b, v))
+
+
 def daisy(x, y, d, color, rot=0.0, hole=True):
     s = d / 100
     return (f'<path transform="translate({x:.1f} {y:.1f}) rotate({rot:.1f}) scale({s:.4f})" fill="{color}" '
@@ -392,6 +396,103 @@ def garden(max_h, inset=34):
             + layers["front"][0] + layers["front"][1] + [grass_band(12, 24, 18, LEAF_LIGHT)])
 
 
+def meadow(max_h, inset=34, seed=12, top_limit=0):
+    """An organic meadow along the bottom: a band of long curving grass, wild and garden flowers on slender,
+    leaning stems at heights that rise and fall like a real border, some heads turned or tilted, buds and
+    baby's breath between them, more grass in front. Everything grows out of one continuous green base."""
+    rnd = random.Random(seed)
+    CORAL, WHITE_, CREAM = "#FF7C77", "#FFFFFF", "#FFF4DC"
+    G = AH + 3
+
+    def silhouette(x):
+        k = 0.74 + 0.18 * math.sin(x / 170 + 1.1) + 0.12 * math.sin(x / 61 + 0.4)
+        return max_h * clamp(k, 0.42, 1.0)
+
+    def pick(table):
+        r, acc = rnd.uniform(0, sum(w for w, *_ in table)), 0
+        for w, *v in table:
+            acc += w
+            if r <= acc:
+                return v
+        return table[-1][1:]
+
+    kinds = [(22, "chamomile"), (14, "daisy"), (12, "cosmos"), (10, "poppy"), (10, "cornflower"), (10, "bud"),
+             (6, "five"), (6, "anemone"), (5, "babys"), (3, "rose"), (2, "peony")]
+    colours = {"daisy": [(3, BLUE), (2, COBALT), (1, RED), (1, YELLOW)],
+               "cosmos": [(3, WHITE_), (3, LILAC), (2, CORAL), (1, PURPLE)],
+               "poppy": [(3, RED), (2, CORAL)],
+               "cornflower": [(3, COBALT), (2, BLUE), (1, PURPLE)],
+               "bud": [(2, CORAL), (2, LILAC), (1, WHITE_), (1, YELLOW)],
+               "five": [(2, YELLOW), (2, WHITE_), (1, LILAC)],
+               "anemone": [(2, WHITE_), (1, RED)],
+               "rose": [(2, CORAL), (1, RED), (1, CREAM)],
+               "peony": [(2, LILAC), (1, WHITE_)]}
+
+    def blades(n, hmin, hmax, cols, scale):
+        out = []
+        for _ in range(n):
+            x = rnd.uniform(-5, AW + 5)
+            h = rnd.uniform(hmin, hmax) * (silhouette(x) / max_h) ** scale
+            if not arch_inner(x, G - h, 2, inset - 22):
+                continue
+            out.append(FL.grass_blade(x, G, h, rnd.uniform(-0.45, 0.45) * h, rnd.uniform(4, 8), rnd.choice(cols)))
+        return out
+
+    back_grass = blades(170, max_h * 0.35, max_h * 0.75, ["#238544", LEAF_GREEN, "#2F8F48"], 1.0)
+    plants = []
+    x = 26.0
+    while x < AW - 26:
+        x += rnd.uniform(18, 32)
+        h = silhouette(x) * rnd.uniform(0.72, 1.04)
+        lean = rnd.uniform(-26, 26)
+        hx, hy = x + lean, max(G - h, top_limit + 32)      # keep heads clear of the lettering
+        h = G - hy
+        if not arch_inner(hx, hy, 24, inset - 6):
+            continue
+        plants.append((h, x, lean, hx, hy, pick(kinds)[0]))
+    items = []
+    for h, x, lean, hx, hy, kind in sorted(plants, key=lambda p: -p[0]):       # tall ones behind
+        if kind == "babys":
+            items += FL.babys_breath(x, G, h, rnd)
+            continue
+        col = pick(colours.get(kind, [(1, WHITE_)]))[0]
+        stem, c = FL.curved_stem(x, G, hx, hy, lean)
+        items.append(stem)
+        for _ in range(rnd.choice((0, 1, 1, 2))):                            # slim leaves along the stem
+            f = rnd.uniform(0.18, 0.5)
+            lx, ly = FL.point_on(x, G, c, hx, hy, f)
+            side = rnd.choice((-1, 1))
+            items.append(FL.slim_leaf(lx, ly, rnd.uniform(26, 44), -90 + side * rnd.uniform(35, 65), rnd.choice((LEAF_GREEN, LEAF_LIGHT, "#3DAF5C"))))
+        ang = lean * 0.7
+        squash = rnd.choice((1.0, 0.9, 0.78, 0.62))
+        rot = rnd.uniform(0, 40)
+        if kind == "bud":
+            items.append(FL.bud(hx, hy + 4, rnd.uniform(20, 28), col, lean * 1.1))
+            continue
+        if kind == "chamomile":
+            head = FL.chamomile(hx, hy, rnd.uniform(40, 54), rot)
+        elif kind == "daisy":
+            head = daisy(hx, hy, rnd.uniform(40, 50), col, rot)
+        elif kind == "cosmos":
+            head = FL.cosmos(hx, hy, rnd.uniform(44, 58), col, YELLOW if col != YELLOW else RED, rot)
+        elif kind == "poppy":
+            head = FL.poppy(hx, hy, rnd.uniform(44, 56), col, rot)
+        elif kind == "cornflower":
+            head = FL.cornflower(hx, hy, rnd.uniform(32, 40), col, rot)
+        elif kind == "five":
+            head = FL.five_petal(hx, hy, rnd.uniform(30, 38), col, rot)
+        elif kind == "anemone":
+            head = FL.anemone(hx, hy, rnd.uniform(38, 48), col, BLUE if col == WHITE_ else "#14204A", rot)
+        elif kind == "rose":
+            head = FL.rose(hx, hy, rnd.uniform(38, 48), col, rot)
+        else:
+            head = FL.peony(hx, hy, rnd.uniform(48, 60), col, rot)
+        items.append(FL.tilted(head, hx, hy, ang, squash))
+    front_grass = blades(150, max_h * 0.12, max_h * 0.42, [LEAF_LIGHT, "#3DAF5C", LEAF_GREEN], 0.5)
+    base = f'<path fill="{LEAF_GREEN}" d="M-10 {AH + 4} L-10 {AH - 10} Q{AW * 0.25} {AH - 16} {AW / 2} {AH - 11} T{AW + 10} {AH - 12} L{AW + 10} {AH + 4}Z"/>'
+    return back_grass + items + front_grass + [base]
+
+
 def keyline(ink, inset=34, a0=24, a1=156):
     rx, ry = AW / 2 - inset, AH - inset
     t0, t1 = math.radians(a0), math.radians(a1)
@@ -404,11 +505,11 @@ def composed_art(ink, variant):
     if variant == "O-garden-arc":
         arc = text_on_arch("KVĚTINY · DÁRKY · ROSTLINY", 74, 112, ink, tracking=0.12)
         lg, _ = logo(AW / 2, 300, 700, ink)
-        return [layer("keyline", [keyline(ink, 30, 26, 154)]), layer("garden", garden(170)), layer("logo", [lg]), layer("text", arc)]
+        return [layer("keyline", [keyline(ink, 30, 26, 154)]), layer("garden", meadow(185, top_limit=470)), layer("logo", [lg]), layer("text", arc)]
     if variant == "P-garden-line":
         lg, lh = logo(AW / 2, 165, 740, ink)
         line = bottom_line(ink, 165 + lh + 125, 1160, 104, "dot")
-        return [layer("keyline", [keyline(ink, 34, 20, 160)]), layer("garden", garden(128)), layer("logo", [lg]), layer("text", line)]
+        return [layer("keyline", [keyline(ink, 34, 20, 160)]), layer("garden", meadow(175, top_limit=528)), layer("logo", [lg]), layer("text", line)]
     if variant == "L-sign-flowerbox":
         return sign_art(ink, flowerbox(stems=True))
     if variant == "N-sign-border":

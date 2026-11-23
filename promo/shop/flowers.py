@@ -434,3 +434,83 @@ def crocus(x, ground, h, color, side=1):
                f'C{x + 12:.1f} {top + 30:.1f} {x + 13:.1f} {top + 6:.1f} {x:.1f} {top - 6:.1f}Z"/>')
     out.append(f'<path d="M{x - 4:.1f} {top + 6:.1f} L{x - 6:.1f} {top - 4:.1f} M{x + 4:.1f} {top + 6:.1f} L{x + 6:.1f} {top - 4:.1f}" stroke="#F5A623" stroke-width="3" stroke-linecap="round"/>')
     return out
+
+
+# ---------- meadow: delicate, organic pieces ----------
+def chamomile(x, y, d, rot=0.0, color="#FFFFFF", center="#FFD84A"):
+    """Chamomile / oxeye daisy: many narrow petals and a domed yellow middle."""
+    R = d / 2
+    return (f'<path fill="{color}" d="{_petals(x, y, R, 16, 0.11, rot, notch=False)}"/>'
+            + _disc(x, y, R * 0.3, center) + _disc(x - R * 0.06, y - R * 0.06, R * 0.12, shade(center, 0.35)))
+
+
+def cornflower(x, y, d, color, rot=0.0):
+    """Cornflower: ragged, deeply toothed florets around a dark middle."""
+    R, pts = d / 2, []
+    n = 9
+    for i in range(n * 6):
+        t = math.radians(rot) + 2 * math.pi * i / (n * 6)
+        k = i % 6
+        r = R * (1.0 if k in (1, 3) else 0.82 if k in (2,) else 0.55 if k == 0 else 0.9)
+        pts.append((x + r * math.cos(t), y + r * math.sin(t)))
+    return (f'<path fill="{color}" d="{_poly(pts)}" stroke="{color}" stroke-width="1.5" stroke-linejoin="round"/>'
+            + _disc(x, y, R * 0.3, deep(color)) + _disc(x, y, R * 0.14, shade(deep(color), -0.3)))
+
+
+def tilted(head_svg, x, y, angle, squash):
+    """Show a front-facing head at an angle: squash it vertically around its centre and turn it."""
+    return (f'<g transform="translate({x:.1f} {y:.1f}) rotate({angle:.1f}) scale(1 {squash:.2f}) translate({-x:.1f} {-y:.1f})">'
+            f'{head_svg}</g>')
+
+
+def curved_stem(x, ground, hx, hy, lean, width=3.6, color=STEM):
+    """A slender stem curving from the ground to the head, slightly thicker at the foot."""
+    c1x, c1y = x + lean * 0.1, ground - (ground - hy) * 0.45
+    c2x, c2y = hx - lean * 0.25, hy + (ground - hy) * 0.25
+    return (f'<path d="M{x:.1f} {ground:.1f} C{c1x:.1f} {c1y:.1f} {c2x:.1f} {c2y:.1f} {hx:.1f} {hy:.1f}" fill="none" '
+            f'stroke="{color}" stroke-width="{width:.1f}" stroke-linecap="round"/>'), (c1x, c1y, c2x, c2y)
+
+
+def point_on(x, ground, c, hx, hy, f):
+    c1x, c1y, c2x, c2y = c
+    u = 1 - f
+    return (u ** 3 * x + 3 * u * u * f * c1x + 3 * u * f * f * c2x + f ** 3 * hx,
+            u ** 3 * ground + 3 * u * u * f * c1y + 3 * u * f * f * c2y + f ** 3 * hy)
+
+
+def slim_leaf(x, y, length, angle, color):
+    """A long, narrow, slightly curved leaf."""
+    w = length * 0.13
+    return (f'<path transform="translate({x:.1f} {y:.1f}) rotate({angle:.1f})" fill="{color}" '
+            f'd="M0 0 C{length * 0.3:.1f} {-w * 1.6:.1f} {length * 0.75:.1f} {-w * 1.2:.1f} {length:.1f} {-w * 0.9:.1f} '
+            f'C{length * 0.7:.1f} {-w * 0.1:.1f} {length * 0.3:.1f} {w * 0.7:.1f} 0 0Z"/>')
+
+
+def grass_blade(x, ground, h, lean, w, color):
+    """One tapered, curving blade of grass."""
+    tx, ty = x + lean, ground - h
+    return (f'<path fill="{color}" d="M{x - w / 2:.1f} {ground:.1f} Q{x - w * 0.2 + lean * 0.2:.1f} {ground - h * 0.6:.1f} {tx:.1f} {ty:.1f} '
+            f'Q{x + w * 0.3 + lean * 0.35:.1f} {ground - h * 0.55:.1f} {x + w / 2:.1f} {ground:.1f}Z"/>')
+
+
+def babys_breath(x, ground, h, rnd, color="#FFFFFF"):
+    """Gypsophila: thin branching stems ending in clouds of tiny dots."""
+    out = []
+    tips = []
+    for _ in range(5):
+        hx, hy = x + rnd.uniform(-30, 30), ground - h * rnd.uniform(0.75, 1.0)
+        s, _c = curved_stem(x, ground, hx, hy, hx - x, 2.2)
+        out.append(s)
+        tips.append((hx, hy))
+    for hx, hy in tips:
+        for _ in range(9):
+            out.append(_disc(hx + rnd.uniform(-14, 14), hy + rnd.uniform(-10, 10), rnd.uniform(2.2, 3.6), color))
+    return out
+
+
+def bud(x, y, size, color, angle):
+    """A closed bud with a green calyx."""
+    return (f'<g transform="translate({x:.1f} {y:.1f}) rotate({angle:.1f})">'
+            f'<ellipse cx="0" cy="{-size * 0.45:.1f}" rx="{size * 0.32:.1f}" ry="{size * 0.5:.1f}" fill="{color}"/>'
+            f'<path fill="{STEM}" d="M{-size * 0.34:.1f} {-size * 0.2:.1f} Q0 {size * 0.25:.1f} {size * 0.34:.1f} {-size * 0.2:.1f} '
+            f'L{size * 0.12:.1f} {-size * 0.05:.1f} L0 {-size * 0.3:.1f} L{-size * 0.12:.1f} {-size * 0.05:.1f}Z"/></g>')

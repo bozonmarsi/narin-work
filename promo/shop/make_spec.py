@@ -18,7 +18,7 @@ M = {
     "logo": (357.5, 172.5, 725.6, 183.8),      # x, y, w, h
     "line": (147.8, 412.7, 1150.8, 93.5),
     "baseline": 488.6, "cap": 65.1,
-    "garden_top": 526.0,
+    "garden_top": 529.0,
     "keyline_inset": 34, "keyline_w": 4,
 }
 
@@ -33,14 +33,14 @@ COLOURS = [("#FFFFFF", "bílá / белый", "logo, text, linka, bílé květy 
 T = {
     "cz": {
         "title": "NARIN — polepení obloukového skla nad vchodem",
-        "sub": "Tiskový podklad · varianta „zahrada“ · všechny míry v mm · 1 jednotka v SVG = 1 mm",
+        "sub": "Tiskový podklad · varianta „louka“ · všechny míry v mm · 1 jednotka v SVG = 1 mm",
         "w": "1440 mm (šířka skla)", "h": "700 mm", "logo_w": "726", "logo_h": "184", "logo_top": "172",
-        "line_w": "1151", "cap": "65", "garden": "174 (zahrada)", "key": "bílá linka 4 mm, 34 mm od okraje",
+        "line_w": "1151", "cap": "65", "garden": "171 (louka)", "key": "bílá linka 4 mm, 34 mm od okraje",
         "sizes": "Rozměry", "rows": [
             ("Sklo", "oblouk 1440 × 700 mm (půlelipsa, poloosy 720 × 700). <b>Před výrobou prosím přeměřte.</b>"),
             ("Logo NARIN", "726 × 184 mm, horní okraj 172 mm pod vrcholem oblouku, na střed"),
             ("Řádek „Květiny · Dárky · Rostliny“", "šířka 1151 mm, výška velkých písmen 65 mm, účaří 489 mm pod vrcholem"),
-            ("Zahrada", "pás 174 mm u spodní hrany skla: souvislý trávník po celé šířce + ~20 druhů květin, Ø 45–80 mm"),
+            ("Zahrada", "pás 171 mm u spodní hrany skla: louka — souvislý zelený pruh s trávou po celé šířce, luční a zahradní květy Ø 30–60 mm"),
             ("Linka podél oblouku", "bílá, tloušťka 4 mm, 34 mm od okraje skla"),
             ("Ořez", "magenta křivka ve vrstvě „CUT contour“ = tvar skla; netisknout"),
         ],
@@ -57,14 +57,14 @@ T = {
     },
     "ru": {
         "title": "NARIN — наклейка на арочное стекло над входом",
-        "sub": "Для типографии · вариант «сад» · все размеры в мм · в SVG 1 единица = 1 мм",
+        "sub": "Для типографии · вариант «луг» · все размеры в мм · в SVG 1 единица = 1 мм",
         "w": "1440 мм (ширина стекла)", "h": "700 мм", "logo_w": "726", "logo_h": "184", "logo_top": "172",
-        "line_w": "1151", "cap": "65", "garden": "174 (сад)", "key": "белая линия 4 мм, 34 мм от края",
+        "line_w": "1151", "cap": "65", "garden": "171 (луг)", "key": "белая линия 4 мм, 34 мм от края",
         "sizes": "Размеры", "rows": [
             ("Стекло", "арка 1440 × 700 мм (полуэллипс, полуоси 720 × 700). <b>Перед печатью перемерить.</b>"),
             ("Логотип NARIN", "726 × 184 мм, верх в 172 мм от верхней точки арки, по центру"),
             ("Строка «Květiny · Dárky · Rostliny»", "ширина 1151 мм, высота заглавных букв 65 мм, линия строки в 489 мм от верха"),
-            ("Сад", "полоса 174 мм у нижнего края стекла: сплошной газон по всей ширине + около 20 видов цветов, Ø 45–80 мм"),
+            ("Сад", "полоса 171 мм у нижнего края стекла: луг — сплошная зелёная полоса с травой по всей ширине, полевые и садовые цветы Ø 30–60 мм"),
             ("Линия вдоль арки", "белая, толщина 4 мм, в 34 мм от края стекла"),
             ("Контур реза", "розовая линия в слое «CUT contour» = форма стекла, не печатается"),
         ],
