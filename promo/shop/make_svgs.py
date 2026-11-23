@@ -280,21 +280,29 @@ def sprig(x, ground, h, side):
 
 
 def garden(max_h, inset=34):
-    """A mixed garden along the bottom edge: a back and a front row of many kinds of flowers, leaves and grass."""
-    grass = []
+    """A mixed garden on a continuous lawn: grass band, back row, grass band, front row, front grass band."""
     rnd = random.Random(8)
-    for x in range(40, AW - 40, 13):
-        h = rnd.uniform(16, 34)
-        if not arch_inner(x, AH - h, 4, inset - 10):
-            continue
-        lean = rnd.uniform(-7, 7)
-        grass.append(f'<path d="M{x - 4} {AH + 1} Q{x + lean * 0.3:.1f} {AH - h * 0.6:.1f} {x + lean:.1f} {AH - h:.1f} '
-                     f'Q{x + 1 + lean * 0.3:.1f} {AH - h * 0.5:.1f} {x + 4} {AH + 1}Z" fill="{rnd.choice([LEAF_GREEN, LEAF_LIGHT, "#3DAF5C"])}"/>')
+
+    def grass_band(hmin, hmax, step, color):
+        """One solid strip of grass across the whole glass: a flat base with blade tips along the top edge."""
+        d, x = f"M-10 {AH + 4} L-10 {AH - hmin * 0.5:.1f}", -10.0
+        while x < AW + 10:
+            w = step * rnd.uniform(0.7, 1.3)
+            h = rnd.uniform(hmin, hmax)
+            lean = rnd.uniform(-0.35, 0.35) * w
+            d += (f" Q{x + w * 0.35:.1f} {AH - h * 0.45:.1f} {x + w / 2 + lean:.1f} {AH - h:.1f}"
+                  f" Q{x + w * 0.65:.1f} {AH - h * 0.45:.1f} {x + w:.1f} {AH - hmin * 0.5:.1f}")
+            x += w
+        return f'<path fill="{color}" d="{d} L{AW + 10} {AH + 4}Z"/>'
+
     # two rows of mixed flowers, not mirrored: each spot takes the next kind/colour pair from a shuffled deck,
     # never the same kind or the same main colour as its left neighbour. Kinds are drawn in flowers.py.
     CORAL, WHITE_ = "#FF7C77", "#FFFFFF"
     # back row: the showy flowers (orchids, irises, callas, gerberas, cosmos); front row: small ones and leaves
     back_deck = [("orchid", WHITE_, RED), ("orchid", LILAC, PURPLE), ("orchid", WHITE_, PURPLE), ("orchid", CORAL, YELLOW),
+                 ("rose", RED, None), ("rose", LILAC, None), ("rose", CORAL, None), ("peony", LILAC, None), ("peony", CORAL, None),
+                 ("sunflower", YELLOW, None), ("poppy", RED, None), ("poppy", CORAL, None), ("hydrangea", COBALT, None),
+                 ("hydrangea", LILAC, None), ("hydrangea", PURPLE, None), ("carnation", CORAL, None), ("carnation", RED, None),
                  ("iris", PURPLE, None), ("iris", COBALT, None), ("iris", YELLOW, None), ("iris", WHITE_, None),
                  ("calla", WHITE_, None), ("calla", YELLOW, None), ("calla", CORAL, None), ("calla", PURPLE, None),
                  ("gerbera", YELLOW, CORAL), ("gerbera", CORAL, YELLOW), ("gerbera", WHITE_, CORAL),
@@ -303,7 +311,8 @@ def garden(max_h, inset=34):
                   ("pompom", LILAC, None), ("pompom", YELLOW, None), ("pompom", CORAL, None),
                   ("cluster", COBALT, YELLOW), ("cluster", WHITE_, YELLOW), ("buds", CORAL, None), ("buds", PURPLE, None),
                   ("bells", PURPLE, None), ("bells", COBALT, None), ("daisy", YELLOW, None), ("daisy", RED, None),
-                  ("anemone", WHITE_, PURPLE), ("anemone", PURPLE, YELLOW)]
+                  ("anemone", WHITE_, PURPLE), ("anemone", PURPLE, YELLOW), ("crocus", PURPLE, None), ("crocus", WHITE_, None),
+                  ("crocus", YELLOW, None), ("rose", YELLOW, None), ("poppy", RED, None), ("carnation", LILAC, None)]
     decks = {"back": [], "front": []}
 
     def draw_next(row, prev):
@@ -318,7 +327,8 @@ def garden(max_h, inset=34):
         return decks[row].pop()
 
     layers = {"back": ([], []), "front": ([], [])}
-    for row, x0, step, hmin, hmax in (("back", 70, 96, 0.82, 1.0), ("front", 50, 80, 0.38, 0.55)):
+    bands = {"back": grass_band(34, 64, 26, LEAF_GREEN), "front": grass_band(22, 42, 22, "#3DAF5C")}
+    for row, x0, step, hmin, hmax in (("back", 50, 76, 0.8, 1.0), ("front", 40, 60, 0.4, 0.58)):
         st, hd = layers[row]
         prev, x, n = None, x0, 0
         while x < AW - 40:
@@ -329,7 +339,7 @@ def garden(max_h, inset=34):
             n += 1
             if not arch_inner(xx, AH - h, dd / 2, inset):
                 continue
-            if row == "front" and n % 6 == 3:
+            if row == "front" and n % 8 == 5:
                 st += FL.leafy(xx, AH + 2, h * 0.6)
                 continue
             kind, col, mid = c = draw_next(row, prev)
@@ -347,6 +357,8 @@ def garden(max_h, inset=34):
                 st += FL.tiny_cluster(xx, AH + 2, h, col, mid, side)
             elif kind == "buds":
                 st += FL.buds(xx, AH + 2, h, col, side)
+            elif kind == "crocus":
+                st += FL.crocus(xx, AH + 2, h * 0.8, col, side)
             else:
                 els, (hx, hy) = FL.on_stem(None, xx, AH + 2, h, side)
                 st += els
@@ -361,10 +373,23 @@ def garden(max_h, inset=34):
                     hd.append(FL.cosmos(hx, hy, dd, col, mid, rot))
                 elif kind == "gerbera":
                     hd.append(FL.gerbera(hx, hy, dd * 1.05, col, mid, rot))
+                elif kind == "rose":
+                    hd.append(FL.rose(hx, hy, dd, col, rot))
+                elif kind == "peony":
+                    hd.append(FL.peony(hx, hy, dd * 1.08, col, rot))
+                elif kind == "sunflower":
+                    hd.append(FL.sunflower(hx, hy, dd * 1.1, rot))
+                elif kind == "poppy":
+                    hd.append(FL.poppy(hx, hy, dd * 0.95, col, rot))
+                elif kind == "hydrangea":
+                    hd.append(FL.hydrangea(hx, hy, dd * 1.05, col, rot))
+                elif kind == "carnation":
+                    hd.append(FL.carnation(hx, hy + dd * 0.2, dd, col))
                 else:
                     hd.append(FL.anemone(hx, hy, dd * 0.9, col, mid, rot))
-    stems = layers["back"][0] + layers["back"][1] + layers["front"][0] + layers["front"][1]
-    return grass + stems
+    # grass, back row, grass, front row, grass: the stems of every row disappear into one continuous lawn
+    return ([bands["back"]] + layers["back"][0] + layers["back"][1] + [bands["front"]]
+            + layers["front"][0] + layers["front"][1] + [grass_band(12, 24, 18, LEAF_LIGHT)])
 
 
 def keyline(ink, inset=34, a0=24, a1=156):

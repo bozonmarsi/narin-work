@@ -339,3 +339,98 @@ def calla(x, ground, h, color, side=1):
     out.append(f'<path d="M{bx + s * 24:.1f} {by - 72:.1f} Q{bx + s * 38:.1f} {by - 66:.1f} {bx + s * 31:.1f} {by - 54:.1f}" '
                f'stroke="{shade(color, 0.35) if color != "#FFFFFF" else "#E6E9F2"}" stroke-width="3" stroke-linecap="round" fill="none"/>')
     return out
+
+
+# ---------- rose, peony, sunflower, poppy, hydrangea, carnation, crocus ----------
+BROWN = "#7A4B2E"
+
+
+def rose(x, y, d, color, rot=0.0):
+    """A rose from above: three rings of round petals, darker towards the middle, and a curl in the centre."""
+    R, out = d / 2, []
+    for k, (r, n, a) in enumerate(((1.0, 5, 0), (0.72, 5, 36), (0.46, 4, 12))):
+        out.append(f'<path fill="{color if k % 2 == 0 else deep(color)}" stroke="{deep(color)}" stroke-width="{R * 0.03:.1f}" '
+                   f'd="{_petals(x, y, R * r, n, 0.55, rot + a, notch=False)}"/>')
+    out.append(_disc(x, y, R * 0.22, deep(color)))
+    out.append(f'<path d="M{x - R * 0.12:.1f} {y:.1f} A{R * 0.12:.1f} {R * 0.12:.1f} 0 1 1 {x + R * 0.05:.1f} {y + R * 0.1:.1f}" '
+               f'fill="none" stroke="{shade(color, 0.35)}" stroke-width="{R * 0.05:.1f}" stroke-linecap="round"/>')
+    return "".join(out)
+
+
+def peony(x, y, d, color, rot=0.0):
+    """A full peony: two rings of broad notched petals, a lighter heart, golden stamens."""
+    R, out = d / 2, []
+    out.append(f'<path fill="{deep(color)}" d="{_petals(x, y, R, 9, 0.42, rot)}"/>')
+    out.append(f'<path fill="{color}" d="{_petals(x, y, R * 0.8, 9, 0.44, rot + 20)}"/>')
+    out.append(f'<path fill="{shade(color, 0.35)}" d="{_petals(x, y, R * 0.52, 7, 0.5, rot + 8)}"/>')
+    for i in range(7):
+        t = 2 * math.pi * i / 7 + math.radians(rot)
+        out.append(_disc(x + R * 0.14 * math.cos(t), y + R * 0.14 * math.sin(t), R * 0.06, "#FFD84A"))
+    return "".join(out)
+
+
+def sunflower(x, y, d, rot=0.0):
+    """Sunflower: two rings of pointed yellow petals and a big brown middle with a seed ring."""
+    R = d / 2
+    return (f'<path fill="#F5A623" d="{_petals(x, y, R * 0.94, 14, 0.12, rot + 12.9, notch=False)}"/>'
+            f'<path fill="#FFD84A" d="{_petals(x, y, R, 14, 0.11, rot, notch=False)}"/>'
+            + _disc(x, y, R * 0.44, BROWN) + _disc(x, y, R * 0.3, shade(BROWN, -0.3))
+            + "".join(_disc(x + R * 0.37 * math.cos(2 * math.pi * i / 12), y + R * 0.37 * math.sin(2 * math.pi * i / 12), R * 0.035, "#F5A623") for i in range(12)))
+
+
+def poppy(x, y, d, color, rot=0.0):
+    """Poppy: four big round petals, a dark middle with a ring of stamens."""
+    R, out = d / 2, []
+    for a in (0, 90, 180, 270):                           # back petals
+        out.append(_rot(x, y, rot + a, _blade(R * 0.95, R * 0.95, 1.35), deep(color)))
+    for a in (45, 135, 225, 315):                         # front petals
+        out.append(_rot(x, y, rot + a, _blade(R * 0.9, R * 0.9, 1.35), color))
+    out.append(_disc(x, y, R * 0.3, "#14204A"))
+    for i in range(10):
+        t = 2 * math.pi * i / 10
+        out.append(_disc(x + R * 0.3 * math.cos(t), y + R * 0.3 * math.sin(t), R * 0.05, "#14204A"))
+    out.append(_disc(x, y, R * 0.13, shade("#14204A", 0.45)))
+    return "".join(out)
+
+
+def hydrangea(x, y, d, color, rot=0.0):
+    """Hydrangea: a dome of small four-petal florets in two tones."""
+    R, out = d / 2, [_disc(x, y, d * 0.48, deep(color))]
+    pts = [(0, 0)] + [(0.33 * math.cos(2 * math.pi * i / 6), 0.33 * math.sin(2 * math.pi * i / 6)) for i in range(6)] \
+        + [(0.66 * math.cos(2 * math.pi * i / 11 + 0.3), 0.66 * math.sin(2 * math.pi * i / 11 + 0.3)) for i in range(11)]
+    for i, (px, py) in enumerate(pts):
+        c = color if i % 3 else shade(color, 0.3)
+        fx, fy = x + R * px, y + R * py
+        out.append(f'<path fill="{c}" d="{_petals(fx, fy, R * 0.26, 4, 0.55, rot + i * 17, notch=False)}"/>' + _disc(fx, fy, R * 0.045, deep(color)))
+    return "".join(out)
+
+
+def carnation(x, y, d, color):
+    """A carnation from the side: a fan of frilled petals on a green calyx; (x, y) is the top of the stem."""
+    R, pts = d / 2, []
+    for i in range(25):                                  # frilled top edge, a half fan
+        t = math.pi + math.pi * i / 24
+        r = R * (0.95 if i % 2 == 0 else 0.78)
+        pts.append((x + r * math.cos(t), y - R * 0.15 + r * math.sin(t) * 0.8))
+    pts += [(x + R * 0.3, y + R * 0.05), (x - R * 0.3, y + R * 0.05)]
+    inner = [(x + R * 0.62 * math.cos(math.pi + math.pi * i / 12), y - R * 0.15 + R * 0.55 * math.sin(math.pi + math.pi * i / 12) * (0.8 if i % 2 else 0.95)) for i in range(13)]
+    inner += [(x + R * 0.2, y), (x - R * 0.2, y)]
+    return (f'<path fill="{color}" d="{_poly(pts)}" stroke="{color}" stroke-width="2" stroke-linejoin="round"/>'
+            f'<path fill="{deep(color)}" d="{_poly(inner)}"/>'
+            f'<path fill="{LEAF_A}" d="M{x - R * 0.28:.1f} {y - R * 0.02:.1f} L{x + R * 0.28:.1f} {y - R * 0.02:.1f} L{x + R * 0.14:.1f} {y + R * 0.6:.1f} L{x - R * 0.14:.1f} {y + R * 0.6:.1f}Z"/>')
+
+
+def crocus(x, ground, h, color, side=1):
+    """A short crocus: a cup of three petals on a short stem, grassy leaves, orange stamens."""
+    top = ground - h
+    out = []
+    for dx, a in ((-8, -100), (6, -80), (0, -92)):
+        out.append(f'<path transform="translate({x + dx:.1f} {ground:.1f}) rotate({a})" fill="{LEAF_B}" d="M0 -3 Q{h * 0.5:.1f} -4 {h * 0.85:.1f} 0 Q{h * 0.5:.1f} 3 0 3Z"/>')
+    out.append(stem(x, ground, x, top + 30, 6))
+    c, dk = color, deep(color)
+    out.append(f'<path fill="{dk}" d="M{x - 18:.1f} {top + 4:.1f} C{x - 22:.1f} {top + 26:.1f} {x - 10:.1f} {top + 38:.1f} {x:.1f} {top + 38:.1f} '
+               f'C{x + 10:.1f} {top + 38:.1f} {x + 22:.1f} {top + 26:.1f} {x + 18:.1f} {top + 4:.1f} C{x + 10:.1f} {top + 14:.1f} {x - 10:.1f} {top + 14:.1f} {x - 18:.1f} {top + 4:.1f}Z"/>')
+    out.append(f'<path fill="{c}" d="M{x:.1f} {top - 6:.1f} C{x - 13:.1f} {top + 6:.1f} {x - 12:.1f} {top + 30:.1f} {x:.1f} {top + 38:.1f} '
+               f'C{x + 12:.1f} {top + 30:.1f} {x + 13:.1f} {top + 6:.1f} {x:.1f} {top - 6:.1f}Z"/>')
+    out.append(f'<path d="M{x - 4:.1f} {top + 6:.1f} L{x - 6:.1f} {top - 4:.1f} M{x + 4:.1f} {top + 6:.1f} L{x + 6:.1f} {top - 4:.1f}" stroke="#F5A623" stroke-width="3" stroke-linecap="round"/>')
+    return out
