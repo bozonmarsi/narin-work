@@ -1,8 +1,8 @@
 <meta charset="utf-8">
 <title>FC Sajfer intro</title>
 <style>
-/* Layout: a fixed 9:16 stage (1080×1920) letterboxed in the window. Dark ground, the club colours flowing
-   as strong blurred light behind three logos stacked top to bottom. Single light look. */
+/* Layout: a fixed 9:16 stage (1080×1920) letterboxed in the window. Blue ground, the other club colours flowing
+   as moving light behind three logos stacked top to bottom. Single light look. */
 :root { --paper: #FFFFFF; --frame: #0B0E16; --navy: #0B1A3A; color-scheme: dark; }
 html, body { height: 100%; margin: 0; }
 body { background: var(--frame); overflow: hidden; font-family: Arial, sans-serif; }
@@ -23,7 +23,7 @@ body { background: var(--frame); overflow: hidden; font-family: Arial, sans-seri
 <script>
 const IMG_SRC = { crest: "%%crest_color%%", A: "%%A_white%%" };
 const MARK = "%%MARK%%";                      // kit maker's mark, 510 × 292 units
-const SW = 1080, SH = 1920, DUR = 7;
+const SW = 1080, SH = 1920, DUR = 6;
 // colours of the crest and the kits
 
 const cv = document.getElementById("film"), ctx = cv.getContext("2d"), img = {};
@@ -35,11 +35,12 @@ const expo = p => (p <= 0 ? 0 : p >= 1 ? 1 : 1 - Math.pow(2, -10 * p));
 /* a live colour mesh: five big fields in the club colours orbit slowly, blurred together on a small canvas
    and scaled up, so the colours melt into each other instead of reading as spots */
 const FIELDS = [
-  { c: "#007BF5", cx: 0.22, cy: 0.18, ax: 0.22, ay: 0.12, sp: 0.21, ph: 0.0, r: 0.62 },
-  { c: "#F82118", cx: 0.82, cy: 0.30, ax: 0.18, ay: 0.16, sp: 0.17, ph: 1.9, r: 0.55 },
-  { c: "#F7CF05", cx: 0.72, cy: 0.78, ax: 0.20, ay: 0.12, sp: 0.19, ph: 3.6, r: 0.52 },
-  { c: "#00A651", cx: 0.18, cy: 0.74, ax: 0.18, ay: 0.14, sp: 0.23, ph: 5.1, r: 0.58 },
-  { c: "#002E9E", cx: 0.50, cy: 0.52, ax: 0.26, ay: 0.20, sp: 0.13, ph: 2.6, r: 0.7 }
+  { c: "#1E78FF", cx: 0.30, cy: 0.30, ax: 0.20, ay: 0.14, sp: 0.42, ph: 0.0, r: 0.75 },
+  { c: "#0A54D8", cx: 0.70, cy: 0.65, ax: 0.22, ay: 0.16, sp: 0.36, ph: 2.4, r: 0.8 },
+  { c: "#F82118", cx: 0.85, cy: 0.22, ax: 0.26, ay: 0.20, sp: 0.62, ph: 1.9, r: 0.42 },
+  { c: "#F7CF05", cx: 0.75, cy: 0.85, ax: 0.28, ay: 0.16, sp: 0.55, ph: 3.6, r: 0.38 },
+  { c: "#00B85C", cx: 0.15, cy: 0.80, ax: 0.24, ay: 0.18, sp: 0.68, ph: 5.1, r: 0.40 },
+  { c: "#F82118", cx: 0.10, cy: 0.45, ax: 0.18, ay: 0.22, sp: 0.5, ph: 4.0, r: 0.3 }
 ];
 const meshA = document.createElement("canvas"), meshB = document.createElement("canvas");
 meshA.width = meshB.width = 108; meshA.height = meshB.height = 192;
@@ -53,13 +54,13 @@ function makeGrain() {
 }
 function ground(t) {
   const fade = expo(t / 0.7);
-  ma.globalCompositeOperation = "source-over"; ma.fillStyle = "#04050B"; ma.fillRect(0, 0, 108, 192);
-  ma.globalCompositeOperation = "screen";
+  ma.globalCompositeOperation = "source-over"; ma.fillStyle = "#0638A8"; ma.fillRect(0, 0, 108, 192);
+  ma.globalCompositeOperation = "source-over";
   for (const f of FIELDS) {
     const x = (f.cx + Math.sin(t * f.sp + f.ph) * f.ax) * 108, y = (f.cy + Math.cos(t * f.sp * 0.9 + f.ph) * f.ay) * 192;
     const g = ma.createRadialGradient(x, y, 0, x, y, f.r * 108);
-    g.addColorStop(0, f.c); g.addColorStop(0.55, f.c + "88"); g.addColorStop(1, f.c + "00");
-    ma.globalAlpha = 0.95 * fade; ma.fillStyle = g; ma.fillRect(0, 0, 108, 192);
+    g.addColorStop(0, f.c); g.addColorStop(0.5, f.c + "99"); g.addColorStop(1, f.c + "00");
+    ma.globalAlpha = (f.r > 0.6 ? 0.9 : 0.85) * fade; ma.fillStyle = g; ma.fillRect(0, 0, 108, 192);
   }
   ma.globalAlpha = 1;
   mb.filter = "blur(9px)"; mb.drawImage(meshA, 0, 0); mb.filter = "none";
@@ -67,7 +68,7 @@ function ground(t) {
   ctx.drawImage(meshB, -60, -100, SW + 120, SH + 200);
   // depth: darker towards the middle and the edges, so the logos sit on a calm field
   const v = ctx.createRadialGradient(SW / 2, SH / 2, 0, SW / 2, SH / 2, 760);
-  v.addColorStop(0, "rgba(4,5,11,.62)"); v.addColorStop(0.55, "rgba(4,5,11,.28)"); v.addColorStop(1, "rgba(4,5,11,.05)");
+  v.addColorStop(0, "rgba(2,22,80,.55)"); v.addColorStop(0.55, "rgba(2,22,80,.25)"); v.addColorStop(1, "rgba(2,22,80,0)");
   ctx.fillStyle = v; ctx.fillRect(0, 0, SW, SH);
   // a slow diagonal band of light
   const p = ((t * 0.12) % 1.4) - 0.2;
@@ -126,58 +127,13 @@ function pinstripes(t, alpha) {
   }
 }
 
-/* the portcullis from the crest: an arched gateway draws itself, the stripes become the gate's bars,
-   cross-bars slide in, then the gate rises into the arch like a castle gate and the crest appears behind it */
-function archPath(cx, top, w, h) {
-  const r = w / 2, x0 = cx - r, x1 = cx + r, p = new Path2D();
-  p.moveTo(x0, top + h); p.lineTo(x0, top + r); p.arc(cx, top + r, r, Math.PI, 0); p.lineTo(x1, top + h);
-  return p;
-}
-function portcullis(cx, top, w, h, t) {
-  const draw = (t - 0.7) / 0.9, form = (t - 1.0) / 0.8, lift = inOutQuint((t - 1.95) / 1.3);
-  const fadeArch = 1 - sine((t - 2.6) / 0.7);
-  if (draw <= 0 || fadeArch <= 0) return;
-  const arch = archPath(cx, top, w, h);
-  const inner = new Path2D(); inner.addPath(archPath(cx, top, w, h)); inner.closePath();
-  ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,.35)"; ctx.shadowBlur = 24 * K * DPR; ctx.shadowOffsetY = 8 * K * DPR;
-  // the gate, clipped to the gateway so it slides up into the arch
-  if (form > 0 && lift < 1) {
-    ctx.save(); ctx.clip(inner);
-    const bars = 7, gapX = (w - 40) / (bars - 1), rows = 6, gapY = (h - 60) / rows, bw = 13;
-    const dy = -lift * (h + 40);
-    ctx.fillStyle = "#F4F6FA";
-    for (let i = 0; i < bars; i++) {
-      const x = cx - (w - 40) / 2 + i * gapX, p = sine(form - Math.abs(i - 3) * 0.05);
-      if (p <= 0) continue;
-      const len = (h - 30) * p;
-      ctx.fillRect(x - bw / 2, top + dy, bw, len);
-      if (p > 0.95) { ctx.beginPath(); ctx.moveTo(x - bw / 2 - 5, top + dy + len); ctx.lineTo(x + bw / 2 + 5, top + dy + len); ctx.lineTo(x, top + dy + len + 34); ctx.closePath(); ctx.fill(); }
-    }
-    for (let r = 0; r < rows; r++) {
-      const p = sine((form - 0.3 - r * 0.06) / 0.6);
-      if (p <= 0) continue;
-      const y = top + dy + 40 + r * gapY, half = (w / 2) * p;
-      ctx.fillRect(cx - half, y - bw / 2, half * 2, bw);
-    }
-    ctx.restore();
-  }
-  // the gateway outline draws itself from both feet up to the keystone
-  const L = 2 * (h - w / 2) + Math.PI * w / 2;
-  ctx.globalAlpha = fadeArch;
-  ctx.strokeStyle = "#F4F6FA"; ctx.lineWidth = 12; ctx.lineCap = "round";
-  ctx.setLineDash([L * sine(draw), L]); ctx.stroke(arch);
-  ctx.setLineDash([]);
-  ctx.restore();
-}
-
 function frame(t) {
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.fillStyle = "#0B0E16"; ctx.fillRect(0, 0, W, H);
   ctx.setTransform(K * DPR, 0, 0, K * DPR, OX * DPR, OY * DPR);
   ctx.save(); ctx.beginPath(); ctx.rect(0, 0, SW, SH); ctx.clip();
   ground(t);
-  pinstripes(t, 1 - 0.65 * sine((t - 2.4) / 1.2));                  // stay on as a faint kit texture
+  pinstripes(t, 1 - 0.65 * sine((t - 1.6) / 1.2));                  // stay on as a faint kit texture
 
   // layout: the three logos fit about the same square; the crest gets a little more room for its detail
   const fit = (w, h, box) => { const k = box / Math.max(w, h); return [w * k, h * k]; };
@@ -189,14 +145,13 @@ function frame(t) {
   const cy0 = y;
 
   // the crest appears behind the lifting gate
-  soft((g, x, yy, w, h) => g.drawImage(img.crest, x, yy, w, h), SW / 2 - cw / 2, cy0, cw, ch, (t - 2.15) / 1.2);
-  portcullis(SW / 2, cy0 - 30, cw * 1.3, ch + 60, t);
+  soft((g, x, yy, w, h) => g.drawImage(img.crest, x, yy, w, h), SW / 2 - cw / 2, cy0, cw, ch, (t - 1.2) / 1.1);
   y += ch + gap;
-  separator(SW / 2, y - gap / 2, 220, (t - 3.0) / 0.9);
-  soft(drawMark, SW / 2 - mw / 2, y, mw, mh, (t - 3.25) / 1.0);
+  separator(SW / 2, y - gap / 2, 220, (t - 1.9) / 0.9);
+  soft(drawMark, SW / 2 - mw / 2, y, mw, mh, (t - 2.1) / 1.0);
   y += mh + gap;
-  separator(SW / 2, y - gap / 2, 220, (t - 3.6) / 0.9);
-  soft((g, x, yy, w, h) => g.drawImage(img.A, x, yy, w, h), SW / 2 - aw / 2, y, aw, ah, (t - 3.85) / 1.0);
+  separator(SW / 2, y - gap / 2, 220, (t - 2.4) / 0.9);
+  soft((g, x, yy, w, h) => g.drawImage(img.A, x, yy, w, h), SW / 2 - aw / 2, y, aw, ah, (t - 2.6) / 1.0);
   ctx.restore();
 }
 
