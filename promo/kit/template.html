@@ -1,0 +1,136 @@
+<meta charset="utf-8">
+<title>FC Sajfer intro</title>
+<style>
+/* Layout: a fixed 9:16 stage (1080×1920) letterboxed in the window. White ground, the club colours flowing
+   as soft blurred light behind three logos stacked top to bottom. Single light look. */
+:root { --paper: #FFFFFF; --frame: #EEF0F4; --navy: #0B1A3A; color-scheme: light; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--frame); overflow: hidden; font-family: Arial, sans-serif; }
+#film { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+.bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  display: flex; gap: 10px; padding: 8px; border-radius: 999px; background: rgba(255, 255, 255, .9);
+  box-shadow: 0 8px 24px rgba(11, 26, 58, .15); transition: opacity .5s; }
+.bar.idle { opacity: 0; pointer-events: none; }
+.btn { width: 36px; height: 36px; border-radius: 50%; border: 0; background: var(--navy); color: var(--paper); cursor: pointer; display: grid; place-items: center; }
+.btn svg { width: 16px; height: 16px; fill: currentColor; }
+.btn:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+</style>
+<canvas id="film" aria-label="FC Sajfer: úvod — znak klubu, adidas, NARIN"></canvas>
+<div class="bar idle" id="bar">
+  <button class="btn" id="play" aria-label="Pauza"><svg viewBox="0 0 16 16" id="pi"><rect x="3" y="2" width="3.5" height="12" rx="1"/><rect x="9.5" y="2" width="3.5" height="12" rx="1"/></svg></button>
+  <button class="btn" id="restart" aria-label="Od začátku"><svg viewBox="0 0 16 16"><path d="M8 2.5a5.5 5.5 0 1 1-5.2 3.7l1.6.6A3.8 3.8 0 1 0 8 4.2V6L4.6 3.4 8 .8z"/></svg></button>
+</div>
+<script>
+const IMG_SRC = { crest: "%%crest_color%%", A: "%%A_color%%" };
+const MARK = "%%MARK%%";                      // kit maker's mark, 510 × 292 units
+const SW = 1080, SH = 1920, DUR = 5;
+// colours of the crest and the kits
+const COLS = ["#007BF5", "#F82118", "#F7CF05", "#006633", "#002E9E", "#F7CF05", "#F82118", "#2A9A4B"];
+
+const cv = document.getElementById("film"), ctx = cv.getContext("2d"), img = {};
+let W = 0, H = 0, K = 1, OX = 0, OY = 0, DPR = 1;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, k) => a + (b - a) * k;
+const expo = p => (p <= 0 ? 0 : p >= 1 ? 1 : 1 - Math.pow(2, -10 * p));
+
+/* soft colour light flowing behind, on white */
+const blobs = COLS.map((c, i) => ({ c, ph: i * 1.7, sp: 0.5 + (i % 3) * 0.18, r: 430 + (i % 4) * 60,
+  ax: 260 + (i % 3) * 70, ay: 300 + (i % 2) * 120, cx: SW * (0.2 + 0.6 * ((i * 37) % 10) / 10), cy: SH * (0.15 + 0.7 * ((i * 53) % 10) / 10) }));
+function ground(t) {
+  ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, SW, SH);
+  const fade = expo(t / 0.6);
+  for (const b of blobs) {
+    const x = b.cx + Math.sin(t * b.sp + b.ph) * b.ax, y = b.cy + Math.cos(t * b.sp * 0.8 + b.ph) * b.ay;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, b.r);
+    g.addColorStop(0, b.c + "8C"); g.addColorStop(0.45, b.c + "40"); g.addColorStop(1, b.c + "00");
+    ctx.globalAlpha = fade; ctx.fillStyle = g; ctx.fillRect(0, 0, SW, SH);
+  }
+  ctx.globalAlpha = 1;
+  // a white veil in the middle keeps the logos crisp and readable
+  const v = ctx.createRadialGradient(SW / 2, SH / 2, 0, SW / 2, SH / 2, 760);
+  v.addColorStop(0, "rgba(255,255,255,.88)"); v.addColorStop(0.55, "rgba(255,255,255,.55)"); v.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = v; ctx.fillRect(0, 0, SW, SH);
+}
+
+/* one logo: drops in from above, unmasks top to bottom, a quick shine passes over it */
+const off = document.createElement("canvas"), og = off.getContext("2d");
+function logo(draw, x, y, w, h, t, t0) {
+  const p = (t - t0) / 0.45;
+  if (p <= 0) return;
+  const k = expo(p), s = 2;
+  off.width = Math.ceil(w * s) + 4; off.height = Math.ceil(h * s) + 4;
+  og.setTransform(s, 0, 0, s, 2, 2); og.clearRect(-2, -2, w + 4, h + 4);
+  draw(og, w, h);
+  const gp = clamp((t - t0 - 0.25) / 0.5, 0, 1);
+  if (gp > 0 && gp < 1) {
+    og.globalCompositeOperation = "source-atop";
+    const sx = lerp(-0.5, 1.5, gp) * w, lg = og.createLinearGradient(sx - w * 0.3, 0, sx + w * 0.3, h);
+    lg.addColorStop(0, "rgba(255,255,255,0)"); lg.addColorStop(0.5, "rgba(255,255,255,.75)"); lg.addColorStop(1, "rgba(255,255,255,0)");
+    og.fillStyle = lg; og.fillRect(0, 0, w, h);
+    og.globalCompositeOperation = "source-over";
+  }
+  const dy = (1 - k) * -40;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(x - 20, y - 60, w + 40, (h + 80) * k); ctx.clip();
+  ctx.globalAlpha = clamp(p * 2.5, 0, 1);
+  ctx.shadowColor = "rgba(11,26,58,.18)"; ctx.shadowBlur = 40 * K * DPR; ctx.shadowOffsetY = 14 * K * DPR;
+  ctx.drawImage(off, x - 1, y - 1 + dy, w + 2, h + 2);
+  ctx.restore();
+}
+const markPath = new Path2D(MARK);
+const drawCrest = (g, w, h) => g.drawImage(img.crest, 0, 0, w, h);
+const drawA = (g, w, h) => g.drawImage(img.A, 0, 0, w, h);
+const drawMark = (g, w, h) => { g.save(); g.scale(w / 510, h / 292); g.fillStyle = "#0B1A3A"; g.fill(markPath); g.restore(); };
+function rule(cx, y, w, t, t0) { const k = expo((t - t0) / 0.3); if (k <= 0) return; ctx.fillStyle = "rgba(11,26,58,.28)"; ctx.fillRect(cx - w * k / 2, y - 1.5, w * k, 3); }
+
+function frame(t) {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = "#EEF0F4"; ctx.fillRect(0, 0, W, H);
+  ctx.setTransform(K * DPR, 0, 0, K * DPR, OX * DPR, OY * DPR);
+  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, SW, SH); ctx.clip();
+  ground(t);
+  // the stack, centred: crest, mark, NARIN A
+  const cw = 470, ch = cw * img.crest.naturalHeight / img.crest.naturalWidth;
+  const mw = 300, mh = mw * 292 / 510;
+  const ah = 270, aw = ah * img.A.naturalWidth / img.A.naturalHeight;
+  const gap = 90, total = ch + mh + ah + gap * 2;
+  const float = Math.sin(t * 1.2) * 6;
+  let y = (SH - total) / 2 + float;
+  logo(drawCrest, SW / 2 - cw / 2, y, cw, ch, t, 0.35); y += ch + gap;
+  rule(SW / 2, y - gap / 2, 140, t, 0.6);
+  logo(drawMark, SW / 2 - mw / 2, y, mw, mh, t, 0.62); y += mh + gap;
+  rule(SW / 2, y - gap / 2, 140, t, 0.85);
+  logo(drawA, SW / 2 - aw / 2, y, aw, ah, t, 0.88);
+  ctx.restore();
+}
+
+function resize() {
+  DPR = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight;
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  K = Math.min(W / SW, H / SH); OX = (W - SW * K) / 2; OY = (H - SH * K) / 2;
+}
+let t = 0, playing = true, last = 0;
+const bar = document.getElementById("bar"), pi = document.getElementById("pi"), playBtn = document.getElementById("play");
+function setPlaying(p) {
+  playing = p; playBtn.setAttribute("aria-label", p ? "Pauza" : "Přehrát");
+  pi.innerHTML = p ? '<rect x="3" y="2" width="3.5" height="12" rx="1"/><rect x="9.5" y="2" width="3.5" height="12" rx="1"/>'
+                   : '<path d="M4 2.2v11.6a.8.8 0 0 0 1.2.7l9.3-5.8a.8.8 0 0 0 0-1.4L5.2 1.5A.8.8 0 0 0 4 2.2z"/>';
+}
+playBtn.onclick = () => setPlaying(!playing);
+document.getElementById("restart").onclick = () => { t = 0; setPlaying(true); };
+let idle = 0;
+addEventListener("pointermove", () => { bar.classList.remove("idle"); clearTimeout(idle); idle = setTimeout(() => bar.classList.add("idle"), 2500); });
+addEventListener("keydown", e => { if (e.code === "Space") { e.preventDefault(); setPlaying(!playing); } });
+function loop(now) {
+  const dt = last ? Math.min((now - last) / 1000, 0.05) : 0; last = now;
+  if (playing) { t += dt; if (t >= DUR + 1.5) t = 0; }     // hold the last frame a moment, then replay
+  frame(Math.min(t, DUR)); requestAnimationFrame(loop);
+}
+window.__kovka = { seek: s => { t = s; frame(t); }, pause: () => setPlaying(false), dur: DUR + 1 };
+(async () => {
+  await Promise.all(Object.entries(IMG_SRC).map(([k, src]) => new Promise(res => { const im = new Image(); im.onload = res; im.onerror = res; im.src = src; img[k] = im; })));
+  resize(); addEventListener("resize", resize);
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) { t = DUR; setPlaying(false); }
+  requestAnimationFrame(loop);
+})();
+</script>
