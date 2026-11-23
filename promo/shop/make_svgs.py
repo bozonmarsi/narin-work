@@ -317,6 +317,7 @@ def garden(max_h, inset=34):
         return deck.pop()
 
     step, d = 76, 64
+    SKIP = {("gerbera", WHITE_, CORAL)}      # the white gerbera with a coral middle, removed on request
     layers = {"back": ([], []), "front": ([], [])}
     for row, x0, hmin, hmax in (("back", 60, 0.78, 1.0), ("front", 60 + step / 2, 0.42, 0.6)):
         st, hd = layers[row]
@@ -335,6 +336,7 @@ def garden(max_h, inset=34):
             kind, col, mid = c = draw_next(prev)
             prev = c
             side = rnd.choice((-1, 1))
+            n_st, n_hd = len(st), len(hd)
             if kind == "bells":
                 st += FL.bellflower(xx - side * 14, AH + 2, h, col, side)
             elif kind == "cluster":
@@ -357,6 +359,9 @@ def garden(max_h, inset=34):
                     hd.append(FL.gerbera(hx, hy, dd * 1.05, col, mid, rot))
                 else:
                     hd.append(FL.anemone(hx, hy, dd * 0.9, col, mid, rot))
+            if c in SKIP:
+                # left out on request; drawn and discarded so the random sequence (and every other flower) stays put
+                del st[n_st:], hd[n_hd:]
     # a continuous lawn: one band behind everything, one between the rows, one in front, so every stem grows
     # out of the same grass. Its own random generator keeps the flower layout exactly as before.
     lawn_rnd = random.Random(31)
