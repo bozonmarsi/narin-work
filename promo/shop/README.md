@@ -23,7 +23,7 @@ Sixteen layouts of the label daisies, all daisies of one size within a layout:
 | `L-sign-flowerbox` | sign-painter layout: keyline and "KVĚTINY · DÁRKY · ROSTLINY" along the arch, NARIN in the middle, daisies on stems along the bottom like a window box |
 | `M-wreath` | NARIN crowned by a half wreath of daisies and leaves, the line below |
 | `N-sign-border` | as L, with a plain border of daisies instead of the stems |
-| `O-garden-arc` | a garden along the bottom in two mixed rows (not mirrored): as an organic meadow (`meadow()`): long curving grass on one green base, chamomile, label daisies, cosmos, poppies, cornflowers, irises, orchids, anemones, a few roses and peonies, buds and baby's breath, colourways dealt in turn per kind on slender leaning stems, forget-me-nots, bellflowers, primroses, zinnias, buds, leafy clumps and grass (drawn in `flowers.py` in the label-daisy style, many two-tone); bigger lettering along the arch |
+| `O-garden-arc` | a garden along the bottom in two mixed rows (not mirrored): as an organic meadow (`meadow()`): long curving grass on one green base, chamomile, label daisies, cosmos, poppies, cornflowers, irises, orchids, anemones, a few roses and peonies, buds and baby's breath, colourways dealt in turn per kind; heads bigger and never overlapping, irises and orchids placed first on slender leaning stems, forget-me-nots, bellflowers, primroses, zinnias, buds, leafy clumps and grass (drawn in `flowers.py` in the label-daisy style, many two-tone); bigger lettering along the arch |
 | `P-garden-line` | the same garden; "Květiny · Dárky · Rostliny" big and straight under NARIN |
 
 - `out/arch-decal-<variant>.svg`: print file; the magenta `cut-guide (do not print)` layer is the glass outline.

@@ -417,7 +417,7 @@ def meadow(max_h, inset=34, seed=12, top_limit=0):
         return table[-1][1:]
 
     kinds = [(16, "chamomile"), (12, "daisy"), (10, "cosmos"), (9, "poppy"), (8, "cornflower"), (9, "iris"),
-             (7, "orchid"), (8, "bud"), (6, "five"), (6, "anemone"), (4, "babys"), (4, "rose"), (3, "peony")]
+             (9, "orchid"), (8, "bud"), (6, "five"), (6, "anemone"), (4, "babys"), (4, "rose"), (3, "peony")]
     colours = {"daisy": [(3, BLUE), (2, COBALT), (2, RED), (2, YELLOW), (1, PURPLE), (1, LILAC), (1, CORAL)],
                "cosmos": [(3, WHITE_), (3, LILAC), (2, CORAL), (2, PURPLE), (1, YELLOW), (1, RED)],
                "poppy": [(3, RED), (2, CORAL), (2, YELLOW), (1, WHITE_)],
@@ -451,25 +451,45 @@ def meadow(max_h, inset=34, seed=12, top_limit=0):
         return out
 
     back_grass = blades(170, max_h * 0.35, max_h * 0.75, ["#238544", LEAF_GREEN, "#2F8F48"], 1.0)
-    plants = []
-    x = 26.0
-    while x < AW - 26:
-        x += rnd.uniform(18, 32)
-        h = silhouette(x) * rnd.uniform(0.72, 1.04)
-        lean = rnd.uniform(-26, 26)
-        hx, hy = x + lean, max(G - h, top_limit + 32)      # keep heads clear of the lettering
-        h = G - hy
-        if not arch_inner(hx, hy, 24, inset - 6):
-            continue
-        plants.append((h, x, lean, hx, hy, pick(kinds)[0]))
+    # head sizes (mm) per kind; every head keeps its own space: no two heads overlap
+    SIZES = {"chamomile": (52, 62), "daisy": (50, 58), "cosmos": (56, 66), "poppy": (54, 64), "cornflower": (42, 50),
+             "five": (40, 48), "anemone": (48, 56), "rose": (48, 56), "peony": (60, 68), "iris": (64, 72),
+             "orchid": (74, 82), "bud": (26, 32), "babys": (64, 72)}
+    plants, heads = [], []
+
+    def place(x, kind, tries=8):
+        sz = rnd.uniform(*SIZES[kind])
+        r = sz / 2
+        for _ in range(tries):                                   # try a few heights / leans for a free spot
+            lean = rnd.uniform(-24, 24)
+            hy = rnd.uniform(top_limit + r + 4, G - max_h * 0.42)
+            hx = x + lean
+            if not arch_inner(hx, hy, r, inset - 6):
+                continue
+            if all(math.hypot(hx - ox, hy - oy) > r + orr + 6 for ox, oy, orr in heads):
+                heads.append((hx, hy, r))
+                plants.append((G - hy, x, lean, hx, hy, kind, sz))
+                return True
+        return False
+
+    # the favourites first, spread over the width: irises and orchids, alternating
+    for i, x in enumerate((150, 330, 520, 720, 920, 1110, 1290)):
+        place(x + rnd.uniform(-30, 30), "iris" if i % 2 == 0 else "orchid", 30)
+    x = 30.0
+    while x < AW - 30:
+        x += rnd.uniform(14, 24)
+        kind = pick(kinds)[0]
+        if kind in ("iris", "orchid"):
+            kind = "chamomile"
+        place(x, kind)
     items = []
-    for h, x, lean, hx, hy, kind in sorted(plants, key=lambda p: -p[0]):       # tall ones behind
+    for h, x, lean, hx, hy, kind, sz in sorted(plants, key=lambda p: -p[0]):       # tall ones behind
         if kind == "babys":
-            items += FL.babys_breath(x, G, h, rnd)
+            items += FL.babys_breath(x, G, h - 10, rnd)
             continue
         if kind == "orchid":
             petal, lip = colour_of("orchid")
-            items += FL.orchid(x, G, h * 0.92, petal, lip, 1 if lean >= 0 else -1, scale=0.85, leaves=False)
+            items += FL.orchid(hx - (1 if lean >= 0 else -1) * h * 0.3, G, h - 8, petal, lip, 1 if lean >= 0 else -1, scale=sz / 72, leaves=False)
             continue
         col = colour_of(kind)
         stem, c = FL.curved_stem(x, G, hx, hy, lean)
@@ -480,34 +500,34 @@ def meadow(max_h, inset=34, seed=12, top_limit=0):
             side = rnd.choice((-1, 1))
             items.append(FL.slim_leaf(lx, ly, rnd.uniform(26, 44), -90 + side * rnd.uniform(35, 65), rnd.choice((LEAF_GREEN, LEAF_LIGHT, "#3DAF5C"))))
         ang = lean * 0.7
-        squash = rnd.choice((1.0, 0.9, 0.78, 0.62))
+        squash = rnd.choice((1.0, 1.0, 0.9, 0.8))
         rot = rnd.uniform(0, 40)
         if kind == "bud":
-            items.append(FL.bud(hx, hy + 4, rnd.uniform(20, 28), col, lean * 1.1))
+            items.append(FL.bud(hx, hy + sz * 0.4, sz, col, lean * 1.1))
             continue
         if kind == "iris":
             for dx, k in ((-6, 0.62), (7, 0.5)):                          # two sword leaves
                 items.append(FL.grass_blade(x + dx, G, h * k, rnd.uniform(-0.2, 0.2) * h, 10, rnd.choice((LEAF_GREEN, LEAF_LIGHT))))
-            items.append(FL.tilted(FL.iris_flower(hx, hy + 6, rnd.uniform(56, 66), col), hx, hy + 6, lean * 0.35, rnd.choice((1.0, 0.92, 0.85))))
+            items.append(FL.tilted(FL.iris_flower(hx, hy, sz, col), hx, hy, lean * 0.35, rnd.choice((1.0, 0.92, 0.85))))
             continue
         if kind == "chamomile":
-            head = FL.chamomile(hx, hy, rnd.uniform(40, 54), rot)
+            head = FL.chamomile(hx, hy, sz, rot)
         elif kind == "daisy":
-            head = daisy(hx, hy, rnd.uniform(40, 50), col, rot)
+            head = daisy(hx, hy, sz, col, rot)
         elif kind == "cosmos":
-            head = FL.cosmos(hx, hy, rnd.uniform(44, 58), col, YELLOW if col != YELLOW else RED, rot)
+            head = FL.cosmos(hx, hy, sz, col, YELLOW if col != YELLOW else RED, rot)
         elif kind == "poppy":
-            head = FL.poppy(hx, hy, rnd.uniform(44, 56), col, rot)
+            head = FL.poppy(hx, hy, sz, col, rot)
         elif kind == "cornflower":
-            head = FL.cornflower(hx, hy, rnd.uniform(32, 40), col, rot)
+            head = FL.cornflower(hx, hy, sz, col, rot)
         elif kind == "five":
-            head = FL.five_petal(hx, hy, rnd.uniform(30, 38), col, rot)
+            head = FL.five_petal(hx, hy, sz, col, rot)
         elif kind == "anemone":
-            head = FL.anemone(hx, hy, rnd.uniform(38, 48), col, BLUE if col == WHITE_ else "#14204A", rot)
+            head = FL.anemone(hx, hy, sz, col, BLUE if col == WHITE_ else "#14204A", rot)
         elif kind == "rose":
-            head = FL.rose(hx, hy, rnd.uniform(38, 48), col, rot)
+            head = FL.rose(hx, hy, sz, col, rot)
         else:
-            head = FL.peony(hx, hy, rnd.uniform(48, 60), col, rot)
+            head = FL.peony(hx, hy, sz, col, rot)
         items.append(FL.tilted(head, hx, hy, ang, squash))
     front_grass = blades(150, max_h * 0.12, max_h * 0.42, [LEAF_LIGHT, "#3DAF5C", LEAF_GREEN], 0.5)
     base = f'<path fill="{LEAF_GREEN}" d="M-10 {AH + 4} L-10 {AH - 10} Q{AW * 0.25} {AH - 16} {AW / 2} {AH - 11} T{AW + 10} {AH - 12} L{AW + 10} {AH + 4}Z"/>'
