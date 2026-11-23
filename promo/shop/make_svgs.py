@@ -136,8 +136,8 @@ VARIANTS = {
 
 
 def bottom_line(ink, y, max_w, size, sep):
-    """"Květiny · Dárky · Pokojovky" with dots or daisies between the words, centred, fitted to max_w."""
-    words = ["Květiny", "Dárky", "Pokojovky"]
+    """"Květiny · Dárky · Rostliny" with dots or daisies between the words, centred, fitted to max_w."""
+    words = ["Květiny", "Dárky", "Rostliny"]
     track = 0.04
     widths = [text_path(w, size, 0, 0, ink, "start", track)[1] for w in words]
     gap = size * (1.5 if sep == "daisy" else 0.8)
@@ -258,7 +258,7 @@ def wreath(cx, cy, rx, ry, n, d):
 
 def sign_art(ink, flowers):
     """Sign-painter layout: a keyline and the line of words following the arch, the wordmark below."""
-    arc = text_on_arch("KVĚTINY · DÁRKY · POKOJOVKY", 60, 122, ink, tracking=0.2)
+    arc = text_on_arch("KVĚTINY · DÁRKY · ROSTLINY", 60, 122, ink, tracking=0.2)
     rx, ry = AW / 2 - 36, AH - 36
     t0, t1 = math.radians(24), math.radians(156)
     xa, ya = AW / 2 - rx * math.cos(t0), AH - ry * math.sin(t0)
@@ -371,7 +371,7 @@ def keyline(ink, inset=34, a0=24, a1=156):
 
 def composed_art(ink, variant):
     if variant == "O-garden-arc":
-        arc = text_on_arch("KVĚTINY · DÁRKY · POKOJOVKY", 74, 112, ink, tracking=0.12)
+        arc = text_on_arch("KVĚTINY · DÁRKY · ROSTLINY", 74, 112, ink, tracking=0.12)
         lg, _ = logo(AW / 2, 300, 700, ink)
         return [layer("keyline", [keyline(ink, 30, 26, 154)]), layer("garden", garden(170)), layer("logo", [lg]), layer("text", arc)]
     if variant == "P-garden-line":

@@ -12,7 +12,7 @@ Sixteen layouts of the label daisies, all daisies of one size within a layout:
 | `A-garland` | a garland of 19 daisies along the arch |
 | `B-bouquets` | two small bouquets of four at the sides |
 | `C-ribbon` | a row of 13 small daisies between "květinový ateliér" and the bottom line |
-| `D-minimal` | two daisies in place of the dots in "Květiny · Dárky · Pokojovky" |
+| `D-minimal` | two daisies in place of the dots in "Květiny · Dárky · Rostliny" |
 | `E-scatter` | equal daisies scattered evenly over the whole glass, like on the label |
 | `F-pattern` | equal daisies on a staggered grid over the whole glass |
 | `G-scatter-small` | smaller equal daisies scattered more densely, daisies in place of the dots |
@@ -20,11 +20,11 @@ Sixteen layouts of the label daisies, all daisies of one size within a layout:
 | `I-bigger` | the same with even bigger, fewer daisies |
 | `J-big-nosub` | without "květinový ateliér": bigger logo and bottom line, big daisies around |
 | `K-bigger-nosub` | the same with bigger, fewer daisies |
-| `L-sign-flowerbox` | sign-painter layout: keyline and "KVĚTINY · DÁRKY · POKOJOVKY" along the arch, NARIN in the middle, daisies on stems along the bottom like a window box |
+| `L-sign-flowerbox` | sign-painter layout: keyline and "KVĚTINY · DÁRKY · ROSTLINY" along the arch, NARIN in the middle, daisies on stems along the bottom like a window box |
 | `M-wreath` | NARIN crowned by a half wreath of daisies and leaves, the line below |
 | `N-sign-border` | as L, with a plain border of daisies instead of the stems |
 | `O-garden-arc` | a garden along the bottom in two mixed rows (not mirrored): gerberas, cosmos, anemones, daisies, forget-me-nots, bellflowers, primroses, zinnias, buds, leafy clumps and grass (drawn in `flowers.py` in the label-daisy style, many two-tone); bigger lettering along the arch |
-| `P-garden-line` | the same garden; "Květiny · Dárky · Pokojovky" big and straight under NARIN |
+| `P-garden-line` | the same garden; "Květiny · Dárky · Rostliny" big and straight under NARIN |
 
 - `out/arch-decal-<variant>.svg`: print file; the magenta `cut-guide (do not print)` layer is the glass outline.
 - `out/arch-mockup-<variant>.svg`: the same in the frame, for viewing only. `out/preview/arch-variants.jpg` `arch-variants-scatter.jpg` `arch-variants-big.jpg` `arch-variants-nosub.jpg` `arch-concepts.jpg` and `arch-garden.jpg` compare them.
