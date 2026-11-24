@@ -193,47 +193,73 @@ def inside_arch(x, y, margin=0.0):
     return ((x - AW / 2) / rx) ** 2 + ((y - AH) / ry) ** 2 <= 1
 
 
-def fillers(max_h=140, seed=77):
-    """Extra low flowers, buds and leaves between the existing ones, drawn behind them, so no empty gaps remain."""
+def foliage(seed=21, max_h=140):
+    """Backdrop behind the flowers: a dense hedge of leaves in three greens (dark at the bottom = depth), eucalyptus sprigs
+    with round sage leaves rising between the flower heads, and a few sprays of white baby's breath."""
+    import math
     import random
-    import flowers as FL
     rnd = random.Random(seed)
-    cols = ["#FFD84D", "#FF7C77", "#C9A7FF", "#7FB6FF", "#FFA8C5", "#FFB86B"]
-    out, x = [], 52.0
-    while x < AW - 52:
-        h = max_h * rnd.uniform(0.38, 0.68)
-        k = rnd.random()
-        side = rnd.choice((-1, 1))
-        if inside_arch(x, AH - h - 30, 34):
-            if k < 0.30:
-                out += FL.leafy(x, AH + 2, h * 0.6)
-            elif k < 0.55:
-                c = rnd.choice(cols)
-                out += FL.tiny_cluster(x, AH + 2, h * 0.85, c, "#FFFFFF" if c == "#FFD84D" else "#FFD84D", side)
-            elif k < 0.80:
-                out += FL.buds(x, AH + 2, h * 0.8, rnd.choice(cols), side)
-            else:
-                els, (hx, hy) = FL.on_stem(None, x, AH + 2, h, side)
-                out += els + [FL.cosmos(hx, hy, 40, rnd.choice(cols), "#FFD84D", rnd.uniform(0, 40))]
-        x += rnd.uniform(30, 44)
+    out = []
+
+    def lf(x, y, L, ang, col, rib=None):
+        w = L * 0.36
+        t = f'translate({x:.1f} {y:.1f}) rotate({ang:.1f})'
+        s_ = (f'<path transform="{t}" fill="{col}" d="M0 0 C{L * 0.2:.1f} {-w:.1f} {L * 0.75:.1f} {-w * 0.9:.1f} {L:.1f} 0 '
+              f'C{L * 0.75:.1f} {w * 0.9:.1f} {L * 0.2:.1f} {w:.1f} 0 0Z"/>')
+        if rib:
+            s_ += f'<path transform="{t}" d="M{L * 0.12:.1f} 0 Q{L * 0.5:.1f} {-w * 0.12:.1f} {L * 0.85:.1f} 0" fill="none" stroke="{rib}" stroke-width="2" stroke-linecap="round"/>'
+        return s_
+    # three rows of leaves, back (tall, darkest) to front
+    for row, (hmin, hmax, cols, rib, step) in enumerate((
+            (0.55, 0.8, ["#1B5E36", "#216B3D"], "#2F8050", 26),
+            (0.38, 0.6, ["#2A8449", "#2F9150"], "#47A866", 23),
+            (0.22, 0.4, ["#3DA35E", "#4FB26C"], "#7CCB92", 21))):
+        x = 30 + row * 9
+        while x < AW - 30:
+            for _ in range(3):
+                L = max_h * rnd.uniform(hmin, hmax)
+                ang = -90 + rnd.uniform(-55, 55)
+                tip = (x + L * math.cos(math.radians(ang)), AH - 6 + L * math.sin(math.radians(ang)))
+                if inside_arch(*tip, 36):
+                    out.append(lf(x, AH - 6, L, ang, rnd.choice(cols), rib))
+            x += step * rnd.uniform(0.8, 1.2)
+    # eucalyptus sprigs between the flower heads
+    x = 70
+    while x < AW - 70:
+        h = max_h * rnd.uniform(0.85, 1.05)
+        lean = rnd.uniform(-22, 22)
+        if inside_arch(x + lean, AH - h, 46):
+            col = rnd.choice(["#8CCBA3", "#A6D9B5", "#79BC93"])
+            out.append(f'<path d="M{x:.1f} {AH} Q{x:.1f} {AH - h * 0.6:.1f} {x + lean:.1f} {AH - h:.1f}" fill="none" stroke="#5E9E76" stroke-width="3.2" stroke-linecap="round"/>')
+            for i in range(5, 0, -1):
+                f = 0.42 + 0.115 * i
+                px = (1 - f) ** 2 * x + 2 * (1 - f) * f * x + f * f * (x + lean)
+                py = (1 - f) ** 2 * AH + 2 * (1 - f) * f * (AH - h * 0.6) + f * f * (AH - h)
+                r = 8.5 - i * 0.6
+                for sd in (-1, 1):
+                    out.append(f'<ellipse cx="{px + sd * r * 1.05:.1f}" cy="{py:.1f}" rx="{r:.1f}" ry="{r * 0.85:.1f}" fill="{col}"/>')
+            out.append(f'<circle cx="{x + lean:.1f}" cy="{AH - h - 4:.1f}" r="5.5" fill="{col}"/>')
+        x += rnd.uniform(95, 130)
+    # baby's breath sprays
+    x = 120
+    while x < AW - 120:
+        h = max_h * rnd.uniform(0.6, 0.8)
+        if inside_arch(x, AH - h, 46):
+            tx, ty = x + rnd.uniform(-10, 10), AH - h
+            out.append(f'<path d="M{x:.1f} {AH} L{tx:.1f} {ty + 14:.1f}" stroke="#5E9E76" stroke-width="2.4" stroke-linecap="round"/>')
+            for _ in range(11):
+                bx, by = tx + rnd.uniform(-20, 20), ty + rnd.uniform(-6, 22)
+                out.append(f'<path d="M{tx:.1f} {ty + 14:.1f} L{bx:.1f} {by:.1f}" stroke="#5E9E76" stroke-width="1.2"/>')
+                out.append(f'<circle cx="{bx:.1f}" cy="{by:.1f}" r="{rnd.uniform(2.6, 3.6):.1f}" fill="#FFFFFF"/>')
+        x += rnd.uniform(150, 210)
     return "".join(out)
 
 
-def meadow_bg(top=480):
-    """Soft background for the garden sticker: warm cream sky, two rolling pale-green hills, a few pollen dots."""
-    import math
-    import random
-    rnd = random.Random(5)
-    def hill(y0, amp, wl, ph, col):
-        pts = " ".join(f"L{x} {y0 + amp * math.sin(x / wl + ph) + amp * 0.4 * math.sin(x / (wl * 0.37) + ph * 2):.1f}"
-                       for x in range(0, AW + 20, 20))
-        return f'<path fill="{col}" d="M0 {AH + 10} {pts[1:] if False else pts} L{AW} {AH + 10}Z"/>'.replace(f"M0 {AH + 10} L", f"M0 {AH + 10} L", 1)
-    dots = "".join(f'<circle cx="{rnd.uniform(0, AW):.1f}" cy="{rnd.uniform(top, AH - 60):.1f}" r="{rnd.uniform(1.5, 3.2):.1f}" '
-                   f'fill="{rnd.choice(["#FFFFFF", "#FFE7A3", "#F7D2E4"])}"/>' for _ in range(260))
+def meadow_bg(top=420):
+    """Deep green behind the hedge, printed with bleed: an off cut lands in green, never on a flower."""
     return ('<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">'
-            '<stop offset="0" stop-color="#FFF6E6"/><stop offset="1" stop-color="#EAF6E4"/></linearGradient></defs>'
-            f'<rect x="-10" y="{top}" width="{AW + 20}" height="{AH - top + 20}" fill="url(#sky)"/>'
-            + dots + hill(AH - 95, 14, 70, 0.6, "#D7EFD3") + hill(AH - 62, 11, 52, 2.1, "#BFE5C1"))
+            '<stop offset="0" stop-color="#1F5C3A"/><stop offset="1" stop-color="#174A2E"/></linearGradient></defs>'
+            f'<rect x="-10" y="{top}" width="{AW + 20}" height="{AH - top + 20}" fill="url(#sky)"/>')
 
 
 def variant_e(mask_dir=None):
@@ -256,7 +282,7 @@ def variant_e(mask_dir=None):
         if e.get("fill") == "#FFFFFF":
             col_tulip.remove(e)
     tul = clean(f'<g transform="{logo_tf}">{to_str(col_tulip)}</g>')
-    garden = fillers() + clean(to_str(L["garden"]))
+    garden = foliage() + clean(to_str(L["garden"]))
     clip = f'<defs><clipPath id="glass"><path d="{ARCH}"/></clipPath></defs>'
     masks = {"garden": f'{clip}<g clip-path="url(#glass)">{garden}</g>', "tulip": tul, "abody": a_body}
     if not mask_dir:
@@ -266,16 +292,12 @@ def variant_e(mask_dir=None):
     for k in masks:
         (out / f"mask-{k}.svg").unlink(missing_ok=True)
     md = pathlib.Path(mask_dir)
-    g_cut, g_bleed, a_cut = sticker_contours(md)
+    g_cut, g_bleed, a_outline, a_exact = sticker_contours(md)
     cutp = lambda d, w=0.5: f'<path d="{d}" fill="none" stroke="#FF00FF" stroke-width="{w}"/>'
     bg = f'<clipPath id="bleed"><path d="{g_bleed}"/></clipPath>'
     garden_art = f'<defs>{bg}</defs><g clip-path="url(#bleed)">{meadow_bg()}</g>{clip}<g clip-path="url(#glass)">{garden}</g>'
     a_art = a_body + tul
-    (out / "E2-tisk-na-bilou-folii.svg").write_text(svg_doc(
-        f'<g id="PRINT on white vinyl">{garden_art}{a_art}</g><g id="CUT contour" inkscape:groupmode="layer">{cutp(g_cut)}{cutp(a_cut)}</g>',
-        "NARIN arch E2: print on WHITE vinyl (background printed with 3 mm bleed) + cut along magenta, 1440 x 700 mm"), encoding="utf-8")
-    b1 = (HERE / "print" / "varianta-B" / "B1-bila-rezana-folie.svg").read_text(encoding="utf-8").replace("B1:", "E1:")
-    (out / "E1-bila-rezana-folie.svg").write_text(b1, encoding="utf-8")
+    b1 = (HERE / "print" / "varianta-B" / "B1-bila-rezana-folie.svg").read_text(encoding="utf-8")
     logo = copy.deepcopy(L["logo"])
     for parent in logo.iter():
         for child in list(parent):
@@ -283,10 +305,19 @@ def variant_e(mask_dir=None):
                 parent.remove(child)
     white = clean(to_str(logo) + to_str(L["text"])) + f'<path fill="#FFFFFF" d="{keyline_band()}"/>'
     glass = f'<path d="{ARCH}" fill="#2E3A52"/>'
-    vis = (f'<defs><clipPath id="gc"><path d="{g_cut}"/></clipPath><clipPath id="ac"><path d="{a_cut}"/></clipPath>{bg}</defs>'
-           f'<g clip-path="url(#gc)"><g clip-path="url(#bleed)">{meadow_bg()}</g>{clip}<g clip-path="url(#glass)">{garden}</g></g>'
-           f'<path d="{a_cut}" fill="#FFFFFF"/><g clip-path="url(#ac)">{a_art}</g>')
-    (out / "E-preview.svg").write_text(svg_doc(glass + white + vis, "E preview"), encoding="utf-8")
+    for v, a_cut, what in (("E", a_outline, "A with a 2 mm outline round the tulips (easy cut)"),
+                           ("F", a_exact, "A cut exactly as in the logo (precise cut)")):
+        o = HERE / "print" / f"varianta-{v}"
+        o.mkdir(parents=True, exist_ok=True)
+        (o / f"{v}2-tisk-na-bilou-folii.svg").write_text(svg_doc(
+            f'<g id="PRINT on white vinyl">{garden_art}{a_art}</g><g id="CUT contour" inkscape:groupmode="layer">{cutp(g_cut)}'
+            f'<path d="{a_cut}" fill="none" fill-rule="evenodd" stroke="#FF00FF" stroke-width="0.5"/></g>',
+            f"NARIN arch {v}2: print on WHITE vinyl + cut along magenta; {what}; 1440 x 700 mm"), encoding="utf-8")
+        (o / f"{v}1-bila-rezana-folie.svg").write_text(b1.replace("B1:", f"{v}1:"), encoding="utf-8")
+        vis = (f'<defs><clipPath id="gc"><path d="{g_cut}"/></clipPath><clipPath id="ac"><path d="{a_cut}" clip-rule="evenodd"/></clipPath>{bg}</defs>'
+               f'<g clip-path="url(#gc)"><g clip-path="url(#bleed)">{meadow_bg()}</g>{clip}<g clip-path="url(#glass)">{garden}</g></g>'
+               f'<path d="{a_cut}" fill="#FFFFFF" fill-rule="evenodd"/><g clip-path="url(#ac)">{a_art}</g>')
+        (o / f"{v}-preview.svg").write_text(svg_doc(glass + white + vis, f"{v} preview"), encoding="utf-8")
 
 
 def sticker_contours(md, k=4):
@@ -308,7 +339,12 @@ def sticker_contours(md, k=4):
     bleed = cv2.bitwise_and(cv2.dilate(g, disk(3)), glass)
     a = cv2.bitwise_or(ld("abody"), cv2.dilate(ld("tulip"), disk(2)))
     a = cv2.morphologyEx(a, cv2.MORPH_OPEN, disk(0.75))
-    return trace(g), trace(bleed), trace(a, 0.6)
+    # exact: the logo's own edge, every gap between leaf, stems and the A open (holes kept)
+    ex = cv2.bitwise_or(ld("abody"), ld("tulip"))
+    cs, hier = cv2.findContours(ex, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
+    exact = " ".join("M" + " L".join(f"{x:.2f} {y:.2f}" for x, y in cv2.approxPolyDP(c, 0.5, True)[:, 0, :] / k) + "Z"
+                     for c in cs if cv2.contourArea(c) > 4 * k * k)
+    return trace(g), trace(bleed), trace(a, 0.6), exact
 
 
 if __name__ == "__main__":

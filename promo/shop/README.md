@@ -57,14 +57,15 @@ For a shop like KRÉDO that has a plotter but no white ink and will not contour-
   Colours are translucent against the light.
 - `D-preview.*`, `nahled.png` — both together on the glass.
 
-## Variant E (sticker style, chosen for KRÉDO): `print/varianta-E/`
+## Variants E and F (for KRÉDO: everything on white vinyl): `print/varianta-E/`, `print/varianta-F/`
 
-Glass stays clear, colours stay opaque, the cut needs no precision (`python make_vinyl.py E` → render the 3 masks at
-4 px/mm as `maskE-{garden,tulip,abody}.png` → `python make_vinyl.py E <dir>`):
-- `E1-bila-rezana-folie.svg/.pdf` — plotter-cut **white vinyl**: NARIN without the A, line of words, keyline (= B1).
-- `E2-tisk-na-bilou-folii.svg/.pdf` — printed on **white vinyl**, 2 pieces:
-  - garden: the P garden plus extra low fillers (buds, forget-me-nots, leaves) on a soft meadow background
-    (cream sky, two pale-green hills, pollen dots) printed with 3 mm bleed; the smooth magenta cut runs ≥ 6 mm from every
-    flower, so an inaccurate cut only trims background;
-  - the A exactly as in the logo (its body = the white vinyl) with the tulips, outlined 2 mm only where they leave the A.
-- `E-preview.*`, `nahled.png` — on the glass.
+Glass stays clear, colours stay opaque. Build: `python make_vinyl.py E` → render the 3 masks at 4 px/mm as
+`maskE-{garden,tulip,abody}.png` → `python make_vinyl.py E <dir>` (writes both E and F).
+- `*1-bila-rezana-folie` — plotter-cut **white vinyl**: NARIN without the A, line of words, keyline (= B1).
+- `*2-tisk-na-bilou-folii` — printed on **white vinyl**, 2 pieces:
+  - garden: the P garden in front of a designed backdrop (`foliage()`): three rows of leaves from dark to light green,
+    eucalyptus sprigs between the flower heads, a few sprays of baby's breath, on deep green printed with 3 mm bleed.
+    The smooth magenta cut runs ≥ 6 mm from every flower, so an inaccurate cut only trims green;
+  - the A with the tulips: **E** = tulips outlined 2 mm (easy cut); **F** = cut exactly on the logo's own edge, every gap
+    between the leaf, the stems and the A open, so it reads clearly as an A (precise cut needed for this one piece).
+- `*-preview.*`, `nahled.png` — on the glass.
