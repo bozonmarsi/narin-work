@@ -41,3 +41,8 @@ For shops that cannot print white on clear film (`make_vinyl.py`, contour traced
 - `B2-tisk-s-orezem.svg/.pdf` — **print on white vinyl** (garden + the logo's tulip A; white = the vinyl itself) with a
   magenta `CUT contour` 1 mm outside the artwork, outer edge and inner gaps, which are weeded out.
 - `B-preview.*` — both together on the glass.
+
+## Variant C (one printed sticker on blue): `print/varianta-C/`
+
+For a shop that only prints on white vinyl and cuts to shape: the whole arch on the brand blue (#1C70E3), so the white
+lettering is simply unprinted vinyl. 3 mm bleed, magenta CUT = the arch. Blue-on-blue flowers recoloured to lilac.
