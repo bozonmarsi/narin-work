@@ -119,5 +119,77 @@ def trace_contour(mask_png, px_per_mm=4, offset_mm=1.0, min_hole_mm2=25):
     return " ".join(d)
 
 
+def variant_d(mask_png=None):
+    """Variant D for a shop with a plotter but no white ink and no precise contour cut (KRÉDO):
+    D1 white cut vinyl = everything white incl. the white body of the A; D2 = garden + tulips printed on CLEAR
+    vinyl (no white), cut along a loose, smooth line well clear of the artwork, so the glass stays see-through."""
+    out = HERE / "print" / "varianta-D"
+    out.mkdir(parents=True, exist_ok=True)
+    tree = ET.parse(SRC)
+    L = layers(tree)
+    logo_tf = next(g for g in L["logo"] if g.tag == f"{{{NS}}}g").get("transform")
+    tulip = next(el for el in L["logo"].iter() if el.get("id") == "tulip")
+    tulip_tf = tulip.get("transform") or ""
+    white_bits = [to_str(e) for e in tulip if e.get("fill") == "#FFFFFF"]
+    colour_tulip = copy.deepcopy(tulip)
+    for e in list(colour_tulip):
+        if e.get("fill") == "#FFFFFF":
+            colour_tulip.remove(e)
+    guide = '<g id="glass outline - reference only, do not cut" inkscape:groupmode="layer"><path d="' + ARCH + '" fill="none" stroke="#00AEEF" stroke-width="0.5"/></g>'
+    # D1
+    logo = copy.deepcopy(L["logo"])
+    for parent in logo.iter():
+        for child in list(parent):
+            if child.get("id") == "tulip":
+                parent.remove(child)
+    a_body = f'<g transform="{logo_tf}"><g transform="{tulip_tf}">{"".join(white_bits)}</g></g>'
+    white = to_str(logo) + to_str(L["text"]) + a_body
+    white = re.sub(r'\sxmlns(:\w+)?="[^"]+"', "", white).replace('fill="#FFFFFF"', 'fill="#1A1A1A"')
+    band = f'<path fill="#1A1A1A" d="{keyline_band()}"/>'
+    (out / "D1-bila-rezana-folie.svg").write_text(svg_doc(guide + '<g id="CUT white vinyl" inkscape:groupmode="layer">' + white + band + "</g>",
+        "NARIN arch D1: white cut vinyl (shown dark for visibility) incl. the white body of the A, 1440 x 700 mm"), encoding="utf-8")
+    # D2
+    art = to_str(L["garden"]) + f'<g transform="{logo_tf}">{to_str(colour_tulip)}</g>'
+    art = re.sub(r'\sxmlns(:\w+)?="[^"]+"', "", art)
+    print_layer = f'<defs><clipPath id="glass"><path d="{ARCH}"/></clipPath></defs><g id="PRINT on clear vinyl" clip-path="url(#glass)">{art}</g>'
+    (out / "D2-art-only.svg").write_text(svg_doc(print_layer, "art only"), encoding="utf-8")
+    if mask_png:
+        cut = loose_contour(mask_png)
+        (out / "D2-tisk-na-ciru-folii.svg").write_text(svg_doc(print_layer + f'<g id="CUT loose shape" inkscape:groupmode="layer"><path d="{cut}" fill="none" stroke="#FF00FF" stroke-width="0.5"/></g>',
+            "NARIN arch D2: print on CLEAR vinyl (no white), loose cut along the magenta line, 1440 x 700 mm"), encoding="utf-8")
+        prev = svg_doc(f'<path d="{ARCH}" fill="#2E3A52"/>' + white.replace('fill="#1A1A1A"', 'fill="#FFFFFF"') + band.replace("#1A1A1A", "#FFFFFF")
+                       + print_layer + f'<path d="{cut}" fill="none" stroke="#FF00FF" stroke-width="1.5"/>', "D preview")
+        (out / "D-preview.svg").write_text(prev, encoding="utf-8")
+        (out / "D2-art-only.svg").unlink()
+
+
+def loose_contour(mask_png, px_per_mm=4, offset_mm=10.0):
+    """A smooth, easy-to-cut outline well outside the artwork (only outer edges, clipped to the glass)."""
+    import cv2
+    import numpy as np
+    from PIL import Image
+    a = np.asarray(Image.open(mask_png).convert("RGBA"))[..., 3]
+    m = (a > 20).astype(np.uint8) * 255
+    r = int(offset_mm * px_per_mm)
+    m = cv2.dilate(m, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * r + 1, 2 * r + 1)))
+    m = cv2.erode(m, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (r + 1, r + 1)))      # round off the dents
+    glass = np.zeros_like(m)
+    h, w = m.shape
+    cv2.ellipse(glass, (w // 2, h), (w // 2, h), 0, 180, 360, 255, -1)
+    m = cv2.bitwise_and(m, glass)
+    cs, _ = cv2.findContours(m, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    d = []
+    for c in cs:
+        if cv2.contourArea(c) < 200 * px_per_mm ** 2:
+            continue
+        p = cv2.approxPolyDP(c, 3.0 * px_per_mm, True)[:, 0, :] / px_per_mm
+        d.append("M" + " L".join(f"{x:.1f} {y:.1f}" for x, y in p) + "Z")
+    print("loose shapes", len(d), "points", sum(x.count("L") + 1 for x in d))
+    return " ".join(d)
+
+
 if __name__ == "__main__":
-    main(sys.argv[1] if len(sys.argv) > 1 else None)
+    if len(sys.argv) > 1 and sys.argv[1] == "D":
+        variant_d(sys.argv[2] if len(sys.argv) > 2 else None)
+    else:
+        main(sys.argv[1] if len(sys.argv) > 1 else None)

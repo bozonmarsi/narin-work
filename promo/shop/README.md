@@ -46,3 +46,13 @@ For shops that cannot print white on clear film (`make_vinyl.py`, contour traced
 
 For a shop that only prints on white vinyl and cuts to shape: the whole arch on the brand blue (#1C70E3), so the white
 lettering is simply unprinted vinyl. 3 mm bleed, magenta CUT = the arch. Blue-on-blue flowers recoloured to lilac.
+
+## Variant D (plotter, no white ink, no precise cut): `print/varianta-D/`
+
+For a shop like KRÉDO that has a plotter but no white ink and will not contour-cut precisely (`make_vinyl.py D <mask.png>`):
+- `D1-bila-rezana-folie.svg/.pdf` — plotter-cut **white vinyl**: NARIN incl. the white body of the A, the line of words,
+  the keyline band. Shown dark in the file for visibility.
+- `D2-tisk-na-ciru-folii.svg/.pdf` — garden + colour tulip printed on **clear vinyl without white**, magenta
+  `CUT loose shape` about 5–10 mm outside the artwork (smooth, no inner holes); the extra clear film is invisible on glass.
+  Colours are translucent against the light.
+- `D-preview.*`, `nahled.png` — both together on the glass.
