@@ -188,7 +188,76 @@ def loose_contour(mask_png, px_per_mm=4, offset_mm=10.0):
     return " ".join(d)
 
 
+def variant_e(mask_dir=None):
+    """Variant E, 'sticker' style for a plotter that cannot cut precisely around print: garden + tulip printed on WHITE
+    vinyl, cut along a smooth line with a 6 mm white border, so a cut that is a few mm off never touches the artwork.
+    The white body of the A is part of the tulip sticker. E1 = white cut vinyl without the A (same as B1)."""
+    out = HERE / "print" / "varianta-E"
+    out.mkdir(parents=True, exist_ok=True)
+    tree = ET.parse(SRC)
+    L = layers(tree)
+    logo_tf = next(g for g in L["logo"] if g.tag == f"{{{NS}}}g").get("transform")
+    tulip = next(el for el in L["logo"].iter() if el.get("id") == "tulip")
+    clean = lambda x: re.sub(r'\sxmlns(:\w+)?="[^"]+"', "", x)
+    # white petals vanish on white vinyl: give them a soft pink
+    garden = re.sub(r'fill="#(?:FFFFFF|ffffff|FFF|fff)"', 'fill="#FFC9D9"', clean(to_str(L["garden"])))
+    tul = clean(f'<g transform="{logo_tf}">{to_str(tulip)}</g>')
+    clip = f'<defs><clipPath id="glass"><path d="{ARCH}"/></clipPath></defs>'
+    art = f'{clip}<g id="PRINT on white vinyl" clip-path="url(#glass)">{garden}{tul}</g>'
+    if not mask_dir:
+        (out / "mask-garden.svg").write_text(svg_doc(f'{clip}<g clip-path="url(#glass)">{garden}</g>', "m"), encoding="utf-8")
+        (out / "mask-tulip.svg").write_text(svg_doc(tul, "m"), encoding="utf-8")
+        return
+    cut, fill = sticker_contour(pathlib.Path(mask_dir))
+    (out / "mask-garden.svg").unlink(missing_ok=True)
+    (out / "mask-tulip.svg").unlink(missing_ok=True)
+    cut_layer = f'<g id="CUT contour" inkscape:groupmode="layer"><path d="{cut}" fill="none" stroke="#FF00FF" stroke-width="0.5"/></g>'
+    (out / "E2-tisk-na-bilou-folii.svg").write_text(svg_doc(art + cut_layer,
+        "NARIN arch E2: print on WHITE vinyl, smooth cut with 6 mm white border (magenta), 1440 x 700 mm"), encoding="utf-8")
+    b1 = (HERE / "print" / "varianta-B" / "B1-bila-rezana-folie.svg").read_text(encoding="utf-8").replace("B1:", "E1:")
+    (out / "E1-bila-rezana-folie.svg").write_text(b1, encoding="utf-8")
+    logo = copy.deepcopy(L["logo"])
+    for parent in logo.iter():
+        for child in list(parent):
+            if child.get("id") == "tulip":
+                parent.remove(child)
+    white = clean(to_str(logo) + to_str(L["text"])) + f'<path fill="#FFFFFF" d="{keyline_band()}"/>'
+    prev = svg_doc(f'<path d="{ARCH}" fill="#2E3A52"/>{white}<path d="{cut}" fill="#FFFFFF"/>{art}', "E preview")
+    (out / "E-preview.svg").write_text(prev, encoding="utf-8")
+    (out / "E-preview-rez.svg").write_text(svg_doc(f'<path d="{ARCH}" fill="#2E3A52"/>{white}<path d="{cut}" fill="#FFFFFF"/>{art}'
+        f'<path d="{cut}" fill="none" stroke="#FF00FF" stroke-width="1.5"/>', "E preview with cut"), encoding="utf-8")
+
+
+def sticker_contour(mask_dir, px_per_mm=4, border_mm=6.0, close_mm=14.0):
+    import cv2
+    import numpy as np
+    from PIL import Image
+    ld = lambda n: ((np.asarray(Image.open(mask_dir / n).convert("RGBA"))[..., 3] > 20).astype(np.uint8) * 255)
+    disk = lambda mm: cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * int(mm * px_per_mm) + 1,) * 2)
+    g, t = ld("maskE-garden.png"), ld("maskE-tulip.png")
+    m = cv2.bitwise_or(cv2.dilate(g, disk(border_mm)), cv2.dilate(t, disk(border_mm)))
+    m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, disk(close_mm))            # fill narrow notches -> smooth, easy cut
+    m = cv2.morphologyEx(m, cv2.MORPH_OPEN, disk(4))                     # no thin spikes
+    h, w = m.shape
+    glass = np.zeros_like(m)
+    cv2.ellipse(glass, (w // 2, h), (w // 2, h), 0, 180, 360, 255, -1)
+    m = cv2.bitwise_and(m, glass)
+    cs, hier = cv2.findContours(m, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
+    d = []
+    for c, hh in zip(cs, hier[0]):
+        area = cv2.contourArea(c) / px_per_mm ** 2
+        if hh[3] >= 0 or area < 200:      # outer edges only: nothing to weed inside
+            continue
+        p = cv2.approxPolyDP(c, 1.2, True)[:, 0, :] / px_per_mm
+        d.append("M" + " L".join(f"{x:.1f} {y:.1f}" for x, y in p) + "Z")
+    print("sticker shapes", len(d), "points", sum(x.count("L") + 1 for x in d))
+    return " ".join(d), m
+
+
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "E":
+        variant_e(sys.argv[2] if len(sys.argv) > 2 else None)
+        sys.exit()
     if len(sys.argv) > 1 and sys.argv[1] == "D":
         variant_d(sys.argv[2] if len(sys.argv) > 2 else None)
     else:

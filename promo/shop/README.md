@@ -56,3 +56,12 @@ For a shop like KRÉDO that has a plotter but no white ink and will not contour-
   `CUT loose shape` about 5–10 mm outside the artwork (smooth, no inner holes); the extra clear film is invisible on glass.
   Colours are translucent against the light.
 - `D-preview.*`, `nahled.png` — both together on the glass.
+
+## Variant E (sticker style, chosen for KRÉDO): `print/varianta-E/`
+
+Glass stays clear, colours stay opaque, and the cut needs no precision (`make_vinyl.py E` → render masks → `make_vinyl.py E <dir>`):
+- `E1-bila-rezana-folie.svg/.pdf` — plotter-cut **white vinyl**: NARIN without the A, line of words, keyline (= B1).
+- `E2-tisk-na-bilou-folii.svg/.pdf` — garden + tulip A (with its white body) printed on **white vinyl**, cut along a smooth
+  magenta line with a **6 mm white border** (notches closed at 14 mm radius, outer edges only, nothing to weed inside).
+  A cut a few mm off never touches the artwork. White flowers recoloured soft pink so they show on white vinyl.
+- `E-preview.*`, `nahled.png` — on the glass.
