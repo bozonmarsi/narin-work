@@ -1,4 +1,4 @@
-// Кузница сетов (Магазин -> Кузница сетов в narin-work).
+// Кузница сетов (Магазин -> Кузница сетов в narin-work). Сеты собираются из пражского склада Van Vliet (vv_catalog, в наличии) и прайса Голландии; одинаковый сорт берётся из Праги.
 //
 //   { action: "import", file_name, file_b64 }
 //       -> разбирает Excel прайса Голландии Van Vliet ("Pricelists_DD-MM-YYYY.xlsx",
@@ -28,6 +28,9 @@ const DPH = 1.21
 const MAX_PACK = 25
 
 type Item = {
+  src?: 'praha' | 'nl'
+  stock?: number | null
+  photo?: string | null
   name: string
   order_per: number | null
   color: string | null
@@ -56,6 +59,25 @@ function num(v: unknown): number | null {
 function txt(v: unknown): string | null {
   const s = String(v ?? '').trim()
   return s && s !== '.' ? s : null
+}
+
+// Название без длины/веса/упаковки: пражский каталог обрезает названия (~25 символов),
+// поэтому один сорт в Праге и в Голландии совпадает по началу строки.
+function nameKey(s: string) {
+  return s
+    .toLowerCase()
+    .replace(/\(\s*imp\s*\)/g, ' ')
+    .replace(/\b\d+([.,]\d+)?\s*(cm|gram)\b/g, ' ')
+    .replace(/\b\d+-\d+\s*gram\b/g, ' ')
+    .replace(/\b\d+\s*st\b/g, ' ')
+    .replace(/\bx\s*\d+\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+function sameVariety(a: string, b: string) {
+  if (a === b) return true
+  const short = a.length < b.length ? a : b
+  return short.length >= 12 && (a.startsWith(b) || b.startsWith(a))
 }
 
 function parseWorkbook(bytes: Uint8Array): Item[] {
@@ -142,7 +164,7 @@ const SET_SCHEMA = {
   additionalProperties: false,
 }
 
-const SYSTEM = `Ты арт-директор и флорист магазина NARIN (Прага). Ты придумываешь СЕТЫ: 2-4 отдельные охапки (каждая - один сорт, целая упаковка поставщика), которые покупатель расставляет по разным вазам или собирает в один массив. Все цветы - из прайса Van Vliet (Голландия) ниже.
+const SYSTEM = `Ты арт-директор и флорист магазина NARIN (Прага). Ты придумываешь СЕТЫ: 2-4 отдельные охапки (каждая - один сорт, целая упаковка поставщика), которые покупатель расставляет по разным вазам или собирает в один массив. Цветы - из двух списков Van Vliet ниже: ПРАГА (склад в Праге, есть сейчас, привезут за 1-2 дня - бери отсюда в первую очередь) и ГОЛЛАНДИЯ (под заказ к дате прихода - когда для образа нужного нет в Праге). Смешивать оба списка в одном сете можно.
 
 ГЛАВНОЕ: владельцу НЕ нужны базовые сеты ("розовое к розовому", "розы + эустома + зелень"). Каждый сет - это ОБРАЗ: место, сцена, время, настроение, фактура материала. Сначала придумай образ, потом подбери под него цветы так, чтобы по составу этот образ угадывался. Примеры образов: дом у озера (зелёная гортензия + тёмно-бордовые каллы + тёмно-красный антуриум + декоративная зелень); степь (сухой хлопок + алые розы + белая эустома + Green Trick); холодный кобальт без пафоса (синий дельфиниум + оксипеталум + персиковый диантус + ветки); глянцевая архитектура против мягкой массы (зелёные антуриумы + персиковая пионовидная кустовая роза + диантус лайм); дикая экзотика (протея + розовые пионы + молюцелла + орнитогалум).
 
@@ -197,9 +219,46 @@ Deno.serve(async (req) => {
       const count = Math.min(Math.max(Number(body?.count) || 6, 1), 10)
       const hint = String(body?.hint ?? '').trim().slice(0, 300)
 
-      const { data: pl } = await supabase.from('forge_pricelists').select('id, arrival_date').eq('id', pricelistId).maybeSingle()
-      if (!pl) return json({ ok: false, error: 'pricelist_not_found' }, 404)
-      const { data: rows } = await supabase.from('forge_pricelist_items').select('*').eq('pricelist_id', pricelistId).limit(20000)
+      // Прайс Голландии необязателен: без него сеты собираются только из пражского склада.
+      const { data: pl } = pricelistId
+        ? await supabase.from('forge_pricelists').select('id, arrival_date').eq('id', pricelistId).maybeSingle()
+        : { data: null }
+      if (pricelistId && !pl) return json({ ok: false, error: 'pricelist_not_found' }, 404)
+      const { data: rows } = pl
+        ? await supabase.from('forge_pricelist_items').select('*').eq('pricelist_id', pricelistId).limit(20000)
+        : { data: [] }
+
+      // Пражский склад Van Vliet (сканер, 4 раза в день): то, что есть в наличии
+      // прямо сейчас. Если сорт есть и в Праге, и в Голландии - берём пражский.
+      const { data: praha } = await supabase
+        .from('vv_catalog')
+        .select('product, color, quality, grower, order_per, price, stock, photo, last_seen')
+        .gt('stock', 0)
+        .gt('price', 0)
+        // Сорт, которого сканер давно не видел, уже распродан (stock там остаётся старый).
+        .gte('last_seen', new Date(Date.now() - 36 * 3600 * 1000).toISOString())
+        .limit(5000)
+      const prahaItems: Item[] = (praha ?? [])
+        .filter((r) => (r.order_per ?? 1) <= MAX_PACK)
+        // Крашеное, металлизированное, ёлки/венки/мешки - не цветы для сета.
+        .filter((r) => !/\bdyed\b|^metal\b|^venec|^stromecek|^sob [sml]\b|^nobilis|^wax apple/i.test(r.product))
+        .map((r) => ({
+          src: 'praha' as const,
+          stock: r.stock,
+          photo: r.photo,
+          name: r.product,
+          order_per: r.order_per,
+          color: r.color && r.color !== 'N.A.' && r.color !== 'Misc' ? r.color : null,
+          quality: r.quality,
+          grower: r.grower,
+          origin: null,
+          tags: null,
+          length_cm: Number(r.product.match(/(\d+)\s*cm/i)?.[1]) || null,
+          packing: null,
+          price_bunch: Number(r.price),
+          price_bucket: null,
+        }))
+      const prahaKeys = prahaItems.map((r) => nameKey(r.name))
 
       // Один сорт = одна строка: самая дешёвая по Bunch, без окрашенных и огромных упаковок.
       const byName = new Map<string, Item>()
@@ -208,11 +267,22 @@ Deno.serve(async (req) => {
         if (r.order_per != null && r.order_per > MAX_PACK) continue
         if ((r.tags ?? '').toLowerCase().includes('painted')) continue
         const prev = byName.get(r.name)
-        if (!prev || (prev.price_bunch ?? Infinity) > r.price_bunch) byName.set(r.name, r)
+        if (!prev || (prev.price_bunch ?? Infinity) > r.price_bunch) byName.set(r.name, { ...r, src: 'nl' })
       }
-      const offer = [...byName.values()].sort((a, b) => a.name.localeCompare(b.name))
+      const nlOnly = [...byName.values()].filter((r) => {
+        const k = nameKey(r.name)
+        return !prahaKeys.some((pk) => sameVariety(k, pk))
+      })
+      const byPraha = new Map<string, Item>()
+      for (const r of prahaItems) {
+        const prev = byPraha.get(r.name)
+        if (!prev || (prev.price_bunch ?? Infinity) > (r.price_bunch ?? Infinity)) byPraha.set(r.name, r)
+      }
+      const offer = [...byPraha.values(), ...nlOnly].sort((a, b) => a.name.localeCompare(b.name))
       if (offer.length < 10) return json({ ok: false, error: 'too_few_items' }, 400)
-      const lines = offer.map((r) => `${r.name} | ${r.color ?? '-'} | pack ${r.order_per ?? 1} | ${r.length_cm ?? '-'}cm | ${r.price_bunch} Kc`)
+      const line = (r: Item) => `${r.name} | ${r.color ?? '-'} | pack ${r.order_per ?? 1} | ${r.length_cm ?? '-'}cm | ${r.price_bunch} Kc`
+      const prahaLines = offer.filter((r) => r.src === 'praha').map(line)
+      const nlLines = offer.filter((r) => r.src === 'nl').map(line)
 
       const { data: past } = await supabase
         .from('forge_candidates')
@@ -225,13 +295,15 @@ Deno.serve(async (req) => {
       const already = (past ?? []).filter((c) => c.status === 'pending').map(describe)
 
       const user_msg = [
-        `Дата прихода: ${pl.arrival_date ?? 'неизвестна'}.`,
+        pl ? `Дата прихода из Голландии: ${pl.arrival_date ?? 'неизвестна'}.` : 'Прайса Голландии нет - только пражский склад.',
         `Собери ${count} разных сетов.`,
         hint ? `Пожелание владельца: ${hint}` : '',
         taken.length ? `Владелец ВЗЯЛ такие сеты (делай в этом духе, но не повторяй):\n${taken.join('\n')}` : '',
         rejected.length ? `Владелец ОТКЛОНИЛ (не повторяй эти ошибки):\n${rejected.join('\n')}` : '',
         already.length ? `Уже предложены и ждут решения (не повторяй):\n${already.join('\n')}` : '',
-        `Прайс (название | цвет | упаковка | длина | цена за стебель без DPH):\n${lines.join('\n')}`,
+        'Формат строк: название | цвет | упаковка | длина | цена за стебель без DPH.',
+        `ПРАГА - склад Van Vliet в Праге, есть прямо сейчас (БЕРИ ОТСЮДА В ПЕРВУЮ ОЧЕРЕДЬ; цвет тут часто не указан - определяй по названию сорта):\n${prahaLines.join('\n') || '-'}`,
+        nlLines.length ? `ГОЛЛАНДИЯ - только под заказ к дате прихода (бери, когда нужного для образа нет в Праге):\n${nlLines.join('\n')}` : '',
       ]
         .filter(Boolean)
         .join('\n\n')
@@ -283,6 +355,9 @@ Deno.serve(async (req) => {
             color: row.color,
             length_cm: row.length_cm,
             origin: row.origin,
+            src: row.src ?? 'nl',
+            stock: row.stock ?? null,
+            photo: row.photo ?? null,
             price: row.price_bunch,
             cost: Math.round((row.price_bunch ?? 0) * DPH * qty),
           })
@@ -292,7 +367,7 @@ Deno.serve(async (req) => {
           continue
         }
         inserts.push({
-          pricelist_id: pricelistId,
+          pricelist_id: pl ? pricelistId : null,
           name: s.name,
           description_cs: s.description_cs,
           idea_ru: s.idea_ru,

@@ -19,6 +19,9 @@ type ForgeItem = {
   color: string | null;
   length_cm: number | null;
   origin: string | null;
+  src?: "praha" | "nl";
+  stock?: number | null;
+  photo?: string | null;
   price: number | null;
   cost: number;
 };
@@ -108,7 +111,7 @@ async function fileToBase64(file: File) {
 
 export function SetForge() {
   const [pricelists, setPricelists] = useState<Pricelist[]>([]);
-  const [plId, setPlId] = useState<string>("");
+  const [plId, setPlId] = useState<string | null>(null);
   const [cands, setCands] = useState<Candidate[]>([]);
   const [photos, setPhotos] = useState<VvPhoto[]>([]);
   const [tab, setTab] = useState<"pending" | "taken" | "rejected">("pending");
@@ -127,7 +130,7 @@ export function SetForge() {
       supabase.from("forge_candidates").select("*").order("created_at", { ascending: false }).limit(300),
     ]);
     setPricelists(pls ?? []);
-    setPlId((cur) => cur || pls?.[0]?.id || "");
+    setPlId((cur) => (cur === null ? pls?.[0]?.id ?? "" : cur));
     setCands((cs ?? []) as Candidate[]);
   }, []);
 
@@ -167,12 +170,11 @@ export function SetForge() {
   }
 
   async function forge() {
-    if (!plId) return;
     setBusy("forge");
     setMsg(null);
     const supabase = createClient();
     const { data, error } = await supabase.functions.invoke("set-forge", {
-      body: { action: "generate", pricelist_id: plId, count: 6, hint },
+      body: { action: "generate", pricelist_id: plId || "", count: 6, hint },
     });
     setBusy("");
     if (error || !data?.ok) {
@@ -256,10 +258,11 @@ export function SetForge() {
           </label>
           {pricelists.length > 0 && (
             <select
-              value={plId}
+              value={plId ?? ""}
               onChange={(e) => setPlId(e.target.value)}
               className="rounded-lg border border-zinc-300 dark:border-zinc-600 bg-transparent px-2 py-1.5 text-sm"
             >
+              <option value="">Только Прага</option>
               {pricelists.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.arrival_date ? `Приход ${fmtDate(p.arrival_date)}` : p.file_name} · {p.row_count} сортов
@@ -268,7 +271,7 @@ export function SetForge() {
             </select>
           )}
         </div>
-        {current ? (
+        {(
           <div className="flex flex-wrap items-center gap-2">
             <input
               value={hint}
@@ -280,9 +283,10 @@ export function SetForge() {
               {busy === "forge" ? "Кую… ~1 мин" : "🔨 Выковать 6 сетов"}
             </button>
           </div>
-        ) : (
-          <p className="text-sm text-zinc-500">Загрузи Excel из Van Vliet (Голландия, Pricelists_….xlsx) — по нему будут собираться сеты.</p>
         )}
+        <p className="text-xs text-zinc-500">
+          Сеты собираются из пражского склада Van Vliet (есть сейчас){current ? " и прайса Голландии (под заказ)" : ". Загрузи прайс Голландии, чтобы выбор был шире"}. Одинаковый сорт берётся из Праги.
+        </p>
         {msg && <p className="text-sm text-zinc-600 dark:text-zinc-300">{msg}</p>}
       </div>
 
@@ -296,7 +300,7 @@ export function SetForge() {
 
       {shown.length === 0 && (
         <p className="text-sm text-zinc-500">
-          {tab === "pending" ? (current ? "Нажми «Выковать» — появятся новые сеты." : "Сначала загрузи прайс.") : "Пока пусто."}
+          {tab === "pending" ? "Нажми «Выковать» — появятся новые сеты." : "Пока пусто."}
         </p>
       )}
 
@@ -313,7 +317,7 @@ export function SetForge() {
 
             <ul className="space-y-1.5">
               {c.items.map((it, i) => {
-                const photo = findPhoto(it.catalog_name, photos);
+                const photo = it.photo || findPhoto(it.catalog_name, photos);
                 const key = `${c.id}-${i}`;
                 return (
                   <li key={key} className="flex items-center gap-2">
@@ -334,6 +338,9 @@ export function SetForge() {
                       >
                         {copied === key ? "✓ скопировано" : `⧉ ${it.catalog_name}`}
                       </button>
+                      <div className={`text-[10px] ${it.src === "praha" ? "text-emerald-600" : "text-sky-600"}`}>
+                        {it.src === "praha" ? `Прага · есть${it.stock ? ` ${it.stock} шт` : ""}` : `Голландия · под заказ${current?.arrival_date ? ` к ${fmtDate(current.arrival_date)}` : ""}`}
+                      </div>
                     </div>
                     <div className="shrink-0 text-right text-xs text-zinc-500">
                       <div>
