@@ -285,7 +285,7 @@ export function SetForge() {
           </div>
         )}
         <p className="text-xs text-zinc-500">
-          Сеты собираются из пражского склада Van Vliet (есть сейчас){current ? " и прайса Голландии (под заказ)" : ". Загрузи прайс Голландии, чтобы выбор был шире"}. Одинаковый сорт берётся из Праги.
+          Сеты собираются из пражского склада Van Vliet{current ? " и прайса Голландии (под заказ)" : ". Загрузи прайс Голландии, чтобы выбор был шире"} — на равных, выбирается самая сильная комбинация.
         </p>
         {msg && <p className="text-sm text-zinc-600 dark:text-zinc-300">{msg}</p>}
       </div>
@@ -344,7 +344,8 @@ export function SetForge() {
                     </div>
                     <div className="shrink-0 text-right text-xs text-zinc-500">
                       <div>
-                        {it.qty} шт{it.length_cm ? ` · ${it.length_cm} см` : ""}
+                        {it.qty < it.pack ? `${it.qty} из ${it.pack}` : `${it.qty} шт`}
+                        {it.length_cm ? ` · ${it.length_cm} см` : ""}
                       </div>
                       <div>{it.cost} Kč</div>
                     </div>
