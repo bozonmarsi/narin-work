@@ -6,6 +6,7 @@ import { useDashboard } from "../layout";
 import { decodeHtmlEntities } from "@/lib/format";
 import { useRealtimeRefresh } from "@/lib/useRealtimeRefresh";
 import { VanVlietPanel } from "./VanVlietPanel";
+import { SetForge } from "./SetForge";
 import { Modal } from "../warehouse/Modal";
 import { ProductCardEditor } from "./ProductCardEditor";
 
@@ -1133,7 +1134,7 @@ export default function ShopPage() {
 
   // "Заказы цветов" (заказ у поставщика Van Vliet) — только для менеджера,
   // не для склада: это решение о деньгах, а не о наличии на полке.
-  const [mainTab, setMainTab] = useState<"catalog" | "orders" | "hours">("catalog");
+  const [mainTab, setMainTab] = useState<"catalog" | "orders" | "forge" | "hours">("catalog");
 
   const [weeklyClosed, setWeeklyClosed] = useState<Set<number>>(new Set());
   const [closedDates, setClosedDates] = useState<ClosedDate[]>([]);
@@ -2066,6 +2067,16 @@ export default function ShopPage() {
             Заказы цветов
           </button>
         )}
+        {profile?.role === "manager" && (
+          <button
+            onClick={() => setMainTab("forge")}
+            className={`rounded-full px-3 py-1.5 text-sm font-medium ${
+              mainTab === "forge" ? "bg-accent text-white" : "border border-zinc-300 dark:border-zinc-600 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            }`}
+          >
+            🔨 Кузница сетов
+          </button>
+        )}
         <button
           onClick={() => setMainTab("hours")}
           className={`rounded-full px-3 py-1.5 text-sm font-medium ${
@@ -2077,6 +2088,7 @@ export default function ShopPage() {
       </div>
 
       {mainTab === "orders" && profile?.role === "manager" && <VanVlietPanel />}
+      {mainTab === "forge" && profile?.role === "manager" && <SetForge />}
 
       {mainTab === "hours" && (
       <section className="space-y-3">
