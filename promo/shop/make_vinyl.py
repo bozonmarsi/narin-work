@@ -188,32 +188,92 @@ def loose_contour(mask_png, px_per_mm=4, offset_mm=10.0):
     return " ".join(d)
 
 
+def inside_arch(x, y, margin=0.0):
+    rx, ry = AW / 2 - margin, AH - margin
+    return ((x - AW / 2) / rx) ** 2 + ((y - AH) / ry) ** 2 <= 1
+
+
+def fillers(max_h=140, seed=77):
+    """Extra low flowers, buds and leaves between the existing ones, drawn behind them, so no empty gaps remain."""
+    import random
+    import flowers as FL
+    rnd = random.Random(seed)
+    cols = ["#FFD84D", "#FF7C77", "#C9A7FF", "#7FB6FF", "#FFA8C5", "#FFB86B"]
+    out, x = [], 52.0
+    while x < AW - 52:
+        h = max_h * rnd.uniform(0.38, 0.68)
+        k = rnd.random()
+        side = rnd.choice((-1, 1))
+        if inside_arch(x, AH - h - 30, 34):
+            if k < 0.30:
+                out += FL.leafy(x, AH + 2, h * 0.6)
+            elif k < 0.55:
+                c = rnd.choice(cols)
+                out += FL.tiny_cluster(x, AH + 2, h * 0.85, c, "#FFFFFF" if c == "#FFD84D" else "#FFD84D", side)
+            elif k < 0.80:
+                out += FL.buds(x, AH + 2, h * 0.8, rnd.choice(cols), side)
+            else:
+                els, (hx, hy) = FL.on_stem(None, x, AH + 2, h, side)
+                out += els + [FL.cosmos(hx, hy, 40, rnd.choice(cols), "#FFD84D", rnd.uniform(0, 40))]
+        x += rnd.uniform(30, 44)
+    return "".join(out)
+
+
+def meadow_bg(top=480):
+    """Soft background for the garden sticker: warm cream sky, two rolling pale-green hills, a few pollen dots."""
+    import math
+    import random
+    rnd = random.Random(5)
+    def hill(y0, amp, wl, ph, col):
+        pts = " ".join(f"L{x} {y0 + amp * math.sin(x / wl + ph) + amp * 0.4 * math.sin(x / (wl * 0.37) + ph * 2):.1f}"
+                       for x in range(0, AW + 20, 20))
+        return f'<path fill="{col}" d="M0 {AH + 10} {pts[1:] if False else pts} L{AW} {AH + 10}Z"/>'.replace(f"M0 {AH + 10} L", f"M0 {AH + 10} L", 1)
+    dots = "".join(f'<circle cx="{rnd.uniform(0, AW):.1f}" cy="{rnd.uniform(top, AH - 60):.1f}" r="{rnd.uniform(1.5, 3.2):.1f}" '
+                   f'fill="{rnd.choice(["#FFFFFF", "#FFE7A3", "#F7D2E4"])}"/>' for _ in range(260))
+    return ('<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">'
+            '<stop offset="0" stop-color="#FFF6E6"/><stop offset="1" stop-color="#EAF6E4"/></linearGradient></defs>'
+            f'<rect x="-10" y="{top}" width="{AW + 20}" height="{AH - top + 20}" fill="url(#sky)"/>'
+            + dots + hill(AH - 95, 14, 70, 0.6, "#D7EFD3") + hill(AH - 62, 11, 52, 2.1, "#BFE5C1"))
+
+
 def variant_e(mask_dir=None):
-    """Variant E, 'sticker' style for a plotter that cannot cut precisely around print: garden + tulip printed on WHITE
-    vinyl, cut along a smooth line with a 6 mm white border, so a cut that is a few mm off never touches the artwork.
-    The white body of the A is part of the tulip sticker. E1 = white cut vinyl without the A (same as B1)."""
+    """Variant E for a plotter that cannot cut precisely around print, everything on WHITE vinyl:
+    E1 = white cut letters (NARIN without the A, words, keyline);
+    E2a = garden sticker: flowers + fillers on a soft meadow background printed with bleed past a smooth cut line
+          that runs >= 6 mm from every flower, so an inaccurate cut only trims background;
+    E2b = the A exactly as in the logo (white vinyl) with the tulips, outline only 2 mm where the tulips leave the A."""
     out = HERE / "print" / "varianta-E"
     out.mkdir(parents=True, exist_ok=True)
     tree = ET.parse(SRC)
     L = layers(tree)
     logo_tf = next(g for g in L["logo"] if g.tag == f"{{{NS}}}g").get("transform")
     tulip = next(el for el in L["logo"].iter() if el.get("id") == "tulip")
+    tulip_tf = tulip.get("transform") or ""
     clean = lambda x: re.sub(r'\sxmlns(:\w+)?="[^"]+"', "", x)
-    # white petals vanish on white vinyl: give them a soft pink
-    garden = re.sub(r'fill="#(?:FFFFFF|ffffff|FFF|fff)"', 'fill="#FFC9D9"', clean(to_str(L["garden"])))
-    tul = clean(f'<g transform="{logo_tf}">{to_str(tulip)}</g>')
+    a_body = clean(f'<g transform="{logo_tf}"><g transform="{tulip_tf}">{"".join(to_str(e) for e in tulip if e.get("fill") == "#FFFFFF")}</g></g>')
+    col_tulip = copy.deepcopy(tulip)
+    for e in list(col_tulip):
+        if e.get("fill") == "#FFFFFF":
+            col_tulip.remove(e)
+    tul = clean(f'<g transform="{logo_tf}">{to_str(col_tulip)}</g>')
+    garden = fillers() + clean(to_str(L["garden"]))
     clip = f'<defs><clipPath id="glass"><path d="{ARCH}"/></clipPath></defs>'
-    art = f'{clip}<g id="PRINT on white vinyl" clip-path="url(#glass)">{garden}{tul}</g>'
+    masks = {"garden": f'{clip}<g clip-path="url(#glass)">{garden}</g>', "tulip": tul, "abody": a_body}
     if not mask_dir:
-        (out / "mask-garden.svg").write_text(svg_doc(f'{clip}<g clip-path="url(#glass)">{garden}</g>', "m"), encoding="utf-8")
-        (out / "mask-tulip.svg").write_text(svg_doc(tul, "m"), encoding="utf-8")
+        for k, v in masks.items():
+            (out / f"mask-{k}.svg").write_text(svg_doc(v, "m"), encoding="utf-8")
         return
-    cut, fill = sticker_contour(pathlib.Path(mask_dir))
-    (out / "mask-garden.svg").unlink(missing_ok=True)
-    (out / "mask-tulip.svg").unlink(missing_ok=True)
-    cut_layer = f'<g id="CUT contour" inkscape:groupmode="layer"><path d="{cut}" fill="none" stroke="#FF00FF" stroke-width="0.5"/></g>'
-    (out / "E2-tisk-na-bilou-folii.svg").write_text(svg_doc(art + cut_layer,
-        "NARIN arch E2: print on WHITE vinyl, smooth cut with 6 mm white border (magenta), 1440 x 700 mm"), encoding="utf-8")
+    for k in masks:
+        (out / f"mask-{k}.svg").unlink(missing_ok=True)
+    md = pathlib.Path(mask_dir)
+    g_cut, g_bleed, a_cut = sticker_contours(md)
+    cutp = lambda d, w=0.5: f'<path d="{d}" fill="none" stroke="#FF00FF" stroke-width="{w}"/>'
+    bg = f'<clipPath id="bleed"><path d="{g_bleed}"/></clipPath>'
+    garden_art = f'<defs>{bg}</defs><g clip-path="url(#bleed)">{meadow_bg()}</g>{clip}<g clip-path="url(#glass)">{garden}</g>'
+    a_art = a_body + tul
+    (out / "E2-tisk-na-bilou-folii.svg").write_text(svg_doc(
+        f'<g id="PRINT on white vinyl">{garden_art}{a_art}</g><g id="CUT contour" inkscape:groupmode="layer">{cutp(g_cut)}{cutp(a_cut)}</g>',
+        "NARIN arch E2: print on WHITE vinyl (background printed with 3 mm bleed) + cut along magenta, 1440 x 700 mm"), encoding="utf-8")
     b1 = (HERE / "print" / "varianta-B" / "B1-bila-rezana-folie.svg").read_text(encoding="utf-8").replace("B1:", "E1:")
     (out / "E1-bila-rezana-folie.svg").write_text(b1, encoding="utf-8")
     logo = copy.deepcopy(L["logo"])
@@ -222,36 +282,33 @@ def variant_e(mask_dir=None):
             if child.get("id") == "tulip":
                 parent.remove(child)
     white = clean(to_str(logo) + to_str(L["text"])) + f'<path fill="#FFFFFF" d="{keyline_band()}"/>'
-    prev = svg_doc(f'<path d="{ARCH}" fill="#2E3A52"/>{white}<path d="{cut}" fill="#FFFFFF"/>{art}', "E preview")
-    (out / "E-preview.svg").write_text(prev, encoding="utf-8")
-    (out / "E-preview-rez.svg").write_text(svg_doc(f'<path d="{ARCH}" fill="#2E3A52"/>{white}<path d="{cut}" fill="#FFFFFF"/>{art}'
-        f'<path d="{cut}" fill="none" stroke="#FF00FF" stroke-width="1.5"/>', "E preview with cut"), encoding="utf-8")
+    glass = f'<path d="{ARCH}" fill="#2E3A52"/>'
+    vis = (f'<defs><clipPath id="gc"><path d="{g_cut}"/></clipPath><clipPath id="ac"><path d="{a_cut}"/></clipPath>{bg}</defs>'
+           f'<g clip-path="url(#gc)"><g clip-path="url(#bleed)">{meadow_bg()}</g>{clip}<g clip-path="url(#glass)">{garden}</g></g>'
+           f'<path d="{a_cut}" fill="#FFFFFF"/><g clip-path="url(#ac)">{a_art}</g>')
+    (out / "E-preview.svg").write_text(svg_doc(glass + white + vis, "E preview"), encoding="utf-8")
 
 
-def sticker_contour(mask_dir, px_per_mm=4, border_mm=6.0, close_mm=14.0):
+def sticker_contours(md, k=4):
     import cv2
     import numpy as np
     from PIL import Image
-    ld = lambda n: ((np.asarray(Image.open(mask_dir / n).convert("RGBA"))[..., 3] > 20).astype(np.uint8) * 255)
-    disk = lambda mm: cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * int(mm * px_per_mm) + 1,) * 2)
-    g, t = ld("maskE-garden.png"), ld("maskE-tulip.png")
-    m = cv2.bitwise_or(cv2.dilate(g, disk(border_mm)), cv2.dilate(t, disk(border_mm)))
-    m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, disk(close_mm))            # fill narrow notches -> smooth, easy cut
-    m = cv2.morphologyEx(m, cv2.MORPH_OPEN, disk(4))                     # no thin spikes
-    h, w = m.shape
-    glass = np.zeros_like(m)
+    ld = lambda n: ((np.asarray(Image.open(md / f"maskE-{n}.png").convert("RGBA"))[..., 3] > 20).astype(np.uint8) * 255)
+    disk = lambda mm: cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * int(mm * k) + 1,) * 2)
+    h, w = ld("garden").shape
+    glass = np.zeros((h, w), np.uint8)
     cv2.ellipse(glass, (w // 2, h), (w // 2, h), 0, 180, 360, 255, -1)
-    m = cv2.bitwise_and(m, glass)
-    cs, hier = cv2.findContours(m, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
-    d = []
-    for c, hh in zip(cs, hier[0]):
-        area = cv2.contourArea(c) / px_per_mm ** 2
-        if hh[3] >= 0 or area < 200:      # outer edges only: nothing to weed inside
-            continue
-        p = cv2.approxPolyDP(c, 1.2, True)[:, 0, :] / px_per_mm
-        d.append("M" + " L".join(f"{x:.1f} {y:.1f}" for x, y in p) + "Z")
-    print("sticker shapes", len(d), "points", sum(x.count("L") + 1 for x in d))
-    return " ".join(d), m
+
+    def trace(m, eps=1.2):
+        cs, hier = cv2.findContours(m, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        return " ".join("M" + " L".join(f"{x:.1f} {y:.1f}" for x, y in cv2.approxPolyDP(c, eps, True)[:, 0, :] / k) + "Z"
+                        for c in cs if cv2.contourArea(c) > 200 * k * k)
+    g = cv2.morphologyEx(cv2.dilate(ld("garden"), disk(6)), cv2.MORPH_CLOSE, disk(16))
+    g = cv2.bitwise_and(cv2.morphologyEx(g, cv2.MORPH_OPEN, disk(5)), glass)
+    bleed = cv2.bitwise_and(cv2.dilate(g, disk(3)), glass)
+    a = cv2.bitwise_or(ld("abody"), cv2.dilate(ld("tulip"), disk(2)))
+    a = cv2.morphologyEx(a, cv2.MORPH_OPEN, disk(0.75))
+    return trace(g), trace(bleed), trace(a, 0.6)
 
 
 if __name__ == "__main__":
