@@ -32,3 +32,12 @@ Sixteen layouts of the label daisies, all daisies of one size within a layout:
 
 Measure the glass before printing: the plan gives 144 × 70 cm as approximate.
 Regenerate: `python3 make_svgs.py Ubuntu-Medium.ttf out` (needs fontTools; `daisy_path.txt` is the logo daisy traced by `trace_daisy.py`).
+
+## Variant B (no white ink): `print/varianta-B/`
+
+For shops that cannot print white on clear film (`make_vinyl.py`, contour traced from a 4 px/mm render):
+- `B1-bila-rezana-folie.svg/.pdf` — plotter-cut **white vinyl**: NARIN letters (without the A), the line of words, the
+  keyline as a 4 mm band. Shown dark in the file for visibility.
+- `B2-tisk-s-orezem.svg/.pdf` — **print on white vinyl** (garden + the logo's tulip A; white = the vinyl itself) with a
+  magenta `CUT contour` 1 mm outside the artwork, outer edge and inner gaps, which are weeded out.
+- `B-preview.*` — both together on the glass.
