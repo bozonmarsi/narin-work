@@ -61,25 +61,6 @@ function txt(v: unknown): string | null {
   return s && s !== '.' ? s : null
 }
 
-// Название без длины/веса/упаковки: пражский каталог обрезает названия (~25 символов),
-// поэтому один сорт в Праге и в Голландии совпадает по началу строки.
-function nameKey(s: string) {
-  return s
-    .toLowerCase()
-    .replace(/\(\s*imp\s*\)/g, ' ')
-    .replace(/\b\d+([.,]\d+)?\s*(cm|gram)\b/g, ' ')
-    .replace(/\b\d+-\d+\s*gram\b/g, ' ')
-    .replace(/\b\d+\s*st\b/g, ' ')
-    .replace(/\bx\s*\d+\b/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-function sameVariety(a: string, b: string) {
-  if (a === b) return true
-  const short = a.length < b.length ? a : b
-  return short.length >= 12 && (a.startsWith(b) || b.startsWith(a))
-}
-
 function parseWorkbook(bytes: Uint8Array): Item[] {
   const wb = XLSX.read(bytes, { type: 'array' })
   const ws = wb.Sheets[wb.SheetNames[0]]
@@ -148,7 +129,7 @@ const SET_SCHEMA = {
                 common_ru: { type: 'string', description: 'Обычное название по-русски: вид + цвет + форма, напр. "Эустома зелёная махровая".' },
                 label_cs: { type: 'string', description: 'Radek slozeni v cestine: "EUSTOMA ZELENA (PLNE KVETY)".' },
                 role: { type: 'string', enum: ['akcent', 'objem', 'faktura'] },
-                qty: { type: 'integer', description: 'Сколько стеблей/веток этой позиции в сете: обычно целая упаковка (pack), для штучного акцента можно 1-3.' },
+                qty: { type: 'integer', description: 'Сколько стеблей/веток этой позиции в сете: целая упаковка (pack); в большом сете можно часть упаковки: 1, 3, 5.' },
               },
               required: ['catalog_name', 'common_ru', 'label_cs', 'role', 'qty'],
               additionalProperties: false,
@@ -164,6 +145,12 @@ const SET_SCHEMA = {
   additionalProperties: false,
 }
 
+const SIZE_RULE = {
+  small: 'Все сеты маленькие: 3-4 позиции, qty только целыми упаковками.',
+  big: 'Все сеты БОЛЬШИЕ: 6-9 позиций.',
+  mix: 'Примерно половина маленьких (3-4 позиции, только целые упаковки) и половина больших (6-9 позиций).',
+}
+
 const SYSTEM = `Ты арт-директор и флорист магазина NARIN (Прага). Ты придумываешь СЕТЫ: несколько отдельных охапок (каждая - один сорт, обычно целая упаковка поставщика), которые покупатель расставляет по разным вазам или собирает в один большой массив. Цветы - из двух списков Van Vliet ниже: ПРАГА (склад в Праге) и ГОЛЛАНДИЯ (под заказ к дате прихода). Оба списка РАВНОПРАВНЫ: выбирай самую сильную комбинацию, неважно, откуда цветы и в какой пропорции.
 
 ГЛАВНОЕ: владельцу НЕ нужны базовые сеты ("розовое к розовому", "розы + эустома + зелень"). Каждый сет - это ОБРАЗ: место, сцена, время, настроение, фактура материала. Сначала придумай образ, потом подбери под него цветы так, чтобы по составу этот образ угадывался. Примеры образов: дом у озера (зелёная гортензия + тёмно-бордовые каллы + тёмно-красный антуриум + декоративная зелень); степь (сухой хлопок + алые розы + белая эустома + Green Trick); холодный кобальт без пафоса (синий дельфиниум + оксипеталум + персиковый диантус + ветки); глянцевая архитектура против мягкой массы (зелёные антуриумы + персиковая пионовидная кустовая роза + диантус лайм); дикая экзотика (протея + розовые пионы + молюцелла + орнитогалум).
@@ -171,11 +158,11 @@ const SYSTEM = `Ты арт-директор и флорист магазина 
 Как собирать:
 - В каждом сете есть НЕОЖИДАННЫЙ элемент: необычная фактура (антуриум, протея, леукоспермум, анигозантос, целозия, эрингиум, молюцелла, скабиоза-коробочки, хлопок, ветки, злаки, суккулентная зелень), непривычный цвет (зелёная гортензия, тёмно-бордовая калла, чёрно-фиолетовая эустома, терракота, лайм) или смелый контраст. Обычные розы/эустома/хризантемы допустимы только как фон для такого элемента.
 - Роли охапок: akcent (крупная выразительная форма), objem (мягкая масса), faktura (линия, текстура, зелень, ветки). Минимум один akcent или яркая faktura.
-- Палитра продуманная: тон в тон с одним глубоким акцентом, или один смелый контраст. Тёмные, глубокие, "взрослые" сочетания приветствуются. Не больше трёх цветов.
-- Размер сета: обычно 3-4 позиции; иногда (примерно каждый третий сет) - большой щедрый сет на 6-9 позиций, как у владельца: "антуриум 3 стебля + орнитогалум 10 + эустома 10 + подсолнухи 5 + хризантема бигуди 10 + нутаны 5 + сафари 5 + онцидиум 5 + 3 ветки кориллуса" или "хризантема спайдер 10 + гвоздика 20 + гиперикум 10 + сафари 5 + эустома 10 + каллы 5 + кустовые розы 10 + 1 стебель протеи".
-- Количество: обычно qty = одна упаковка (pack), без лишних стеблей. Дорогой штучный акцент (протея, антуриум, амариллис, ветки) можно дать 1-3 стеблями, даже если упаковка больше.
+- Палитра продуманная: тон в тон с одним глубоким акцентом, или один смелый контраст. Тёмные, глубокие, "взрослые" сочетания приветствуются. В маленьком сете не больше трёх цветов.
+- МАЛЕНЬКИЙ сет, 3-4 позиции: каждая - целая упаковка (qty = pack), лишних стеблей нет.
+- БОЛЬШОЙ сет, 6-9 позиций, - щедрая палитра для большой композиции, а не куча всего подряд. Обязательно: 1-2 главных акцента (экзотика, 1-5 стеблей), 2-3 объёма, 2-3 фактуры/линии, веточка или зелень для силуэта. Один ведущий тон, один поддерживающий и одна искра контраста; до пяти оттенков, если читается один образ. Примеры владельца: "антуриум 3 + орнитогалум 10 + эустома 10 + подсолнухи 5 + хризантема бигуди 10 + леукоспермум 5 + сафари 5 + онцидиум 5 + 3 ветки корилуса"; "хризантема спайдер 10 + гвоздика 20 + гиперикум 10 + сафари 5 + эустома 10 + каллы 5 + кустовые розы 10 + 1 стебель протеи". В большом сете можно брать часть упаковки (1, 3 или 5 стеблей) для акцента, линии и веток.
 - Длины охапок в сете близкие (разница до ~20 см), кроме высоких свечей и веток.
-- Не брать окрашенные (Painted & Dyed); максимум одна позиция Dec.bunch/Dec.stem на сет.
+- Не брать окрашенные (Painted & Dyed); зелень Dec.: не больше одной позиции в маленьком сете и двух в большом.
 - Учитывай сезон по дате прихода (ноябрь-декабрь: можно зимние образы, но не только Рождество).
 - Сеты разные между собой по образу и палитре, не повторяют уже предложенные (список ниже).
 - catalog_name копируй из прайса СИМВОЛ В СИМВОЛ - по нему владелец ищет цветок в каталоге поставщика.
@@ -218,6 +205,7 @@ Deno.serve(async (req) => {
     if (body?.action === 'generate') {
       const pricelistId = String(body?.pricelist_id ?? '')
       const count = Math.min(Math.max(Number(body?.count) || 6, 1), 10)
+      const size: 'small' | 'big' | 'mix' = body?.size === 'small' || body?.size === 'big' ? body.size : 'mix'
       const hint = String(body?.hint ?? '').trim().slice(0, 300)
 
       // Прайс Голландии необязателен: без него сеты собираются только из пражского склада.
@@ -230,8 +218,8 @@ Deno.serve(async (req) => {
         : { data: [] }
 
       // Пражский склад Van Vliet (сканер, 4 раза в день): то, что есть в наличии
-      // прямо сейчас. Оба источника равноправны; только ОДИН И ТОТ ЖЕ сорт, который
-      // есть в обоих, показываем один раз - пражский (есть фото, не надо ждать прихода).
+      // прямо сейчас. Оба источника равноправны, ничего не склеиваем: похожие названия
+      // часто оказываются разными цветами (Kalimba / Kalimba orange).
       const { data: praha } = await supabase
         .from('vv_catalog')
         .select('product, color, quality, grower, order_per, price, stock, photo, last_seen')
@@ -241,9 +229,9 @@ Deno.serve(async (req) => {
         .gte('last_seen', new Date(Date.now() - 36 * 3600 * 1000).toISOString())
         .limit(5000)
       const prahaItems: Item[] = (praha ?? [])
-        .filter((r) => (r.order_per ?? 1) <= MAX_PACK)
+        .filter((r) => (r.order_per ?? 1) <= MAX_PACK && r.stock >= (r.order_per ?? 1))
         // Крашеное, металлизированное, ёлки/венки/мешки - не цветы для сета.
-        .filter((r) => !/\bdyed\b|^metal\b|^venec|^stromecek|^sob [sml]\b|^nobilis|^wax apple/i.test(r.product))
+        .filter((r) => !/\bdyed\b|^metal\b|^venec|^stromecek|^sob [sml]\b|^nobilis|^wax apple|birch (white|gold|platinum)|^(dec|cinerea).*\b(gold|platinum)\b/i.test(r.product))
         .map((r) => ({
           src: 'praha' as const,
           stock: r.stock,
@@ -260,7 +248,6 @@ Deno.serve(async (req) => {
           price_bunch: Number(r.price),
           price_bucket: null,
         }))
-      const prahaKeys = prahaItems.map((r) => nameKey(r.name))
 
       // Один сорт = одна строка: самая дешёвая по Bunch, без окрашенных и огромных упаковок.
       const byName = new Map<string, Item>()
@@ -271,18 +258,14 @@ Deno.serve(async (req) => {
         const prev = byName.get(r.name)
         if (!prev || (prev.price_bunch ?? Infinity) > r.price_bunch) byName.set(r.name, { ...r, src: 'nl' })
       }
-      const nlOnly = [...byName.values()].filter((r) => {
-        const k = nameKey(r.name)
-        return !prahaKeys.some((pk) => sameVariety(k, pk))
-      })
       const byPraha = new Map<string, Item>()
       for (const r of prahaItems) {
         const prev = byPraha.get(r.name)
         if (!prev || (prev.price_bunch ?? Infinity) > (r.price_bunch ?? Infinity)) byPraha.set(r.name, r)
       }
-      const offer = [...byPraha.values(), ...nlOnly].sort((a, b) => a.name.localeCompare(b.name))
+      const offer = [...byName.values(), ...byPraha.values()].sort((a, b) => a.name.localeCompare(b.name))
       if (offer.length < 10) return json({ ok: false, error: 'too_few_items' }, 400)
-      const line = (r: Item) => `${r.name} | ${r.color ?? '-'} | pack ${r.order_per ?? 1} | ${r.length_cm ?? '-'}cm | ${r.price_bunch} Kc`
+      const line = (r: Item) => `${r.name} | ${r.color ?? '-'} | pack ${r.order_per ?? 1} | ${r.length_cm ?? '-'}cm | ${r.price_bunch} Kc${r.src === 'praha' ? ` | na sklade ${r.stock}` : ''}`
       const prahaLines = offer.filter((r) => r.src === 'praha').map(line)
       const nlLines = offer.filter((r) => r.src === 'nl').map(line)
 
@@ -298,12 +281,13 @@ Deno.serve(async (req) => {
 
       const user_msg = [
         pl ? `Дата прихода из Голландии: ${pl.arrival_date ?? 'неизвестна'}.` : 'Прайса Голландии нет - только пражский склад.',
-        `Собери ${count} разных сетов.`,
+        `Собери ${count} разных сетов. ${SIZE_RULE[size]}`,
         hint ? `Пожелание владельца: ${hint}` : '',
         taken.length ? `Владелец ВЗЯЛ такие сеты (делай в этом духе, но не повторяй):\n${taken.join('\n')}` : '',
         rejected.length ? `Владелец ОТКЛОНИЛ (не повторяй эти ошибки):\n${rejected.join('\n')}` : '',
         already.length ? `Уже предложены и ждут решения (не повторяй):\n${already.join('\n')}` : '',
-        'Формат строк: название | цвет | упаковка | длина | цена за стебель без DPH.',
+        'Формат строк: название | цвет | упаковка | длина | цена за стебель без DPH | наличие (только Прага). pack 1 = продаётся поштучно (антуриум, цимбидиум) или пучком (Dec. ... gram).',
+        'Если один и тот же сорт того же цвета есть в обоих списках, бери пражский: его не надо ждать. Не бери из Праги больше, чем есть на складе.',
         `ПРАГА - склад Van Vliet в Праге (цвет тут часто не указан - определяй по названию сорта):\n${prahaLines.join('\n') || '-'}`,
         nlLines.length ? `ГОЛЛАНДИЯ - под заказ к дате прихода:\n${nlLines.join('\n')}` : '',
       ]
@@ -339,6 +323,10 @@ Deno.serve(async (req) => {
       for (const s of parsed.sets ?? []) {
         const items = []
         let ok = true
+        const n = (s.items ?? []).length
+        const big = n >= 6
+        const used = new Set<string>()
+        const sizeOk = big ? n <= 9 && size !== 'small' : n >= 2 && n <= 4 && size !== 'big'
         for (const it of s.items ?? []) {
           const row = exact.get(it.catalog_name) ?? loose.get(norm(it.catalog_name))
           if (!row) {
@@ -346,9 +334,19 @@ Deno.serve(async (req) => {
             break
           }
           const pack = Math.max(1, row.order_per ?? 1)
-          // Целая упаковка (или несколько), но штучный акцент 1-3 стебля оставляем как есть.
           const want = Math.max(1, Math.round(Number(it.qty) || pack))
-          const qty = want <= 3 && want < pack ? want : Math.max(pack, Math.ceil(want / pack) * pack)
+          // Часть упаковки - только в большом сете; закупить всё равно придётся целую.
+          const qty = big && want < pack ? want : Math.ceil(want / pack) * pack
+          const buyQty = Math.ceil(qty / pack) * pack
+          if (row.src === 'praha' && buyQty > (row.stock ?? 0)) {
+            ok = false
+            break
+          }
+          if (used.has(row.name)) {
+            ok = false
+            break
+          }
+          used.add(row.name)
           items.push({
             catalog_name: row.name,
             common_ru: it.common_ru,
@@ -364,9 +362,11 @@ Deno.serve(async (req) => {
             photo: row.photo ?? null,
             price: row.price_bunch,
             cost: Math.round((row.price_bunch ?? 0) * DPH * qty),
+            buy_qty: buyQty,
+            buy_cost: Math.round((row.price_bunch ?? 0) * DPH * buyQty),
           })
         }
-        if (!ok || items.length < 2 || items.length > 9) {
+        if (!ok || !sizeOk) {
           dropped++
           continue
         }

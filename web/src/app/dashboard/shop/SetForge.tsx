@@ -24,6 +24,8 @@ type ForgeItem = {
   photo?: string | null;
   price: number | null;
   cost: number;
+  buy_qty?: number;
+  buy_cost?: number;
 };
 type Candidate = {
   id: string;
@@ -58,12 +60,13 @@ function swatch(color: string | null) {
   return SWATCH[c] ?? "#d4d4d8";
 }
 
-// Названия как в каталоге Van Vliet: пражский прайс обрезает их (~25 символов),
-// поэтому сравниваем по началу строки без длины/веса/упаковки.
+// Пражский каталог обрезает названия посреди слова ("alissa champag"), поэтому
+// фото берём при точном совпадении или когда название обрезано внутри слова.
+// Совпадения по целым словам мало: Kalimba и Kalimba orange - разные цвета.
 function nameKey(s: string) {
   return s
     .toLowerCase()
-    .replace(/\(\s*imp\s*\)/g, " ")
+    .replace(/\(\s*(imp|ec|am|it|col)\s*\)/g, " ")
     .replace(/\b\d+([.,]\d+)?\s*(cm|gram)\b/g, " ")
     .replace(/\b\d+-\d+\s*gram\b/g, " ")
     .replace(/\b\d+\s*st\b/g, " ")
@@ -73,15 +76,16 @@ function nameKey(s: string) {
 }
 function findPhoto(name: string, photos: VvPhoto[]) {
   const k = nameKey(name);
-  let best: VvPhoto | null = null;
+  let cut: VvPhoto | null = null;
   for (const p of photos) {
     if (p.key === k) return p.photo;
-    const short = p.key.length < k.length ? p.key : k;
-    if (short.length >= 12 && (k.startsWith(p.key) || p.key.startsWith(k))) {
-      if (!best || p.key.length > best.key.length) best = p;
-    }
+    if (p.key.length >= 12 && k.startsWith(p.key) && /[a-z]/.test(k[p.key.length]) && (!cut || p.key.length > cut.key.length)) cut = p;
   }
-  return best?.photo ?? null;
+  return cut?.photo ?? null;
+}
+
+function buyTotal(c: Candidate) {
+  return c.items.reduce((a, i) => a + (i.buy_cost ?? i.cost), 0);
 }
 
 function fmtDate(d: string | null) {
@@ -91,9 +95,9 @@ function fmtDate(d: string | null) {
 }
 
 function composeText(c: Candidate) {
-  const lines = c.items.map((it, i) => `${String(i + 1).padStart(2, "0")} / ${it.label_cs}`);
+  const lines = c.items.map((it, i) => `${String(i + 1).padStart(2, "0")} / ${it.label_cs}${c.items.length >= 6 ? ` – ${it.qty} KS` : ""}`);
   return [
-    `OBSAH: SADA ${c.items.length} SAMOSTATNÝCH NÁRUČÍ.`,
+    c.items.length >= 6 ? `OBSAH: VELKÝ SET, ${c.items.length} DRUHŮ.` : `OBSAH: SADA ${c.items.length} SAMOSTATNÝCH NÁRUČÍ.`,
     "",
     "SLOŽENÍ:",
     ...lines,
@@ -116,6 +120,7 @@ export function SetForge() {
   const [photos, setPhotos] = useState<VvPhoto[]>([]);
   const [tab, setTab] = useState<"pending" | "taken" | "rejected">("pending");
   const [hint, setHint] = useState("");
+  const [size, setSize] = useState<"mix" | "small" | "big">("mix");
   const [busy, setBusy] = useState<"" | "upload" | "forge">("");
   const [msg, setMsg] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState<string | null>(null);
@@ -151,6 +156,7 @@ export function SetForge() {
     return n;
   }, [cands]);
   const current = pricelists.find((p) => p.id === plId);
+  const arrivalOf = (c: Candidate) => pricelists.find((p) => p.id === c.pricelist_id)?.arrival_date ?? null;
 
   async function upload(file: File) {
     setBusy("upload");
@@ -174,7 +180,7 @@ export function SetForge() {
     setMsg(null);
     const supabase = createClient();
     const { data, error } = await supabase.functions.invoke("set-forge", {
-      body: { action: "generate", pricelist_id: plId || "", count: 6, hint },
+      body: { action: "generate", pricelist_id: plId || "", count: size === "small" ? 6 : 4, size, hint },
     });
     setBusy("");
     if (error || !data?.ok) {
@@ -273,6 +279,11 @@ export function SetForge() {
         </div>
         {(
           <div className="flex flex-wrap items-center gap-2">
+            {([["mix", "Вперемешку"], ["small", "3–4 охапки"], ["big", "Большие 6–9"]] as const).map(([v, label]) => (
+              <button key={v} onClick={() => setSize(v)} className={`${btn} ${size === v ? "bg-accent text-white" : ghost}`}>
+                {label}
+              </button>
+            ))}
             <input
               value={hint}
               onChange={(e) => setHint(e.target.value)}
@@ -280,7 +291,7 @@ export function SetForge() {
               className="min-w-0 flex-1 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-transparent px-3 py-1.5 text-sm"
             />
             <button onClick={forge} disabled={!!busy} className={`${btn} bg-accent text-white disabled:opacity-50`}>
-              {busy === "forge" ? "Кую… ~1 мин" : "🔨 Выковать 6 сетов"}
+              {busy === "forge" ? "Кую… 1–2 мин" : "🔨 Выковать"}
             </button>
           </div>
         )}
@@ -310,9 +321,12 @@ export function SetForge() {
             <div className="flex items-baseline justify-between gap-2">
               <h3 className="font-semibold">{c.name}</h3>
               <span className="shrink-0 text-sm text-zinc-500">
-                {c.stems} шт · <b className="text-zinc-800 dark:text-zinc-100">{c.cost} Kč</b>
+                {c.items.length} поз · {c.stems} шт · <b className="text-zinc-800 dark:text-zinc-100">{c.cost} Kč</b>
               </span>
             </div>
+            {buyTotal(c) > (c.cost ?? 0) && (
+              <p className="text-xs text-amber-600">Закупка целыми упаковками: {buyTotal(c)} Kč — часть стеблей останется</p>
+            )}
             {c.idea_ru && <p className="text-xs text-zinc-500">{c.idea_ru}</p>}
 
             <ul className="space-y-1.5">
@@ -339,7 +353,7 @@ export function SetForge() {
                         {copied === key ? "✓ скопировано" : `⧉ ${it.catalog_name}`}
                       </button>
                       <div className={`text-[10px] ${it.src === "praha" ? "text-emerald-600" : "text-sky-600"}`}>
-                        {it.src === "praha" ? `Прага · есть${it.stock ? ` ${it.stock} шт` : ""}` : `Голландия · под заказ${current?.arrival_date ? ` к ${fmtDate(current.arrival_date)}` : ""}`}
+                        {it.src === "praha" ? `Прага · есть${it.stock ? ` ${it.stock} шт` : ""}` : `Голландия · под заказ${arrivalOf(c) ? ` к ${fmtDate(arrivalOf(c))}` : ""}`}
                       </div>
                     </div>
                     <div className="shrink-0 text-right text-xs text-zinc-500">
