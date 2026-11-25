@@ -63,8 +63,8 @@ Glass stays clear, colours stay opaque. Build: `python make_vinyl.py E` → rend
 `maskE-{garden,tulip,abody}.png` → `python make_vinyl.py E <dir>` (writes both E and F).
 - `*1-bila-rezana-folie` — plotter-cut **white vinyl**: NARIN without the A, line of words, keyline (= B1).
 - `*2-tisk-na-bilou-folii` — printed on **white vinyl**, 2 pieces:
-  - garden: the P garden in front of a designed backdrop (`foliage()`): three rows of leaves from dark to light green,
-    eucalyptus sprigs between the flower heads, a few sprays of baby's breath, on deep green printed with 3 mm bleed.
+  - garden: the approved P garden alone (nothing added) on one calm, flat green backdrop (#2D7550) with a soft scalloped
+    edge, printed with 3 mm bleed (`foliage()` is kept but unused: the user found it too busy).
     The smooth magenta cut runs ≥ 6 mm from every flower, so an inaccurate cut only trims green;
   - the A with the tulips: **E** = tulips outlined 2 mm (easy cut); **F** = cut exactly on the logo's own edge, every gap
     between the leaf, the stems and the A open, so it reads clearly as an A (precise cut needed for this one piece).

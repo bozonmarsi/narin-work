@@ -255,11 +255,12 @@ def foliage(seed=21, max_h=140):
     return "".join(out)
 
 
+BG = "#2D7550"
+
+
 def meadow_bg(top=420):
     """Deep green behind the hedge, printed with bleed: an off cut lands in green, never on a flower."""
-    return ('<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">'
-            '<stop offset="0" stop-color="#1F5C3A"/><stop offset="1" stop-color="#174A2E"/></linearGradient></defs>'
-            f'<rect x="-10" y="{top}" width="{AW + 20}" height="{AH - top + 20}" fill="url(#sky)"/>')
+    return f'<rect x="-10" y="{top}" width="{AW + 20}" height="{AH - top + 20}" fill="{BG}"/>'
 
 
 def variant_e(mask_dir=None):
@@ -282,7 +283,7 @@ def variant_e(mask_dir=None):
         if e.get("fill") == "#FFFFFF":
             col_tulip.remove(e)
     tul = clean(f'<g transform="{logo_tf}">{to_str(col_tulip)}</g>')
-    garden = foliage() + clean(to_str(L["garden"]))
+    garden = clean(to_str(L["garden"]))   # the approved P garden only, nothing piled behind it
     clip = f'<defs><clipPath id="glass"><path d="{ARCH}"/></clipPath></defs>'
     masks = {"garden": f'{clip}<g clip-path="url(#glass)">{garden}</g>', "tulip": tul, "abody": a_body}
     if not mask_dir:
@@ -334,8 +335,12 @@ def sticker_contours(md, k=4):
         cs, hier = cv2.findContours(m, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         return " ".join("M" + " L".join(f"{x:.1f} {y:.1f}" for x, y in cv2.approxPolyDP(c, eps, True)[:, 0, :] / k) + "Z"
                         for c in cs if cv2.contourArea(c) > 200 * k * k)
-    g = cv2.morphologyEx(cv2.dilate(ld("garden"), disk(6)), cv2.MORPH_CLOSE, disk(16))
-    g = cv2.bitwise_and(cv2.morphologyEx(g, cv2.MORPH_OPEN, disk(5)), glass)
+    # one calm backdrop shape: >= 8 mm round every flower, gaps between heads closed into soft scallops
+    g = cv2.morphologyEx(cv2.dilate(ld("garden"), disk(9)), cv2.MORPH_CLOSE, disk(38))
+    g = cv2.GaussianBlur(g, (0, 0), 6 * k)
+    g = ((g > 110).astype(np.uint8) * 255)
+    g = cv2.bitwise_or(g, cv2.dilate(ld("garden"), disk(7)))
+    g = cv2.bitwise_and(cv2.morphologyEx(g, cv2.MORPH_OPEN, disk(6)), glass)
     bleed = cv2.bitwise_and(cv2.dilate(g, disk(3)), glass)
     a = cv2.bitwise_or(ld("abody"), cv2.dilate(ld("tulip"), disk(2)))
     a = cv2.morphologyEx(a, cv2.MORPH_OPEN, disk(0.75))
