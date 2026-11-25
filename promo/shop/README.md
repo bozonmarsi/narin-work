@@ -82,6 +82,7 @@ tulips in the A = one white silhouette with a 3 mm gap to the A body; letters, w
 ## Variant Z (CHOSEN for order with installation): `print/varianta-Z/`
 
 The approved design in full colour, printed on **white vinyl** (white = no ink) with a magenta contour cut 1 mm round
-the artwork; gaps over 25 mm² are weeded so the glass shows through. One file, one job (`make_colorcut.py`).
+the artwork (1.5 mm); a solid green band from the ground to mid-stem (72 mm, wavy top) so nothing is cut or weeded
+in the lower part; only gaps over 150 mm² between the flower heads are weeded. One file, one job (`make_colorcut.py`).
 - `Z-tisk-barevne-s-orezem.svg/.pdf` (+ `-ZRCADLOVE` mirrored for mounting from inside)
 - `Z-preview.*`, `nahled.png`, `detail-orezu.png` (close-up of the cut line)
