@@ -69,3 +69,12 @@ Glass stays clear, colours stay opaque. Build: `python make_vinyl.py E` → rend
   - the A with the tulips: **E** = tulips outlined 2 mm (easy cut); **F** = cut exactly on the logo's own edge, every gap
     between the leaf, the stems and the A open, so it reads clearly as an A (precise cut needed for this one piece).
 - `*-preview.*`, `nahled.png` — on the glass.
+
+## Variant W (CHOSEN: everything plotter-cut from white vinyl, no printing): `print/varianta-W/`
+
+`python make_white.py` → render `W-render.svg` at 4 px/mm on black → `python make_white.py <png>`.
+The approved design as a paper-cut: every flower white with a 3 mm see-through gap, lawn = plain white ground,
+tulips in the A = one white silhouette with a 3 mm gap to the A body; letters, words and keyline unchanged.
+- `W-bila-rezana-folie.svg/.pdf` — the cut file (shown dark), blue arch = glass outline, not cut.
+- `W-bila-rezana-folie-ZRCADLOVE.*` — mirrored, for mounting from inside.
+- `W-preview.*`, `nahled.png`.
