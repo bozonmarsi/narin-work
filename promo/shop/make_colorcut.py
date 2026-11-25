@@ -13,15 +13,28 @@ SRC = HERE / "out" / "arch-decal-P-garden-line.svg"
 OUT = HERE / "print" / "varianta-Z"
 
 
-BAND_TOP, BAND_COL = 72, "#237A43"   # solid lower part: mm above the bottom edge, colour
-
-
 def band():
-    """Solid green from the ground up to about the middle of the stems, soft wavy top: nothing to cut or weed inside it."""
-    import math
-    pts = [(x, AH - BAND_TOP + 6 * math.sin(x / 85) + 4 * math.sin(x / 37 + 1.3)) for x in range(0, AW + 1, 10)]
-    d = f"M0 {AH + 5} " + " ".join(f"L{x} {y:.1f}" for x, y in pts) + f" L{AW} {AH + 5}Z"
-    return f'<defs><clipPath id="bandglass"><path d="{ARCH}"/></clipPath></defs><path clip-path="url(#bandglass)" fill="{BAND_COL}" d="{d}"/>'
+    """A dense meadow behind the flowers instead of a flat band: three rows of soft curved grass blades, darkest and
+    tallest at the back, over a solid dark base. Solid from the ground to ~6-9 cm, its top edge is just grass tips,
+    so the cut there is a simple, readable line and nothing has to be weeded inside."""
+    import random
+    rnd = random.Random(12)
+    out = [f'<path fill="#1C6437" d="M0 {AH + 5} L0 {AH - 40} L{AW} {AH - 40} L{AW} {AH + 5}Z"/>']
+    for step, w, hmin, hmax, cols in ((8, 20, 58, 92, ["#1C6437", "#1F6E3C", "#22743F"]),
+                                      (10, 18, 38, 62, ["#26864A", "#2A9A4B"]),
+                                      (12, 16, 20, 38, ["#36A85A", "#3DAF5C", "#44B865"])):
+        x = -5.0
+        while x < AW + 5:
+            h = rnd.uniform(hmin, hmax)
+            lean = rnd.uniform(-14, 14)
+            ww = w * rnd.uniform(0.8, 1.15)
+            tx, ty = x + lean, AH - h
+            out.append(f'<path fill="{rnd.choice(cols)}" d="M{x - ww / 2:.1f} {AH + 2} '
+                       f'Q{x - ww * 0.25 + lean * 0.35:.1f} {AH - h * 0.55:.1f} {tx:.1f} {ty:.1f} '
+                       f'Q{x + ww * 0.3 + lean * 0.3:.1f} {AH - h * 0.5:.1f} {x + ww / 2:.1f} {AH + 2}Z"/>')
+            x += step * rnd.uniform(0.75, 1.25)
+    return (f'<defs><clipPath id="bandglass"><path d="{ARCH}"/></clipPath></defs>'
+            f'<g clip-path="url(#bandglass)">{"".join(out)}</g>')
 
 
 def art():
