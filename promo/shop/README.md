@@ -78,3 +78,10 @@ tulips in the A = one white silhouette with a 3 mm gap to the A body; letters, w
 - `W-bila-rezana-folie.svg/.pdf` — the cut file (shown dark), blue arch = glass outline, not cut.
 - `W-bila-rezana-folie-ZRCADLOVE.*` — mirrored, for mounting from inside.
 - `W-preview.*`, `nahled.png`.
+
+## Variant Z (CHOSEN for order with installation): `print/varianta-Z/`
+
+The approved design in full colour, printed on **white vinyl** (white = no ink) with a magenta contour cut 1 mm round
+the artwork; gaps over 25 mm² are weeded so the glass shows through. One file, one job (`make_colorcut.py`).
+- `Z-tisk-barevne-s-orezem.svg/.pdf` (+ `-ZRCADLOVE` mirrored for mounting from inside)
+- `Z-preview.*`, `nahled.png`, `detail-orezu.png` (close-up of the cut line)
