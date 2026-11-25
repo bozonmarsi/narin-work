@@ -83,6 +83,6 @@ tulips in the A = one white silhouette with a 3 mm gap to the A body; letters, w
 
 The approved design in full colour, printed on **white vinyl** (white = no ink) with a magenta contour cut 1 mm round
 the artwork (1.5 mm); flowers only: the lawn bands and grass blades are removed (`band()` kept, unused); nothing is weeded
-in the lower part; only gaps over 150 mm² between the flower heads are weeded. One file, one job (`make_colorcut.py`).
+in the lower part; all gaps over 4 mm² are weeded, incl. the counters of the letters (e, a, o, D, R). One file, one job (`make_colorcut.py`).
 - `Z-tisk-barevne-s-orezem.svg/.pdf` (+ `-ZRCADLOVE` mirrored for mounting from inside)
 - `Z-preview.*`, `nahled.png`, `detail-orezu.png` (close-up of the cut line)

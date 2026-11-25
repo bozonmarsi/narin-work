@@ -59,7 +59,7 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         (OUT / "Z-art.svg").write_text(doc(a, "art"), encoding="utf-8")
     else:
-        cut = trace_contour(sys.argv[1], offset_mm=1.5, min_hole_mm2=150)
+        cut = trace_contour(sys.argv[1], offset_mm=1.0, min_hole_mm2=4)   # keep every counter in the letters (e, a, o, D, R)
         guide = f'<g id="glass outline - do not cut" inkscape:groupmode="layer"><path d="{ARCH}" fill="none" stroke="#00AEEF" stroke-width="0.5"/></g>'
         body = (f'<g id="PRINT" inkscape:groupmode="layer">{a}</g>' + guide +
                 f'<g id="CUT contour" inkscape:groupmode="layer"><path d="{cut}" fill="none" stroke="#FF00FF" stroke-width="0.5"/></g>')
