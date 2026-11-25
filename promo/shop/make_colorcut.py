@@ -40,7 +40,10 @@ def band():
 def art():
     s = SRC.read_text(encoding="utf-8")
     s = re.sub(r'<g id="cut-guide.*?</g>', "", s, count=1, flags=re.S)
-    s = re.sub(r'(<g id="garden"[^>]*>)', lambda m: m.group(1) + band(), s, count=1)
+    # flowers only: drop the lawn bands and grass blades (filled shapes that start on the bottom edge)
+    s, n = re.subn(r'<path fill="#[0-9A-Fa-f]{3,6}" d="M\s*-?[\d.]+[ ,]+(?:69[9]|70\d)(?:\.\d+)?\b[^"]*"\s*/>', "", s)
+    s, n2 = re.subn(r'<path d="M\s*-?[\d.]+[ ,]+(?:69[9]|70\d)(?:\.\d+)?\s*Q[^"]*Z" fill="#[0-9A-Fa-f]{3,6}"\s*/>', "", s)
+    print("removed lawn bands", n, "grass blades", n2)
     return re.sub(r"^.*?<svg[^>]*>|</svg>\s*$", "", s, flags=re.S)
 
 
