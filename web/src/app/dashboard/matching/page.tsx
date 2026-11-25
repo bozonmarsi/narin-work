@@ -62,6 +62,19 @@ const K_OPTIONS = [2, 2.2, 2.5, 3];
 const THRESHOLD = 0.1;
 const roundUp10 = (n: number) => Math.ceil(n / 10) * 10;
 
+// Ответы edge-функции tilda-price -> понятный текст.
+const PRICE_ERRORS: Record<string, string> = {
+  no_tilda_product: "цветок не связан с товаром в Tilda (в базе нет его номера в Tilda). Поменяй цену прямо в Tilda или скажи, к какому товару его привязать.",
+  tilda_product_not_found: "товар с этим номером в Tilda не найден (удалён или номер устарел).",
+  product_has_variants: "у товара в Tilda есть варианты (размеры) — их цены меняются в Tilda вручную.",
+  bad_price: "цена должна быть целым числом от 10 до 50 000 Kč.",
+  tilda_price_not_saved: "Tilda не сохранила цену, попробуй ещё раз.",
+  missing_TILDA_MCP_TOKEN: "в Supabase не добавлен ключ Tilda (секрет TILDA_MCP_TOKEN).",
+  unauthorized: "сессия истекла, войди заново.",
+  forbidden: "менять цены может только менеджер.",
+  product_not_found: "цветок не найден в базе.",
+};
+
 export default function MatchingPage() {
   const { profile } = useDashboard();
   const [products, setProducts] = useState<Product[]>([]);
@@ -272,7 +285,13 @@ export default function MatchingPage() {
     });
     setBusyPrice(null);
     if (fnErr || !data?.ok) {
-      setError(`Цена не изменена: ${data?.error ?? fnErr?.message ?? "ошибка"}`);
+      // При ответе не 2xx supabase-js кладёт тело ответа в fnErr.context, а data пустая.
+      let code: string | undefined = data?.error;
+      if (!code && fnErr && "context" in fnErr) {
+        const body = await (fnErr as { context: Response }).context.json().catch(() => null);
+        code = body?.error;
+      }
+      setError(`${nameOf.get(p.id) ?? "Цветок"}: цена не изменена — ${PRICE_ERRORS[code ?? ""] ?? code ?? fnErr?.message ?? "ошибка"}`);
       return;
     }
     const at = new Date().toISOString();
