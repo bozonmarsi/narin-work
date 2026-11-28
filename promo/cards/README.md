@@ -4,8 +4,8 @@
 (HarfBuzz shaping, fonts in `fonts/`: Fraunces (OFL, static "soft" instances) + Ubuntu). PDFs at physical size via the
 scratchpad `topdf.js` tool: `node topdf.js out/X.svg out/X.pdf 111 154`.
 
-- Style: NARIN label palette (cobalt, navy, red, yellow, lilac, mint, cream), the label daisy as the main motif,
-  Fraunces soft black + italic for the Czech line, Ubuntu for small caps.
+- Style: soft pastel cards after the references (lime, blush, rose, sage, butter, ivory), soft flower silhouettes and outlines,
+  Fraunces (soft) semibold, regular caps and italic; NARIN colours only on the back logo.
 - Fronts: `01-krasa-jsi-ty` (Krása jsi ty.), `02-svet-je-s-tebou-barevnejsi` (Svět je s tebou barevnější.).
-- Back (shared): `zadni-strana` — logo, "Pro" / "Od" lines to write on, QR code (`QR_URL`, still a placeholder).
+- Back (shared): `zadni-strana` — upper part empty (for print or handwriting), logo + QR at the bottom (`QR_URL` placeholder).
 - `out/prehled.png` — the set side by side. Needs: `pip install segno uharfbuzz fonttools`.

@@ -85,46 +85,58 @@ def trim_marks():
 
 
 # ---------------------------------------------------------------- fronts
+# soft pastel palette, closer to the references (NARIN colours only as accents)
+P_LIME, P_PINK, P_ROSE, P_BLUSH = "#CFE39A", "#F2A7C3", "#E06C93", "#FBE3EA"
+P_SKY, P_SAGE, P_BUTTER, P_IVORY = "#B9D8F4", "#A9C79E", "#F6E7A1", "#FBF6EF"
+
+
+def blob_flower(x, y, R, n, color, rot=0.0, depth=0.36, stroke=None, sw=0.0):
+    """A soft flower silhouette: n round petals (radius modulated by |cos|), smooth closed curve."""
+    pts = []
+    for i in range(n * 24):
+        t = 2 * math.pi * i / (n * 24)
+        r = R * (1 - depth + depth * abs(math.cos(n * t / 2)) ** 0.6)
+        a = t + math.radians(rot)
+        pts.append((x + r * math.cos(a), y + r * math.sin(a)))
+    d = "M" + " L".join(f"{px:.2f} {py:.2f}" for px, py in pts) + "Z"
+    if stroke:
+        return f'<path d="{d}" fill="none" stroke="{stroke}" stroke-width="{sw}" stroke-linejoin="round"/>'
+    return f'<path d="{d}" fill="{color}"/>'
+
+
+def small_brand(y, color):
+    t, _ = text("NARIN", "Fraunces-SoftSemi.ttf", 3.6, W / 2, y, color, "middle", 0.25)
+    return t
+
+
 def front_krasa():
-    """'Krása jsi ty.' One huge red label daisy rising from the corner, deep blue serif on lilac."""
-    out = [f'<rect width="{W}" height="{H}" fill="{LILAC}"/>',
-           daisy(B + 80, B + 146, 150, RED, 8)]
-    t1, _ = text("Krása", "Fraunces-SoftBlack.ttf", 30, B + 8, B + 37, NAVY, tracking=-0.02)
-    t2, _ = text("jsi ty.", "Fraunces-SoftItalic.ttf", 30, B + 9, B + 63, NAVY, tracking=-0.01)
-    out += [t1, t2]
-    t3, _ = text("NARIN · KVĚTINY & DÁRKY", "Ubuntu-Medium.ttf", 2.8, B + 9, B + 11, NAVY, tracking=0.12)
-    out.append(t3)
-    return "".join(out)
-
-
-def stem(x0, y0, x1, y1, bend, w=3.2, col=GREEN):
-    return (f'<path d="M{x0:.1f} {y0:.1f} C{x0 + bend:.1f} {y0 - (y0 - y1) * 0.35:.1f} {x1 - bend * 0.6:.1f} {y1 + (y0 - y1) * 0.4:.1f} {x1:.1f} {y1:.1f}" '
-            f'fill="none" stroke="{col}" stroke-width="{w}" stroke-linecap="round"/>')
-
-
-def leaf(x, y, L, ang, col):
-    w = L * 0.38
-    return (f'<path transform="translate({x:.1f} {y:.1f}) rotate({ang:.1f})" fill="{col}" '
-            f'd="M0 0 C{L * .25:.1f} {-w:.1f} {L * .8:.1f} {-w:.1f} {L:.1f} 0 C{L * .8:.1f} {w:.1f} {L * .25:.1f} {w:.1f} 0 0Z"/>')
+    """'Krása jsi ty.' (after 'красота — это ты'): lime card, a big soft ivory flower cropped at the edge, pink words in it."""
+    out = [f'<rect width="{W}" height="{H}" fill="{P_LIME}"/>',
+           blob_flower(B + 74, B + 100, 58, 5, P_IVORY, rot=-8, depth=0.34)]
+    t1, _ = text("Krása", "Fraunces-SoftSemi.ttf", 13, B + 76, B + 96, P_ROSE, "middle", -0.01)
+    t2, _ = text("jsi ty.", "Fraunces-SoftItalic.ttf", 13, B + 76, B + 110, P_ROSE, "middle", -0.01)
+    t3, _ = text("NARIN", "Fraunces-SoftSemi.ttf", 9, B + 9, B + 17, P_IVORY, tracking=0.12)
+    return "".join(out + [t1, t2, t3])
 
 
 def front_svet():
-    """'Svět je s tebou barevnější.' Five label daisies on tall swaying stems on the brand blue."""
-    out = [f'<rect width="{W}" height="{H}" fill="{COBALT}"/>']
-    base = H + 2
-    flowers = [(16, 104, 26, YELLOW, 10, -6), (38, 78, 31, LILAC, -10, 5), (58, 112, 24, RED, 4, -8),
-               (78, 86, 30, "#FFFFFF", 12, 7), (98, 116, 22, YELLOW, -6, 4)]
-    stems, leaves, heads = [], [], []
-    for x, y, d, col, bend, rot in flowers:
-        sx = x - bend * 0.5
-        stems.append(stem(sx, base, x, y + d * 0.2, bend))
-        ly = y + (base - y) * 0.55
-        leaves.append(leaf(sx + bend * 0.35, ly, 13, -35 if bend > 0 else -145, MINT))
-        heads.append(daisy(x, y, d, col, rot))
-    out += stems + leaves + heads
-    t1, _ = text("Svět je s tebou", "Fraunces-SoftItalic.ttf", 12.5, W / 2, B + 27, "#FFFFFF", "middle", -0.01)
-    t2, _ = text("barevnější.", "Fraunces-SoftBlack.ttf", 17, W / 2, B + 45, "#FFFFFF", "middle", -0.02)
-    out += [t1, t2]
+    """'Svět je s tebou barevnější.' (after 'ты делаешь мир ярче'): blush card, little outlined flowers, centred serif."""
+    import random
+    rnd = random.Random(4)
+    out = [f'<rect width="{W}" height="{H}" fill="{P_BLUSH}"/>']
+    spots = [(14, 18, 9), (90, 16, 6), (106, 44, 11), (8, 62, 5), (34, 40, 3.5), (78, 52, 3), (22, 98, 7), (96, 104, 4.5),
+             (60, 126, 9), (12, 138, 5.5), (100, 140, 8), (44, 112, 3), (72, 24, 3.5), (30, 150, 4)]
+    cols = [P_ROSE, "#E9C44E", P_SAGE, P_PINK]
+    for i, (x, y, r) in enumerate(spots):
+        c = cols[i % len(cols)]
+        out.append(blob_flower(x + B, y + B, r, 8, None, rot=rnd.uniform(0, 45), depth=0.32, stroke=c, sw=max(0.35, r * 0.07)))
+        out.append(blob_flower(x + B, y + B, r * 0.28, 8, None, stroke=c, sw=max(0.3, r * 0.05), depth=0.25))
+    y = B + 64
+    for txt in ("Svět", "je s tebou", "barevnější"):
+        t, _ = text(txt.upper(), "Fraunces-SoftRegular.ttf", 10.3, W / 2, y, P_ROSE, "middle", 0.02)
+        out.append(t)
+        y += 11.5
+    out.append(small_brand(B + TH - 8, P_ROSE))
     return "".join(out)
 
 
@@ -139,29 +151,14 @@ def qr(x, y, size, url=QR_URL, color=NAVY):
 
 
 def back():
-    out = [f'<rect width="{W}" height="{H}" fill="{CREAM}"/>']
-    out.append(logo(W / 2 - 26, B + 12, 52, COBALT))
-    # writing area
-    left, right = B + 10, B + TW - 10
-    y0 = B + 40
-    lab, _ = text("Pro", "Fraunces-SoftItalic.ttf", 5, left, y0, NAVY)
-    out.append(lab)
-    for i in range(5):
-        yy = y0 + 1.5 + i * 11
-        out.append(f'<line x1="{left + (9 if i == 0 else 0):.1f}" y1="{yy:.1f}" x2="{right:.1f}" y2="{yy:.1f}" stroke="{NAVY}" stroke-opacity="0.35" stroke-width="0.25"/>')
-    od_y = y0 + 1.5 + 4 * 11 + 11
-    lab2, _ = text("Od", "Fraunces-SoftItalic.ttf", 5, right - 40, od_y - 1.5, NAVY)
-    out.append(lab2)
-    out.append(f'<line x1="{right - 33:.1f}" y1="{od_y:.1f}" x2="{right:.1f}" y2="{od_y:.1f}" stroke="{NAVY}" stroke-opacity="0.35" stroke-width="0.25"/>')
-    # footer: QR + line
-    qs = 17
-    qy = B + TH - 10 - qs
-    out.append(qr(left, qy, qs))
-    c1, _ = text("Kytice, které", "Fraunces-SoftItalic.ttf", 4.2, left + qs + 5, qy + 7, NAVY)
-    c2, _ = text("udělají radost.", "Fraunces-SoftItalic.ttf", 4.2, left + qs + 5, qy + 12.5, NAVY)
-    c3, _ = text("NARIN · PRAHA", "Ubuntu-Medium.ttf", 2.6, left + qs + 5, qy + 17, COBALT, tracking=0.12)
-    out += [c1, c2, c3]
-    out.append(daisy(right - 7, qy + 9.5, 14, COBALT, 12))
+    """Plain back: the whole upper part left empty (for a printed or a handwritten message), small logo + QR at the bottom."""
+    out = [f'<rect width="{W}" height="{H}" fill="{P_IVORY}"/>']
+    qs = 15
+    qy = B + TH - 9 - qs
+    out.append(logo(B + 9, qy + 2, 34, COBALT))
+    out.append(qr(B + TW - 9 - qs, qy, qs, color=NAVY))
+    c, _ = text("květiny & dárky · Praha", "Fraunces-SoftItalic.ttf", 3.3, B + 9, qy + 15, NAVY)
+    out.append(c)
     return "".join(out)
 
 
