@@ -207,7 +207,7 @@ def front_zar():
     """'Zář.' (сияй): sage card, big soft white word in an oval, a little four-point star."""
     out = [f'<rect width="{W}" height="{H}" fill="{P_SAGE}"/>']
     out.append(f'<ellipse cx="{W / 2:.1f}" cy="{B + 78:.1f}" rx="40" ry="34" fill="none" stroke="{P_IVORY}" stroke-width="1"/>')
-    t, _ = text("Zář.", "Fraunces-SoftBlack.ttf", 34, W / 2, B + 90, P_IVORY, "middle", -0.03)
+    t, _ = text("Zař.", "Fraunces-SoftBlack.ttf", 34, W / 2, B + 90, P_IVORY, "middle", -0.03)
     out.append(t)
     out.append(star(B + 82, B + 44, 6, 4, P_IVORY, inner=0.25))
     out.append(star(B + 90, B + 38, 2.6, 4, P_IVORY, inner=0.3))
@@ -317,6 +317,74 @@ def front_dopadne():
     return "".join(out)
 
 
+# ---------------------------------------------------------------- cute illustrated fronts
+import cute as C
+
+PAPER = "#FBF6EC"
+
+
+def hand_lines(rows, y0, step, size, color, x=None, anchor="middle", font_name="Caveat-SemiBold.ttf", tracking=0.0):
+    return lines_c(rows, y0, step, font_name, size, color, x=x, anchor=anchor, tracking=tracking)
+
+
+def front_zvladnes():
+    """'Ty to zvládneš!' (у тебя всё получится): pink crayon square, a party cat with a star wand."""
+    out = [f'<rect width="{W}" height="{H}" fill="#FFFFFF"/>',
+           C.scribble_rect(B + 10, B + 14, B + TW - 10, B + 104, ["#F4A0C0", "#F07DAA", "#F8C0D4"], seed=5, w=1.6)]
+    out.append(C.party_cat(B + 48, B + 82, 0.95))
+    out.append(hand_lines(["Ty to zvládneš!"], B + 124, 0, 13, C.NAVY_INK))
+    out.append(small_brand(B + TH - 9, C.NAVY_INK))
+    return "".join(out)
+
+
+def front_fajn():
+    """'Přeju ti všechno, co je fajn. A nic, co fajn není.' (желаю всего самого прикольного...): pencil cat with a red hat."""
+    out = [f'<rect width="{W}" height="{H}" fill="{PAPER}"/>']
+    out.append(hand_lines(["PŘEJU TI VŠECHNO,", "CO JE FAJN.", "A NIC,", "CO FAJN NENÍ."], B + 20, 9.5, 9, C.BROWN_INK,
+                          font_name="Caveat-Medium.ttf", tracking=0.06))
+    out.append(C.sketch_cat(B + 36, B + 76, 0.88))
+    t, _ = text("NARIN", "Fraunces-SoftSemi.ttf", 3.6, B + TW - 8, B + TH - 7, C.BROWN_INK, "end", 0.25)
+    out.append(t)
+    return "".join(out)
+
+
+def front_narozeniny():
+    """'Všechno nejlepší! A zař ještě víc.' (с днём рождения, сияй ярче): red ribbon frame, a heart with eyes."""
+    red = "#D2373E"
+    out = [f'<rect width="{W}" height="{H}" fill="#F7F1DA"/>', C.ribbon_frame(B + 9, B + 12, B + TW - 9, B + TH - 12, red)]
+    out.append(hand_lines(["Všechno", "nejlepší!"], B + 38, 12, 14, red))
+    out.append(C.face_heart(W / 2, B + 82, 21, red))
+    out.append(hand_lines(["a zař ještě víc"], B + 120, 0, 11.5, red))
+    return "".join(out)
+
+
+def front_pro_tebe():
+    """'To je pro tebe.' (это тебе): a big soft heart held up by a little frog."""
+    out = [f'<rect width="{W}" height="{H}" fill="#F6F2E6"/>']
+    hx, hy, hs = B + 56, B + 64, 44
+    out.append(f'<path d="{C.smooth(C.heart_pts(hx, hy, hs, 90))}" fill="#D3656F"/>')
+    out.append(hand_lines(["to je pro tebe"], hy + 2, 0, 11, "#3A2A2A", font_name="Caveat-Medium.ttf"))
+    fr, hand = C.frog(B + 21, B + 117, 1.05, reach=(hx, hy + 1.0625 * hs - 1))
+    out.append(fr)
+    out.append(small_brand(B + TH - 7, "#7A6A5A"))
+    return "".join(out)
+
+
+def front_stesti():
+    """'Jaké štěstí, že tě mám!' (какое счастье, что ты есть в моей жизни): crayon heart hugged by a little person."""
+    out = [f'<rect width="{W}" height="{H}" fill="#FFFFFF"/>']
+    hx, hy, hs = B + 46, B + 64, 40
+    hp = C.heart_pts(hx, hy, hs, 90)
+    hd = C.smooth(hp)
+    out.append(C.crayon("heartc", hd, "#D92A22", ["#C8211B", "#E5372E", "#B81C17", "#EE4A3E"], hx - hs, hy - hs, hx + hs, hy + hs, seed=3, w=1.0, n=520))
+    out.append(hand_lines(["JAKÉ", "ŠTĚSTÍ,", "ŽE TĚ", "MÁM!"], hy - 14, 10.5, 10, "#FFFFFF", font_name="Caveat-Medium.ttf", x=hx, tracking=0.08))
+    person, _ = C.hugger(B + 82, B + 74, 0.9)
+    out.append(person)
+    out.append(C.mitten_hand(B + 9, B + 70, 0.9, flip=False))
+    out.append(small_brand(B + TH - 7, "#888888"))
+    return "".join(out)
+
+
 # ---------------------------------------------------------------- back (shared)
 def qr(x, y, size, url=QR_URL, color=NAVY):
     q = segno.make(url, error="m")
@@ -343,7 +411,9 @@ CARDS = {"01-krasa-jsi-ty": front_krasa, "02-svet-je-s-tebou-barevnejsi": front_
          "03-miluj-tvor-sni": front_miluj, "04-to-nejlepsi-teprve-prijde": front_nejlepsi, "05-zar": front_zar,
          "06-usmev-ti-slusi": front_usmev, "07-vic-nez-jen-kvetiny": front_vic, "08-laska-k-sobe": front_laska,
          "09-jsi-jedinecna": front_jedinecna, "10-tve-sny-se-splni": front_sny, "11-brzy-jaro-brzy-laska": front_jaro,
-         "12-vsechno-dobre-dopadne": front_dopadne}
+         "12-vsechno-dobre-dopadne": front_dopadne,
+         "13-ty-to-zvladnes": front_zvladnes, "14-preju-ti-vsechno-fajn": front_fajn, "15-vsechno-nejlepsi": front_narozeniny,
+         "16-to-je-pro-tebe": front_pro_tebe, "17-jake-stesti-ze-te-mam": front_stesti}
 
 
 def main():
