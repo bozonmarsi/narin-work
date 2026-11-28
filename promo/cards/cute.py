@@ -490,3 +490,129 @@ def side_hugger(hx, hy, hs, seed=41):
     for f in (-1.2, 0.6):
         arm_svg += ink([(hand[0] - 1.5, hand[1] + f), (hand[0] - 4.1, hand[1] + f + 0.2)], K, 0.3, False, rnd, 0.03, 1)
     return "".join(body), arm_svg
+
+
+def cuddling_cats(cx, cy, s=1.0, color="#D3263A", seed=51):
+    """Two kittens cheek to cheek, eyes shut, one hugging the other with a paw; red line art. (cx, cy) = between the heads."""
+    rnd = random.Random(seed)
+    out = []
+    w = 0.5 * s
+
+    def head(hx, hy, tilt, flip, eyes_closed=True):
+        P = lambda a, b: (hx + a * s * flip, hy + b * s)
+        g = f'<g transform="rotate({tilt} {hx:.2f} {hy:.2f})">'
+        g += pencil([P(-14, 4), P(-15, -5), P(-12, -12), P(-13, -22), P(-5, -14), P(0, -15), P(6, -14), P(13, -22), P(12, -12),
+                     P(15, -4), P(14, 5), P(8, 11), P(0, 12), P(-8, 11)], color, w, rnd, True, 0.1)
+        g += f'<path d="M{P(-11.5, -13)[0]:.2f} {P(-11.5, -13)[1]:.2f} L{P(-12, -19.5)[0]:.2f} {P(-12, -19.5)[1]:.2f} L{P(-7.5, -14.5)[0]:.2f} {P(-7.5, -14.5)[1]:.2f}Z" fill="{color}" fill-opacity="0.85"/>'
+        g += f'<path d="M{P(11.5, -13)[0]:.2f} {P(11.5, -13)[1]:.2f} L{P(12, -19.5)[0]:.2f} {P(12, -19.5)[1]:.2f} L{P(7.5, -14.5)[0]:.2f} {P(7.5, -14.5)[1]:.2f}Z" fill="{color}" fill-opacity="0.85"/>'
+        for ex in (-5.5, 5.5):
+            if eyes_closed:
+                g += pencil([P(ex - 2.4, 0.5), P(ex, 1.8), P(ex + 2.4, 0.5)], color, w * 0.9, rnd, False, 0.04)
+            else:
+                g += f'<ellipse cx="{P(ex, 0.5)[0]:.2f}" cy="{P(ex, 0.5)[1]:.2f}" rx="{1.3 * s:.2f}" ry="{1.7 * s:.2f}" fill="{color}"/>'
+        g += f'<path d="M{P(-1.2, 4.5)[0]:.2f} {P(-1.2, 4.5)[1]:.2f} L{P(1.2, 4.5)[0]:.2f} {P(1.2, 4.5)[1]:.2f} L{P(0, 5.8)[0]:.2f} {P(0, 5.8)[1]:.2f}Z" fill="{color}"/>'
+        g += pencil([P(0, 5.8), P(-1.6, 7.6)], color, w * 0.7, rnd, False, 0.03)
+        g += pencil([P(0, 5.8), P(1.6, 7.6)], color, w * 0.7, rnd, False, 0.03)
+        for k in range(3):
+            g += pencil([P(-8, 4.5 + k * 1.2), P(-19, 3 + k * 2.6)], color, w * 0.45, rnd, False, 0.08)
+            g += pencil([P(8, 4.5 + k * 1.2), P(19, 3 + k * 2.6)], color, w * 0.45, rnd, False, 0.08)
+        for k in range(4):                       # a few fur strokes on the forehead
+            g += pencil([P(-3 + k * 2, -12), P(-2.6 + k * 2, -9)], color, w * 0.4, rnd, False, 0.05)
+        g += "</g>"
+        return g
+    # bodies (simple soft shoulders) behind
+    out.append(pencil([(cx - 32 * s, cy + 28 * s), (cx - 26 * s, cy + 12 * s), (cx - 16 * s, cy + 9 * s)], color, w, rnd))
+    out.append(pencil([(cx + 32 * s, cy + 26 * s), (cx + 27 * s, cy + 12 * s), (cx + 17 * s, cy + 9 * s)], color, w, rnd))
+    out.append(f'<g>{head(cx - 13.5 * s, cy, 8, 1)}</g>')
+    out.append(f'<g>{head(cx + 13.5 * s, cy - 1 * s, -8, -1)}</g>')
+    # left kitten's arm round the right one, paw on its shoulder
+    arm = [(cx - 24 * s, cy + 20 * s), (cx - 8 * s, cy + 17 * s), (cx + 8 * s, cy + 15 * s), (cx + 20 * s, cy + 11 * s),
+           (cx + 24 * s, cy + 14 * s), (cx + 22 * s, cy + 18 * s), (cx + 8 * s, cy + 21 * s), (cx - 10 * s, cy + 24 * s), (cx - 24 * s, cy + 27 * s)]
+    out.append(f'<path d="{smooth(arm)}" fill="#FAD3DA"/>')
+    out.append(pencil(arm, color, w, rnd, True, 0.08))
+    for k in (-1, 0, 1):
+        out.append(pencil([(cx + 22 * s, cy + (14 + k * 1.6) * s), (cx + 24.5 * s, cy + (14.3 + k * 1.6) * s)], color, w * 0.6, rnd, False, 0.02))
+    for k in range(5):
+        x0 = cx - 18 * s + k * 7 * s
+        out.append(pencil([(x0, cy + 19.5 * s - k * 0.6 * s), (x0 + 3 * s, cy + 18.8 * s - k * 0.6 * s)], color, w * 0.4, rnd, False, 0.04))
+    return "".join(out)
+
+
+def goose(x, y, s=1.0):
+    """A flat white goose: long neck rising from the bottom-left corner, head facing the viewer. (x, y) = head centre."""
+    body_c, beak, beak_d, eye = "#E6E2DA", "#E8853A", "#C96B2B", "#1A1A1A"
+    P = lambda a, b: (x + a * s, y + b * s)
+    out = []
+    neck = [P(-60, 120), P(-60, 55), P(-40, 40), P(-22, 28), P(-12, 14), P(-10, 0), P(-9, -10), P(-6, -16), P(0, -18), P(6, -16),
+            P(9, -10), P(10, 0), P(12, 16), P(8, 36), P(-6, 64), P(-30, 120)]
+    out.append(f'<path d="{smooth(neck)}" fill="{body_c}"/>')
+    out.append(f'<path d="M{P(-6, -4)[0]:.2f} {P(-6, -4)[1]:.2f} L{P(-3, -9)[0]:.2f} {P(-3, -9)[1]:.2f} L{P(0, -6)[0]:.2f} {P(0, -6)[1]:.2f} '
+               f'L{P(3, -9)[0]:.2f} {P(3, -9)[1]:.2f} L{P(6, -4)[0]:.2f} {P(6, -4)[1]:.2f} L{P(7, 9)[0]:.2f} {P(7, 9)[1]:.2f} '
+               f'Q{P(0, 12)[0]:.2f} {P(0, 12)[1]:.2f} {P(-7, 9)[0]:.2f} {P(-7, 9)[1]:.2f}Z" fill="{beak}"/>')
+    out.append(f'<path d="M{P(-6, 9)[0]:.2f} {P(-6, 9)[1]:.2f} Q{P(0, 13.5)[0]:.2f} {P(0, 13.5)[1]:.2f} {P(6, 9)[0]:.2f} {P(6, 9)[1]:.2f} '
+               f'Q{P(0, 10.5)[0]:.2f} {P(0, 10.5)[1]:.2f} {P(-6, 9)[0]:.2f} {P(-6, 9)[1]:.2f}Z" fill="{beak_d}"/>')
+    for ex in (-8.4, 8.4):
+        out.append(f'<ellipse cx="{P(ex, -6)[0]:.2f}" cy="{P(ex, -6)[1]:.2f}" rx="{1.1 * s:.2f}" ry="{1.5 * s:.2f}" fill="{eye}"/>')
+        out.append(f'<circle cx="{P(ex + 0.3, -6.6)[0]:.2f}" cy="{P(ex + 0.3, -6.6)[1]:.2f}" r="{0.35 * s:.2f}" fill="#FFFFFF"/>')
+    for nx in (-1.4, 1.4):
+        out.append(f'<circle cx="{P(nx, 1)[0]:.2f}" cy="{P(nx, 1)[1]:.2f}" r="{0.45 * s:.2f}" fill="#6B3A1A"/>')
+    return "".join(out)
+
+
+def outline_heart(cx, cy, s, color, w, rnd, amt=None):
+    return ink(heart_pts(cx, cy, s, 60), color, w, True, rnd, s * 0.02 if amt is None else amt, 1)
+
+
+def sun_burst(cx, cy, R, seed=61):
+    """A hand-drawn sun: long pale rays, sharp peach rays with dotted hatching and a dark outline, glowing centre, sparkles."""
+    rnd = random.Random(seed)
+    out = []
+    for i in range(16):
+        a = math.radians(i * 22.5 + 11)
+        L = R * rnd.uniform(1.05, 1.35)
+        out.append(f'<path d="M{cx + R * 0.3 * math.cos(a):.2f} {cy + R * 0.3 * math.sin(a):.2f} L{cx + L * math.cos(a):.2f} {cy + L * math.sin(a):.2f}" '
+                   f'stroke="#F7E3EE" stroke-width="0.9" stroke-linecap="round"/>')
+    pts = []
+    n = 14
+    for i in range(2 * n):
+        a = math.pi * i / n - math.pi / 2
+        r = R * (rnd.uniform(0.85, 1.0) if i % 2 == 0 else 0.33)
+        pts.append((cx + r * math.cos(a), cy + r * math.sin(a)))
+    d = "M" + " L".join(f"{x:.2f} {y:.2f}" for x, y in pts) + "Z"
+    out.append(f'<path d="{d}" fill="#F1A88E"/>')
+    out.append(f'<defs><clipPath id="sun{seed}"><path d="{d}"/></clipPath></defs><g clip-path="url(#sun{seed})">')
+    for _ in range(420):
+        a = rnd.uniform(0, 2 * math.pi)
+        r = rnd.uniform(R * 0.3, R)
+        x, y = cx + r * math.cos(a), cy + r * math.sin(a)
+        out.append(f'<path d="M{x:.2f} {y:.2f} l{0.9 * math.cos(a):.2f} {0.9 * math.sin(a):.2f}" stroke="#D9542E" stroke-width="0.35" stroke-linecap="round"/>')
+    out.append("</g>")
+    out.append(f'<path d="{d}" fill="none" stroke="#1E2340" stroke-width="0.45" stroke-linejoin="miter"/>')
+    out.append(f'<circle cx="{cx:.2f}" cy="{cy:.2f}" r="{R * 0.36:.2f}" fill="#E8DDF6"/>')
+    out.append(f'<circle cx="{cx:.2f}" cy="{cy:.2f}" r="{R * 0.26:.2f}" fill="#F6F1FB"/>')
+    for _ in range(10):
+        a = rnd.uniform(0, 2 * math.pi)
+        r = rnd.uniform(R * 1.05, R * 1.5)
+        x, y, k = cx + r * math.cos(a), cy + r * math.sin(a), rnd.uniform(1.2, 2.2)
+        out.append(f'<path d="M{x - k:.2f} {y:.2f} L{x + k:.2f} {y:.2f} M{x:.2f} {y - k:.2f} L{x:.2f} {y + k:.2f} M{x - k * 0.6:.2f} {y - k * 0.6:.2f} '
+                   f'L{x + k * 0.6:.2f} {y + k * 0.6:.2f} M{x - k * 0.6:.2f} {y + k * 0.6:.2f} L{x + k * 0.6:.2f} {y - k * 0.6:.2f}" '
+                   f'stroke="#F8F1E4" stroke-width="0.3" stroke-linecap="round"/>')
+    return "".join(out)
+
+
+def stamp_path(x0, y0, x1, y1, r=1.6, gap=4.4):
+    """A postage-stamp outline: rectangle with semicircle bites along every edge (perforation)."""
+    def edge(ax, ay, bx, by):
+        L = math.hypot(bx - ax, by - ay)
+        n = max(1, int(L / gap))
+        ux, uy = (bx - ax) / L, (by - ay) / L
+        nx, ny = uy, -ux                         # outward normal for a clockwise outline
+        step = L / n
+        d = ""
+        for i in range(n):
+            mx, my = ax + ux * step * (i + 0.5), ay + uy * step * (i + 0.5)
+            p0 = (mx - ux * r, my - uy * r)
+            p1 = (mx + ux * r, my + uy * r)
+            d += f" L{p0[0]:.2f} {p0[1]:.2f} A{r} {r} 0 0 0 {p1[0]:.2f} {p1[1]:.2f}"
+        return d + f" L{bx:.2f} {by:.2f}"
+    return (f"M{x0:.2f} {y0:.2f}" + edge(x0, y0, x1, y0) + edge(x1, y0, x1, y1) + edge(x1, y1, x0, y1) + edge(x0, y1, x0, y0) + "Z")

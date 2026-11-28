@@ -12,5 +12,7 @@ scratchpad `topdf.js` tool: `node topdf.js out/X.svg out/X.pdf 111 154`.
 - Illustrated (cute.py, hand-drawn look, Caveat font): 13 Ty to zvládneš! (party cat) · 14 Přeju ti všechno, co je fajn.
   A nic, co fajn není. (pencil cat) · 15 Všechno nejlepší! a zař ještě víc (ribbon frame, heart) · 16 to je pro tebe (frog)
   · 17 Jaké štěstí, že tě mám! (crayon heart, a little person cuddling it from the side).
+- Love set: 18 LÁSKA + 'Mám s tebou velké štěstí' (Great Vibes script) · 19 S tebou jsem doma (two kittens in a heart)
+  · 20 Zlato, poslouchej svoje srdce (goose, Comfortaa) · 21 S tebou mi v duši vždycky svítí slunce (stamp + sun).
 - Back (shared): `zadni-strana` — upper part empty (for print or handwriting), logo + QR at the bottom (`QR_URL` placeholder).
 - `out/serie.png` — all fronts on one sheet. Needs: `pip install segno uharfbuzz fonttools`.

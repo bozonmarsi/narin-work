@@ -384,6 +384,73 @@ def front_stesti():
     return "".join(out)
 
 
+import random
+
+
+def front_laska_big():
+    """'Mám s tebou velké štěstí.' over giant pink LÁSKA (after the big 'ЛЮБОВЬ' card); the last letter is a heart."""
+    pink, red = "#F78BAA", "#D7222E"
+    out = [f'<rect width="{W}" height="{H}" fill="#FBF8F6"/>']
+    rows = [("LÁ", B + 47), ("SK", B + 98)]
+    for txt, y in rows:
+        _, wdt = text(txt, "Fraunces-SoftBlack.ttf", 62, 0, 0, pink, "start", -0.04)
+        k = (W + 8) / wdt
+        t, _ = text(txt, "Fraunces-SoftBlack.ttf", 62, 0, 0, pink, "start", -0.04)
+        out.append(f'<g transform="translate(-4 {y:.1f}) scale({k:.3f} 1)">{t}</g>')
+    a, aw = text("A", "Fraunces-SoftBlack.ttf", 62, 0, 0, pink, "start")
+    out.append(f'<g transform="translate(-2 {B + 150:.1f}) scale({(W * 0.52) / aw:.3f} 1)">{a}</g>')
+    hx, hy, hs = W * 0.76, B + 126, 20
+    out.append(f'<path d="{C.smooth(C.heart_pts(hx, hy, hs, 90))}" fill="none" stroke="{pink}" stroke-width="7.5" stroke-linejoin="round"/>')
+    t1, _ = text("Mám s tebou", "GreatVibes-Regular.ttf", 12.5, W / 2 + 2, B + 70, red, "middle")
+    t2, _ = text("velké štěstí", "GreatVibes-Regular.ttf", 12.5, W / 2 + 6, B + 82, red, "middle")
+    out += [t1, t2]
+    return "".join(out)
+
+
+def front_doma():
+    """'S tebou jsem doma.' (с тобой я как дома): two kittens cuddling inside a red heart outline, on pink."""
+    red = "#D3263A"
+    rnd = random.Random(5)
+    out = [f'<rect width="{W}" height="{H}" fill="#F8CCD3"/>']
+    out.append(C.outline_heart(W / 2, B + 60, 47, red, 0.75, rnd, amt=0.25))
+    out.append(C.cuddling_cats(W / 2, B + 52, 1.15))
+    out.append(lines_c(["S TEBOU", "JSEM DOMA."], B + 122, 11, "Fraunces-SoftRegular.ttf", 9.5, red, tracking=0.04))
+    out.append(small_brand(B + TH - 6, red))
+    return "".join(out)
+
+
+def front_husa():
+    """'Zlato, poslouchej svoje srdce.' (милая, слушай своё сердце): a white goose on deep red, little hearts."""
+    out = [f'<rect width="{W}" height="{H}" fill="#9B1C2C"/>']
+    out.append(lines_c(["Zlato,", "poslouchej svoje srdce."], B + 30, 9.5, "Comfortaa-Regular.ttf", 7.2, "#F6EFE6"))
+    out.append(C.goose(B + 66, B + 86, 1.0))
+    rnd = random.Random(2)
+    for (x, y, s) in ((B + 32, B + 64, 3.4), (B + 37, B + 80, 2.6), (B + 84, B + 56, 2.4), (B + 92, B + 72, 3.6)):
+        out.append(C.outline_heart(x, y, s, "#F6EFE6", 0.35, rnd))
+    t, _ = text("NARIN", "Fraunces-SoftSemi.ttf", 3.6, B + TW - 8, B + TH - 7, "#F6EFE6", "end", 0.25)
+    out.append(t)
+    return "".join(out)
+
+
+def front_slunce():
+    """'S tebou mi v duši vždycky svítí slunce.' (когда я с тобой, в моей душе солнце всегда светит ярко): a blue postage stamp."""
+    yellow = "#F7F08A"
+    out = [f'<rect width="{W}" height="{H}" fill="#FBF8F2"/>',
+           f'<path d="{C.stamp_path(B + 6, B + 8, B + TW - 6, B + TH - 14)}" fill="#7DA6EC"/>']
+    t0, _ = text("(k Valentýnu!)", "GreatVibes-Regular.ttf", 5.2, W / 2, B + 20, yellow, "middle")
+    out.append(t0)
+    for txt, y in (("S TEBOU MI", B + 34), ("V DUŠI", B + 44)):
+        t, w = text(txt, "Fraunces-SoftSemi.ttf", 11, 0, 0, yellow, "start", 0.01)
+        out.append(f'<g transform="translate({W / 2 - w * 0.72 / 2:.2f} {y:.2f}) scale(0.72 1)">{t}</g>')
+    out.append(C.sun_burst(W / 2, B + 78, 20))
+    t, w = text("VŽDYCKY SVÍTÍ", "Fraunces-SoftSemi.ttf", 11, 0, 0, yellow, "start", 0.01)
+    out.append(f'<g transform="translate({B + TW - 12 - w * 0.72:.2f} {B + 113:.2f}) scale(0.72 1)">{t}</g>')
+    t2, _ = text("slunce", "GreatVibes-Regular.ttf", 15, B + 18, B + 126, yellow)
+    out.append(t2)
+    out.append(small_brand(B + TH - 6, "#4E6FB8"))
+    return "".join(out)
+
+
 # ---------------------------------------------------------------- back (shared)
 def qr(x, y, size, url=QR_URL, color=NAVY):
     q = segno.make(url, error="m")
@@ -412,7 +479,9 @@ CARDS = {"01-krasa-jsi-ty": front_krasa, "02-svet-je-s-tebou-barevnejsi": front_
          "09-jsi-jedinecna": front_jedinecna, "10-tve-sny-se-splni": front_sny, "11-brzy-jaro-brzy-laska": front_jaro,
          "12-vsechno-dobre-dopadne": front_dopadne,
          "13-ty-to-zvladnes": front_zvladnes, "14-preju-ti-vsechno-fajn": front_fajn, "15-vsechno-nejlepsi": front_narozeniny,
-         "16-to-je-pro-tebe": front_pro_tebe, "17-jake-stesti-ze-te-mam": front_stesti}
+         "16-to-je-pro-tebe": front_pro_tebe, "17-jake-stesti-ze-te-mam": front_stesti,
+         "18-mam-s-tebou-velke-stesti": front_laska_big, "19-s-tebou-jsem-doma": front_doma,
+         "20-zlato-poslouchej-srdce": front_husa, "21-v-dusi-mi-sviti-slunce": front_slunce}
 
 
 def main():
