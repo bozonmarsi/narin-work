@@ -333,3 +333,112 @@ def mitten_hand(x, y, s=1.0, flip=False, seed=9):
     for f in (-1.5, 0.5, 2.5):
         out.append(ink([(x + k * 6 * s, y + f * s), (x + k * 8.2 * s, y + f * s)], "#1A1A1A", 0.35 * s, False, rnd, 0.05, 1))
     return "".join(out)
+
+
+def pencil(pts, color, w, rnd, closed=False, amt=0.12):
+    """Two light pencil passes along a smooth curve through the points."""
+    out = []
+    for p in range(2):
+        q = wobble(pts, amt * (1 + p), rnd)
+        out.append(f'<path d="{smooth(q, closed)}" fill="none" stroke="{color}" stroke-width="{w * (1 if p == 0 else 0.55):.2f}" '
+                   f'stroke-linecap="round" stroke-linejoin="round" stroke-opacity="{0.95 if p == 0 else 0.55}"/>')
+    return "".join(out)
+
+
+def sketch_cat2(x, y, s=1.0, ink_c=BROWN_INK, red="#C0392B", seed=21):
+    """A soft, round sitting kitten in pencil, head slightly tilted, red party hat on top and a red bow. (x, y) = head centre."""
+    rnd = random.Random(seed)
+    P = lambda a, b: (x + a * s, y + b * s)
+    w = 0.42 * s
+    out = []
+    # tail curling round the feet (behind)
+    out.append(pencil([P(14, 58), P(24, 60), P(32, 55), P(33, 46), P(29, 40)], ink_c, w, rnd))
+    # body
+    out.append(pencil([P(-9, 11), P(-14, 22), P(-18, 38), P(-18, 51), P(-13, 59), P(-5, 62)], ink_c, w, rnd))
+    out.append(pencil([P(9, 11), P(14, 22), P(19, 36), P(21, 49), P(18, 57), P(10, 62)], ink_c, w, rnd))
+    out.append(pencil([P(-5, 62), P(2, 63), P(10, 62)], ink_c, w * 0.8, rnd))
+    # front legs + paws
+    out.append(pencil([P(-6, 30), P(-7, 45), P(-7, 59)], ink_c, w * 0.8, rnd))
+    out.append(pencil([P(4, 30), P(5, 45), P(5, 59)], ink_c, w * 0.8, rnd))
+    out.append(pencil(ellipse_pts(*P(-9.5, 60.5), 4 * s, 2 * s, 16), ink_c, w * 0.8, rnd, True))
+    out.append(pencil(ellipse_pts(*P(7.5, 60.5), 4 * s, 2 * s, 16), ink_c, w * 0.8, rnd, True))
+    # head (tilted) + ears
+    head = [P(-15, 2), P(-16, -6), P(-13, -13), P(-14, -25), P(-6, -16), P(0, -17), P(6, -16), P(14, -25), P(13, -13),
+            P(16, -5), P(15, 4), P(9, 11), P(0, 13), P(-9, 11)]
+    g = f'<g transform="rotate(-8 {x:.2f} {y:.2f})">'
+    g += pencil(head, ink_c, w, rnd, True)
+    g += pencil([P(-12, -14), P(-12.5, -21), P(-8, -16)], ink_c, w * 0.6, rnd)
+    g += pencil([P(12, -14), P(12.5, -21), P(8, -16)], ink_c, w * 0.6, rnd)
+    for ex in (-6, 6):
+        g += pencil(ellipse_pts(*P(ex, 0), 2.6 * s, 3.0 * s, 20), ink_c, w * 0.7, rnd, True, 0.05)
+        g += f'<ellipse cx="{P(ex, 0.4)[0]:.2f}" cy="{P(ex, 0.4)[1]:.2f}" rx="{1.4 * s:.2f}" ry="{2.0 * s:.2f}" fill="{ink_c}"/>'
+        g += f'<circle cx="{P(ex + 0.5, -0.6)[0]:.2f}" cy="{P(ex + 0.5, -0.6)[1]:.2f}" r="{0.45 * s:.2f}" fill="#FFFFFF"/>'
+    g += f'<path d="M{P(-1.3, 5)[0]:.2f} {P(-1.3, 5)[1]:.2f} L{P(1.3, 5)[0]:.2f} {P(1.3, 5)[1]:.2f} L{P(0, 6.4)[0]:.2f} {P(0, 6.4)[1]:.2f}Z" fill="#D98C8C"/>'
+    g += pencil([P(0, 6.4), P(0, 7.6), P(-2, 8.6)], ink_c, w * 0.6, rnd)
+    g += pencil([P(0, 7.6), P(2, 8.6)], ink_c, w * 0.6, rnd)
+    for side in (-1, 1):
+        for k in range(3):
+            g += pencil([P(side * 9, 5 + k * 1.4), P(side * 16, 3.5 + k * 2.2), P(side * 23, 2.5 + k * 3.2)], ink_c, w * 0.4, rnd)
+    # party hat, hatched, a little tilted
+    hat = [P(-6, -16.5), P(7, -17.5), P(3, -38)]
+    hd = smooth(hat)
+    g += f'<defs><clipPath id="hat2{seed}"><path d="{hd}"/></clipPath></defs><g clip-path="url(#hat2{seed})">'
+    for k in range(-20, 30):
+        x0 = x + k * 0.8 * s
+        g += f'<path d="M{x0:.2f} {y - 42 * s:.2f} L{x0 + 16 * s:.2f} {y - 14 * s:.2f}" stroke="{red}" stroke-width="{0.32 * s:.2f}" stroke-opacity="0.9"/>'
+        g += f'<path d="M{x0:.2f} {y - 14 * s:.2f} L{x0 + 10 * s:.2f} {y - 42 * s:.2f}" stroke="{red}" stroke-width="{0.22 * s:.2f}" stroke-opacity="0.6"/>'
+    g += "</g>"
+    g += pencil(hat, red, w * 0.9, rnd, True, 0.06)
+    g += pencil([P(-6, -16.5), P(-12, -6), P(-14, 4)], red, w * 0.6, rnd)
+    g += "</g>"
+    out.append(g)
+    # red bow at the neck
+    out.append(pencil([P(-9, 11), P(-3, 14.5), P(4, 14.5), P(9, 11)], red, w, rnd))
+    out.append(pencil([P(0, 14.5), P(-5, 11.5), P(-6, 15.5), P(0, 14.5)], red, w * 0.9, rnd, True))
+    out.append(pencil([P(0, 14.5), P(5, 11.5), P(6, 15.5), P(0, 14.5)], red, w * 0.9, rnd, True))
+    out.append(pencil([P(0, 14.5), P(-2, 19), P(-3.5, 23)], red, w * 0.8, rnd))
+    out.append(pencil([P(0, 14.5), P(2, 19), P(3, 23)], red, w * 0.8, rnd))
+    return "".join(out)
+
+
+def hand_on_edge(x, y, s, side, rnd, sleeve="#F1E6CF"):
+    """A hand with a sleeve coming from behind the heart's edge (side -1 = left edge, +1 = right edge)."""
+    ink_c = "#1A1A1A"
+    k = side
+    out = []
+    sl = [(x + k * 1 * s, y - 4 * s), (x + k * 9 * s, y - 5 * s), (x + k * 10 * s, y + 4 * s), (x + k * 1 * s, y + 4.5 * s)]
+    out.append(ink(sl, ink_c, 0.45 * s, True, rnd, 0.1, 1, sleeve))
+    hand = [(x + k * 1 * s, y - 3.5 * s), (x - k * 4 * s, y - 4.5 * s), (x - k * 7.5 * s, y - 3 * s), (x - k * 8 * s, y + 0.5 * s),
+            (x - k * 7 * s, y + 3.5 * s), (x - k * 3 * s, y + 4.5 * s), (x + k * 1 * s, y + 4 * s)]
+    out.append(ink(hand, ink_c, 0.45 * s, True, rnd, 0.08, 1, "#F2B8A6"))
+    for f in (-1.6, 0.2, 2.0):
+        out.append(ink([(x - k * 4.5 * s, y + f * s), (x - k * 7.6 * s, y + f * s)], ink_c, 0.35 * s, False, rnd, 0.05, 1))
+    return "".join(out)
+
+
+def hug_heart(hx, hy, hs, seed=31):
+    """A big crayon heart hugged by someone standing behind it: head peeking over the right lobe,
+    hands round both edges, legs and shoes below. Returns (behind, heart_front_extras) svg parts."""
+    rnd = random.Random(seed)
+    ink_c = "#1A1A1A"
+    behind, front = [], []
+    # legs + shoes under the heart (behind it)
+    for lx, d in ((hx - 9, -1), (hx + 7, 1)):
+        leg = [(lx - 4, hy + 20), (lx + 4, hy + 20), (lx + 4 + d * 1.5, hy + hs + 18), (lx - 4 + d * 1.5, hy + hs + 18)]
+        behind.append(ink(leg, ink_c, 0.45, True, rnd, 0.15, 1, "#22325E"))
+        shoe = [(lx - 5 + d * 1.5, hy + hs + 17), (lx + 4 + d * 4, hy + hs + 17), (lx + 5 + d * 5, hy + hs + 21), (lx - 5 + d * 1.5, hy + hs + 21)]
+        behind.append(ink(shoe, ink_c, 0.45, True, rnd, 0.1, 1, "#1A1A1A"))
+    # head peeking over the right lobe (drawn behind, the heart covers the chin)
+    cx, cy = hx + hs * 0.5, hy - hs * 0.78
+    behind.append(ink(ellipse_pts(cx, cy, 6.5, 7.5, 28), ink_c, 0.45, True, rnd, 0.1, 1, "#F2B8A6"))
+    for k in range(11):
+        a = math.radians(190 + k * 16)
+        behind.append(ink(ellipse_pts(cx + 6.6 * math.cos(a), cy - 1 + 7 * math.sin(a), 2.3, 2.0, 12), ink_c, 0.4, True, rnd, 0.05, 1, "#1A1A1A"))
+    behind.append(f'<ellipse cx="{cx - 2.3:.2f}" cy="{cy - 0.3:.2f}" rx="0.7" ry="0.9" fill="{ink_c}"/>')
+    behind.append(f'<ellipse cx="{cx + 2.3:.2f}" cy="{cy - 0.3:.2f}" rx="0.7" ry="0.9" fill="{ink_c}"/>')
+    behind.append(f'<ellipse cx="{cx - 4:.2f}" cy="{cy + 2.2:.2f}" rx="1.4" ry="0.8" fill="#E8826E" fill-opacity="0.7"/>')
+    behind.append(f'<ellipse cx="{cx + 4:.2f}" cy="{cy + 2.2:.2f}" rx="1.4" ry="0.8" fill="#E8826E" fill-opacity="0.7"/>')
+    # hands round the edges (in front)
+    front.append(hand_on_edge(hx - hs * 0.93, hy + hs * 0.02, 1.0, -1, rnd))
+    front.append(hand_on_edge(hx + hs * 0.86, hy + hs * 0.28, 1.0, 1, rnd))
+    return "".join(behind), "".join(front)

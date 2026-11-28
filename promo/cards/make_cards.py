@@ -342,7 +342,7 @@ def front_fajn():
     out = [f'<rect width="{W}" height="{H}" fill="{PAPER}"/>']
     out.append(hand_lines(["PŘEJU TI VŠECHNO,", "CO JE FAJN.", "A NIC,", "CO FAJN NENÍ."], B + 20, 9.5, 9, C.BROWN_INK,
                           font_name="Caveat-Medium.ttf", tracking=0.06))
-    out.append(C.sketch_cat(B + 36, B + 76, 0.88))
+    out.append(C.sketch_cat2(B + 46, B + 88, 0.76))
     t, _ = text("NARIN", "Fraunces-SoftSemi.ttf", 3.6, B + TW - 8, B + TH - 7, C.BROWN_INK, "end", 0.25)
     out.append(t)
     return "".join(out)
@@ -371,17 +371,16 @@ def front_pro_tebe():
 
 
 def front_stesti():
-    """'Jaké štěstí, že tě mám!' (какое счастье, что ты есть в моей жизни): crayon heart hugged by a little person."""
+    """'Jaké štěstí, že tě mám!' (какое счастье, что ты есть в моей жизни): a crayon heart hugged by someone behind it."""
     out = [f'<rect width="{W}" height="{H}" fill="#FFFFFF"/>']
-    hx, hy, hs = B + 46, B + 64, 40
-    hp = C.heart_pts(hx, hy, hs, 90)
-    hd = C.smooth(hp)
+    hx, hy, hs = B + 52, B + 66, 37
+    behind, front = C.hug_heart(hx, hy, hs)
+    out.append(behind)
+    hd = C.smooth(C.heart_pts(hx, hy, hs, 90))
     out.append(C.crayon("heartc", hd, "#D92A22", ["#C8211B", "#E5372E", "#B81C17", "#EE4A3E"], hx - hs, hy - hs, hx + hs, hy + hs, seed=3, w=1.0, n=520))
-    out.append(hand_lines(["JAKÉ", "ŠTĚSTÍ,", "ŽE TĚ", "MÁM!"], hy - 14, 10.5, 10, "#FFFFFF", font_name="Caveat-Medium.ttf", x=hx, tracking=0.08))
-    person, _ = C.hugger(B + 82, B + 74, 0.9)
-    out.append(person)
-    out.append(C.mitten_hand(B + 9, B + 70, 0.9, flip=False))
-    out.append(small_brand(B + TH - 7, "#888888"))
+    out.append(front)
+    out.append(hand_lines(["JAKÉ", "ŠTĚSTÍ,", "ŽE TĚ", "MÁM!"], hy - 12, 10.5, 10, "#FFFFFF", font_name="Caveat-Medium.ttf", x=hx, tracking=0.08))
+    out.append(small_brand(B + TH - 6, "#888888"))
     return "".join(out)
 
 
