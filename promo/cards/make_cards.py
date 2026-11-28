@@ -371,15 +371,15 @@ def front_pro_tebe():
 
 
 def front_stesti():
-    """'Jaké štěstí, že tě mám!' (какое счастье, что ты есть в моей жизни): a crayon heart hugged by someone behind it."""
+    """'Jaké štěstí, že tě mám!' (какое счастье, что ты есть в моей жизни): a crayon heart, someone cuddling it from the side."""
     out = [f'<rect width="{W}" height="{H}" fill="#FFFFFF"/>']
-    hx, hy, hs = B + 52, B + 66, 37
-    behind, front = C.hug_heart(hx, hy, hs)
-    out.append(behind)
+    hx, hy, hs = B + 40, B + 74, 35
+    body, arm = C.side_hugger(hx, hy, hs)
     hd = C.smooth(C.heart_pts(hx, hy, hs, 90))
     out.append(C.crayon("heartc", hd, "#D92A22", ["#C8211B", "#E5372E", "#B81C17", "#EE4A3E"], hx - hs, hy - hs, hx + hs, hy + hs, seed=3, w=1.0, n=520))
-    out.append(front)
-    out.append(hand_lines(["JAKÉ", "ŠTĚSTÍ,", "ŽE TĚ", "MÁM!"], hy - 12, 10.5, 10, "#FFFFFF", font_name="Caveat-Medium.ttf", x=hx, tracking=0.08))
+    out.append(hand_lines(["JAKÉ", "ŠTĚSTÍ,", "ŽE TĚ", "MÁM!"], hy - 9, 10, 9.5, "#FFFFFF", font_name="Caveat-Medium.ttf", x=hx - 7, tracking=0.08))
+    out.append(body)
+    out.append(arm)
     out.append(small_brand(B + TH - 6, "#888888"))
     return "".join(out)
 

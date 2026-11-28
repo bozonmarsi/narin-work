@@ -442,3 +442,51 @@ def hug_heart(hx, hy, hs, seed=31):
     front.append(hand_on_edge(hx - hs * 0.93, hy + hs * 0.02, 1.0, -1, rnd))
     front.append(hand_on_edge(hx + hs * 0.86, hy + hs * 0.28, 1.0, 1, rnd))
     return "".join(behind), "".join(front)
+
+
+def side_hugger(hx, hy, hs, seed=41):
+    """A little person standing at the heart's right side, cheek pressed to it, eyes happily shut, one arm round the
+    front of the heart and one foot kicked up behind. Returns (body_svg, arm_svg): draw the body after the heart,
+    the arm last."""
+    rnd = random.Random(seed)
+    K = "#1A1A1A"
+    SKIN, SHIRT, PANTS = "#F4C1AE", "#F3E3C3", "#2C3E73"
+    ex = hx + hs * 0.93            # heart's right edge near the top
+    hx0, hy0 = ex + 6.5, hy - hs * 0.42  # head centre
+    body = []
+    # legs (behind torso): standing leg + kicked-up leg
+    body.append(ink([(hx0 - 4, hy0 + 30), (hx0 + 1, hy0 + 30), (hx0 - 0.5, hy0 + 52), (hx0 - 5, hy0 + 52)], K, 0.45, True, rnd, 0.12, 1, PANTS))
+    body.append(ink([(hx0 - 7.5, hy0 + 51), (hx0, hy0 + 51), (hx0 + 0.5, hy0 + 55), (hx0 - 8, hy0 + 55)], K, 0.45, True, rnd, 0.08, 1, K))
+    body.append(ink([(hx0 + 1, hy0 + 29), (hx0 + 5, hy0 + 29), (hx0 + 12, hy0 + 40), (hx0 + 15, hy0 + 35), (hx0 + 18, hy0 + 37),
+                     (hx0 + 13, hy0 + 45), (hx0 + 9, hy0 + 43), (hx0 + 3, hy0 + 35)], K, 0.45, True, rnd, 0.12, 1, PANTS))
+    body.append(ink([(hx0 + 14.5, hy0 + 33.5), (hx0 + 19.5, hy0 + 31), (hx0 + 21, hy0 + 35), (hx0 + 17.5, hy0 + 37.5)], K, 0.45, True, rnd, 0.08, 1, K))
+    # torso leaning into the heart
+    torso = [(hx0 - 6, hy0 + 7), (hx0 + 5, hy0 + 6), (hx0 + 7, hy0 + 18), (hx0 + 6, hy0 + 31), (hx0 - 5, hy0 + 31), (hx0 - 7, hy0 + 18)]
+    body.append(ink(torso, K, 0.45, True, rnd, 0.12, 1, SHIRT))
+    for yy in (hy0 + 13, hy0 + 19, hy0 + 25):
+        body.append(ink([(hx0 - 6.5, yy), (hx0 + 6.5, yy - 0.6)], "#E08A6E", 0.6, False, rnd, 0.1, 1))
+    # head tilted onto the heart
+    g = f'<g transform="rotate(-16 {hx0:.2f} {hy0:.2f})">'
+    g += ink(ellipse_pts(hx0, hy0, 6.8, 7.4, 30), K, 0.45, True, rnd, 0.08, 1, SKIN)
+    for k in range(10):
+        a = math.radians(195 + k * 17)
+        g += ink(ellipse_pts(hx0 + 6.6 * math.cos(a), hy0 - 1.2 + 7.0 * math.sin(a), 2.2, 1.9, 12), K, 0.35, True, rnd, 0.04, 1, "#2A1E1A")
+    for exx in (-2.6, 2.6):                     # happy closed eyes
+        g += f'<path d="M{hx0 + exx - 1.3:.2f} {hy0 + 0.6:.2f} Q{hx0 + exx:.2f} {hy0 - 1.0:.2f} {hx0 + exx + 1.3:.2f} {hy0 + 0.6:.2f}" fill="none" stroke="{K}" stroke-width="0.5" stroke-linecap="round"/>'
+    for bx in (-4.2, 4.2):
+        g += f'<ellipse cx="{hx0 + bx:.2f}" cy="{hy0 + 2.6:.2f}" rx="1.5" ry="0.9" fill="#E8826E" fill-opacity="0.75"/>'
+    g += f'<path d="M{hx0 - 1.4:.2f} {hy0 + 3.4:.2f} Q{hx0:.2f} {hy0 + 5.0:.2f} {hx0 + 1.4:.2f} {hy0 + 3.4:.2f}" fill="none" stroke="{K}" stroke-width="0.45" stroke-linecap="round"/>'
+    g += "</g>"
+    body.append(g)
+    # near arm round the front of the heart, hand resting on it
+    sh = (hx0 - 4, hy0 + 10)
+    hand = (hx0 - 20, hy0 + 18)
+    arm = [(sh[0] + 2, sh[1] - 2.5), (sh[0] - 7, sh[1] + 1), (hand[0] + 3, hand[1] - 3), (hand[0] + 3.5, hand[1] + 2.5),
+           (sh[0] - 6, sh[1] + 6.5), (sh[0] + 2, sh[1] + 4)]
+    arm_svg = ink(arm, K, 0.45, True, rnd, 0.1, 1, SHIRT)
+    mitt = [(hand[0] + 3.5, hand[1] - 3.2), (hand[0] - 1, hand[1] - 4), (hand[0] - 4, hand[1] - 2), (hand[0] - 4.3, hand[1] + 1.3),
+            (hand[0] - 2, hand[1] + 3.4), (hand[0] + 3.5, hand[1] + 2.8)]
+    arm_svg += ink(mitt, K, 0.45, True, rnd, 0.06, 1, SKIN)
+    for f in (-1.2, 0.6):
+        arm_svg += ink([(hand[0] - 1.5, hand[1] + f), (hand[0] - 4.1, hand[1] + f + 0.2)], K, 0.3, False, rnd, 0.03, 1)
+    return "".join(body), arm_svg

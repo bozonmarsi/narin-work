@@ -11,6 +11,6 @@ scratchpad `topdf.js` tool: `node topdf.js out/X.svg out/X.pdf 111 154`.
   10 Tvé sny se splní. Uvidíš. · 11 Brzy jaro, brzy láska. Fakt. · 12 Všechno dobře dopadne.
 - Illustrated (cute.py, hand-drawn look, Caveat font): 13 Ty to zvládneš! (party cat) · 14 Přeju ti všechno, co je fajn.
   A nic, co fajn není. (pencil cat) · 15 Všechno nejlepší! a zař ještě víc (ribbon frame, heart) · 16 to je pro tebe (frog)
-  · 17 Jaké štěstí, že tě mám! (crayon heart + person).
+  · 17 Jaké štěstí, že tě mám! (crayon heart, a little person cuddling it from the side).
 - Back (shared): `zadni-strana` — upper part empty (for print or handwriting), logo + QR at the bottom (`QR_URL` placeholder).
 - `out/serie.png` — all fronts on one sheet. Needs: `pip install segno uharfbuzz fonttools`.
