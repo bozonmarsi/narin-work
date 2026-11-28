@@ -377,7 +377,7 @@ def front_stesti():
     body, arm = C.side_hugger(hx, hy, hs)
     hd = C.smooth(C.heart_pts(hx, hy, hs, 90))
     out.append(C.crayon("heartc", hd, "#D92A22", ["#C8211B", "#E5372E", "#B81C17", "#EE4A3E"], hx - hs, hy - hs, hx + hs, hy + hs, seed=3, w=1.0, n=520))
-    out.append(hand_lines(["JAKÉ", "ŠTĚSTÍ,", "ŽE TĚ", "MÁM!"], hy - 9, 10, 9.5, "#FFFFFF", font_name="Caveat-Medium.ttf", x=hx - 7, tracking=0.08))
+    out.append(hand_lines(["JAKÉ", "ŠTĚSTÍ,", "ŽE TĚ", "MÁM!"], hy - 8.5, 8.4, 8.2, "#FFFFFF", font_name="Caveat-Medium.ttf", x=hx - 5, tracking=0.06))
     out.append(body)
     out.append(arm)
     out.append(small_brand(B + TH - 6, "#888888"))

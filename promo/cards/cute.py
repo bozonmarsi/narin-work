@@ -450,7 +450,7 @@ def side_hugger(hx, hy, hs, seed=41):
     the arm last."""
     rnd = random.Random(seed)
     K = "#1A1A1A"
-    SKIN, SHIRT, PANTS = "#F4C1AE", "#F3E3C3", "#2C3E73"
+    SKIN, SHIRT, PANTS = "#F4C1AE", "#3D6FD6", "#3A3A44"
     ex = hx + hs * 0.93            # heart's right edge near the top
     hx0, hy0 = ex + 6.5, hy - hs * 0.42  # head centre
     body = []
@@ -464,7 +464,7 @@ def side_hugger(hx, hy, hs, seed=41):
     torso = [(hx0 - 6, hy0 + 7), (hx0 + 5, hy0 + 6), (hx0 + 7, hy0 + 18), (hx0 + 6, hy0 + 31), (hx0 - 5, hy0 + 31), (hx0 - 7, hy0 + 18)]
     body.append(ink(torso, K, 0.45, True, rnd, 0.12, 1, SHIRT))
     for yy in (hy0 + 13, hy0 + 19, hy0 + 25):
-        body.append(ink([(hx0 - 6.5, yy), (hx0 + 6.5, yy - 0.6)], "#E08A6E", 0.6, False, rnd, 0.1, 1))
+        body.append(ink([(hx0 - 6.5, yy), (hx0 + 6.5, yy - 0.6)], "#A9C8F7", 0.6, False, rnd, 0.1, 1))
     # head tilted onto the heart
     g = f'<g transform="rotate(-16 {hx0:.2f} {hy0:.2f})">'
     g += ink(ellipse_pts(hx0, hy0, 6.8, 7.4, 30), K, 0.45, True, rnd, 0.08, 1, SKIN)
