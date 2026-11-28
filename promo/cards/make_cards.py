@@ -140,6 +140,183 @@ def front_svet():
     return "".join(out)
 
 
+# ---------------------------------------------------------------- more fronts (after the references)
+P_CORAL, P_SALMON, P_CREAM2, P_PEACH = "#E8968A", "#F4C3B6", "#F6E6D4", "#F3B7A6"
+P_SKYDEEP, P_COBALT2, P_HOT, P_LAV = "#7FB2EA", "#4F46C8", "#E9408F", "#C9B5F0"
+
+
+def lines_c(rows, y0, step, font_name, size, color, x=None, anchor="middle", tracking=0.0):
+    out, y = [], y0
+    for r in rows:
+        t, _ = text(r, font_name, size, W / 2 if x is None else x, y, color, anchor, tracking)
+        out.append(t)
+        y += step
+    return "".join(out)
+
+
+def five(x, y, R, color, center=None, rot=0.0):
+    """Five round petals + a dot (the reference's simple white flower)."""
+    out = [blob_flower(x, y, R, 5, color, rot=rot, depth=0.42)]
+    if center:
+        out.append(f'<circle cx="{x:.2f}" cy="{y:.2f}" r="{R * 0.2:.2f}" fill="{center}"/>')
+    return "".join(out)
+
+
+def star(x, y, R, n, color, rot=0.0, inner=0.22):
+    pts = []
+    for i in range(2 * n):
+        r = R if i % 2 == 0 else R * inner
+        a = math.radians(rot) + math.pi * i / n
+        pts.append((x + r * math.sin(a), y - r * math.cos(a)))
+    return f'<path fill="{color}" d="M' + " L".join(f"{px:.2f} {py:.2f}" for px, py in pts) + 'Z"/>'
+
+
+def wave_band(points, width, color):
+    d = "M" + " ".join(f"{x:.1f} {y:.1f}" if i == 0 else f"{x:.1f} {y:.1f}" for i, (x, y) in enumerate(points[:1]))
+    for i in range(1, len(points) - 1):
+        (x1, y1), (x2, y2) = points[i], points[i + 1]
+        d += f" Q{x1:.1f} {y1:.1f} {(x1 + x2) / 2:.1f} {(y1 + y2) / 2:.1f}"
+    d += f" L{points[-1][0]:.1f} {points[-1][1]:.1f}"
+    return f'<path d="{d}" fill="none" stroke="{color}" stroke-width="{width}" stroke-linecap="round" stroke-linejoin="round"/>'
+
+
+def front_miluj():
+    """'Miluj. Tvoř. Sni.' (люби, твори, мечтай): salmon card, fat cream ribbons, coral serif."""
+    out = [f'<rect width="{W}" height="{H}" fill="{P_SALMON}"/>']
+    out.append(wave_band([(-10, 12), (20, -4), (40, 30), (62, 8), (88, 26), (122, 2)], 9, P_CREAM2))
+    out.append(wave_band([(120, 40), (96, 52), (106, 80), (126, 92)], 9, P_CREAM2))
+    out.append(wave_band([(-8, 118), (16, 104), (30, 136), (54, 122), (70, 160)], 9, P_CREAM2))
+    out.append(wave_band([(84, 162), (92, 132), (118, 128)], 9, P_CREAM2))
+    out.append(lines_c(["Miluj.", "Tvoř.", "Sni."], B + 62, 17, "Fraunces-SoftSemi.ttf", 17, "#D2564F", tracking=-0.01))
+    out.append(small_brand(B + TH - 7, "#D2564F"))
+    return "".join(out)
+
+
+def front_nejlepsi():
+    """'To nejlepší teprve přijde.' (лучшие дни ещё впереди): coral card, three white flowers."""
+    out = [f'<rect width="{W}" height="{H}" fill="{P_CORAL}"/>']
+    out.append(lines_c(["To nejlepší"], B + 28, 0, "Fraunces-SoftItalic.ttf", 10, P_IVORY))
+    for x, y, R, rot in ((44, 68, 15, 8), (74, 86, 13, -12), (46, 104, 11, 20)):
+        out.append(five(B + x, B + y, R, P_IVORY, "#B5544A", rot))
+    out.append(lines_c(["teprve přijde."], B + 134, 0, "Fraunces-SoftItalic.ttf", 10, P_IVORY))
+    out.append(small_brand(B + TH - 6, P_IVORY))
+    return "".join(out)
+
+
+def front_zar():
+    """'Zář.' (сияй): sage card, big soft white word in an oval, a little four-point star."""
+    out = [f'<rect width="{W}" height="{H}" fill="{P_SAGE}"/>']
+    out.append(f'<ellipse cx="{W / 2:.1f}" cy="{B + 78:.1f}" rx="40" ry="34" fill="none" stroke="{P_IVORY}" stroke-width="1"/>')
+    t, _ = text("Zář.", "Fraunces-SoftBlack.ttf", 34, W / 2, B + 90, P_IVORY, "middle", -0.03)
+    out.append(t)
+    out.append(star(B + 82, B + 44, 6, 4, P_IVORY, inner=0.25))
+    out.append(star(B + 90, B + 38, 2.6, 4, P_IVORY, inner=0.3))
+    out.append(small_brand(B + TH - 8, P_IVORY))
+    return "".join(out)
+
+
+def front_usmev():
+    """'Úsměv ti sluší.' (улыбайся — тебе так идёт): ivory card, sky-blue flowers tumbling from the top."""
+    import random
+    rnd = random.Random(9)
+    out = [f'<rect width="{W}" height="{H}" fill="{P_IVORY}"/>']
+    for x, y, R in ((6, 8, 14), (34, 4, 11), (62, 12, 15), (94, 2, 13), (112, 26, 12), (18, 34, 12), (48, 38, 9),
+                    (80, 40, 13), (2, 62, 10), (34, 66, 8), (64, 64, 11), (100, 64, 9), (20, 88, 6), (86, 88, 7), (54, 90, 5)):
+        out.append(blob_flower(x, y, R, 5, P_SKY, rot=rnd.uniform(0, 70), depth=0.38))
+    out.append(lines_c(["Úsměv", "ti sluší."], B + 118, 11, "Fraunces-SoftSemi.ttf", 11, P_ROSE, tracking=-0.01))
+    out.append(small_brand(B + TH - 6, P_ROSE))
+    return "".join(out)
+
+
+def wavy_rect(x0, y0, x1, y1, amp, n_x, n_y):
+    pts = []
+    for i in range(n_x * 20 + 1):
+        t = i / (n_x * 20); pts.append((x0 + (x1 - x0) * t, y0 + amp * math.sin(t * n_x * 2 * math.pi)))
+    for i in range(1, n_y * 20 + 1):
+        t = i / (n_y * 20); pts.append((x1 + amp * math.sin(t * n_y * 2 * math.pi), y0 + (y1 - y0) * t))
+    for i in range(1, n_x * 20 + 1):
+        t = i / (n_x * 20); pts.append((x1 - (x1 - x0) * t, y1 - amp * math.sin(t * n_x * 2 * math.pi)))
+    for i in range(1, n_y * 20):
+        t = i / (n_y * 20); pts.append((x0 - amp * math.sin(t * n_y * 2 * math.pi), y1 - (y1 - y0) * t))
+    return "M" + " L".join(f"{x:.2f} {y:.2f}" for x, y in pts) + "Z"
+
+
+def front_vic():
+    """'Víc než jen květiny.' (more than just flowers): pink card, a wavy cream window, the line in the middle."""
+    out = [f'<rect width="{W}" height="{H}" fill="{P_PINK}"/>',
+           f'<path fill="{P_IVORY}" d="{wavy_rect(B + 10, B + 12, B + TW - 10, B + TH - 12, 2.6, 6, 9)}"/>']
+    t1, _ = text("VÍC NEŽ JEN", "Fraunces-SoftRegular.ttf", 6.6, W / 2, B + 72, P_ROSE, "middle", 0.06)
+    t2, _ = text("květiny", "Fraunces-SoftItalic.ttf", 15, W / 2, B + 87, P_ROSE, "middle", -0.01)
+    out += [t1, t2, small_brand(B + TH - 22, P_ROSE)]
+    return "".join(out)
+
+
+def stem(x0, y0, x1, y1, bend, w=3.2, col="#2A9A4B"):
+    return (f'<path d="M{x0:.1f} {y0:.1f} C{x0 + bend:.1f} {y0 - (y0 - y1) * 0.35:.1f} {x1 - bend * 0.6:.1f} {y1 + (y0 - y1) * 0.4:.1f} {x1:.1f} {y1:.1f}" '
+            f'fill="none" stroke="{col}" stroke-width="{w}" stroke-linecap="round"/>')
+
+
+def front_laska():
+    """'Láska k sobě nepotřebuje důvod.' (для любви к себе не нужен повод): indigo card, buttercups on soft stems."""
+    out = [f'<rect width="{W}" height="{H}" fill="{P_COBALT2}"/>']
+    out.append(lines_c(["Láska k sobě", "nepotřebuje", "důvod."], B + 26, 10.5, "Fraunces-SoftItalic.ttf", 10, P_IVORY))
+    for x, y, bend, col in ((14, 92, 8, "#9CCB8C"), (36, 110, -6, "#5DAA6A"), (58, 86, 10, "#9CCB8C"), (80, 116, -8, "#5DAA6A"), (98, 96, 6, "#9CCB8C")):
+        out.append(stem(B + x - bend * 0.5, H + 2, B + x, B + y + 4, bend, 3.4, col))
+        out.append(blob_flower(B + x, B + y - 1, 7.5, 5, "#FBEA8C", rot=-90, depth=0.5))
+        out.append(f'<path d="M{B + x - 6:.1f} {B + y + 1:.1f} Q{B + x:.1f} {B + y + 8:.1f} {B + x + 6:.1f} {B + y + 1:.1f}" fill="#B9D77C"/>')
+        out.append(f'<circle cx="{B + x:.1f}" cy="{B + y - 1:.1f}" r="1.6" fill="{P_COBALT2}"/>')
+    return "".join(out)
+
+
+def front_jedinecna():
+    """'Jsi jedinečná.' (ты уникальна): ivory card, hot-pink panel with big butter-yellow abstract flowers."""
+    out = [f'<rect width="{W}" height="{H}" fill="{P_IVORY}"/>',
+           f'<defs><clipPath id="panel"><rect x="{B + 9}" y="{B + 10}" width="{TW - 18}" height="{TH - 46}"/></clipPath></defs>',
+           f'<rect x="{B + 9}" y="{B + 10}" width="{TW - 18}" height="{TH - 46}" fill="{P_HOT}"/>',
+           '<g clip-path="url(#panel)">']
+    for x, y, R, rot in ((28, 30, 24, 10), (80, 46, 22, 40), (34, 82, 20, -20), (82, 98, 24, 15)):
+        out.append(blob_flower(B + x, B + y, R, 4, "#F4F08A", rot=rot, depth=0.55))
+        out.append(f'<ellipse cx="{B + x + 3:.1f}" cy="{B + y - 4:.1f}" rx="2.2" ry="1.2" fill="#FFFFFF" transform="rotate(-20 {B + x + 3:.1f} {B + y - 4:.1f})"/>')
+    out.append("</g>")
+    out.append(lines_c(["Jsi jedinečná."], B + TH - 18, 0, "Fraunces-SoftSemi.ttf", 11.5, P_HOT, tracking=-0.01))
+    out.append(small_brand(B + TH - 8, P_HOT))
+    return "".join(out)
+
+
+def front_sny():
+    """'Tvé sny se splní. Uvidíš.' (твои мечты обязательно сбудутся): blush card, two brush-like rose lines."""
+    out = [f'<rect width="{W}" height="{H}" fill="{P_BLUSH}"/>']
+    for off, w in ((0, 0.9), (1.4, 0.5), (-1.2, 0.4)):
+        out.append(wave_band([(-4, 14 + off), (30, 6 + off), (60, 34 + off), (96, 26 + off), (118, 40 + off)], w, "#C9708F"))
+        out.append(wave_band([(-4, 112 + off), (16, 106 + off), (26, 128 + off), (34, 160 + off)], w, "#C9708F"))
+        out.append(wave_band([(118, 96 + off), (96, 104 + off), (88, 128 + off), (100, 160 + off)], w, "#C9708F"))
+    out.append(lines_c(["TVÉ SNY", "SE SPLNÍ."], B + 64, 12.5, "Fraunces-SoftRegular.ttf", 11, "#B0436E", tracking=0.03))
+    out.append(lines_c(["Uvidíš."], B + 92, 0, "Fraunces-SoftItalic.ttf", 9, "#B0436E"))
+    out.append(small_brand(B + TH - 7, "#B0436E"))
+    return "".join(out)
+
+
+def front_jaro():
+    """'Brzy jaro, brzy láska.' (скоро любовь, скоро весна): pink card, big butter outlined flowers, right-aligned serif."""
+    out = [f'<rect width="{W}" height="{H}" fill="#F7C9D2"/>']
+    out.append(blob_flower(B + 84, B - 4, 26, 8, None, rot=8, depth=0.3, stroke="#FBF0A6", sw=1.6))
+    out.append(blob_flower(B - 2, B + 116, 34, 8, None, rot=-6, depth=0.3, stroke="#FBF0A6", sw=1.8))
+    out.append(lines_c(["brzy jaro,", "brzy láska."], B + 66, 13, "Fraunces-SoftRegular.ttf", 12, "#C2476E", x=B + TW - 10, anchor="end"))
+    out.append(lines_c(["Fakt."], B + 96, 0, "Fraunces-SoftItalic.ttf", 12, "#C2476E", x=B + TW - 10, anchor="end"))
+    out.append(small_brand(B + TH - 7, "#C2476E"))
+    return "".join(out)
+
+
+def front_dopadne():
+    """'Všechno dobře dopadne.' (всё точно получится): sky-blue card, a big hand-drawn white flower outline."""
+    out = [f'<rect width="{W}" height="{H}" fill="{P_SKYDEEP}"/>']
+    out.append(blob_flower(B + 30, B + 66, 62, 5, None, rot=14, depth=0.4, stroke=P_IVORY, sw=1.6))
+    out.append(lines_c(["Všechno", "dobře dopadne."], B + 76, 12, "Fraunces-SoftSemi.ttf", 10.5, P_IVORY, tracking=-0.01))
+    out.append(f'<path d="M{W / 2 - 4:.1f} {B + 97:.1f} Q{W / 2 + 10:.1f} {B + 94:.1f} {W / 2 + 26:.1f} {B + 97:.1f}" fill="none" stroke="{P_IVORY}" stroke-width="0.8" stroke-linecap="round"/>')
+    out.append(small_brand(B + TH - 7, P_IVORY))
+    return "".join(out)
+
+
 # ---------------------------------------------------------------- back (shared)
 def qr(x, y, size, url=QR_URL, color=NAVY):
     q = segno.make(url, error="m")
@@ -162,7 +339,11 @@ def back():
     return "".join(out)
 
 
-CARDS = {"01-krasa-jsi-ty": front_krasa, "02-svet-je-s-tebou-barevnejsi": front_svet}
+CARDS = {"01-krasa-jsi-ty": front_krasa, "02-svet-je-s-tebou-barevnejsi": front_svet,
+         "03-miluj-tvor-sni": front_miluj, "04-to-nejlepsi-teprve-prijde": front_nejlepsi, "05-zar": front_zar,
+         "06-usmev-ti-slusi": front_usmev, "07-vic-nez-jen-kvetiny": front_vic, "08-laska-k-sobe": front_laska,
+         "09-jsi-jedinecna": front_jedinecna, "10-tve-sny-se-splni": front_sny, "11-brzy-jaro-brzy-laska": front_jaro,
+         "12-vsechno-dobre-dopadne": front_dopadne}
 
 
 def main():
